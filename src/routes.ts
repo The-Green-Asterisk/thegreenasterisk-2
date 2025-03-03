@@ -9,14 +9,4 @@ export default class Routes extends RoutesBase {
         views.about();
     }
 
-    ['docs']() {
-        if (this.path[1]) {
-            this.path.shift();
-            new views.DocsRoutes(this.path).view();
-        } else {
-            el.body.appendChild(views.docsTemplate());
-            views.docs();
-        }
-    }
-
 }

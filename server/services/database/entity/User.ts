@@ -15,4 +15,10 @@ export class User {
     @Column()
     public age!: number
 
+    @Column()
+    public email!: string
+
+    @Column()
+    public password!: string
+
 }
