@@ -1,0 +1,13 @@
+a.github-button {
+  position:absolute;
+  bottom: 1em;
+  right: 1.5em;
+  background-color: #24292e;
+  color: #fff;
+  border-radius: 3px;
+  padding: 0.5em 1em;
+  text-decoration: none;
+  font-size: 1.2em;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}

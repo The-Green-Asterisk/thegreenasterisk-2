@@ -1,0 +1,54 @@
+el-sidebar {
+    background-color: #333;
+    color: #fff;
+    overflow: auto;
+}
+
+/* scrollbar styling */
+el-sidebar::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+    display:none;
+}
+
+el-sidebar ul {
+    list-style-type: none;
+    padding: 0;
+    text-align: center;
+    overflow: auto;
+    width: max-content;
+    margin: 0;
+}
+
+el-sidebar li {
+    padding: 10px 0;
+    display: inline-block;
+}
+
+el-sidebar a {
+    display: block;
+    padding: 14px 16px;
+    color: #fff;
+    text-decoration: none;
+}
+
+el-sidebar a:hover {
+    color: #fff;
+    background-color: #0000005e;
+}
+
+@media screen and (min-width: 768px) {
+    el-sidebar {
+        min-width: 200px;
+        overflow: auto;
+        text-align: left;
+    }
+
+    el-sidebar ul {
+        text-align: left;
+    }
+
+    el-sidebar li {
+        display: block;
+    }
+}
