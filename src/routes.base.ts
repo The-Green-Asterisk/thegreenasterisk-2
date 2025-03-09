@@ -24,10 +24,7 @@ export default class RoutesBase {
     }
 
     ['']() {
-        el.body.appendChild(views.homeTemplate(
-            "The Green Asterisk",
-            "Do you D&D?"
-        ));
+        el.body.appendChild(views.homeTemplate());
         views.home();
     }
 
@@ -79,7 +76,7 @@ export default class RoutesBase {
                 }
 
                 if (el.nav.nextElementSibling === null) {
-                    el.body.appendChild(views.homeTemplate('404', 'Page Not Found'));
+                    el.body.appendChild(views.errorPage(404));
                     views.home();
                 }
             });

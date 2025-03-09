@@ -3,11 +3,30 @@ el-home {
     display: flex;
     justify-content: center;
     flex-direction: column;
+    overflow: auto;
 }
 
-@media screen and (min-width: 768px) {
-    el-home {
-        flex-direction: row;
-    }
-    
+el-home .hero-slate {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+el-home .hero-slate h1 {
+    color: white;
+    font-size: 3rem;
+    text-align: center;
+    margin: 1rem;
+}
+
+el-home .hero-slate i {
+    color: white;
+    font-size: 4rem;
+    text-align: center;
+    margin: 0 1rem;
 }

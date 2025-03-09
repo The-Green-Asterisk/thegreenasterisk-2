@@ -2,6 +2,9 @@ import el, { html, htmlstring } from "@services/elements";
 
 const navTemplate = () => html`
     <nav>
+        <a href="/">
+            <img id="logo" src="/storage/images/BIG-AS Material Design emoji.png" alt="The Green Asterisk" />
+        </a>
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/about">About</a></li>
@@ -10,7 +13,6 @@ const navTemplate = () => html`
             <li><a href="/store">Store</a></li>
         </ul>
         <button id="discord_login">${el.isAuth ? 'Log Out' : 'Login with Discord'}</button>
-        ${el.isAuth ? 'Welcome, ' + el.currentUser?.username : ''}
     </nav>
 `;
 

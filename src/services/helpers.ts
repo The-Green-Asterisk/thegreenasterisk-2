@@ -8,9 +8,9 @@ export default class Helpers {
         const distance = rect.bottom - parentRect.bottom;
         const screenWidth = window.innerWidth;
         if (distance < 0 && screenWidth > 768) {
-            section.style.marginTop = `${(parentRect.height / 2) - (rect.height / 2)}px`
+            section.classList.remove('flex-align-center');
         } else {
-            section.style.marginTop = '1rem';
+            section.classList.add('flex-align-center');
         }
     }
 }

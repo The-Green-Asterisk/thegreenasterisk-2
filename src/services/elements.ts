@@ -43,6 +43,11 @@ export default class El {
 
     public static sessionKey: string = '';
 
+    public static establishAuth() {
+        this.currentUser = CookieJar.get<User>('currentUser');
+        this.sessionKey = CookieJar.get<string>('sessionKey');
+    }
+
     public static logout() {
         if (this.currentUser) {
             CookieJar.delete('currentUser');
@@ -163,9 +168,6 @@ export default class El {
     }
 
     constructor(private submitted = false) {
-        El.currentUser = CookieJar.get<User>('currentUser');
-        El.sessionKey = CookieJar.get<string>('sessionKey');
-
         document.querySelectorAll('[bg]').forEach(el => {
             // this will create the bg attribute and use it to set the element's background image
             (el as HTMLElement).style.backgroundImage = `url(${el.getAttribute('bg')})`;

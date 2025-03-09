@@ -4,7 +4,7 @@ import views from '@views';
 import Routes from './routes';
 
 initLoader();
-new el();
+el.establishAuth();
 
 const path = location.pathname.split('/');
 path.shift();
@@ -12,3 +12,4 @@ path.shift();
 el.body.appendChild(views.navTemplate());
 views.nav();
 new Routes(path).view();
+new el();
