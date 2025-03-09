@@ -4,6 +4,7 @@ import views from '@views';
 import Routes from './routes';
 
 initLoader();
+new el();
 
 const path = location.pathname.split('/');
 path.shift();

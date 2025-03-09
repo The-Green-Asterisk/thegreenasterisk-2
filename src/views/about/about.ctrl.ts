@@ -1,4 +1,4 @@
-import el from '@services/elements';
+import el from '@elements';
 import Helpers from '@services/helpers';
 
 export default function about() {

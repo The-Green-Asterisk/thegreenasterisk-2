@@ -1,13 +1,16 @@
 nav {
     width: 100%;
     box-shadow: var(--lg-shadow);
+    display: flex;
+    background-color: var(--ui-color);
+    align-items: center;
 }
+
 nav ul {
     list-style-type: none;
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: var(--ui-color);
     width: 100%;
     display: flex;
     justify-content: space-evenly;
@@ -25,4 +28,14 @@ nav li a {
 nav li a:hover {
     color: white;
     background-color: #2222225e;
+}
+
+nav #discord_login {
+    background-color: #7289da;
+    border-radius: 5px;
+    padding: 10px 20px;
+    color: white;
+    text-decoration: none;
+    margin: 10px;
+    white-space: nowrap;
 }

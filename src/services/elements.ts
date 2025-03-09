@@ -1,6 +1,6 @@
-import PathNames from "@const/pathNames";
 import CookieJar from "@services/cookieJar";
 import StorageBox from "@services/storageBox";
+import User from "../entities/User";
 
 type FormValues = { [key: string]: string };
 declare global {
@@ -30,6 +30,25 @@ export default class El {
                 return el;
             }
             return els;
+        }
+    }
+
+    public static get isAuth(): boolean {
+        return this.sessionKey && this.sessionKey !== ''
+            ? Number(this.sessionKey.substring(this.sessionKey.indexOf('%') + 1)) === this.currentUser?.id
+            : false;
+    };
+
+    public static currentUser: User | undefined;
+
+    public static sessionKey: string = '';
+
+    public static logout() {
+        if (this.currentUser) {
+            CookieJar.delete('currentUser');
+            CookieJar.delete('sessionKey');
+            this.currentUser = undefined;
+            this.sessionKey = '';
         }
     }
 
@@ -143,20 +162,16 @@ export default class El {
         this.docs = docs;
     }
 
-    constructor(path: string, private submitted = false) {
+    constructor(private submitted = false) {
+        El.currentUser = CookieJar.get<User>('currentUser');
+        El.sessionKey = CookieJar.get<string>('sessionKey');
+
         document.querySelectorAll('[bg]').forEach(el => {
             // this will create the bg attribute and use it to set the element's background image
             (el as HTMLElement).style.backgroundImage = `url(${el.getAttribute('bg')})`;
-        }); 
-        switch (path) {
-            case PathNames.HOME:
-                // Make El behave a certain way according to which page its on
-                break;
-            default:
-                break;
-        }
+        });
 
-        if (this.selectors.length > 0) {
+        if (this.selectors && this.selectors.length > 0) {
             // this will make selector options toggle on mousedown
             // which is not the default behavior. This can be deleted
             // if the default behavior is desired.
@@ -211,7 +226,7 @@ export default class El {
             // this will save form values to local storage before the page is unloaded
             return (e) => {
                 if (oldBeforeUnload) oldBeforeUnload.call(window, e);
-                if (this.formInputs.length == 0) return;
+                if (this.formInputs && this.formInputs.length == 0) return;
                 if (this.submitted) {
                     StorageBox.clear();
                     return;
@@ -220,7 +235,7 @@ export default class El {
                 let values: {
                     [index: string]: string
                 } = {};
-                this.formInputs.forEach(input => {
+                this.formInputs?.forEach(input => {
                     if (input && input.name && !input.name.startsWith('_') && input.type !== 'file')
                         values[input.name] = input.value;
                 });
@@ -232,11 +247,11 @@ export default class El {
             // this will load form values from local storage when the page is loaded
             return (e) => {
                 if (oldLoad) oldLoad.call(window, e);
-                if (this.formInputs.length == 0) return;
+                if (this.formInputs?.length == 0) return;
 
                 let values = StorageBox.get<FormValues>('formValues');
 
-                this.formInputs.forEach(input => {
+                this.formInputs?.forEach(input => {
                     if (input && input.name
                         && !input.name.startsWith('_')
                         && input.type !== 'file'

@@ -1,4 +1,5 @@
-import el from '@services/elements';
+import el from '@elements';
+import CookieJar from './cookieJar';
 
 export function initLoader() {
     window.fetch = ((oldFetch: typeof window.fetch, input: RequestInfo | URL = '', init?: RequestInit | undefined) => {
@@ -35,15 +36,22 @@ export default async function request<T = Response>(
     evalResult = true,
  ): Promise<T extends Response ? Response : T> {
     let payLoad: RequestInit | undefined = undefined;
+    let sessionKey = CookieJar.get<string>('sessionKey');
 
-    if (method !== 'GET') payLoad = {
+    if (sessionKey) payLoad = {
+        headers: {
+            'Authorization': sessionKey
+        } as HeadersInit
+    };
+
+    if (method !== 'GET') payLoad = Object.assign(payLoad ?? {}, {
         method,
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         } as HeadersInit,
         body: JSON.stringify(data) as BodyInit,
-    };
+    });
 
     const routePostfix = await getPostfix(method, data as RequestData | null);
 

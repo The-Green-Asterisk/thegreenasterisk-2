@@ -7,6 +7,7 @@ import NodeCache from 'node-cache';
 import path from 'path';
 
 import Routes from './routes';
+import SessionController from './controllers/sessionController';
 
 if (!process.env.PORT) require('dotenv').config();
 
@@ -15,6 +16,8 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     let { url } = req;
     const cache = new NodeCache({ stdTTL: 60 * 5 });
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
+    const sessionKey = headers['Authorization']
+    if (sessionKey && !Array.isArray(sessionKey) && sessionKey !== '') new SessionController(sessionKey);
     
     if (method !== 'GET') {
         let valid = cache.get('csrf-token-' + sessionId) === headers['csrf-token'];
@@ -77,9 +80,9 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
                     res.end('404 Not Found');
                 }
             } else if (url?.startsWith('/data/')) {
-                const { response, header, status } = await new Routes(req, res).response;
+                const { response, headerName, header, status } = await new Routes(req, res).response;
                 res.statusCode = status;
-                res.setHeader('Content-Type', header ?? 'application/json');
+                res.setHeader(headerName ?? 'Content-Type', header ?? 'application/json');
                 res.end(response);
             } else {
                 const www = path.join(__dirname, '..', '..', 'www');

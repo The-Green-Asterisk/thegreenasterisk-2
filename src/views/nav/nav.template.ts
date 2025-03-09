@@ -1,13 +1,16 @@
-import views from "@views";
-import { html } from "@services/elements";
+import el, { html, htmlstring } from "@services/elements";
 
 const navTemplate = () => html`
-    <nav>${views.githubButtonTemplate('https://github.com/lordsteve/elemental', true)}
+    <nav>
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/about">About</a></li>
-            <li><a href="/docs">Docs</a></li>
+            <li><a href="/many-worlds">Many Worlds</a></li>
+            <li><a href="/current-games">Current Games</a></li>
+            <li><a href="/store">Store</a></li>
         </ul>
+        <button id="discord_login">${el.isAuth ? 'Log Out' : 'Login with Discord'}</button>
+        ${el.isAuth ? 'Welcome, ' + el.currentUser?.username : ''}
     </nav>
 `;
 
