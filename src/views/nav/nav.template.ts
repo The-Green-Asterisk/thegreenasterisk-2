@@ -1,9 +1,9 @@
-import el, { html, htmlstring } from "@services/elements";
+import el, { html } from "@services/elements";
 
 const navTemplate = () => html`
     <nav>
         <a href="/">
-            <img id="logo" src="/storage/images/BIG-AS Material Design emoji.png" alt="The Green Asterisk" />
+            <img id="logo" src="/storage/images/BIG-AS.png" alt="The Green Asterisk" />
         </a>
         <ul>
             <li><a href="/">Home</a></li>
