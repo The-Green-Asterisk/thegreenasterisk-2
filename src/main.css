@@ -14,10 +14,11 @@
     --inner-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.1);
     --ui-color: #29701b;
     --stroke: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+    --ui-font: 'Nunito', Geneva, Tahoma, sans-serif;
 }
 
 html {
-    font-family: "Nunito", Geneva, Tahoma, sans-serif;
+    font-family: var(--ui-font);
     scroll-behavior: smooth;
     background-color: rgb(200, 200, 200);
 }
@@ -51,7 +52,7 @@ button {
     background: none;
 }
 button:hover {
-    transform: scale(1.15);
+    filter: brightness(1.1);
 }
 button:active {
     transform: scale(0.85);

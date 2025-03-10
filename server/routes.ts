@@ -24,7 +24,6 @@ export default class Routes {
     @Method('GET')
     private ['/check-auth'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         const isAuth = SessionController.checkAuth();
-        res.setHeader('Authorization', JSON.stringify(SessionController.currentUser));
         return Promise.resolve({
             response: isAuth.toString(),
             header: 'application/json',

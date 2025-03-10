@@ -17,4 +17,14 @@ export default function nav() {
                 window.location.href = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(client_id)}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
             }
         }
+
+    const menuButton = el.divs?.id('menu')
+    if (menuButton)
+        menuButton.onclick = () => {
+            console.log('test');
+            const menu = menuButton.querySelector('ul');
+            if (menu) {
+                menu.classList.contains('show') ? menu.classList.remove('show') : menu.classList.add('show');
+            }
+        }
 }
