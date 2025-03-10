@@ -21,7 +21,6 @@ export default function nav() {
     const menuButton = el.divs?.id('menu')
     if (menuButton)
         menuButton.onclick = () => {
-            console.log('test');
             const menu = menuButton.querySelector('ul');
             if (menu) {
                 menu.classList.contains('show') ? menu.classList.remove('show') : menu.classList.add('show');

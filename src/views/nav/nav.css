@@ -64,6 +64,7 @@ nav #discord_login {
     text-decoration: none;
     margin: 2px;
     width: 9em;
+    z-index: 2000;
 }
 
 nav #logo {
@@ -103,5 +104,6 @@ nav .show {
         margin: 10px;
         width: fit-content;
         white-space: nowrap;
+        z-index: auto;
     }
 }
