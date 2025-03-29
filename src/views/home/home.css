@@ -30,3 +30,9 @@ el-home .hero-slate i {
     text-align: center;
     margin: 0 1rem;
 }
+
+el-home iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+}

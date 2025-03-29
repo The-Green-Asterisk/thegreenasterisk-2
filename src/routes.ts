@@ -9,4 +9,24 @@ export default class Routes extends RoutesBase {
         views.about();
     }
 
+    ['many-worlds']() {
+        el.body.appendChild(views.manyWorldsTemplate());
+        views.manyWorlds();
+    }
+
+    ['current-games']() {
+        el.body.appendChild(views.currentGamesTemplate());
+        views.currentGames();
+    }
+
+    ['home']() {
+        el.body.appendChild(views.homeTemplate());
+        views.home();
+    }
+
+    ['store']() {
+        el.body.appendChild(views.storeTemplate());
+        views.store();
+    }
+
 }

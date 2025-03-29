@@ -13,8 +13,10 @@ const homeTemplate = () => html`
             </div>
             <section>
                 <h2>The Green Asterisk</h2>
-                <p>The Green Asterisk is a community of tabletop RPG players based in the Tampa Bay Florida area.</p>
-                <p>Stay tuned to learn more about our upcoming streaming campaign.</p>
+                <p>The Green Asterisk is a community of tabletop RPG players based in the Tampa Bay, Florida, area. Come venture with us!</p>
+            </section>
+            <section>
+                <iframe src="https://www.youtube.com/embed/blUFwBOD14E?si=3BB_J0BagoRCgkT8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
             </section>
         </div>
     </el-home>
