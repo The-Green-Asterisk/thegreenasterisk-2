@@ -1,0 +1,80 @@
+el-profile section {
+    position: relative;
+}
+
+el-profile #edit-profile {
+    align-self: end;
+    margin: 1rem;
+    padding: 1rem;
+    background-color: var(--ui-color);
+    color: white;
+    border-radius: 5px;
+}
+
+el-profile .hero-slate {
+    color: white;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+}
+
+el-profile .hero-slate h1 {
+    color: white;
+    font-size: 3rem;
+    text-align: center;
+    margin: 1rem;
+}
+
+el-profile .hero-slate i {
+    font-size: 4rem;
+    text-align: center;
+    margin: 0 1rem;
+}
+
+el-profile .profile-card {
+    width: 100%;
+}
+
+el-profile .profile-card * {
+    margin: 0 .5rem;
+}
+
+el-profile .profile-card h2 {
+    width: 10rem;
+}
+
+el-profile .profile-card div {
+    display: flex;
+    align-items: center;
+    margin: 1rem;
+}
+
+el-profile #profile-picture {
+    background-color: aliceblue;
+    border: 3px solid rgb(31, 31, 31);
+    box-shadow: var(--md-shadow);
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    object-fit: cover;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    margin-left: 1rem;
+    margin-bottom: -2rem;
+    z-index: 100;
+}
+
+@media screen and (min-width: 768px) {
+    el-profile #edit-profile {
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+    
+}

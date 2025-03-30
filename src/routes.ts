@@ -29,4 +29,9 @@ export default class Routes extends RoutesBase {
         views.store();
     }
 
+    ['profile']() {
+        el.body.appendChild(views.profileTemplate());
+        views.profile(this.query);
+    }
+
 }

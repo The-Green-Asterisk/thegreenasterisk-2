@@ -1,4 +1,5 @@
 export default class User {
+
     id!: number
 
     public firstName!: string
@@ -6,6 +7,8 @@ export default class User {
     public lastName!: string
 
     public username!: string
+
+    public profilePicture!: string
 
     public discord_id!: string
 

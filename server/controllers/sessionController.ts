@@ -41,7 +41,7 @@ export default class SessionController extends BaseController {
 
     public static async loginDiscord(req: http.IncomingMessage, res: http.ServerResponse) {
         const { code, state } = this.parseUrlQuery(req.url);
-        const originatingUrl = this.sessionCache.get(state as Key) as string;
+        let redirectUrl = this.sessionCache.get(state as Key) as string;
         this.sessionCache.del(state as Key);
         const userRepository = AppDataSource.getRepository(User);
 
@@ -98,14 +98,20 @@ export default class SessionController extends BaseController {
                 newUser.age = 0;
                 newUser.isAdmin = false;
 
+                redirectUrl = '/profile';
+
                 await userRepository.save(newUser);
                 existingUser = newUser;
             }
 
+            existingUser.profilePicture = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+            existingUser.username = userData.username;
+            await userRepository.save(existingUser);
+
             return {
                 response: 'Success',
                 headerName: 'Location',
-                header: `/start?url=${originatingUrl}&uid=${existingUser.id}`,
+                header: `/start?url=${redirectUrl}&uid=${existingUser.id}`,
                 status: 301
             }
         } catch (error) {

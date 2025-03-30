@@ -13,6 +13,9 @@ export class User {
     public lastName!: string
 
     @Column()
+    public profilePicture!: string
+
+    @Column()
     public username!: string
 
     @Column()

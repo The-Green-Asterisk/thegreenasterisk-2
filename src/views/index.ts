@@ -11,6 +11,8 @@ import currentGames from './currentGames/currentGames.ctrl';
 import currentGamesTemplate from './currentGames/currentGames.template';
 import store from './store/store.ctrl';
 import storeTemplate from './store/store.template';
+import profile from './profile/profile.ctrl';
+import profileTemplate from './profile/profile.template';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -25,6 +27,8 @@ export { default as currentGames } from './currentGames/currentGames.ctrl';
 export { default as currentGamesTemplate } from './currentGames/currentGames.template';
 export { default as store } from './store/store.ctrl';
 export { default as storeTemplate } from './store/store.template';
+export { default as profile } from './profile/profile.ctrl';
+export { default as profileTemplate } from './profile/profile.template';
 
 const views = {
     home,
@@ -39,6 +43,8 @@ const views = {
     currentGamesTemplate,
     store,
     storeTemplate,
+    profile,
+    profileTemplate,
     errorPage
 };
 export default views;

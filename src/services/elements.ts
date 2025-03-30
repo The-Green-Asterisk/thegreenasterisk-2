@@ -121,6 +121,11 @@ export default class El {
     } set divs(divs: NodeListOf<HTMLDivElement>) {
         this.divs = divs;
     }
+    public static get paragraphs() {
+        return this.getElements<HTMLParagraphElement>('p');
+    } set paragraphs(paragraphs: NodeListOf<HTMLParagraphElement>) {
+        this.paragraphs = paragraphs;
+    }
     public static get forms() {
         return this.getElements<HTMLFormElement>('form');
     } set forms(forms: NodeListOf<HTMLFormElement>) {
@@ -161,10 +166,10 @@ export default class El {
     } set home(home: HTMLElement) {
         this.home = home;
     }
-    public static get docs() {
-        return this.getElement<HTMLElement>('el-docs');
-    } set docs(docs: HTMLElement) {
-        this.docs = docs;
+    public static get profile() {
+        return this.getElement<HTMLElement>('el-profile');
+    } set profile(profile: HTMLElement) {
+        this.profile = profile;
     }
 
     constructor(private submitted = false) {

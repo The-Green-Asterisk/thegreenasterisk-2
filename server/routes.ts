@@ -1,3 +1,4 @@
+import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import http from 'http';
 
@@ -44,6 +45,16 @@ export default class Routes {
             header: 'text/plain',
             status: 200
         });
+    }
+
+    @Method('GET')
+    private ['/profile'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ProfileController.getUserProfile(req, res);
+    }
+
+    @Method('PUT')
+    private ['/update-profile'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ProfileController.updateUserProfile(req, res);
     }
 
     get response(): ResponsePromise {
