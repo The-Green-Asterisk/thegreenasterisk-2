@@ -13,7 +13,7 @@ el-profile #edit-profile {
 
 el-profile .hero-slate {
     color: white;
-    height: 400px;
+    height: 250px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -63,11 +63,12 @@ el-profile #profile-picture {
     border-radius: 50%;
     object-fit: cover;
     position: absolute;
-    bottom: 0;
+    top: 0;
     left: 0;
-    margin-left: 1rem;
-    margin-bottom: -2rem;
+    margin-top: -6.5rem;
+    margin-left: -1rem;
     z-index: 100;
+    width: 133px;
 }
 
 @media screen and (min-width: 768px) {

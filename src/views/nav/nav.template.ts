@@ -17,6 +17,13 @@ const navTemplate = () => html`
             </ul>
         </div>
         <button id="discord_login">${el.isAuth ? 'Log Out' : 'Login with Discord'}</button>
+        ${
+            el.isAuth
+                ?  `<a href="/profile">
+                        <img id="nav-profile-picture" src="${el.currentUser?.profilePicture}" alt="Profile Picture" />
+                    </a>`
+                : ''
+        }
     </nav>
 `;
 

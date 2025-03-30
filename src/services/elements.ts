@@ -325,3 +325,14 @@ export function escapeHtml(html: TemplateStringsArray, ...values: any[]): string
    html.forEach((str, i) => string += str + (values[i] ?? ''));
    return string.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/`/g, '&#96;').replace(/ /g, '&nbsp;').replace(/\n/g, '<br>');
 }
+
+setTimeout(() => {
+    let ids = new Set<string>();
+    document.querySelectorAll('[id]').forEach((el) => {
+         if (ids.has(el.id)) {
+              console.warn(`Duplicate id "${el.id}" found!`);
+         } else {
+              ids.add(el.id);
+         }
+    });
+}, 1000);

@@ -5,9 +5,9 @@ const profileTemplate = () => html`
         <div class="content-slate">
             <div class="hero-slate" bg="/storage/images/spelljammer.jpg">
                 <h1>Profile</h1>
-                <img src="/storage/images/BIG-AS.png" id="profile-picture"  title="Username and profile picture is controlled by Discord and cannot be edited here" />
             </div>
             <section>
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" id="profile-picture"  title="Username and profile picture is controlled by Discord and cannot be edited here" />
                 <button id="edit-profile" class="btn btn-primary">Edit Profile</button>
                 <div class="profile-card">
                     <div>
