@@ -1,5 +1,4 @@
 import { html } from "@services/elements";
-import sidebarTemplate from "@views/sidebar/sidebar.template";
 
 const about = () => html`
         <el-about>
