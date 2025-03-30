@@ -6,7 +6,7 @@ nav {
     background-color: white;
     align-items: center;
     justify-content: end;
-    z-index: 100;
+    z-index: 1000;
 }
 
 nav ul {
@@ -80,6 +80,10 @@ nav .show {
 }
 
 nav #nav-profile-picture {
+    z-index: 2000;
+}
+
+nav #nav-profile-picture img {
     background-color: aliceblue;
     border: 3px solid rgb(31, 31, 31);
     box-shadow: var(--md-shadow);
@@ -118,5 +122,9 @@ nav #nav-profile-picture {
         white-space: nowrap;
         z-index: auto;
         padding: 10px 20px;
+    }
+
+    nav #nav-profile-picture {
+        z-index: auto;
     }
 }

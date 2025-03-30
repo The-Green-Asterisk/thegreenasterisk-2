@@ -37,15 +37,12 @@ export default function profile(query: {[key:string]: any}) {
           document.body.appendChild(titleDisplay);
 
           setTimeout(function() {
-            if(document.body.contains(titleDisplay)){
+            if (document.body.contains(titleDisplay)) {
               document.body.removeChild(titleDisplay);
             }
-          }, 2000);
+          }, 3000);
         }
     }
-
-    profilePicture.addEventListener('touchstart', displayTitleOnTap);
-    profileUsername.addEventListener('touchstart', displayTitleOnTap);
 
     const firstNameInput = document.createElement('input');
     firstNameInput.type = 'text';
@@ -103,6 +100,9 @@ export default function profile(query: {[key:string]: any}) {
         profileEmail.appendChild(emailInput);
         profileAge.textContent = '';
         profileAge.appendChild(ageInput);
+
+        profilePicture.addEventListener('touchstart', displayTitleOnTap);
+        profileUsername.addEventListener('touchstart', displayTitleOnTap);
     }
     const deactivateEditMode = () => {
         profileName.textContent = firstNameInput.value + ' ' + lastNameInput.value;
@@ -112,6 +112,9 @@ export default function profile(query: {[key:string]: any}) {
         lastNameInput.remove();
         emailInput.remove();
         ageInput.remove();
+
+        profilePicture.removeEventListener('touchstart', displayTitleOnTap);
+        profileUsername.removeEventListener('touchstart', displayTitleOnTap);
     }
     const updateProfile = () => {
         const user = new User();
