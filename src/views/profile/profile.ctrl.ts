@@ -47,15 +47,20 @@ export default function profile(query: {[key:string]: any}) {
     const firstNameInput = document.createElement('input');
     firstNameInput.type = 'text';
     firstNameInput.placeholder = 'First Name';
+    firstNameInput.name = 'firstName';
     const lastNameInput = document.createElement('input');
     lastNameInput.type = 'text';
     lastNameInput.placeholder = 'Last Name';
+    lastNameInput.name = 'lastName';
     const emailInput = document.createElement('input');
     emailInput.type = 'email';
     emailInput.placeholder = 'Email';
+    emailInput.name = 'email';
+    emailInput.autocomplete = 'email';
     const ageInput = document.createElement('input');
     ageInput.type = 'number';
     ageInput.placeholder = 'Age';
+    ageInput.name = 'age';
     ageInput.min = '0';
     ageInput.max = '120';
 
@@ -144,7 +149,7 @@ export default function profile(query: {[key:string]: any}) {
                     console.error(error ?? 'An error occurred while updating profile data.');
                 });
         } else {
-            console.error('Please fill in both fields.');
+            console.error('Please fill in your name and email address.');
         }
     }
 

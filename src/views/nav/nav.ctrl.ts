@@ -25,5 +25,13 @@ export default function nav() {
             if (menu) {
                 menu.classList.contains('show') ? menu.classList.remove('show') : menu.classList.add('show');
             }
+            document.body.onclick = (event) => {
+                if (event.target !== menuButton && !menuButton.contains(event.target as Node)) {
+                    const menu = menuButton.querySelector('ul');
+                    if (menu) {
+                        menu.classList.remove('show');
+                    }
+                }
+            }
         }
 }
