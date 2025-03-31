@@ -22,6 +22,7 @@ el-home .hero-slate h1 {
     font-size: 3rem;
     text-align: center;
     margin: 1rem;
+    text-shadow: 0 0 5px black;
 }
 
 el-home .hero-slate i {

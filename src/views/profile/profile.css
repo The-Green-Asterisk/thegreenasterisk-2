@@ -29,6 +29,7 @@ el-profile .hero-slate h1 {
     font-size: 3rem;
     text-align: center;
     margin: 1rem;
+    text-shadow: 0 0 5px black;
 }
 
 el-profile .hero-slate i {
