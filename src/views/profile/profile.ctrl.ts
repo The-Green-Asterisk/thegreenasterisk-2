@@ -130,10 +130,13 @@ export default function profile(query: {[key:string]: any}) {
         user.id = el.currentUser?.id ?? 0;
 
         if (user.firstName && user.lastName && user.email) {
-            put('/data/update-profile', user)
+            put<User>('/data/update-profile', user)
                 .then((response) => {
                     if (response && editButton) {
-                        profileName.textContent = user.firstName + ' ' + user.lastName;
+                        firstNameInput.value = response.firstName;
+                        lastNameInput.value = response.lastName;
+                        emailInput.value = response.email;
+                        ageInput.value = response.age.toString();
                         deactivateEditMode();
                         editButton.textContent = 'Edit Profile';
                         editButton.onclick = () => {
