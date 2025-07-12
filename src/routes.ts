@@ -15,8 +15,13 @@ export default class Routes extends RoutesBase {
     }
 
     ['current-games']() {
-        el.body.appendChild(views.currentGamesTemplate());
-        views.currentGames();
+        if (this.path[1]) {
+            this.path.shift();
+            new views.CurrentGamesRoutes(this.path).view();
+        } else {
+            el.body.appendChild(views.currentGamesTemplate());
+            views.currentGames();
+        }
     }
 
     ['home']() {

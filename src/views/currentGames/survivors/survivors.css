@@ -1,0 +1,11 @@
+el-survivors .survivor-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+el-survivors iframe {
+    margin: .25rem;
+}
+el-survivors .content-slate section {
+    max-width: 1000px;
+}

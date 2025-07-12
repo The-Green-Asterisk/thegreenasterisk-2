@@ -13,6 +13,7 @@ import store from './store/store.ctrl';
 import storeTemplate from './store/store.template';
 import profile from './profile/profile.ctrl';
 import profileTemplate from './profile/profile.template';
+import CurrentGamesRoutes from './currentGames/currentGames.routes';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -29,6 +30,7 @@ export { default as store } from './store/store.ctrl';
 export { default as storeTemplate } from './store/store.template';
 export { default as profile } from './profile/profile.ctrl';
 export { default as profileTemplate } from './profile/profile.template';
+export { default as CurrentGamesRoutes } from './currentGames/currentGames.routes';
 
 const views = {
     home,
@@ -41,6 +43,7 @@ const views = {
     manyWorldsTemplate,
     currentGames,
     currentGamesTemplate,
+    CurrentGamesRoutes,
     store,
     storeTemplate,
     profile,
