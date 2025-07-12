@@ -5,6 +5,12 @@ el-survivors .survivor-list {
 }
 el-survivors iframe {
     margin: .25rem;
+    width: 30%;
+    min-width: 250px;
+    aspect-ratio: 16/9;
+    border: none;
+    border-radius: 5px;
+    box-shadow: var(--lg-shadow);
 }
 el-survivors .content-slate section {
     max-width: 1000px;
