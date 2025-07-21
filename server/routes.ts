@@ -1,5 +1,6 @@
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
+import YouTubeVideoController from 'controllers/youTubeVideoController';
 import http from 'http';
 
 export default class Routes {
@@ -55,6 +56,21 @@ export default class Routes {
     @Method('PUT')
     private ['/update-profile'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ProfileController.updateUserProfile(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-youtube-videos'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return YouTubeVideoController.getVideos(req, res);
+    }
+
+    @Method('POST')
+    private ['/save-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return YouTubeVideoController.saveVideo(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/remove-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return YouTubeVideoController.removeVideo(req, res);
     }
 
     get response(): ResponsePromise {

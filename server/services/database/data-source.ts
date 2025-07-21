@@ -1,7 +1,6 @@
 import path from 'path';
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import { User } from './entity/User';
 
 if (!process.env.DB_HOST) {
     require("dotenv").config();
@@ -17,9 +16,9 @@ export const AppDataSource = new DataSource({
     username: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
-    synchronize: true,
+    synchronize: false,
     logging: false,
-    entities: [User],
+    entities: [path.join(__dirname, '..', '..', 'services', 'database', 'entity', '*.{js,ts}')],
     migrations: [path.join(__dirname, '..', '..', 'services', 'database', 'migration', '*.{js,ts}')],
     subscribers: [],
 })

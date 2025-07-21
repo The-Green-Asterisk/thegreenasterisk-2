@@ -8,14 +8,13 @@ declare global {
         /**
          * Returns a single element from the node list that matches the id 
          */
-        id(id: string): HTMLElement;
+        id(id: string): TNode;
     }
 }
 
 export default class El {
-    private static getElement = <T extends HTMLElement = HTMLElement>(selector: string): T => {
+    private static getElement = <T extends HTMLElement = HTMLElement>(selector: string): T | null=> {
         let el = document.querySelector<T>(selector);
-        if (!el) throw new Error(`Node with selector "${selector}" not found!`);
         return el;
     }
     private static getElements = <T extends HTMLElement = HTMLElement>(selector: string): NodeListOf<T> | null => {
@@ -24,7 +23,7 @@ export default class El {
             console.error(`Nodes with selector "${selector}" not found!`);
             return null;
         } else {
-            els.id = (id: string) => {
+            els.id = (id: string): T => {
                 const el = [...els].find(el => el.id === id);
                 if (!el) throw new Error(`Element with id "${id}" not found.`);
                 return el;
@@ -58,17 +57,29 @@ export default class El {
     }
 
     public static get root() {
-        return this.getElement(':root');
+        const el = this.getElement<HTMLElement>(':root');
+        if (!el) {
+            throw new Error('Root element not found!');
+        }
+        return el;
     } set root(root: HTMLElement) {
         this.root = root;
     }
     public static get body() {
-        return this.getElement<HTMLBodyElement>('body');
+        const el = this.getElement<HTMLBodyElement>('body');
+        if (!el) {
+            throw new Error('Body element not found!');
+        }
+        return el;
     } set body(body: HTMLBodyElement) {
         this.body = body;
     }
     public static get title() {
-        return this.getElement<HTMLTitleElement>('title');
+        const el = this.getElement<HTMLTitleElement>('title');
+        if (!el) {
+            throw new Error('Title element not found!');
+        }
+        return el;
     } set title(title: HTMLTitleElement) {
         this.title = title;
     }
@@ -170,6 +181,16 @@ export default class El {
         return this.getElement<HTMLElement>('el-profile');
     } set profile(profile: HTMLElement) {
         this.profile = profile;
+    }
+    public static get currentGames() {
+        return this.getElement<HTMLElement>('el-current-games');
+    } set currentGames(currentGames: HTMLElement) {
+        this.currentGames = currentGames;
+    }
+    public static get survivors() {
+        return this.getElement<HTMLElement>('el-survivors');
+    } set survivors(survivors: HTMLElement) {
+        this.survivors = survivors;
     }
 
     constructor(private submitted = false) {

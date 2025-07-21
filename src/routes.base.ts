@@ -75,7 +75,7 @@ export default class RoutesBase {
                     });
                 }
 
-                if (el.nav.nextElementSibling === null) {
+                if (el.nav?.nextElementSibling === null) {
                     el.body.appendChild(views.errorPage(404));
                     views.home();
                 }

@@ -1,5 +1,11 @@
 import el from '@elements';
+import survivors from './survivors/survivors.ctrl';
 
 export default function currentGames() {
-    el.title.textContent = 'Current Games';
+    if (el.currentGames) {
+        el.title.textContent = 'Current Games';
+    }
+    return {
+        survivors
+    };
 }

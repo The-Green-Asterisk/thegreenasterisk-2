@@ -14,9 +14,11 @@ export function initLoader() {
             if (options && options.headers) Object.assign(options.headers, { 'X-Requested-With': 'Elemental' });
             if (!options) options = { headers: { 'X-Requested-With': 'Elemental' } } as RequestInit;
             if (!options.headers) options.headers = { 'X-Requested-With': 'Elemental' } as HeadersInit;
-            const response = await oldFetch(url, options);
-            el.loader.remove();
-            return response;
+            return oldFetch(url, options).then((resp) => {
+                el.loader.remove();
+                if (!resp.ok) return resp.json().then(err => {throw err;});
+                return resp;
+            });
         }
     })(window.fetch);
 

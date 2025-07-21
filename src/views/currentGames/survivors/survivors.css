@@ -1,12 +1,22 @@
+el-survivors .player-card {
+    width: 100%;
+    display: flex;
+    justify-content: start;
+}
+el-survivors .player-img {
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    box-shadow: var(--lg-shadow);
+    margin: 1rem 1rem 1rem 0;
+}
 el-survivors .survivor-list {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
 }
-el-survivors iframe {
-    margin: .25rem;
-    width: 30%;
-    min-width: 250px;
+el-survivors .survivor-list iframe {
+    width: 100%;
     aspect-ratio: 16/9;
     border: none;
     border-radius: 5px;
@@ -14,4 +24,19 @@ el-survivors iframe {
 }
 el-survivors .content-slate section {
     max-width: 1000px;
+}
+el-survivors .video-item {
+    width: 30%;
+    min-width: 250px;
+    position: relative;
+}
+el-survivors button.remove-video {
+    padding: 7px;
+    position: absolute;
+    top: 1.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
 }
