@@ -34,4 +34,7 @@ export default function nav() {
                 }
             }
         }
+
+    const navHeight = el.nav?.scrollHeight || 0;
+    el.body.style.paddingTop = `${navHeight}px`;
 }

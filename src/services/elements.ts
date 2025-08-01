@@ -84,12 +84,12 @@ export default class El {
         this.title = title;
     }
     public static get inputs() {
-        return this.getElements<HTMLInputElement>('input');
+        return this.getElements<HTMLInputElement>('input') ?? ([] as unknown as NodeListOf<HTMLInputElement>);
     } set inputs(inputs: NodeListOf<HTMLInputElement>) {
         this.inputs = inputs;
     }
     public static get textareas() {
-        return this.getElements<HTMLTextAreaElement>('textarea');
+        return this.getElements<HTMLTextAreaElement>('textarea') ?? ([] as unknown as NodeListOf<HTMLTextAreaElement>);
     } set textareas(textareas: NodeListOf<HTMLTextAreaElement>) {
         this.textareas = textareas;
     }
@@ -118,42 +118,42 @@ export default class El {
         this.loader = loader;
     }
     public static get selectors() {
-        return this.getElements<HTMLSelectElement>('select');
+        return this.getElements<HTMLSelectElement>('select') ?? ([] as unknown as NodeListOf<HTMLSelectElement>);
     } set selectors(selectors: NodeListOf<HTMLSelectElement>) {
         this.selectors = selectors;
     }
     public static get buttons() {
-        return this.getElements<HTMLButtonElement>('button');
+        return this.getElements<HTMLButtonElement>('button') ?? ([] as unknown as NodeListOf<HTMLButtonElement>);
     } set buttons(buttons: NodeListOf<HTMLButtonElement>) {
         this.buttons = buttons;
     }
     public static get divs() {
-        return this.getElements<HTMLDivElement>('div');
+        return this.getElements<HTMLDivElement>('div') ?? ([] as unknown as NodeListOf<HTMLDivElement>);
     } set divs(divs: NodeListOf<HTMLDivElement>) {
         this.divs = divs;
     }
     public static get paragraphs() {
-        return this.getElements<HTMLParagraphElement>('p');
+        return this.getElements<HTMLParagraphElement>('p') ?? ([] as unknown as NodeListOf<HTMLParagraphElement>);
     } set paragraphs(paragraphs: NodeListOf<HTMLParagraphElement>) {
         this.paragraphs = paragraphs;
     }
     public static get forms() {
-        return this.getElements<HTMLFormElement>('form');
+        return this.getElements<HTMLFormElement>('form') ?? ([] as unknown as NodeListOf<HTMLFormElement>);
     } set forms(forms: NodeListOf<HTMLFormElement>) {
         this.forms = forms;
     }
     public static get imgs() {
-        return this.getElements<HTMLImageElement>('img');
+        return this.getElements<HTMLImageElement>('img') ?? ([] as unknown as NodeListOf<HTMLImageElement>);
     } set imgs(imgs: NodeListOf<HTMLImageElement>) {
         this.imgs = imgs;
     }
     public static get sections() {
-        return this.getElements<HTMLElement>('section');
+        return this.getElements<HTMLElement>('section') ?? ([] as unknown as NodeListOf<HTMLElement>);
     } set sections(sections: NodeListOf<HTMLElement>) {
         this.sections = sections;
     }
     public static get formInputs() {
-        return this.getElements<HTMLInputElement | HTMLTextAreaElement>('form input, form textarea');
+        return this.getElements<HTMLInputElement | HTMLTextAreaElement>('form input, form textarea') ?? ([] as unknown as NodeListOf<HTMLInputElement | HTMLTextAreaElement>);
     } set formInputs(formInputs: NodeListOf<HTMLInputElement | HTMLTextAreaElement>) {
         this.formInputs = formInputs;
     }

@@ -5,7 +5,8 @@
            "src/index.html",
            "src/**/*.html",
            "src/main.css",
-           "src/**/*.css"
+           "src/**/*.css",
+           "src/storage/**/*"
         ],
         "extensions": "html,css",
         "runOnChangeOnly": true

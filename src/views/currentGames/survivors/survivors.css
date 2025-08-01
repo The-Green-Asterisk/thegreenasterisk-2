@@ -1,14 +1,20 @@
 el-survivors .player-card {
     width: 100%;
     display: flex;
+    flex-direction: column;
     justify-content: start;
+    align-items: center;
 }
 el-survivors .player-img {
     width: 250px;
     height: 250px;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    object-position: center;
+    border: 2px solid black;
     border-radius: 50%;
     box-shadow: var(--lg-shadow);
-    margin: 1rem 1rem 1rem 0;
+    margin: 1rem 0;
 }
 el-survivors .survivor-list {
     display: flex;
@@ -39,4 +45,22 @@ el-survivors button.remove-video {
     border: none;
     color: white;
     cursor: pointer;
+}
+
+@media screen and (min-width: 768px) {
+    el-survivors .player-card {
+        align-items: start;
+    }
+    el-survivors .player-card:nth-child(odd) {
+        flex-direction: row;
+    }
+    el-survivors .player-card:nth-child(even) {
+        flex-direction: row-reverse;
+    }
+    el-survivors .player-card:nth-child(odd) .player-img {
+        margin: 1rem 1rem 1rem 0;
+    }
+    el-survivors .player-card:nth-child(even) .player-img {
+        margin: 1rem 0 1rem 1rem;
+    }
 }

@@ -6,25 +6,16 @@ import { YouTubeVideo } from '../../../entities/YouTubeVideo';
 export default async function survivors() {
     if (el.survivors) {
         el.title.textContent = 'Survivors of the Emergence';
-        const videoList = el.divs?.id('video-list');
-        const content = el.divs?.id('content');
+        const videoList = el.divs.id('video-list');
+        const content = el.divs.id('content');
 
-        const youtubeVideos: Array<YouTubeVideo> = [];
+        const youtubeVideos = await get<YouTubeVideo[]>('/data/get-youtube-videos')
+            .catch(error => console.error('Error fetching YouTube videos:', error));
 
-        await get<YouTubeVideo[]>('/data/get-youtube-videos').then(videos => {
-            if (videos && Array.isArray(videos)) {
-                youtubeVideos.push(...videos);
-            }
-        }).catch(error => {
-            console.error('Error fetching YouTube videos:', error);
-        });
-
-        if (videoList) {
-            youtubeVideos.forEach(printVideo);
-        }
+        if (videoList && youtubeVideos) youtubeVideos.forEach(printVideo);
 
         function printVideo(video: YouTubeVideo) {
-            videoList?.appendChild(html`
+            videoList.appendChild(html`
                 <div class="video-item">
                     <span>${video.title}</span>
                     <iframe src="${video.embedUrl}" 
@@ -35,22 +26,23 @@ export default async function survivors() {
                         srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.videoId}?autoplay=1><img src=https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg><span>▶</span></a>" 
                         allowfullscreen>
                     </iframe> ${(el.currentUser?.isAdmin ? `
-                    <button class="remove-video" id="remove-video${video.id}">
+                    <button class="remove-video" id="remove-video-${video.id}">
                         <i class="fas fa-trash-alt"></i>
                     </button>` : '')}
                 </div>
             `);
-            const removeButton = el.currentUser?.isAdmin ? el.buttons?.id(`remove-video${video.id}`) : undefined;
-            if (removeButton) {
-                removeButton.addEventListener('click', () => {
-                    del('/data/remove-youtube-video', { id: video.id }).then(() => {
-                        removeButton.parentElement?.remove();
-                    }).catch(error => {
-                        console.error('Error removing video:', error);
-                        alert('Failed to remove video. Please try again.');
-                    });
-                });
-            }
+            const removeButton = el.currentUser?.isAdmin ? el.buttons.id(`remove-video-${video.id}`) : undefined;
+            if (removeButton)
+                removeButton.onclick = () => {
+                    if (confirm(`Are you sure you want to remove ${video.title}?`)) {
+                        del('/data/remove-youtube-video', { id: video.id }).then(() => {
+                            removeButton.parentElement?.remove();
+                        }).catch(error => {
+                            console.error('Error removing video:', error);
+                            alert('Failed to remove video. Please try again.');
+                        });
+                    }
+                };
         }
 
         if (content && el.currentUser?.isAdmin) {
@@ -69,27 +61,27 @@ export default async function survivors() {
                 </section>
             `);
 
-            const addVideoButton = el.buttons?.id('add-video');
+            const addVideoButton = el.buttons.id('add-video');
 
-            if (addVideoButton) {
-                addVideoButton.addEventListener('click', () => {
-                    const tags = el.inputs?.id('tags')?.value.split(',').map(tag => new Tag(tag.trim(),'',true)) ?? [];
-                    const title = el.inputs?.id('title')?.value;
+            if (addVideoButton)
+                addVideoButton.onclick = () => {
+                    const tags = el.inputs.id('tags')?.value.split(',').map(tag => new Tag(tag.trim(),'',true)) ?? [];
+                    const title = el.inputs.id('title')?.value;
                     if (!title) {
                         alert('Title is required.');
                         return;
                     }
-                    const description = el.inputs?.id('description')?.value;
+                    const description = el.inputs.id('description')?.value;
                     if (!description) {
                         alert('Description is required.');
                         return;
                     }
-                    const episodeNum = el.inputs?.id('episode-num')?.value;
+                    const episodeNum = el.inputs.id('episode-num')?.value;
                     if (!episodeNum || isNaN(Number(episodeNum))) {
                         alert('Episode number is required and must be a number.');
                         return;
                     }
-                    const embedUrl = el.inputs?.id('embedUrl')?.value;
+                    const embedUrl = el.inputs.id('embedUrl')?.value;
                     if (!embedUrl) {
                         alert('YouTube Embed URL is required.');
                         return;
@@ -114,13 +106,12 @@ export default async function survivors() {
 
                     post<YouTubeVideo>('/data/save-youtube-video', newVideo).then(video => {
                         printVideo(video);
-                        el.inputs?.forEach(input => input.value = '');
+                        el.inputs.forEach(input => input.value = '');
                     }).catch(error => {
                         console.error('Error adding video:', error);
                         alert('Failed to add video. Please try again.');
                     });
-                });
-            }
+                };
         }
     }
 }

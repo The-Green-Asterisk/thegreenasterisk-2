@@ -15,6 +15,44 @@ const survivorsTemplate = () => html`
                         <p>When you watch Survivors of the Emergence, you are getting a peek into Steve's own home, sitting at his own table, with his own friends.</p>
                     </div>
                 </div>
+                <div class="player-card">
+                    <img class="player-img" src="/storage/images/Jay.jpg" alt="Jay Frank" />
+                    <div>
+                        <h3>Jay Frank: San-Te</h3>
+                        <p>Jay is a cinephile, donut lover, and serial underachiever. When away from the table, he enjoys video games, movies/TV, and spending time with his friends, family, and Quaker parrots. He’d want me to tell you “Don’t panic” and “Keep circulating the tapes/url”.</p>
+
+                        <p>Jay is playing San-Te, a half-High Elf Monk forged in tragedy and refined in an ancient Elven monastery, seeking to bring justice to the oppressed through martial arts. Once driven by vengeance, his journey has left him wounded in spirit, wandering the land as a disillusioned drunk searching for redemption and a renewed sense of purpose.</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <img class="player-img" src="/storage/images/Dilly.png" alt="Dylan Perry" />
+                    <div>
+                        <h3>Dylan Perry: Fries "Grim" Grimstone</h3>
+                        <p>Dylan is relatively newer to DnD but has always loved table top and role playing games. He likes to dive head first into his characters and will use any excuse to pull out a horrible botched accent. If he's not rolling a d20, you can find him working at the hospital, at the gym, or picking up a big rock outside to look at all the bugs that were hiding under it. He also has a collection of horrible t-shirts that he wears proudly and seems pull out of thin air.</p>
+                        <p>Fries Grimstone is a devoted cleric to the Raven Queen. He has a deep-rooted hatred for all things undead and in violation of the natural order. He takes his work very seriously and often times finds it hard to put it down. He holds the natural cycle of life and death with utmost reverence, and believes it is a gift, perfectly entwined with a curse. In this balance, there is beauty that Grim is willing to sacrifice his life for. When he's not working, he's usually imbibing in whatever he can get his hands on. Grim finds that death likes to follow those who tend to it, and alcohol is one of the few reliefs he can find from the scars his pursuit has left on his mind.</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <img class="player-img" src="/storage/images/Katie.png" alt="Katie Jean" />
+                    <div>
+                        <h3>Katie Jean: Seraphina "Sera" Voss</h3>
+                        <p>Katie is an artist, parrot mom ("parront," if you will), and avid D&D player of over 16 years. Over the years, Katie has explored every class but has a tendency to favor the more sneaky-sneaky archetypes. Her current character Seraphina Voss — Sera for short — reflects the part of Katie that loves adventure, stands up for what's right, and doesn't let obstacles slow her down. At the heart of Sera is a little bit of Katie, and vice versa. In her spare time, she works on her non-profit organization and loves playing videogames.</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <div>
+                        <h3>Sonja De Jessa: Sibella Quinn Melpomene aka Moxxie Cleopatra</h3>
+                        <p>Sonja is a performer at heart, whether it's playing a dramatic and sassy D&D character, entertaining behind the kava bar, or practicing hair witchcraft at her salon studio, Sacred Styles by Sonja. When not at the table or doing the aforementioned things, she's being an incredible mom, planning some elaborate event, or falling asleep whilst playing video games.</p>
+                        <p>Her character, Moxxie Cleopatra (and a Whole Lot of Halfling™ 🫰) is similar to Sonja in the sense of performing — outgoing, vivacious, and well-known in the realm. Moxxie is going to get down to the bottom of what happened to her Troupe of performers.</p>
+                        <p>Sonja has not submitted a photo of herself yet, so join us during our streams to harrass her about it.</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <div>
+                        <h3>Eric Long: Zee-Bo</h3>
+                        <p>Eric has not submitted either a bio OR a picture. So join us during our streams to harrass him even doubly.</p>
+                    </div>
+                </div>
                 <p>Join us every other Sunday at 5pm on <a href="https://www.youtube.com/@TheGreenAsterisk">YouTube</a> or <a href="https://discord.gg/PwYVb5R7BF">Discord</a> to watch the live stream, or catch up with the recordings below.</p>
                 <div class="survivor-list" id="video-list"></div>
             </section>
