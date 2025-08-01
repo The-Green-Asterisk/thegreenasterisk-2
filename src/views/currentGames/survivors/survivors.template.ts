@@ -43,7 +43,7 @@ const survivorsTemplate = () => html`
                     <div>
                         <h3>Sonja De Jessa: Sibella Quinn Melpomene aka Moxxie Cleopatra</h3>
                         <p>Sonja is a performer at heart, whether it's playing a dramatic and sassy D&D character, entertaining behind the kava bar, or practicing hair witchcraft at her salon studio, Sacred Styles by Sonja. When not at the table or doing the aforementioned things, she's being an incredible mom, planning some elaborate event, or falling asleep whilst playing video games.</p>
-                        <p>Her character, Moxxie Cleopatra (and a Whole Lot of Halfling™ 🫰) is similar to Sonja in the sense of performing — outgoing, vivacious, and well-known in the realm. Moxxie is going to get down to the bottom of what happened to her Troupe of performers.</p>
+                        <p>Her character, Moxxie Cleopatra (and a Whole Lotta Halfling™ 🫰) is similar to Sonja in the sense of performing — outgoing, vivacious, and well-known in the realm. Moxxie is going to get down to the bottom of what happened to her Troupe of performers.</p>
                         <p>Sonja has not submitted a photo of herself yet, so join us during our streams to harrass her about it.</p>
                     </div>
                 </div>
