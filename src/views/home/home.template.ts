@@ -16,6 +16,10 @@ const homeTemplate = () => html`
                 <p>The Green Asterisk is a community of tabletop RPG players based in the Tampa Bay, Florida, area. Come venture with us!</p>
             </section>
             <section>
+                <a href="/current-games/survivors">
+                    <h2>Survivors of the Emergence</h2>
+                </a>
+                <p>Latest Episode:</p>
                 <iframe
                     src="https://www.youtube.com/embed/videoseries?si=l8FcSIzwYhQRo-r4&amp;list=PLl1OJntvIB7j2vu_Ous3Vsj0rpXHjKp8g"
                     title="YouTube video player"
