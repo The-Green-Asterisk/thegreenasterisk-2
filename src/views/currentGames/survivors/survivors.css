@@ -46,10 +46,6 @@ el-survivors .video-controls {
 }
 el-survivors button.remove-video, el-survivors button.full-screen-button {
     padding: 7px;
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
 }
 
 @media screen and (min-width: 768px) {
