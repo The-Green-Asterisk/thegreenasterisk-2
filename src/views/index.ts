@@ -14,6 +14,8 @@ import storeTemplate from './store/store.template';
 import profile from './profile/profile.ctrl';
 import profileTemplate from './profile/profile.template';
 import CurrentGamesRoutes from './currentGames/currentGames.routes';
+import lightbox from './lightbox/lightbox.ctrl';
+import lightboxTemplate from './lightbox/lightbox.template';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -31,6 +33,8 @@ export { default as storeTemplate } from './store/store.template';
 export { default as profile } from './profile/profile.ctrl';
 export { default as profileTemplate } from './profile/profile.template';
 export { default as CurrentGamesRoutes } from './currentGames/currentGames.routes';
+export { default as lightbox } from './lightbox/lightbox.ctrl';
+export { default as lightboxTemplate } from './lightbox/lightbox.template';
 
 const views = {
     home,
@@ -48,6 +52,8 @@ const views = {
     storeTemplate,
     profile,
     profileTemplate,
-    errorPage
+    errorPage,
+    lightbox,
+    lightboxTemplate,
 };
 export default views;

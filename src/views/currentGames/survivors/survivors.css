@@ -15,6 +15,7 @@ el-survivors .player-img {
     border-radius: 50%;
     box-shadow: var(--lg-shadow);
     margin: 1rem 0;
+    cursor: pointer;
 }
 el-survivors .survivor-list {
     display: flex;
@@ -36,11 +37,15 @@ el-survivors .video-item {
     min-width: 250px;
     position: relative;
 }
-el-survivors button.remove-video {
-    padding: 7px;
+el-survivors .video-controls {
     position: absolute;
-    top: 1.5rem;
-    right: 0.5rem;
+    top: 25px;
+    right: 10px;
+    display: flex;
+    gap: 10px;
+}
+el-survivors button.remove-video, el-survivors button.full-screen-button {
+    padding: 7px;
     background: none;
     border: none;
     color: white;

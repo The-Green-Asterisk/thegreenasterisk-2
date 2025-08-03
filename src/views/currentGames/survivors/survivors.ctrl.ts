@@ -2,6 +2,7 @@ import el, { html } from '@elements';
 import { del, get, post } from '@services/request';
 import { Tag } from '../../../entities/Tag';
 import { YouTubeVideo } from '../../../entities/YouTubeVideo';
+import { lightbox, lightboxTemplate } from '@views';
 
 export default async function survivors() {
     if (el.survivors) {
@@ -25,12 +26,34 @@ export default async function survivors() {
                         referrerpolicy="strict-origin-when-cross-origin"
                         srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.videoId}?autoplay=1><img src=https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg title='${video.description}'><span>▶</span></a>" 
                         allowfullscreen>
-                    </iframe> ${(el.currentUser?.isAdmin ? `
-                    <button class="remove-video" id="remove-video-${video.id}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>` : '')}
+                    </iframe>
+                    <div class="video-controls">
+                        <button class="full-screen-button" id="full-screen-${video.id}">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        ${(el.currentUser?.isAdmin ? `
+                        <button class="remove-video" id="remove-video-${video.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>` : '')}
+                    </div>
                 </div>
             `);
+            const fullScreenButton = el.buttons.id(`full-screen-${video.id}`);
+            if (fullScreenButton) {
+                fullScreenButton.onclick = () => {
+                    const iframeTemplate = `
+                        <iframe src="${video.embedUrl}" 
+                            title="${video.description}" 
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allowfullscreen>
+                        </iframe>
+                    `;
+                    el.body.appendChild(lightboxTemplate(null, 'iframe', iframeTemplate));
+                    lightbox();
+                };
+            }
             const removeButton = el.currentUser?.isAdmin ? el.buttons.id(`remove-video-${video.id}`) : undefined;
             if (removeButton)
                 removeButton.onclick = () => {
@@ -44,6 +67,16 @@ export default async function survivors() {
                     }
                 };
         }
+
+        document.querySelectorAll<HTMLImageElement>('.player-img').forEach(image => {
+            image.onclick = () => {
+                const srcUrl = image.getAttribute('src');
+                if (srcUrl) {
+                    el.body.appendChild(lightboxTemplate(srcUrl, 'img'));
+                    lightbox();
+                }
+            };
+        });
 
         if (content && el.currentUser?.isAdmin) {
             content.appendChild(html`
