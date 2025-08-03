@@ -13,7 +13,12 @@ const lightboxTemplate = (srcUrl: string | null, type: 'img' | 'video' | 'iframe
                     Your browser does not support the video tag.
                 </video>`
                 : type === 'iframe' && !!srcUrl
-                    ? `<iframe class="lightbox-iframe" src="${srcUrl}" frameborder="0" allowfullscreen></iframe>`
+                    ? `<iframe src="${srcUrl}"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allowfullscreen>
+                        </iframe>`
                     : ''}
         ${ type === 'iframe' && !!iframeTemplate && !srcUrl ? `${iframeTemplate}` : '' }
     </el-lightbox>

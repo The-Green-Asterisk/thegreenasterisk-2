@@ -7,7 +7,7 @@ const survivorsTemplate = () => html`
                 <h1>Survivors of the Emergence</h1>
                 <p>100 years after Orcus emerged from the Abyss and wreaked havoc on the land of Cronus, a troup of unlikely heroes discovers a plot to revive the undead</p>
                 <div class="player-card">
-                    <img class="player-img" src="/storage/images/DMSteve.jpg" alt="Steve the DM" />
+                    <img class="player-img" light-box src="/storage/images/DMSteve.jpg" alt="Steve the DM" />
                     <div>
                         <h3>Steve Beaudry: The DM</h3>
                         <p>Steve has been playing tabletop RPGs for about ten years now and has been DMing for about 8 of those years. Once he started, he couldn't stop. His background includes writing, but never publishing several different kinds of stories, and he has a passion for world-building. He, along with his players, is the creator of the world of Cronus, where Survivors of the Emergence takes place.</p>
@@ -16,7 +16,7 @@ const survivorsTemplate = () => html`
                     </div>
                 </div>
                 <div class="player-card">
-                    <img class="player-img" src="/storage/images/Jay.jpg" alt="Jay Frank" />
+                    <img class="player-img" light-box src="/storage/images/Jay.jpg" alt="Jay Frank" />
                     <div>
                         <h3>Jay Frank: San-Te</h3>
                         <p>Jay is a cinephile, donut lover, and serial underachiever. When away from the table, he enjoys video games, movies/TV, and spending time with his friends, family, and Quaker parrots. He’d want me to tell you “Don’t panic” and “Keep circulating the tapes/url”.</p>
@@ -25,7 +25,7 @@ const survivorsTemplate = () => html`
                     </div>
                 </div>
                 <div class="player-card">
-                    <img class="player-img" src="/storage/images/Dilly.png" alt="Dylan Perry" />
+                    <img class="player-img" light-box src="/storage/images/Dilly.png" alt="Dylan Perry" />
                     <div>
                         <h3>Dylan Perry: Fries "Grim" Grimstone</h3>
                         <p>Dylan is relatively newer to DnD but has always loved table top and role playing games. He likes to dive head first into his characters and will use any excuse to pull out a horrible botched accent. If he's not rolling a d20, you can find him working at the hospital, at the gym, or picking up a big rock outside to look at all the bugs that were hiding under it. He also has a collection of horrible t-shirts that he wears proudly and seems pull out of thin air.</p>
@@ -33,14 +33,14 @@ const survivorsTemplate = () => html`
                     </div>
                 </div>
                 <div class="player-card">
-                    <img class="player-img" src="/storage/images/Katie.png" alt="Katie Jean" />
+                    <img class="player-img" light-box src="/storage/images/Katie.png" alt="Katie Jean" />
                     <div>
                         <h3>Katie Jean: Seraphina "Sera" Voss</h3>
                         <p>Katie is an artist, parrot mom ("parront," if you will), and avid D&D player of over 16 years. Over the years, Katie has explored every class but has a tendency to favor the more sneaky-sneaky archetypes. Her current character Seraphina Voss — Sera for short — reflects the part of Katie that loves adventure, stands up for what's right, and doesn't let obstacles slow her down. At the heart of Sera is a little bit of Katie, and vice versa. In her spare time, she works on her non-profit organization and loves playing videogames.</p>
                     </div>
                 </div>
                 <div class="player-card">
-                    <img class="player-img" src="/storage/images/Sonja.jpg" alt="Sonja De Jessa" />
+                    <img class="player-img" light-box src="/storage/images/Sonja.jpg" alt="Sonja De Jessa" />
                     <div>
                         <h3>Sonja De Jessa: Sibella Quinn Melpomene aka Moxxie Cleopatra</h3>
                         <p>Sonja is a performer at heart, whether it's playing a dramatic and sassy D&D character, entertaining behind the kava bar, or practicing hair witchcraft at her salon studio, Sacred Styles by Sonja. When not at the table or doing the aforementioned things, she's being an incredible mom, planning some elaborate event, or falling asleep whilst playing video games.</p>

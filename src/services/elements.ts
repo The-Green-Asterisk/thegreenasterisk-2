@@ -1,5 +1,6 @@
 import CookieJar from "@services/cookieJar";
 import StorageBox from "@services/storageBox";
+import { lightbox, lightboxTemplate } from "@views";
 import User from "../entities/User";
 
 type FormValues = { [key: string]: string };
@@ -193,11 +194,29 @@ export default class El {
         this.survivors = survivors;
     }
 
+    public static setLightBox = () => document.querySelectorAll('[light-box]').forEach(el => {
+        // this will create the lightBox attribute and use it to set the element's onclick event
+        (el as HTMLElement).onclick = () => {
+            const srcUrl = el.getAttribute('src') ?? el.getAttribute('light-box');
+            let type = el.tagName.toLowerCase() as 'img' | 'video' | 'iframe';
+            if (type !== 'img' && type !== 'video' && type !== 'iframe' && el.hasAttribute('light-box-type')) {
+                type = el.getAttribute('light-box-type') as 'img' | 'video' | 'iframe';
+            }
+            if (srcUrl) {
+                document.querySelector('body')?.appendChild(lightboxTemplate(srcUrl, type));
+                lightbox();
+            }
+        };
+    });
+
+    public static setBackground = () => document.querySelectorAll('[bg]').forEach(el => {
+        // this will create the bg attribute and use it to set the element's background image
+        (el as HTMLElement).style.backgroundImage = `url(${el.getAttribute('bg')})`;
+    });
+
     constructor(private submitted = false) {
-        document.querySelectorAll('[bg]').forEach(el => {
-            // this will create the bg attribute and use it to set the element's background image
-            (el as HTMLElement).style.backgroundImage = `url(${el.getAttribute('bg')})`;
-        });
+        El.setBackground();
+        El.setLightBox();
 
         if (this.selectors && this.selectors.length > 0) {
             // this will make selector options toggle on mousedown

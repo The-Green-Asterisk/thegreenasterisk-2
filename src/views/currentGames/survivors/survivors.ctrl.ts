@@ -28,7 +28,7 @@ export default async function survivors() {
                         allowfullscreen>
                     </iframe>
                     <div class="video-controls">
-                        <button class="full-screen-button" id="full-screen-${video.id}">
+                        <button class="full-screen-button" id="full-screen-${video.id}" light-box="${video.embedUrl}" light-box-type="iframe">
                             <i class="fas fa-expand"></i>
                         </button>
                         ${(el.currentUser?.isAdmin ? `
@@ -38,22 +38,7 @@ export default async function survivors() {
                     </div>
                 </div>
             `);
-            const fullScreenButton = el.buttons.id(`full-screen-${video.id}`);
-            if (fullScreenButton) {
-                fullScreenButton.onclick = () => {
-                    const iframeTemplate = `
-                        <iframe src="${video.embedUrl}" 
-                            title="${video.description}" 
-                            frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                            referrerpolicy="strict-origin-when-cross-origin"
-                            allowfullscreen>
-                        </iframe>
-                    `;
-                    el.body.appendChild(lightboxTemplate(null, 'iframe', iframeTemplate));
-                    lightbox();
-                };
-            }
+            el.setLightBox();
             const removeButton = el.currentUser?.isAdmin ? el.buttons.id(`remove-video-${video.id}`) : undefined;
             if (removeButton)
                 removeButton.onclick = () => {
@@ -67,16 +52,6 @@ export default async function survivors() {
                     }
                 };
         }
-
-        document.querySelectorAll<HTMLImageElement>('.player-img').forEach(image => {
-            image.onclick = () => {
-                const srcUrl = image.getAttribute('src');
-                if (srcUrl) {
-                    el.body.appendChild(lightboxTemplate(srcUrl, 'img'));
-                    lightbox();
-                }
-            };
-        });
 
         if (content && el.currentUser?.isAdmin) {
             content.appendChild(html`
