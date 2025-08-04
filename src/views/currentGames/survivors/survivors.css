@@ -45,6 +45,7 @@ el-survivors .video-controls {
     gap: 10px;
 }
 el-survivors button.remove-video, el-survivors button.full-screen-button {
+    color: white;
     padding: 7px;
 }
 
