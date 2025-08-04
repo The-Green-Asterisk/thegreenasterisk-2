@@ -1,7 +1,6 @@
 import el from '@elements';
 
 export default function lightbox() {
-    el.title.textContent = 'Lightbox';
     const closeButton = document.getElementById('close-lightbox');
     if (closeButton) {
         closeButton.addEventListener('click', (event) => {
