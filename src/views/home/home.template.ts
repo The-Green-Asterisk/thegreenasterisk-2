@@ -6,9 +6,9 @@ const homeTemplate = () => html`
             <div class="hero-slate" bg="/storage/images/swamptown.png">
                 <h1>Do You D&D?</h1>
                 <div>
-                    <a href="https://discord.gg/PwYVb5R7BF"><i class="fab fa-discord"></i></a>
-                    <a href="https://www.youtube.com/@TheGreenAsterisk"><i class="fab fa-youtube"></i></a>
-                    <a href="https://www.twitch.tv/thegreenasterisk"><i class="fab fa-twitch"></i></a>
+                    <a href="https://discord.gg/PwYVb5R7BF" target="_blank"><i class="fab fa-discord"></i></a>
+                    <a href="https://www.youtube.com/@TheGreenAsterisk" target="_blank"><i class="fab fa-youtube"></i></a>
+                    <a href="https://www.twitch.tv/thegreenasterisk" target="_blank"><i class="fab fa-twitch"></i></a>
                 </div>
             </div>
             <section>
