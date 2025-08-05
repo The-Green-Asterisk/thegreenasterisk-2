@@ -10,7 +10,7 @@ const currentGamesTemplate = () => html`
             </section>
             <section>
                 <h1>Uni-Shots</h1>
-                <p>Uni-Shots is a series of one-shot adventures that are played at <a href="https://uniteakava.com/">UniTea Kava Bar</a> in Dunedin, Florida, during their "Tea&D" night. These games are open to the public and are a great way to meet new people and try out new games! Check out our <a href="https://discord.gg/PwYVb5R7BF">Discord</a> for upcoming events.</p>
+                <p>Uni-Shots is a series of one-shot adventures that are played at <a href="https://uniteakava.com/" target="_blank">UniTea Kava Lounge</a> in Dunedin, Florida, during their "Tea&D" night. These games are open to the public and are a great way to meet new people and try out new games! Check out our <a href="https://discord.gg/PwYVb5R7BF" target="_blank">Discord</a> for upcoming events.</p>
             </section>
         </div>
     </el-current-games>
