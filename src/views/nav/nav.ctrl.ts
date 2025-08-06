@@ -6,9 +6,7 @@ export default function nav() {
     if (discordLoginButton) 
         discordLoginButton.onclick = async () => {
             if (el.isAuth) {
-                await get('/data/logout');
-                el.logout();
-                window.location.href = '/';
+                window.location.href = '/logout';
             } else {
                 type DiscordCreds = { client_id:string, redirect_url:string, scope:string };
                 const originatingUrl = location.pathname;
