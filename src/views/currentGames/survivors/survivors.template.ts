@@ -48,9 +48,11 @@ const survivorsTemplate = () => html`
                     </div>
                 </div>
                 <div class="player-card">
+                    <img class="player-img" light-box src="/storage/images/Eric.jpg" alt="Eric Long" />
                     <div>
                         <h3>Eric Long: Zee-Bo</h3>
-                        <p>Eric has not submitted a bio or a picture. So join us during our streams to harrass him about it.</p>
+                        <p>Eric has been playing Dnd for a few years now. A fan of the dark worlds of warhammer, to the goofy adventures of One piece, he creates characters that tend to exist on the outskirts of society, and those that challenge the norm of these strange worlds. He is also an avid reader, and spends most of his free time consuming horror novels, or epic sci-fi escapades. Of course he makes time for video games as well, and can often be found playing old school boomer shooters and crpgs.</p>
+                        <p>Zee-bo is an Autognome unlike any other. Crawling out from a secret workshop deep in Dun'Haldur over a century ago, he is one of the last of the emergence era. Having travelled the world in search of self, he eventually made the outskirts of Emberhall his home. There he worked under the tutelage of a Cleric, learning the ways of the world, and the need to help others. Decades have passed since then, and he sets off anew to learn the secrets of his creation, a truth that can only be revealed in the workshop he once resided in.</p>
                     </div>
                 </div>
                 <p>Join us every other Sunday at 5pm on <a href="https://www.youtube.com/@TheGreenAsterisk">YouTube</a> or <a href="https://discord.gg/PwYVb5R7BF">Discord</a> to watch the live stream, or catch up with the recordings below.</p>
