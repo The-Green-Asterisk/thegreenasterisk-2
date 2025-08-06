@@ -62,18 +62,6 @@ export default class RoutesBase {
         window.location.href = '/';
     }
 
-    ['test-email']() {
-        request('GET', '/data/test-email')
-        .then((message) => {
-            console.log(message);
-            alert('Email sent successfully!');
-        })
-        .catch((error) => {
-            console.error(error.message ?? error);
-            alert('Failed to send email.');
-        });
-    }
-
     view() {
         const view = this[this.path[0]]?.bind(this);
         if (typeof view !== 'function') {
