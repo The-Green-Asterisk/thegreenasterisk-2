@@ -1,76 +1,78 @@
 {
   "watch": {
-     "html": {
-        "patterns": [
-           "src/index.html",
-           "src/**/*.html",
-           "src/main.css",
-           "src/**/*.css",
-           "src/storage/**/*"
-        ],
-        "extensions": "html,css",
-        "runOnChangeOnly": true
-     }
+    "html": {
+      "patterns": [
+        "src/index.html",
+        "src/**/*.html",
+        "src/main.css",
+        "src/**/*.css",
+        "src/storage/**/*"
+      ],
+      "extensions": "html,css",
+      "runOnChangeOnly": true
+    }
   },
   "//": [
-     "server code and client code both use typescript",
-     "server code can be compiled with tsc, but the client code needs to be bundled, so we use esbuild",
-     "because esbuild does not type check, we use tsc to type check the client code without emitting code",
-     "we use concurrently to run multiple scripts at once",
-     "we use nodemon to restart the server when server code changes",
-     "we use browser-sync to refresh the browser when client code changes",
-     "we use npm-watch to copy html and css files when one of them changes",
-     "prod script builds the project and runs the server",
-     "dev script runs the server, builds the project, watches for changes, and refreshes the browser",
-     "env-cmd will allow you to set RELOAD_PORT (and other environment variables) in the .env file"
+    "server code and client code both use typescript",
+    "server code can be compiled with tsc, but the client code needs to be bundled, so we use esbuild",
+    "because esbuild does not type check, we use tsc to type check the client code without emitting code",
+    "we use concurrently to run multiple scripts at once",
+    "we use nodemon to restart the server when server code changes",
+    "we use browser-sync to refresh the browser when client code changes",
+    "we use npm-watch to copy html and css files when one of them changes",
+    "prod script builds the project and runs the server",
+    "dev script runs the server, builds the project, watches for changes, and refreshes the browser",
+    "env-cmd will allow you to set RELOAD_PORT (and other environment variables) in the .env file"
   ],
   "scripts": {
-     "browser-sync": "env-cmd -x browser-sync start --proxy \"http://$HOST:$PORT\" --serveStatic \"www\" -w --port $RELOAD_PORT",
-     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
-     "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --bundle --outfile=www/main.css",
-     "build": "tsc --project ./server/tsconfig.json && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
-     "build:watch:server": "tsc --project ./server/tsconfig.json -w",
-     "build:watch:client": "concurrently \"tsc --project ./src/tsconfig.json --noEmit -w\" \"esbuild src/main.ts --bundle --outfile=www/main.js --watch\"",
-     "build:watch": "concurrently \"npm run build:watch:server\" \"npm run build:watch:client\"",
-     "watch:html": "npm-watch html",
-     "prod": "npm run build && npm run start",
-     "start": "node ./server/comp/main.js",
-     "dev": "concurrently \"npm run build:watch\" \"npm run watch:html\" \"nodemon ./server/comp/main.js\" \"npm run browser-sync\"",
-     "dev:no-reload": "concurrently \"npm run build:watch\" \"npm run watch:html\" \"nodemon ./server/comp/main.js\"",
-     "migration:generate": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:generate -d ./server/services/database/data-source.ts",
-     "migration:run": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:run -d ./server/services/database/data-source.ts",
-     "migration:revert": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:revert -d ./server/services/database/data-source.ts",
-     "typeorm": "ts-node --project ./server/services/database/tsconfig.json ./server/services/database/index.ts"
+    "browser-sync": "env-cmd -x browser-sync start --proxy \"http://$HOST:$PORT\" --serveStatic \"www\" -w --port $RELOAD_PORT",
+    "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
+    "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --bundle --outfile=www/main.css",
+    "build": "tsc --project ./server/tsconfig.json && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
+    "build:watch:server": "tsc --project ./server/tsconfig.json -w",
+    "build:watch:client": "concurrently \"tsc --project ./src/tsconfig.json --noEmit -w\" \"esbuild src/main.ts --bundle --outfile=www/main.js --watch\"",
+    "build:watch": "concurrently \"npm run build:watch:server\" \"npm run build:watch:client\"",
+    "watch:html": "npm-watch html",
+    "prod": "npm run build && npm run start",
+    "start": "node ./server/comp/main.js",
+    "dev": "concurrently \"npm run build:watch\" \"npm run watch:html\" \"nodemon ./server/comp/main.js\" \"npm run browser-sync\"",
+    "dev:no-reload": "concurrently \"npm run build:watch\" \"npm run watch:html\" \"nodemon ./server/comp/main.js\"",
+    "migration:generate": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:generate -d ./server/services/database/data-source.ts",
+    "migration:run": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:run -d ./server/services/database/data-source.ts",
+    "migration:revert": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:revert -d ./server/services/database/data-source.ts",
+    "typeorm": "ts-node --project ./server/services/database/tsconfig.json ./server/services/database/index.ts"
   },
   "devDependencies": {
-     "@types/dotenv": "^6.1.1",
-     "@types/mysql": "^2.15.26",
-     "@types/node": "^22.9.0",
-     "browser-sync": "^3.0.2",
-     "concurrently": "^8.2.2",
-     "dotenv": "^16.4.5",
-     "env-cmd": "^10.1.0",
-     "esbuild-plugin-tsc": "^0.4.0",
-     "nodemon": "^3.1.4",
-     "npm-watch": "^0.13.0",
-     "ts-node": "^10.9.2",
-     "typescript": "^5.6.3"
+    "@types/dotenv": "^6.1.1",
+    "@types/mysql": "^2.15.26",
+    "@types/node": "^22.9.0",
+    "browser-sync": "^3.0.2",
+    "concurrently": "^8.2.2",
+    "dotenv": "^16.4.5",
+    "env-cmd": "^10.1.0",
+    "esbuild-plugin-tsc": "^0.4.0",
+    "nodemon": "^3.1.4",
+    "npm-watch": "^0.13.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
-     "esbuild": "^0.23.1",
-     "module-alias": "^2.2.3",
-     "mysql": "^2.18.1",
-     "node-cache": "^5.1.2",
-     "pg": "^8.4.0",
-     "reflect-metadata": "^0.1.14",
-     "typeorm": "0.3.20"
+    "@types/nodemailer": "^6.4.17",
+    "esbuild": "^0.23.1",
+    "module-alias": "^2.2.3",
+    "mysql": "^2.18.1",
+    "node-cache": "^5.1.2",
+    "nodemailer": "^7.0.5",
+    "pg": "^8.4.0",
+    "reflect-metadata": "^0.1.14",
+    "typeorm": "0.3.20"
   },
   "_moduleAliases": {
-     "@server": "./server",
-     "@src": "./src",
-     "models": "./server/comp/models",
-     "controllers": "./server/comp/controllers",
-     "services": "./server/comp/services",
-     "views": "./src/views"
+    "@server": "./server",
+    "@src": "./src",
+    "models": "./server/comp/models",
+    "controllers": "./server/comp/controllers",
+    "services": "./server/comp/services",
+    "views": "./src/views"
   }
 }

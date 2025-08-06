@@ -2,6 +2,7 @@ import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import YouTubeVideoController from 'controllers/youTubeVideoController';
 import http from 'http';
+import EmailService from 'services/email';
 
 export default class Routes {
     private url: string;
@@ -71,6 +72,21 @@ export default class Routes {
     @Method('DELETE')
     private ['/remove-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return YouTubeVideoController.removeVideo(req, res);
+    }
+
+    @Method('GET')
+    private ['/test-email'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return EmailService.sendEmail('live.remix@gmail.com', 'Test Email', 'This is a test email from The Green Asterisk.')
+            .then((res) => ({
+                response: JSON.stringify(res),
+                header: 'application/json',
+                status: 200
+            }))
+            .catch((error) => ({
+                response: JSON.stringify('Error sending email: ' + error),
+                header: 'application/json',
+                status: 500
+            }));
     }
 
     get response(): ResponsePromise {
