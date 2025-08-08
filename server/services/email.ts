@@ -9,12 +9,14 @@ const transporter = nodemailer.createTransport({
 });
 
 export default class EmailService {
-    static async sendEmail(to: string, subject: string, text: string) {
+    static async sendEmail(to: string, subject: string, text: string, html?: string) {
         const mailOptions = {
             from: 'steve@mail.thegreenasterisk.com',
+            replyTo: 'steve@mail.thegreenasterisk.com',
             to,
             subject,
             text,
+            html: html || `<p>${text}</p>`,
         };
 
         try {

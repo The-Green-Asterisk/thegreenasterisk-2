@@ -2,6 +2,7 @@ import http from 'http';
 import NodeCache, { Key } from 'node-cache';
 import AppDataSource from 'services/database';
 import { User } from 'services/database/entity/User';
+import EmailService from 'services/email';
 import BaseController from "./baseController";
 
 export default class SessionController extends BaseController {
@@ -29,7 +30,7 @@ export default class SessionController extends BaseController {
         const data = {
             client_id: process.env.DISCORD_CLIENT_ID,
             redirect_url: process.env.LOGIN_REDIRECT_URL,
-            scope: 'identify'
+            scope: 'identify email'
         };
 
         return {
@@ -88,23 +89,36 @@ export default class SessionController extends BaseController {
             let existingUser = await userRepository.findOne({ where: { discord_id: userData.id } });
 
             if (!existingUser) {
+                console.log('New user detected:', userData);
                 let newUser = new User();
                 newUser.discord_id = userData.id;
                 newUser.username = userData.username;
                 newUser.password = '';
                 newUser.firstName = '';
                 newUser.lastName = '';
-                newUser.email = '';
+                newUser.email = userData.email || '';
                 newUser.age = 0;
                 newUser.isAdmin = false;
+                newUser.profilePicture = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
                 redirectUrl = '/profile';
 
                 await userRepository.save(newUser);
+                EmailService.sendEmail(
+                    'steve@mail.thegreenasterisk.com',
+                    'We have a new user!',
+                    `New user: ${userData.username}, Email: ${userData.email}`
+                );
+                EmailService.sendEmail(
+                    userData.email,
+                    'Welcome to The Green Asterisk',
+                    `Hello ${userData.username}! Welcome to The Green Asterisk! Feel free to email info@mail.thegreenasterisk.com if you have any questions or concerns.`
+                );
                 existingUser = newUser;
+            } else {
+                existingUser.profilePicture = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
             }
 
-            existingUser.profilePicture = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
             existingUser.username = userData.username;
             await userRepository.save(existingUser);
 
