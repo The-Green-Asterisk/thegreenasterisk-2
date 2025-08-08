@@ -89,7 +89,6 @@ export default class SessionController extends BaseController {
             let existingUser = await userRepository.findOne({ where: { discord_id: userData.id } });
 
             if (!existingUser) {
-                console.log('New user detected:', userData);
                 let newUser = new User();
                 newUser.discord_id = userData.id;
                 newUser.username = userData.username;
