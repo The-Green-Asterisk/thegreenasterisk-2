@@ -11,5 +11,7 @@ path.shift();
 
 el.body.appendChild(views.navTemplate());
 views.nav();
+el.body.appendChild(views.cookieBannerTemplate());
+views.cookieBanner();
 new Routes(path).view();
 new el();

@@ -16,6 +16,8 @@ import profileTemplate from './profile/profile.template';
 import CurrentGamesRoutes from './currentGames/currentGames.routes';
 import lightbox from './lightbox/lightbox.ctrl';
 import lightboxTemplate from './lightbox/lightbox.template';
+import cookieBannerTemplate from './cookieBanner/cookieBanner.template';
+import cookieBanner from './cookieBanner/cookieBanner.ctrl';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -35,6 +37,8 @@ export { default as profileTemplate } from './profile/profile.template';
 export { default as CurrentGamesRoutes } from './currentGames/currentGames.routes';
 export { default as lightbox } from './lightbox/lightbox.ctrl';
 export { default as lightboxTemplate } from './lightbox/lightbox.template';
+export { default as cookieBanner } from './cookieBanner/cookieBanner.ctrl';
+export { default as cookieBannerTemplate } from './cookieBanner/cookieBanner.template';
 
 const views = {
     home,
@@ -55,5 +59,7 @@ const views = {
     errorPage,
     lightbox,
     lightboxTemplate,
+    cookieBanner,
+    cookieBannerTemplate
 };
 export default views;

@@ -164,12 +164,12 @@ export default class El {
         this.submitButton = submitButton;
     }
     public static get cookieBanner() {
-        return this.getElement<HTMLElement>('cookie-banner');
+        return this.getElement<HTMLElement>('el-cookie-banner');
     } set cookieBanner(cookieBanner: HTMLElement) {
         this.cookieBanner = cookieBanner;
     }
     public static get cookieBannerButton() {
-        return this.getElement<HTMLButtonElement>('cookie-banner button');
+        return this.getElement<HTMLButtonElement>('el-cookie-banner button');
     } set cookieBannerButton(cookieBannerButton: HTMLButtonElement) {
         this.cookieBannerButton = cookieBannerButton;
     }
@@ -309,21 +309,6 @@ export default class El {
                 StorageBox.remove('formValues');
             }
         })(window.onload?.bind(window));
-
-        // These will eventually have to move to their own view template
-        if (this.cookieBanner) {
-            if (CookieJar.get<boolean>('cookies-are-cool')) {
-                this.cookieBanner.remove();
-            }
-        };
-
-        if (this.cookieBannerButton) {
-            this.cookieBannerButton.onclick = () => {
-                CookieJar.set('cookies-are-cool', true, new Date(new Date().getFullYear() + 999, 0).toUTCString());
-                if (this.cookieBanner)
-                    this.cookieBanner.remove();
-            };
-        }
     }
 };
 
