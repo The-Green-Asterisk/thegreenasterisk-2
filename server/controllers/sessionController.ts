@@ -98,7 +98,9 @@ export default class SessionController extends BaseController {
                 newUser.email = userData.email || '';
                 newUser.age = 0;
                 newUser.isAdmin = false;
-                newUser.profilePicture = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                newUser.profilePicture = userData.avatar
+                    ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
                 redirectUrl = '/profile';
 
@@ -115,11 +117,14 @@ export default class SessionController extends BaseController {
                 );
                 existingUser = newUser;
             } else {
-                existingUser.profilePicture = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
-            }
+                existingUser.profilePicture = userData.avatar
+                    ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-            existingUser.username = userData.username;
-            await userRepository.save(existingUser);
+                existingUser.username = userData.username;
+
+                await userRepository.save(existingUser);
+            }
 
             return {
                 response: 'Success',
