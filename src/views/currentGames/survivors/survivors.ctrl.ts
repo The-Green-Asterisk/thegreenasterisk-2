@@ -17,7 +17,7 @@ export default async function survivors() {
         function printVideo(video: YouTubeVideo) {
             videoList.appendChild(html`
                 <div class="video-item">
-                    <span><b>${video.episodeNum}:</b> ${video.title}</span>
+                    <div class="video-title" title="${video.title}"><b>${video.episodeNum}:</b> ${video.title}</div>
                     <iframe src="${video.embedUrl}" 
                         title="${video.description}" 
                         frameborder="2"

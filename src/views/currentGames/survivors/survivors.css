@@ -48,6 +48,12 @@ el-survivors button.remove-video, el-survivors button.full-screen-button {
     color: white;
     padding: 7px;
 }
+el-survivors .video-title {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 @media screen and (min-width: 768px) {
     el-survivors .player-card {
