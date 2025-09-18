@@ -7,7 +7,7 @@ const survivorsTemplate = () => html`
                 <h1>Survivors of the Emergence</h1>
                 <p>100 years after Orcus emerged from the Abyss and wreaked havoc on the land of Cronus, a troup of unlikely heroes discovers a plot to revive the undead</p>
                 <div class="player-card">
-                    <img class="player-img" light-box src="/storage/images/DMSteve.jpg" alt="Steve the DM" />
+                    <img class="player-img" light-box src="/storage/images/DMStevev2.jpg" alt="Steve the DM" />
                     <div>
                         <h3>Steve Beaudry: The DM</h3>
                         <p>Steve has been playing tabletop RPGs for about ten years now and has been DMing for about 8 of those years. Once he started, he couldn't stop. His background includes writing, but never publishing several different kinds of stories, and he has a passion for world-building. He, along with his players, is the creator of the world of Cronus, where Survivors of the Emergence takes place.</p>

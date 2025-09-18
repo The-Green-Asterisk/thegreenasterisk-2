@@ -2,7 +2,6 @@ import el, { html } from '@elements';
 import { del, get, post } from '@services/request';
 import { Tag } from '../../../entities/Tag';
 import { YouTubeVideo } from '../../../entities/YouTubeVideo';
-import { lightbox, lightboxTemplate } from '@views';
 
 export default async function survivors() {
     if (el.survivors) {
