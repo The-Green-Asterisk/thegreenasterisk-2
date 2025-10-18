@@ -5,6 +5,27 @@ el-survivors .player-card {
     justify-content: start;
     align-items: center;
 }
+el-survivors .player-card.steeb {
+    background: url('/storage/images/Steeb.png') no-repeat right bottom/contain;
+}
+el-survivors .player-card.sante {
+    background: url('/storage/images/San_Te.png') no-repeat left bottom/contain;
+}
+el-survivors .player-card.grim {
+    background: url('/storage/images/Grim.png') no-repeat right bottom/contain;
+}
+el-survivors .player-card.sera {
+    background: url('/storage/images/Sera.png') no-repeat left bottom/contain;
+}
+el-survivors .player-card.moxxie {
+    background: url('/storage/images/Moxxie.png') no-repeat right bottom/contain;
+}
+el-survivors .player-card.zeebo {
+    background: url('/storage/images/ZeeBo.png') no-repeat left bottom/contain;
+}
+el-survivors .player-card div {
+    background-color: rgba(255, 255, 255, 0.6);
+}
 el-survivors .player-img {
     width: 250px;
     height: 250px;
@@ -57,18 +78,29 @@ el-survivors .video-title {
 
 @media screen and (min-width: 768px) {
     el-survivors .player-card {
-        align-items: start;
+        align-items: stretch;
+        background-position: center;
     }
     el-survivors .player-card:nth-child(odd) {
         flex-direction: row;
+        border-top-right-radius: 20px;
+        border-bottom-right-radius: 20px;
     }
     el-survivors .player-card:nth-child(even) {
         flex-direction: row-reverse;
+        border-top-left-radius: 20px;
+        border-bottom-left-radius: 20px;
     }
     el-survivors .player-card:nth-child(odd) .player-img {
         margin: 1rem 1rem 1rem 0;
     }
     el-survivors .player-card:nth-child(even) .player-img {
         margin: 1rem 0 1rem 1rem;
+    }
+    el-survivors .player-card:nth-child(odd) div {
+        padding-right: 1rem;
+    }
+    el-survivors .player-card:nth-child(even) div {
+        padding-left: 1rem;
     }
 }

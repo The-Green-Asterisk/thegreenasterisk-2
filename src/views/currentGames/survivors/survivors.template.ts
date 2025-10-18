@@ -6,7 +6,7 @@ const survivorsTemplate = () => html`
             <section class="current-games-survivors">
                 <h1>Survivors of the Emergence</h1>
                 <p>100 years after Orcus emerged from the Abyss and wreaked havoc on the land of Cronus, a troup of unlikely heroes discovers a plot to revive the undead</p>
-                <div class="player-card">
+                <div class="player-card steeb">
                     <img class="player-img" light-box src="/storage/images/DMStevev2.png" alt="Steve the DM" />
                     <div>
                         <h3>Steve Beaudry: The DM</h3>
@@ -15,7 +15,7 @@ const survivorsTemplate = () => html`
                         <p>When you watch Survivors of the Emergence, you are getting a peek into Steve's own home, sitting at his own table, with his own friends.</p>
                     </div>
                 </div>
-                <div class="player-card">
+                <div class="player-card sante">
                     <img class="player-img" light-box src="/storage/images/Jay.jpg" alt="Jay Frank" />
                     <div>
                         <h3>Jay Frank: San-Te</h3>
@@ -24,7 +24,7 @@ const survivorsTemplate = () => html`
                         <p>Jay is playing San-Te, a half-High Elf Monk forged in tragedy and refined in an ancient Elven monastery, seeking to bring justice to the oppressed through martial arts. Once driven by vengeance, his journey has left him wounded in spirit, wandering the land as a disillusioned drunk searching for redemption and a renewed sense of purpose.</p>
                     </div>
                 </div>
-                <div class="player-card">
+                <div class="player-card grim">
                     <img class="player-img" light-box src="/storage/images/Dilly.png" alt="Dylan Perry" />
                     <div>
                         <h3>Dylan Perry: Fries "Grim" Grimstone</h3>
@@ -32,14 +32,14 @@ const survivorsTemplate = () => html`
                         <p>Fries Grimstone is a devoted cleric to the Raven Queen. He has a deep-rooted hatred for all things undead and in violation of the natural order. He takes his work very seriously and oftentimes finds it hard to put it down. He holds the natural cycle of life and death with utmost reverence, and believes it is a gift, perfectly entwined with a curse. In this balance, there is beauty that Grim is willing to sacrifice his life for. When he's not working, he's usually imbibing in whatever he can get his hands on. Grim finds that death likes to follow those who tend to it, and alcohol is one of the few reliefs he can find from the scars his pursuit has left on his mind.</p>
                     </div>
                 </div>
-                <div class="player-card">
+                <div class="player-card sera">
                     <img class="player-img" light-box src="/storage/images/Katie.png" alt="Katie Jean" />
                     <div>
                         <h3>Katie Jean: Seraphina "Sera" Voss</h3>
                         <p>Katie is an artist, parrot mom ("parront," if you will), and avid D&D player of over 16 years. Over the years, Katie has explored every class but has a tendency to favor the more sneaky-sneaky archetypes. Her current character Seraphina Voss — Sera for short — reflects the part of Katie that loves adventure, stands up for what's right, and doesn't let obstacles slow her down. At the heart of Sera is a little bit of Katie, and vice versa. In her spare time, she works on her non-profit organization and loves playing video games.</p>
                     </div>
                 </div>
-                <div class="player-card">
+                <div class="player-card moxxie">
                     <img class="player-img" light-box src="/storage/images/Sonja.jpg" alt="Sonja De Jessa" />
                     <div>
                         <h3>Sonja De Jessa: Sibella Quinn Melpomene aka Moxxie Cleopatra</h3>
@@ -47,7 +47,7 @@ const survivorsTemplate = () => html`
                         <p>Her character, Moxxie Cleopatra (and a Whole Lotta Halfling™ 🫰) is similar to Sonja in the sense of performing — outgoing, vivacious, and well-known in the realm. Moxxie is going to get down to the bottom of what happened to her Troupe of performers.</p>
                     </div>
                 </div>
-                <div class="player-card">
+                <div class="player-card zeebo">
                     <img class="player-img" light-box src="/storage/images/Eric.jpg" alt="Eric Long" />
                     <div>
                         <h3>Eric Long: Zee-Bo</h3>
