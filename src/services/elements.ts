@@ -115,17 +115,18 @@ export default class El {
             loader.remove = ((oldRemove) => {
                 return () => {
                     this.loaderCount--;
+                    this.loaderCount--; // there needs to be two because ++ gets called again when loader does
                     if (this.loaderCount <= 0) oldRemove.call(loader);
                 };
             })(loader.remove);
             document.body.appendChild(loader);
-            this.loaderCount++
         }
+        this.loaderCount++
         return loader;
     } set loader(loader: HTMLElement) {
         this.loader = loader;
     }
-    public static loaderCount = 1; // by the time this loads there is already a loader up
+    public static loaderCount = 0;
     public static get selectors() {
         return this.getElements<HTMLSelectElement>('select') ?? ([] as unknown as NodeListOf<HTMLSelectElement>);
     } set selectors(selectors: NodeListOf<HTMLSelectElement>) {
