@@ -60,10 +60,10 @@ export default async function request<T = Response>(
 
 function getPostfix(method: string, data: RequestData | object | null = null) {
     let postfix = '';
-    if (data && method === 'GET' && data instanceof RequestData) {
+    if (data && method === 'GET') {
         const params = new URLSearchParams();
         Object.keys(data).forEach(key => {
-            params.append(key, data[key].toString());
+            params.append(key, (data as RequestData)[key].toString());
         });
         postfix = `?${params.toString()}`;
     }
