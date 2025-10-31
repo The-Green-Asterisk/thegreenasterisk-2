@@ -39,7 +39,7 @@ export default class El {
             : false;
     };
 
-    public static currentUser: User | undefined;
+    public static currentUser: User | undefined = undefined;
 
     public static sessionKey: string = '';
 
@@ -52,7 +52,7 @@ export default class El {
         if (this.currentUser) {
             CookieJar.delete('currentUser');
             CookieJar.delete('sessionKey');
-            this.currentUser = undefined;
+            delete this.currentUser;
             this.sessionKey = '';
         }
     }
@@ -112,12 +112,20 @@ export default class El {
             let spinner = document.createElement('spinner');
             loader = document.createElement('loader') as HTMLElement;
             loader.appendChild(spinner);
+            loader.remove = ((oldRemove) => {
+                return () => {
+                    this.loaderCount--;
+                    if (this.loaderCount <= 0) oldRemove.call(loader);
+                };
+            })(loader.remove);
             document.body.appendChild(loader);
+            this.loaderCount++
         }
         return loader;
     } set loader(loader: HTMLElement) {
         this.loader = loader;
     }
+    public static loaderCount = 1; // by the time this loads there is already a loader up
     public static get selectors() {
         return this.getElements<HTMLSelectElement>('select') ?? ([] as unknown as NodeListOf<HTMLSelectElement>);
     } set selectors(selectors: NodeListOf<HTMLSelectElement>) {

@@ -1,7 +1,6 @@
 import el, { html } from '@elements';
+import { Tag, YouTubeVideo } from '@entities';
 import { del, get, post } from '@services/request';
-import { Tag } from '../../../entities/Tag';
-import { YouTubeVideo } from '../../../entities/YouTubeVideo';
 
 export default async function survivors() {
     if (el.survivors) {

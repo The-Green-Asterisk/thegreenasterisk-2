@@ -13,7 +13,7 @@ export default class SessionController extends BaseController {
         if (sessionKey){
             SessionController.currentUser = SessionController.sessionCache.get<User>(sessionKey);
         } else {
-            SessionController.currentUser = undefined;
+           delete SessionController.currentUser;
         }
         if (!SessionController.currentUser)
             SessionController.sessionCache.flushAll();
@@ -148,7 +148,7 @@ export default class SessionController extends BaseController {
     public static startSession(user: User) {
         const sessionKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + '%' + user.id;
 
-        this.sessionCache.set(sessionKey, user, 3600);
+        this.sessionCache.set(sessionKey, user, 7776000); // three months
         this.currentUser = user;
         return sessionKey;
     }
@@ -156,7 +156,7 @@ export default class SessionController extends BaseController {
     public static endSession(user: User) {
         const sessionKey = this.sessionCache.keys().find(key => this.sessionCache.get(key) === user);
         if (sessionKey) this.sessionCache.del(sessionKey);
-        this.currentUser = undefined;
+        delete this.currentUser;
     }
 
     public static get isAuth() {

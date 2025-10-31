@@ -1,4 +1,4 @@
-export class Tag {
+export default class Tag {
     id!: number
     constructor(
         public name: string,

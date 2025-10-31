@@ -1,5 +1,5 @@
-import { Tag } from './Tag'
-export class YouTubeVideo {
+import Tag from './Tag'
+export default class YouTubeVideo {
     id!: number
     constructor(
         public title: string,

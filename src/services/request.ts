@@ -2,6 +2,7 @@ import el from '@elements';
 import CookieJar from './cookieJar';
 
 export function initLoader() {
+    el.loader;
     window.fetch = ((oldFetch: typeof window.fetch, input: RequestInfo | URL = '', init?: RequestInit | undefined) => {
         return async (url: RequestInfo | URL = input, options: RequestInit | undefined = init) => {
             el.loader;
@@ -21,14 +22,7 @@ export function initLoader() {
             });
         }
     })(window.fetch);
-
-    window.onload = ((oldLoad: typeof window.onload | undefined) => {
-        el.loader;
-        return (e) => {
-            if (!!oldLoad) oldLoad.call(window, e);
-            el.loader.remove();
-        }
-    })(window.onload?.bind(window));
+    window.addEventListener('load', () => el.loader.remove());
 }
 
 export default async function request<T = Response>(
@@ -37,7 +31,7 @@ export default async function request<T = Response>(
     data: RequestData | object | null = null,
     evalResult = true,
  ): Promise<T extends Response ? Response : T> {
-    let payLoad: RequestInit | undefined = undefined;
+    let payLoad!: RequestInit;
     let sessionKey = CookieJar.get<string>('sessionKey');
 
     if (sessionKey) payLoad = {
@@ -55,18 +49,18 @@ export default async function request<T = Response>(
         body: JSON.stringify(data) as BodyInit,
     });
 
-    const routePostfix = await getPostfix(method, data as RequestData | null);
+    const routePostfix = getPostfix(method, data);
 
     const response = await fetch(`${path}${routePostfix}`, payLoad);
 
     return evalResult
-        ? response.json().then(obj => obj as T extends Response ? Response : T)
+        ? await response.json().then((obj: T extends Response ? Response : T) => obj)
         : response as T extends Response ? Response : T;
 }
 
-async function getPostfix(method: string, data: RequestData | null = null) {
+function getPostfix(method: string, data: RequestData | object | null = null) {
     let postfix = '';
-    if (data && method === 'GET') {
+    if (data && method === 'GET' && data instanceof RequestData) {
         const params = new URLSearchParams();
         Object.keys(data).forEach(key => {
             params.append(key, data[key].toString());
@@ -112,4 +106,4 @@ export async function del<T = Response>(path: string, data: RequestData | null =
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
-type RequestData = { [key: string]: string | boolean | number };
+class RequestData { [key: string]: string | boolean | number };
