@@ -5,7 +5,7 @@ const worldTemplate = (world: World) => html`
     <div id="world-content">
         <div id="world-description">
             <p>
-                The world of ${world.name} was rocked to its core when Orcus, the Demon Prince of Undeath, emerged from the Abyss a century ago. His rise to power brought devastation and chaos, leaving scars that still linger. Although brave heroes arose to defeat him, the once-lush grasslands and forrests now lay desolated and barren. Residual undead creatures roam at nearly every crossroads, but survivors of the tragedy have begun to rebuild, forging new communities amidst the ruins. The city of Emberhall still stands, though it bears the cruel marks of war. Here is where our adventure starts.
+                ${world.description || 'No description available for this world.'}
             </p>
         </div>
         <div id="characters-container">

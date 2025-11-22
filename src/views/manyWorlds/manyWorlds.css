@@ -58,6 +58,17 @@ el-many-worlds #events-container {
 
 el-many-worlds #world-description {
     width: 100%;
+    display: flex;
+}
+el-many-worlds #world-description p {
+    flex-grow: 1;
+    margin: 0;
+}
+el-many-worlds #world-description .edit-world-description {
+    cursor: pointer;
+    color: var(--ui-color);
+    margin-left: 10px;
+    align-self: center;
 }
 
 @media screen and (min-width: 768px) {

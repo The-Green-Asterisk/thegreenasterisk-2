@@ -1,8 +1,8 @@
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
+import WorldController from 'controllers/worldController';
 import YouTubeVideoController from 'controllers/youTubeVideoController';
 import http from 'http';
-import EmailService from 'services/email';
 
 export default class Routes {
     private url: string;
@@ -72,6 +72,21 @@ export default class Routes {
     @Method('DELETE')
     private ['/remove-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return YouTubeVideoController.removeVideo(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-world'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.createWorld(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-worlds'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getWorlds(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-world'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editWorld(req, res);
     }
 
     get response(): ResponsePromise {

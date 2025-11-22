@@ -11,14 +11,14 @@ export class World {
     @Column()
     public name!: string
 
-    @Column()
+    @Column({ type: 'longtext'})
     public description!: string
 
-    @ManyToMany(() => Category, { eager: true, cascade: true })
+    @ManyToMany(() => Category, { eager: false, cascade: true })
     @JoinTable()
     public categories!: Category[]
     
-    @ManyToMany(() => Tag, { eager: true, cascade: true })
+    @ManyToMany(() => Tag, { eager: false, cascade: true })
     @JoinTable()
     public tags!: Tag[]
 
