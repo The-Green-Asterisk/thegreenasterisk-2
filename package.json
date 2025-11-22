@@ -12,6 +12,9 @@
       "runOnChangeOnly": true
     }
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "//": [
     "server code and client code both use typescript",
     "server code can be compiled with tsc, but the client code needs to be bundled, so we use esbuild",
