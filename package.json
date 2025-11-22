@@ -22,7 +22,8 @@
     "we use npm-watch to copy html and css files when one of them changes",
     "prod script builds the project and runs the server",
     "dev script runs the server, builds the project, watches for changes, and refreshes the browser",
-    "env-cmd will allow you to set RELOAD_PORT (and other environment variables) in the .env file"
+    "env-cmd will allow you to set RELOAD_PORT (and other environment variables) in the .env file",
+    "migrations generate to server/services/database/migration/"
   ],
   "scripts": {
     "browser-sync": "env-cmd -x browser-sync start --proxy \"http://$HOST:$PORT\" --serveStatic \"www\" -w --port $RELOAD_PORT",
