@@ -202,6 +202,11 @@ export default class El {
     } set survivors(survivors: HTMLElement) {
         this.survivors = survivors;
     }
+    public static get manyWorlds() {
+        return this.getElement<HTMLElement>('el-many-worlds');
+    } set manyWorlds(manyWorlds: HTMLElement) {
+        this.manyWorlds = manyWorlds;
+    }
 
     public static setLightBox = () => document.querySelectorAll('[light-box]').forEach(el => {
         // this will create the lightBox attribute and use it to set the element's onclick event

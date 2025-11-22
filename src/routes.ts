@@ -10,8 +10,18 @@ export default class Routes extends RoutesBase {
     }
 
     ['many-worlds']() {
+        this.path.shift();
+        // build path params by taking next segment and making it a key and the next segment a value
+        let pathParams: Record<string, string> = {};
+        for (let i = 0; i < this.path.length; i += 2) {
+            let key = this.path[i];
+            let value = this.path[i + 1];
+            if (key && value) {
+                pathParams[key] = value;
+            }
+        }
         el.body.appendChild(views.manyWorldsTemplate());
-        views.manyWorlds();
+        views.manyWorlds(pathParams);
     }
 
     ['current-games']() {

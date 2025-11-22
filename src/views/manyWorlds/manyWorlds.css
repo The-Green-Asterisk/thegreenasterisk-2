@@ -1,0 +1,70 @@
+el-many-worlds #tabs-container {
+    display: flex;
+    width: 100%;
+    margin-left: -1px;
+    align-items: end;
+}
+
+el-many-worlds #tabs-container .tab {
+    text-align: center;
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    box-shadow: var(--lg-shadow);
+    background-color: rgb(212, 212, 212);
+}
+
+el-many-worlds #tabs-container .tab.active {
+    background-color: white;
+    font-weight: bold;
+    z-index: 1;
+    position: relative;
+    pointer-events: none;
+    font-size: 1rem;
+    padding: 10px;
+}
+
+el-many-worlds #tabs-container .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 0;
+    width: 100%;
+    height: 19px;
+    background-color: white;
+}
+
+el-many-worlds #world-content {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    box-shadow: var(--lg-shadow);
+    border-radius: 0 10px 10px 10px;
+    padding: 20px 0;
+    background-color: white;
+}
+
+el-many-worlds #world-description,
+el-many-worlds #characters-container,
+el-many-worlds #locations-container,
+el-many-worlds #items-container,
+el-many-worlds #events-container {
+    padding: 0 20px;
+}
+
+el-many-worlds #world-description {
+    width: 100%;
+}
+
+@media screen and (min-width: 768px) {
+    el-many-worlds #characters-container,
+    el-many-worlds #locations-container,
+    el-many-worlds #items-container,
+    el-many-worlds #events-container {
+        width: calc(50% - 40px);
+    }
+}
