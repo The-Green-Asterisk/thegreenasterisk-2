@@ -1,4 +1,4 @@
-import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { Tag } from "./Tag"
 import { World } from "./World"
 import { Category } from "./Category"
@@ -28,11 +28,11 @@ export class WorldEntity {
     @JoinTable()
     public categories!: Category[]
 
-    @ManyToMany(() => Stat, { eager: true, cascade: true })
+    @OneToMany(() => Stat, stat => stat.worldEntity, { eager: true, cascade: true })
     @JoinTable()
     public stats!: Stat[]
 
-    @ManyToMany(() => Segment, { eager: true, cascade: true })
+    @OneToMany(() => Segment, segment => segment.worldEntity, { eager: true, cascade: true })
     @JoinTable()
     public segments!: Segment[]
     

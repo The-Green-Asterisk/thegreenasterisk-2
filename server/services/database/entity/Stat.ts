@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
+import { WorldEntity } from "./WorldEntity"
 
 @Entity()
 export class Stat {
@@ -14,5 +15,8 @@ export class Stat {
 
     @Column({ default: true })
     public isActive!: boolean
+
+    @ManyToOne(() => WorldEntity, (worldEntity) => worldEntity.stats)
+    public worldEntity!: WorldEntity
 
 }

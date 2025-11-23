@@ -89,6 +89,21 @@ export default class Routes {
         return WorldController.editWorld(req, res);
     }
 
+    @Method('GET')
+    private ['/get-categories'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getCategories(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-category'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.createCategory(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-category'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getCategory(req, res);
+    }
+
     get response(): ResponsePromise {
         const response = this[this.url] as RouteFunction
         if (typeof response !== 'function') {

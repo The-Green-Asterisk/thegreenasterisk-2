@@ -1,12 +1,19 @@
 import el, { html } from '@elements';
 import { World } from '@entities';
-import worldTemplate from './world.template';
-import worldCtrl from './world.ctrl';
 import { get, post } from '@services/request';
+import categoryCtrl from './category.ctrl';
+import categoryTemplate from './category.template';
+import worldCtrl from './world.ctrl';
+import worldTemplate from './world.template';
+import worldEntityCtrl from './worldEntity.ctrl';
+import worldEntityTemplate from './worldEntity.template';
 
-export default async function manyWorlds(pathParams: Record<string, string>) {
-    const { world } = pathParams;
-    let worldId = Number(world);
+export default async function manyWorlds(pathParams: Record<string, number>) {
+    const { world, category, entity } = pathParams;
+    let worldId = world;
+    let categoryId = category;
+    let entityId = entity;
+
     el.title.textContent = 'Many Worlds';
     const contentSection = el.sections[0];
 
@@ -23,6 +30,7 @@ export default async function manyWorlds(pathParams: Record<string, string>) {
             history.pushState({ world: world }, '', `/many-worlds/world/${world.id}`);
             contentSection.replaceChild(worldTemplate(world), el.divs.id('world-content'));
             worldCtrl(world);
+            el.title.textContent = `Many Worlds: ${world.name}`;
         };
         tab.classList.toggle('active', world.id === worldId);
         tabsContainer.appendChild(tab);
@@ -65,9 +73,24 @@ export default async function manyWorlds(pathParams: Record<string, string>) {
             </div>
         </div>
     `;
-    contentSection.appendChild(worldId ? worldTemplate(worlds.find(w => w.id === worldId)!) : defaultContent);
-    if (worldId) worldCtrl(worlds.find(w => w.id === worldId)!);
-    
+
+    if (entityId && categoryId && worldId) {
+        contentSection.appendChild(worldEntityTemplate());
+        worldEntityCtrl(entityId, categoryId, worldId);
+        history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}/entity/${entityId}`);
+    } else if (categoryId && worldId) {
+        contentSection.appendChild(categoryTemplate());
+        categoryCtrl(categoryId, worldId);
+        history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}`);
+    } else if (worldId) {
+        contentSection.appendChild(worldTemplate(worlds.find(w => w.id === worldId)!));
+        worldCtrl(worlds.find(w => w.id === worldId)!);
+        history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}`);
+    } else {
+        contentSection.appendChild(defaultContent);
+        history.replaceState({}, '', `/many-worlds`);
+    }
+
     window.addEventListener('popstate', event => {
         tabsContainer.querySelectorAll('.tab').forEach(tab => {
             tab.classList.remove('active');

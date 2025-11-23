@@ -1,5 +1,6 @@
 import Tag from "./Tag"
 import World from "./World"
+import { WorldEntity } from "./WorldEntity"
 
 export default class Category {
 
@@ -9,6 +10,7 @@ export default class Category {
         public name: string,
         public description: string,
         public worlds: World[] = [],
+        public worldEntities: WorldEntity[] = [],
         public tags: Tag[] = []
     ) {}
 

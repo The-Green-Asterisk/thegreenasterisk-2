@@ -48,34 +48,80 @@ el-many-worlds #world-content {
     background-color: white;
 }
 
-el-many-worlds #world-description,
-el-many-worlds #characters-container,
-el-many-worlds #locations-container,
-el-many-worlds #items-container,
-el-many-worlds #events-container {
-    padding: 0 20px;
+el-many-worlds #world-categories {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
+}
+
+el-many-worlds .category-container {
+    border-radius: 10px;
+    box-shadow: var(--md-shadow);
+    margin: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    overflow: hidden;
+}
+
+el-many-worlds .category-container h2 {
+    text-align: center;
+    color: var(--ui-color);
+    background-color: rgb(193, 193, 193);
+    margin: 0;
+    padding: 10px;
+    box-shadow: var(--lg-shadow);
+    background: linear-gradient(135deg, rgb(220, 220, 220), rgb(180, 180, 180));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.279);
+}
+
+el-many-worlds .category-container p {
+    text-align: center;
+    font-style: italic;
+    color: gray;
+    padding: 10px;
+}
+
+el-many-worlds .category-container .entity-list {
+    padding: 0 20px 0 40px;
 }
 
 el-many-worlds #world-description {
     width: 100%;
     display: flex;
 }
+
 el-many-worlds #world-description p {
     flex-grow: 1;
     margin: 0;
+    padding: 0 20px;
 }
+
 el-many-worlds #world-description .edit-world-description {
     cursor: pointer;
     color: var(--ui-color);
-    margin-left: 10px;
+    margin-right: 20px;
     align-self: center;
 }
 
+el-many-worlds #no-categories {
+    text-align: center;
+    font-style: italic;
+    color: gray;
+    width: 100%;
+}
+
+el-many-worlds #add-category-btn {
+    flex-grow: 1;
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: var(--md-shadow);
+    background-color: rgb(200, 200, 200);
+    font-weight: bold;
+}
+
 @media screen and (min-width: 768px) {
-    el-many-worlds #characters-container,
-    el-many-worlds #locations-container,
-    el-many-worlds #items-container,
-    el-many-worlds #events-container {
-        width: calc(50% - 40px);
+    el-many-worlds .category-container {
+        width: calc(50% - 22px);
     }
 }
