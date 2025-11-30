@@ -6,7 +6,12 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
     const segmentDiv = el.divs.id('entity-segments');
 
-    const sortSegments = (segments: Segment[]) => segments.sort((a, b) => a.displayOrder - b.displayOrder);
+    const sortSegments = (segments: Segment[]) => {
+        segments.sort((a, b) => a.displayOrder - b.displayOrder);
+        segments.forEach((segment, index) => {
+            segment.displayOrder = index + 1;
+        });
+    };
 
     const createSaveSegmentBtn = (segmentDescription: HTMLElement, segment: Segment, editBtn: HTMLButtonElement) => {
         const saveBtn = html`<button class="save-segment-btn">Save Segment</button>`;
@@ -84,8 +89,27 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         const displayOrderInput = segmentContent.querySelector(`#display-order-${segment.id}`) as HTMLInputElement | undefined;
         if (displayOrderInput) {
             displayOrderInput.onchange = () => {
-                const newOrder = parseInt(displayOrderInput.value, 10);
+                let newOrder = parseInt(displayOrderInput.value, 10);
                 if (!isNaN(newOrder) && newOrder !== segment.displayOrder) {
+                    if (newOrder < 1) newOrder = 1;
+                    if (newOrder > entity.segments.length) newOrder = entity.segments.length;
+                    if (newOrder === segment.displayOrder) {
+                        displayOrderInput.value = segment.displayOrder.toString();
+                        return;
+                    };
+                    if (newOrder < segment.displayOrder) {
+                        entity.segments.forEach(s => {
+                            if (s.id !== segment.id && s.displayOrder >= newOrder && s.displayOrder < segment.displayOrder) {
+                                s.displayOrder += 1;
+                            }
+                        });
+                    } else {
+                        entity.segments.forEach(s => {
+                            if (s.id !== segment.id && s.displayOrder <= newOrder && s.displayOrder > segment.displayOrder) {
+                                s.displayOrder -= 1;
+                            }
+                        });
+                    }
                     segment.displayOrder = newOrder;
                     put<Segment>('/data/edit-segment', segment).then(() => {
                         sortSegments(entity.segments);
