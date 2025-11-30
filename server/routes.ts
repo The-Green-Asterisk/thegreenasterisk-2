@@ -104,6 +104,36 @@ export default class Routes {
         return WorldController.getCategory(req, res);
     }
 
+    @Method('GET')
+    private ['/get-entities'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getEntities(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-entity'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.createEntity(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-world-entity'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getWorldEntity(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-entity'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editEntity(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editSegment(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.deleteSegment(req, res);
+    }
+
     get response(): ResponsePromise {
         const response = this[this.url] as RouteFunction
         if (typeof response !== 'function') {

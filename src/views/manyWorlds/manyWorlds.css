@@ -22,7 +22,6 @@ el-many-worlds #tabs-container .tab.active {
     font-weight: bold;
     z-index: 1;
     position: relative;
-    pointer-events: none;
     font-size: 1rem;
     padding: 10px;
 }
@@ -85,33 +84,35 @@ el-many-worlds .category-container .entity-list {
     padding: 0 20px 0 40px;
 }
 
-el-many-worlds #world-description {
+el-many-worlds #world-description, el-many-worlds #entity-description {
     width: 100%;
     display: flex;
 }
 
-el-many-worlds #world-description p {
+el-many-worlds #world-description p, el-many-worlds #entity-description p {
     flex-grow: 1;
     margin: 0;
     padding: 0 20px;
 }
 
-el-many-worlds #world-description .edit-world-description {
+el-many-worlds #world-description .edit-world-description, el-many-worlds #entity-description .edit-entity-description {
     cursor: pointer;
     color: var(--ui-color);
     margin-right: 20px;
     align-self: center;
 }
 
-el-many-worlds #no-categories {
+el-many-worlds #no-categories, el-many-worlds #no-entities {
     text-align: center;
     font-style: italic;
     color: gray;
     width: 100%;
 }
 
-el-many-worlds #add-category-btn {
+el-many-worlds #add-category-btn, el-many-worlds #new-entity-btn {
     flex-grow: 1;
+    height: fit-content;
+    align-self: center;
     margin: 10px;
     padding: 10px 20px;
     border-radius: 5px;
@@ -120,8 +121,119 @@ el-many-worlds #add-category-btn {
     font-weight: bold;
 }
 
+el-many-worlds #category-title {
+    width: 100%;
+    text-align: center;
+    color: var(--ui-color);
+    margin-top: 0;
+}
+
+el-many-worlds #category-entities {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+el-many-worlds .letter-box {
+    border: 1px solid rgba(0, 0, 0, 0.179);
+    border-radius: 5px;
+    box-shadow: var(--sm-shadow);
+    margin: 10px;
+}
+
+el-many-worlds .letter-box h3 {
+    margin: 0;
+    padding: 5px 10px;
+    background-color: rgb(220, 220, 220);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    color: var(--ui-color);
+    text-align: center;
+}
+
+el-many-worlds .letter-box ul {
+    padding: 0 15px 10px 25px;
+}
+
+el-many-worlds .entity-list-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    padding: 10px 0;
+}
+
+el-many-worlds .entity-list-item .name {
+    margin-bottom: 0;
+    font-weight: bold;
+    color: var(--ui-color);
+}
+
+el-many-worlds .entity-list-item .description {
+    margin: 0;
+    font-style: italic;
+    color: gray;
+}
+
+el-many-worlds #entity-details {
+    width: 100%;
+}
+
+el-many-worlds #entity-details h2 {
+    text-align: center;
+    color: var(--ui-color);
+}
+
+el-many-worlds #entity-segments h3 {
+    display: inline-block;
+    margin-bottom: 0;
+}
+
+el-many-worlds #entity-segments {
+    width: 100%;
+    padding: 0 20px;
+}
+
+el-many-worlds #entity-segments .segment-order {
+    display: inline-block;
+}
+
+el-many-worlds #entity-segments .segment-order input {
+    width: 40px;
+    margin-right: 10px;
+}
+
+el-many-worlds #entity-details #save-entity-description-btn,
+el-many-worlds #entity-details #edit-short-description-btn,
+el-many-worlds #entity-segments .edit-segment-btn,
+el-many-worlds #entity-segments #add-segment-btn,
+el-many-worlds #entity-segments .save-segment-btn,
+el-many-worlds #entity-segments .delete-segment-btn {
+    margin-top: 10px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    box-shadow: var(--md-shadow);
+    background-color: rgb(200, 200, 200);
+    font-weight: bold;
+}
+
+el-many-worlds #entity-details #edit-short-description-btn {
+    margin: 0 20px;
+}
+
+
+el-many-worlds #entity-segments .save-segment-btn,
+el-many-worlds #entity-details #save-entity-description-btn {
+    background-color: rgb(150, 250, 150);
+}
+
+el-many-worlds #entity-segments .delete-segment-btn {
+    background-color: rgb(250, 150, 150);
+}
+
 @media screen and (min-width: 768px) {
     el-many-worlds .category-container {
         width: calc(50% - 22px);
+    }
+
+    el-many-worlds .letter-box {
+        width: calc(33.3333% - 22px);
     }
 }

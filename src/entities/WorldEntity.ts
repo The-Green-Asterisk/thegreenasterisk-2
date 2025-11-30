@@ -1,10 +1,10 @@
 import Category from "./Category";
-import { Segment } from "./Segment";
+import Segment from "./Segment";
 import Stat from "./Stat";
 import Tag from "./Tag";
 import World from "./World";
 
-export class WorldEntity {
+export default class WorldEntity {
 
     id!: number
 

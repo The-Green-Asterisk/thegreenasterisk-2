@@ -25,9 +25,8 @@ export default async function world(world: World) {
     const categories = await get<Category[]>('/data/get-categories', { worldId: world.id });
     const categoriesContainer = el.divs.id('world-categories');
     
-    if (!categories || categories.length === 0) {
-        categoriesContainer.innerHTML = '<p id="no-categories">No categories available for this world.</p>';
-    } else {
+    if (categories?.length > 0) {
+        categoriesContainer.innerHTML = '';
         categories.forEach(category => {
             const categoryDiv = html`
                 <div class="category-container">

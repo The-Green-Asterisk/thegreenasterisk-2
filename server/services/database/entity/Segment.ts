@@ -13,6 +13,9 @@ export class Segment {
     @Column()
     public description!: string
 
+    @Column()
+    public displayOrder!: number
+
     @Column({ default: true })
     public isActive!: boolean
 

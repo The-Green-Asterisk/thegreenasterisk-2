@@ -4,6 +4,7 @@ import { Category } from "services/database/entity/Category";
 import { World } from "services/database/entity/World";
 import { WorldEntity } from "services/database/entity/WorldEntity";
 import BaseController from "./baseController";
+import { Segment } from "services/database/entity/Segment";
 
 export default class WorldController extends BaseController {
     constructor() {
@@ -228,6 +229,242 @@ export default class WorldController extends BaseController {
 
         } catch (error) {
             console.error("Error fetching category:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async getEntities(req: http.IncomingMessage, res: http.ServerResponse) {
+        const { categoryId } = this.parseUrlQuery(req.url);
+        if (!categoryId || isNaN(Number(categoryId)) || Array.isArray(categoryId)) {
+            return {
+                response: JSON.stringify({ error: 'Invalid categoryId parameter' }),
+                header: 'application/json',
+                status: 400
+            };
+        }
+        try {
+            const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
+            const entities = await worldEntityRepository.find({
+                where: { categories: { id: Number(categoryId) } },
+                relations: ['tags', 'categories', 'worlds']
+            });
+            if (!entities || entities.length === 0) {
+                return {
+                    response: JSON.stringify([]),
+                    header: 'application/json',
+                    status: 200
+                };
+            }
+            // organize entities into an array of arrays based on the first letter of their name
+            const organizedEntities: WorldEntity[][] = [];
+            for (let i = 0; i < 26; i++) {
+                organizedEntities.push([]);
+            }
+            for (const entity of entities) {
+                const firstLetter = entity.name.charAt(0).toUpperCase();
+                const index = firstLetter.charCodeAt(0) - 65;
+                if (!organizedEntities[index]) {
+                    organizedEntities[index] = [];
+                }
+                organizedEntities[index].push(entity);
+            }
+            return {
+                response: JSON.stringify(organizedEntities),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error fetching entities:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async createEntity(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const newEntity = await this.readBody<WorldEntity>(req);
+            if (!newEntity || !newEntity.name) {
+                return {
+                    response: JSON.stringify({ error: 'Entity name is required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+            const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
+            const createdEntity = worldEntityRepository.create(newEntity);
+            const savedEntity = await worldEntityRepository.save(createdEntity);
+            return {
+                response: JSON.stringify(savedEntity),
+                header: 'application/json',
+                status: 201
+            };
+        } catch (error) {
+            console.error("Error creating entity:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async getWorldEntity(req: http.IncomingMessage, res: http.ServerResponse) {
+        const { entityId, categoryId, worldId } = this.parseUrlQuery(req.url);
+        if (!entityId || isNaN(Number(entityId)) || Array.isArray(entityId) ||
+            !categoryId || isNaN(Number(categoryId)) || Array.isArray(categoryId) ||
+            !worldId || isNaN(Number(worldId)) || Array.isArray(worldId)) {
+            return {
+                response: JSON.stringify({ error: 'Invalid entityId, categoryId, or worldId parameter' }),
+                header: 'application/json',
+                status: 400
+            };
+        }
+        try {
+            const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
+            const entity = await worldEntityRepository.findOne({
+                where: {
+                    id: Number(entityId),
+                    categories: { id: Number(categoryId) },
+                    worlds: { id: Number(worldId) }
+                },
+                relations: ['tags', 'categories', 'worlds', 'segments']
+            });
+
+            if (!entity) {
+                return {
+                    response: JSON.stringify({ error: 'Entity not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+
+            if (entity && entity.segments) {
+                entity.segments = entity.segments.filter(segment => segment.isActive);
+            }
+
+            return {
+                response: JSON.stringify(entity),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error fetching world entity:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async editEntity(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const updatedEntity = await this.readBody<WorldEntity>(req);
+            if (!updatedEntity || !updatedEntity.id) {
+                return {
+                    response: JSON.stringify({ error: 'Entity ID is required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+            const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
+            const existingEntity = await worldEntityRepository.findOneBy({ id: updatedEntity.id });
+            if (!existingEntity) {
+                return {
+                    response: JSON.stringify({ error: 'Entity not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+            const mergedEntity = worldEntityRepository.merge(existingEntity, updatedEntity);
+            const savedEntity = await worldEntityRepository.save(mergedEntity);
+            return {
+                response: JSON.stringify(savedEntity),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error editing entity:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async editSegment(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const updatedSegment = await this.readBody<Segment>(req);
+            if (!updatedSegment || !updatedSegment.id) {
+                return {
+                    response: JSON.stringify({ error: 'Segment ID is required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+            const segmentRepository = AppDataSource.getRepository(Segment);
+            const existingSegment = await segmentRepository.findOneBy({ id: updatedSegment.id });
+            if (!existingSegment) {
+                return {
+                    response: JSON.stringify({ error: 'Segment not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+            const mergedSegment = segmentRepository.merge(existingSegment, updatedSegment);
+            const savedSegment = await segmentRepository.save(mergedSegment);
+            return {
+                response: JSON.stringify(savedSegment),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error editing segment:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async deleteSegment(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const segment = await this.readBody<Segment>(req);
+
+            if (!segment || !segment.id) {
+                return {
+                    response: JSON.stringify({ error: 'Segment ID is required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+            const segmentRepository = AppDataSource.getRepository(Segment);
+            const existingSegment = await segmentRepository.findOneBy({ id: segment.id });
+            if (!existingSegment) {
+                return {
+                    response: JSON.stringify({ error: 'Segment not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+            existingSegment.isActive = false;
+            await segmentRepository.save(existingSegment);
+            return {
+                response: JSON.stringify({ message: 'Segment deleted successfully' }),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error deleting segment:", error);
             return {
                 response: JSON.stringify({ error: 'Internal Server Error' }),
                 header: 'application/json',

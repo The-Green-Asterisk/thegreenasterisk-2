@@ -20,6 +20,9 @@ export class WorldEntity {
     @Column()
     public shortDescription!: string
 
+    @Column()
+    public entityImgUrl!: string
+
     @ManyToMany(() => World, { eager: true, cascade: true })
     @JoinTable()
     public worlds!: World[]

@@ -9,6 +9,7 @@ const worldTemplate = (world: World) => html`
             </p>
         </div>
         <div id="world-categories">
+            <p id="no-categories">No categories available for this world.</p>
         </div>
     </div>
 `;

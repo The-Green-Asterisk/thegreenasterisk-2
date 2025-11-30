@@ -1,5 +1,5 @@
 import el, { html } from '@elements';
-import { World } from '@entities';
+import { Category, World, WorldEntity } from '@entities';
 import { get, post } from '@services/request';
 import categoryCtrl from './category.ctrl';
 import categoryTemplate from './category.template';
@@ -75,12 +75,25 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
     `;
 
     if (entityId && categoryId && worldId) {
-        contentSection.appendChild(worldEntityTemplate());
-        worldEntityCtrl(entityId, categoryId, worldId);
+        const entity = await get<WorldEntity>('/data/get-world-entity', { entityId, categoryId, worldId });
+        const category = await get<Category>('/data/get-category', { categoryId, worldId });
+        if (!entity || !category) {
+            contentSection.appendChild(defaultContent);
+            history.replaceState({}, '', `/many-worlds`);
+            return;
+        }
+        contentSection.appendChild(worldEntityTemplate(entity));
+        worldEntityCtrl(entity, category, worlds.find(w => w.id === worldId)!);
         history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}/entity/${entityId}`);
     } else if (categoryId && worldId) {
-        contentSection.appendChild(categoryTemplate());
-        categoryCtrl(categoryId, worldId);
+        const category = await get<Category>('/data/get-category', { categoryId, worldId });
+        if (!category) {
+            contentSection.appendChild(defaultContent);
+            history.replaceState({}, '', `/many-worlds`);
+            return;
+        }
+        contentSection.appendChild(categoryTemplate(category));
+        categoryCtrl(category, worlds.find(w => w.id === worldId)!);
         history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}`);
     } else if (worldId) {
         contentSection.appendChild(worldTemplate(worlds.find(w => w.id === worldId)!));

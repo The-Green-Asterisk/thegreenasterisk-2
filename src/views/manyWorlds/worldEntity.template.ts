@@ -1,9 +1,17 @@
-import el, { html } from "@elements";
+import { html } from "@elements";
+import { WorldEntity } from "@entities";
 
-const worldEntityTemplate = () => html`
-    <div class="world-content">
+const worldEntityTemplate = (entity: WorldEntity) => html`
+    <div id="world-content">
         <div id="entity-details">
-            <p>Loading entity details...</p>
+            <h2 id="entity-name">${entity.name}</h2>
+            <div id="entity-description">
+                <p>
+                    ${entity.description || 'No description available for this entity.'}
+                </p>
+            </div>
+        </div>
+        <div id="entity-segments">
         </div>
     </div>
 `;

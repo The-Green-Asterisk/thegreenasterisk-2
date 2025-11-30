@@ -1,13 +1,13 @@
-import { WorldEntity } from "./WorldEntity";
+import { WorldEntity } from "@entities";
 
-export class Segment {
+export default class Segment {
 
     id!: number
 
     constructor(
         public name: string,
         public description: string,
-        public isActive: boolean,
-        public worldEntity: WorldEntity
+        public displayOrder: number,
+        public isActive: boolean = true
     ) {}
 }
