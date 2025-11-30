@@ -28,11 +28,13 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             if (e.key === 'Escape') {
                 segmentDescription.contentEditable = 'false';
                 saveBtn.remove();
+                editBtn.style.display = 'inline-block';
                 document.removeEventListener('keydown', handler);
             }
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveBtn.click();
+                editBtn.style.display = 'inline-block';
                 document.removeEventListener('keydown', handler);
             }
         });
@@ -89,7 +91,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                         sortSegments(entity.segments);
                         segmentDiv.innerHTML = '';
                         entity.segments.forEach(createSegmentElement);
-                        
+
                         put<WorldEntity>('/data/edit-entity', entity).catch(error => {
                             alert('Error updating entity with new segment order: ' + error.message);
                         });
