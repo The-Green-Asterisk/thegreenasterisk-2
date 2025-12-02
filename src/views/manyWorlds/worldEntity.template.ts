@@ -1,8 +1,9 @@
 import { html } from "@elements";
-import { WorldEntity } from "@entities";
+import { Category, World, WorldEntity } from "@entities";
 
-const worldEntityTemplate = (entity: WorldEntity) => html`
+const worldEntityTemplate = (entity: WorldEntity, category: Category, world: World) => html`
     <div id="world-content">
+        <a style="margin-left: 10px" href="/many-worlds/world/${world.id}/category/${category.id}">&larr; Back to ${category.name}</a>
         <div id="entity-details">
             <h2 id="entity-name">${entity.name}</h2>
             <div id="entity-description">

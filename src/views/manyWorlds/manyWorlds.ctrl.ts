@@ -82,7 +82,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             history.replaceState({}, '', `/many-worlds`);
             return;
         }
-        contentSection.appendChild(worldEntityTemplate(entity));
+        contentSection.appendChild(worldEntityTemplate(entity, category, worlds.find(w => w.id === worldId)!));
         worldEntityCtrl(entity, category, worlds.find(w => w.id === worldId)!);
         history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}/entity/${entityId}`);
     } else if (categoryId && worldId) {
@@ -92,7 +92,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             history.replaceState({}, '', `/many-worlds`);
             return;
         }
-        contentSection.appendChild(categoryTemplate(category));
+        contentSection.appendChild(categoryTemplate(category, worlds.find(w => w.id === worldId)!));
         categoryCtrl(category, worlds.find(w => w.id === worldId)!);
         history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}`);
     } else if (worldId) {

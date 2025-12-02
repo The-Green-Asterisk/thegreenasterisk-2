@@ -195,6 +195,11 @@ el-many-worlds #entity-segments .segment-order {
     display: inline-block;
 }
 
+el-many-worlds #entity-segments .segment-order label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
 el-many-worlds #entity-segments .segment-order input {
     width: 40px;
     margin-right: 10px;
