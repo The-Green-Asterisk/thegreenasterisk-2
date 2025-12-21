@@ -8,6 +8,8 @@ const manyWorldsTemplate = () => html`
                 <div id="tabs-container">
                 </div>
             </section>
+            <section id="comment-section">
+            </section>
         </div>
     </el-many-worlds>
 `;

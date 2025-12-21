@@ -1,0 +1,16 @@
+el-text-editor {
+    width: 100%;
+}
+
+el-text-editor .text-editor-content {
+    min-height: 100px;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: inherit;
+    background-color: inherit;
+    box-shadow: var(--inner-shadow);
+    outline: none;
+}

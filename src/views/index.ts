@@ -18,6 +18,8 @@ import lightbox from './lightbox/lightbox.ctrl';
 import lightboxTemplate from './lightbox/lightbox.template';
 import cookieBannerTemplate from './cookieBanner/cookieBanner.template';
 import cookieBanner from './cookieBanner/cookieBanner.ctrl';
+import textEditor from './textEditor/textEditor.ctrl';
+import textEditorTemplate from './textEditor/textEditor.template';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -39,6 +41,8 @@ export { default as lightbox } from './lightbox/lightbox.ctrl';
 export { default as lightboxTemplate } from './lightbox/lightbox.template';
 export { default as cookieBanner } from './cookieBanner/cookieBanner.ctrl';
 export { default as cookieBannerTemplate } from './cookieBanner/cookieBanner.template';
+export { default as textEditor } from './textEditor/textEditor.ctrl';
+export { default as textEditorTemplate } from './textEditor/textEditor.template';
 
 const views = {
     home,
@@ -60,6 +64,8 @@ const views = {
     lightbox,
     lightboxTemplate,
     cookieBanner,
-    cookieBannerTemplate
+    cookieBannerTemplate,
+    textEditor,
+    textEditorTemplate,
 };
 export default views;

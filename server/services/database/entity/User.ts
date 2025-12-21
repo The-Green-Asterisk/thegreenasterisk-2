@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm"
+import { Comment } from "./Comment"
 
 @Entity()
 export class User {
@@ -32,5 +33,8 @@ export class User {
 
     @Column()
     public isAdmin!: boolean
+
+    @OneToMany(() => Comment, (comment) => comment.author)
+    public comments!: Comment[]
 
 }

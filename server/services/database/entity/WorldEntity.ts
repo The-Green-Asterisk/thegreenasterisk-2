@@ -14,7 +14,7 @@ export class WorldEntity {
     @Column()
     public name!: string
 
-    @Column()
+    @Column({ type: 'longtext'})
     public description!: string
 
     @Column()

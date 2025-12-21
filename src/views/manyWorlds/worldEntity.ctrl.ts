@@ -1,9 +1,12 @@
 import el, { html } from "@elements";
 import { Category, Segment, World, WorldEntity } from "@entities";
 import { del, put } from "@services/request";
+import commentSection from "@views/commentSection/commentSection.ctrl";
 
 export default async function worldEntityCtrl(entity: WorldEntity, category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
+    const commentSect = commentSection('worldEntity', entity.id);
+    
     const segmentDiv = el.divs.id('entity-segments');
 
     const sortSegments = (segments: Segment[]) => {

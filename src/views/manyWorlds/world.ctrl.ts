@@ -1,9 +1,12 @@
 import el, { html } from "@elements";
-import { Category, World } from "@entities";
+import { Category, Comment, World } from "@entities";
 import { get, post, put } from "@services/request";
+import commentSection from "@views/commentSection/commentSection.ctrl";
 
 export default async function world(world: World) {
     el.title.textContent = `Many Worlds: ${world.name}`;
+    const commentSect = commentSection('world', world.id);
+
     if (el.currentUser?.isAdmin) {
         const editDescriptionBtn = html`<i class="fas fa-pen-alt edit-world-description" title="Edit Description"></i>`;
         editDescriptionBtn.onclick = () => {

@@ -1,6 +1,6 @@
 import Tag from "./Tag"
 import World from "./World"
-import { WorldEntity } from "./WorldEntity"
+import WorldEntity from "./WorldEntity"
 
 export default class Category {
 

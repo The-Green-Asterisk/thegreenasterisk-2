@@ -5,6 +5,7 @@ import Category from "./Category";
 import World from "./World";
 import WorldEntity from "./WorldEntity";
 import Segment from "./Segment";
+import Comment from "./Comment";
 
 export { default as Tag } from "./Tag";
 export { default as User } from "./User";
@@ -13,6 +14,7 @@ export { default as Category } from "./Category";
 export { default as World } from "./World";
 export { default as WorldEntity } from "./WorldEntity";
 export { default as Segment } from "./Segment";
+export { default as Comment } from "./Comment";
 
 const entities = {
     User,
@@ -21,6 +23,7 @@ const entities = {
     Category,
     World,
     WorldEntity,
-    Segment
+    Segment,
+    Comment
 };
 export default entities;

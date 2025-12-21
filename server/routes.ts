@@ -1,3 +1,4 @@
+import CommentController from 'controllers/commentController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import WorldController from 'controllers/worldController';
@@ -132,6 +133,26 @@ export default class Routes {
     @Method('DELETE')
     private ['/delete-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return WorldController.deleteSegment(req, res);
+    }
+
+    @Method('POST')
+    private ['/add-comment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.addComment(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-comments'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.getComments(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-comment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.editComment(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-comment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.deleteComment(req, res);
     }
 
     get response(): ResponsePromise {
