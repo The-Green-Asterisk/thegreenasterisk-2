@@ -15,15 +15,15 @@ export class Category {
     @Column()
     public description!: string
 
-    @ManyToMany(() => World, { eager: false, cascade: true })
+    @ManyToMany(() => World, { eager: false })
     @JoinTable()
     public worlds!: World[]
 
-    @ManyToMany(() => WorldEntity, { eager: false, cascade: true })
+    @ManyToMany(() => WorldEntity, { eager: false })
     @JoinTable()
     public worldEntities!: WorldEntity[]
     
-    @ManyToMany(() => Tag, { eager: true, cascade: true })
+    @ManyToMany(() => Tag, { eager: true })
     @JoinTable()
     public tags!: Tag[]
 

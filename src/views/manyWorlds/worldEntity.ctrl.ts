@@ -1,7 +1,7 @@
 import el, { html } from "@elements";
-import { Category, Segment, World, WorldEntity } from "@entities";
+import { Category, Segment, User, World, WorldEntity } from "@entities";
 import FileService from "@services/fileService";
-import { del, post, put } from "@services/request";
+import { del, get, post, put } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
 import Stat from "../../entities/Stat";
 
@@ -163,7 +163,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         el.setLightBox();
     }
 
-    if (el.currentUser?.isAdmin) {
+    if (el.currentUser?.isAdmin || entity.editors.find(e => e.id === el.currentUser?.id)) {
         const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
         editEntityDescriptionBtn.onclick = () => {
             editEntityDescriptionBtn.style.display = 'none';
@@ -282,6 +282,40 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             }
         };
         entityThumbnail.insertAdjacentElement('afterend', removeImageBtn);
+
+        if (el.currentUser?.isAdmin) {
+            // add multiple selection for editors
+            let allUsers: User[] = [];
+            const editEditors = html`<select multiple id="edit-entity-editors"></select>` as HTMLSelectElement;
+            get<User[]>('/data/get-all-users').then(allUsersRes => {
+                allUsers = allUsersRes;
+                allUsers.forEach(user => {
+                    const option = html`<option value="${user.id}">${user.firstName} ${user.lastName} (${user.username})</option>` as HTMLOptionElement;
+                    if (entity.editors.find(e => e.id === user.id)) {
+                        option.selected = true;
+                    }
+                    editEditors.appendChild(option);
+                });
+            }).catch(error => {
+                alert('Error fetching users for editors list: ' + error);
+            });
+            editEditors.onchange = () => {
+                const selectedOptions = Array.from(editEditors.selectedOptions).map(option => Number(option.value));
+                const selectedUsers = selectedOptions.map(id => {
+                    return allUsers.find(user => user.id === id);
+                }).filter(user => user !== undefined) as User[];
+                entity.editors = selectedUsers;
+                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                    entity = res;
+                }).catch(error => {
+                    alert('Error updating entity editors: ' + error);
+                });
+            }
+
+            entityStatsDiv.appendChild(html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`);
+
+            entityStatsDiv.appendChild(editEditors);
+        }
     }
 }
 

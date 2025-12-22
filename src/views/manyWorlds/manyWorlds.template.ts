@@ -8,7 +8,7 @@ const manyWorldsTemplate = () => html`
                 <div id="tabs-container">
                 </div>
             </section>
-            <section id="comment-section">
+            <section id="comment-section" style="display: none;">
             </section>
         </div>
     </el-many-worlds>

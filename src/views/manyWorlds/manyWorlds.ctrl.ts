@@ -68,7 +68,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         <div id="world-content">
             <div id="world-description">
                 <p>
-                    Select a world tab to view more information about that world, including its characters, locations, items, and key events.
+                    Welcome to the Many Worlds app! Select a world tab above to view details about that world and the elements within it.
                 </p>
             </div>
         </div>

@@ -8,7 +8,7 @@ export default async function world(world: World) {
     const commentSect = commentSection('world', world.id);
 
     if (el.currentUser?.isAdmin) {
-        const editDescriptionBtn = html`<i class="fas fa-pen-alt edit-world-description" title="Edit Description"></i>`;
+        const editDescriptionBtn = html`<i class="fas fa-pencil edit-world-description" title="Edit Description"></i>`;
         editDescriptionBtn.onclick = () => {
             const newDescription = prompt('Enter new world description:', world.description) || world.description;
             if (!!newDescription && newDescription !== world.description) {
@@ -43,7 +43,7 @@ export default async function world(world: World) {
                 categoryDiv.replaceChild(noEntitiesMsg, entityList);
             } else {
                 category.worldEntities.forEach(entity => {
-                    const entityItem = html`<li>${entity.name}: ${entity.shortDescription}</li>`;
+                    const entityItem = html`<li><a href="/many-worlds/world/${world.id}/category/${category.id}/entity/${entity.id}">${entity.name}</a>: ${entity.shortDescription}</li>`;
                     entityList.appendChild(entityItem);
                 });
             }

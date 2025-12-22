@@ -8,6 +8,7 @@ section#comment-section .comment {
 section#comment-section #submit-comment-btn {
     padding: 5px 10px;
     border-radius: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.279);
     box-shadow: var(--md-shadow);
     background-color: rgb(200, 200, 200);
     font-weight: bold;

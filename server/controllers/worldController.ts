@@ -336,7 +336,7 @@ export default class WorldController extends BaseController {
                     categories: { id: Number(categoryId) },
                     worlds: { id: Number(worldId) }
                 },
-                relations: ['tags', 'categories', 'worlds', 'segments']
+                relations: ['tags', 'categories', 'worlds', 'segments', 'editors']
             });
 
             if (!entity) {

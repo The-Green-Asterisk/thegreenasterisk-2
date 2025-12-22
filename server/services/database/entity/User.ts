@@ -1,5 +1,6 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { Comment } from "./Comment"
+import { WorldEntity } from "./WorldEntity"
 
 @Entity()
 export class User {
@@ -36,5 +37,8 @@ export class User {
 
     @OneToMany(() => Comment, (comment) => comment.author)
     public comments!: Comment[]
+
+    @ManyToMany(() => WorldEntity, worldEntity => worldEntity.editors, { eager: false })
+    public editableEntities!: WorldEntity[]
 
 }

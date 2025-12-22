@@ -13,6 +13,8 @@ export default async function commentSection(commentableType: string, commentabl
         throw new Error('Comment section element not found');
     }
 
+    section.style.display = 'flex';
+
     const existingCommentSection = section.querySelector('#text-editor-content-new-comment');
     const commentNum = section.querySelectorAll('.comment').length;
 
@@ -82,7 +84,7 @@ const buildComment = (comment: Comment) => {
                 <span class="fa fa-pencil" title="Edit Comment" style="cursor:pointer;"></span>
                 <span class="fa fa-times delete-comment-button" title="Delete Comment" style="cursor:pointer;"></span>
             </div>
-            <small>By: ${comment.author.username} on ${new Date(comment.createdAt).toLocaleString()}</small>
+            <small>${comment.author.firstName} ${comment.author.lastName} (${comment.author.username}) on ${new Date(comment.createdAt).toLocaleString()}</small>
         </div>
     `;
 

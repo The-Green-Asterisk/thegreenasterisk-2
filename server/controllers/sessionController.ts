@@ -1,19 +1,25 @@
 import http from 'http';
-import NodeCache, { Key } from 'node-cache';
+import { Key } from 'node-cache';
 import AppDataSource from 'services/database';
 import { User } from 'services/database/entity/User';
 import EmailService from 'services/email';
 import BaseController from "./baseController";
+import cache from '../cache';
 
 export default class SessionController extends BaseController {
-    public static sessionCache = new NodeCache();
+    private static _sessionCache = cache;
+
+    public static get sessionCache() {
+        if (!this._sessionCache) {
+            this._sessionCache = cache;
+        }
+        return this._sessionCache;
+    }
     public static currentUser: User | undefined = undefined;
     constructor(sessionKey?: string) {
         super();
         if (sessionKey){
             SessionController.currentUser = SessionController.sessionCache.get<User>(sessionKey);
-        } else {
-           delete SessionController.currentUser;
         }
         if (!SessionController.currentUser)
             SessionController.sessionCache.flushAll();

@@ -18,7 +18,7 @@ export class World {
     @JoinTable()
     public categories!: Category[]
     
-    @ManyToMany(() => Tag, { eager: false, cascade: true })
+    @ManyToMany(() => Tag, { eager: false })
     @JoinTable()
     public tags!: Tag[]
 

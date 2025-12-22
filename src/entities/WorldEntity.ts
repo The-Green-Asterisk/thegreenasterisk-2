@@ -1,4 +1,4 @@
-import { Category, Segment, Stat, Tag, World } from "@entities";
+import { Category, Segment, Stat, Tag, User, World } from "@entities";
 
 export default class WorldEntity {
 
@@ -13,7 +13,8 @@ export default class WorldEntity {
         public categories: Category[] = [],
         public stats: Stat[] = [],
         public segments: Segment[] = [],
-        public tags: Tag[] = []
+        public tags: Tag[] = [],
+        public editors: User[] = []
     ) {}
 
 }

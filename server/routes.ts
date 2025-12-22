@@ -2,6 +2,7 @@ import CommentController from 'controllers/commentController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import StorageController from 'controllers/storageController';
+import UserController from 'controllers/userController';
 import WorldController from 'controllers/worldController';
 import YouTubeVideoController from 'controllers/youTubeVideoController';
 import http from 'http';
@@ -174,6 +175,11 @@ export default class Routes {
     @Method('POST')
     private ['/upload-file'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return StorageController.uploadFile(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-all-users'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return UserController.getAllUsers(req, res);
     }
 
     get response(): ResponsePromise {

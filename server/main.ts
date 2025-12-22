@@ -3,21 +3,20 @@ import 'reflect-metadata';
 
 import fs from 'fs';
 import http from 'http';
-import NodeCache from 'node-cache';
 import path from 'path';
 
 import Routes from './routes';
 import SessionController from './controllers/sessionController';
+import cache from './cache';
 
 if (!process.env.PORT) require('dotenv').config();
 
 const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const { method, headers } = req;
     let { url } = req;
-    const cache = new NodeCache({ stdTTL: 60 * 5 });
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
-    const sessionKey = headers['Authorization']
-    if (sessionKey && !Array.isArray(sessionKey) && sessionKey !== '') new SessionController(sessionKey);
+    const sessionKey = headers['authorization'];
+    new SessionController(sessionKey);
     
     if (method !== 'GET') {
         let valid = cache.get('csrf-token-' + sessionId) === headers['csrf-token'];

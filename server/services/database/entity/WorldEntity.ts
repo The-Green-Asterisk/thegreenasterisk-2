@@ -4,6 +4,7 @@ import { World } from "./World"
 import { Category } from "./Category"
 import { Stat } from "./Stat"
 import { Segment } from "./Segment"
+import { User } from "./User"
 
 @Entity()
 export class WorldEntity {
@@ -23,11 +24,11 @@ export class WorldEntity {
     @Column()
     public entityImgUrl!: string
 
-    @ManyToMany(() => World, { eager: true, cascade: true })
+    @ManyToMany(() => World, { eager: true })
     @JoinTable()
     public worlds!: World[]
 
-    @ManyToMany(() => Category, { eager: true, cascade: true })
+    @ManyToMany(() => Category, { eager: true })
     @JoinTable()
     public categories!: Category[]
 
@@ -39,8 +40,12 @@ export class WorldEntity {
     @JoinTable()
     public segments!: Segment[]
     
-    @ManyToMany(() => Tag, { eager: true, cascade: true })
+    @ManyToMany(() => Tag, { eager: true })
     @JoinTable()
     public tags!: Tag[]
+    
+    @ManyToMany(() => User, { eager: false})
+    @JoinTable()
+    public editors!: User[]
 
 }

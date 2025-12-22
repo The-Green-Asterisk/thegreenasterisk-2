@@ -173,7 +173,6 @@ el-many-worlds .entity-list-item .name {
 el-many-worlds .entity-list-item .description {
     margin: 0;
     font-style: italic;
-    color: gray;
 }
 
 el-many-worlds #entity-details {
@@ -213,17 +212,20 @@ el-many-worlds #entity-details #edit-short-description-btn,
 el-many-worlds #entity-segments .edit-segment-btn,
 el-many-worlds #entity-segments #add-segment-btn,
 el-many-worlds #entity-segments .save-segment-btn,
-el-many-worlds #entity-segments .delete-segment-btn {
-    margin-top: 10px;
+el-many-worlds #entity-segments .delete-segment-btn,
+el-many-worlds #add-stat-btn,
+el-many-worlds #remove-entity-image-btn {
+    margin-top: 5px;
     padding: 5px 10px;
     border-radius: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.279);
     box-shadow: var(--md-shadow);
     background-color: rgb(200, 200, 200);
     font-weight: bold;
 }
 
 el-many-worlds #entity-details #edit-short-description-btn {
-    margin: 0 20px;
+    margin: 5px 20px;
 }
 
 el-many-worlds #img-and-stats {
@@ -270,17 +272,9 @@ el-many-worlds #entity-details #save-entity-description-btn {
     background-color: rgb(150, 250, 150);
 }
 
-el-many-worlds #entity-segments .delete-segment-btn {
+el-many-worlds #entity-segments .delete-segment-btn,
+el-many-worlds #remove-entity-image-btn {
     background-color: rgb(250, 150, 150);
-}
-
-el-many-worlds #add-stat-btn, el-many-worlds #remove-entity-image-btn {
-    margin-top: 5px;
-    padding: 5px 10px;
-    border-radius: 5px;
-    box-shadow: var(--md-shadow);
-    background-color: rgb(200, 200, 200);
-    font-weight: bold;
 }
 
 @media screen and (min-width: 768px) {
