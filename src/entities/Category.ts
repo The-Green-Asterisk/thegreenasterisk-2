@@ -1,6 +1,4 @@
-import Tag from "./Tag"
-import World from "./World"
-import WorldEntity from "./WorldEntity"
+import { Tag, World, WorldEntity } from "@entities"
 
 export default class Category {
 

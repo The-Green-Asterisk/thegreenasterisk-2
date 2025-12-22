@@ -1,5 +1,4 @@
-import Category from "./Category"
-import Tag from "./Tag"
+import { Category, Tag } from "@entities";
 
 export default class World {
 

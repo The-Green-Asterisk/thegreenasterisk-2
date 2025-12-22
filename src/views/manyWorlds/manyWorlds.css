@@ -244,6 +244,7 @@ el-many-worlds #img-and-stats img {
     border-radius: 5px;
     box-shadow: var(--sm-shadow);
     border: 1px solid rgba(0, 0, 0, 0.179);
+    cursor: pointer;
 }
 
 el-many-worlds #img-and-stats #entity-stats {
@@ -271,6 +272,15 @@ el-many-worlds #entity-details #save-entity-description-btn {
 
 el-many-worlds #entity-segments .delete-segment-btn {
     background-color: rgb(250, 150, 150);
+}
+
+el-many-worlds #add-stat-btn, el-many-worlds #remove-entity-image-btn {
+    margin-top: 5px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    box-shadow: var(--md-shadow);
+    background-color: rgb(200, 200, 200);
+    font-weight: bold;
 }
 
 @media screen and (min-width: 768px) {

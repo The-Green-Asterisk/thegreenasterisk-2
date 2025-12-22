@@ -1,8 +1,4 @@
-import Category from "./Category";
-import Segment from "./Segment";
-import Stat from "./Stat";
-import Tag from "./Tag";
-import World from "./World";
+import { Category, Segment, Stat, Tag, World } from "@entities";
 
 export default class WorldEntity {
 

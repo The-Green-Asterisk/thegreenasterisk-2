@@ -27,7 +27,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 put<Segment>('/data/edit-segment', segment).then((res) => {
                     segment = res;
                 }).catch(error => {
-                    alert('Error updating segment: ' + error.message);
+                    alert('Error updating segment: ' + error);
                 });
             }
             segmentDescription.contentEditable = 'false';
@@ -66,7 +66,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 entity.segments = entity.segments.filter(s => s.id !== segment.id);
                 (event.target as HTMLButtonElement).parentElement!.remove();
             }).catch(error => {
-                alert('Error deleting segment: ' + error.message);
+                alert('Error deleting segment: ' + error);
             });
         }
     };
@@ -122,10 +122,10 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                         entity.segments.forEach(createSegmentElement);
 
                         put<WorldEntity>('/data/edit-entity', entity).catch(error => {
-                            alert('Error updating entity with new segment order: ' + error.message);
+                            alert('Error updating entity with new segment order: ' + error);
                         });
                     }).catch(error => {
-                        alert('Error updating segment order: ' + error.message);
+                        alert('Error updating segment order: ' + error);
                     });
 
                 }
@@ -159,6 +159,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     entity.segments.forEach(createSegmentElement);
 
     if (entity.entityImgUrl) {
+        el.imgs.id('entity-thumbnail').title = 'Click to enlarge image';
         el.setLightBox();
     }
 
@@ -179,7 +180,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                         descriptionP.contentEditable = 'false';
                         saveBtn.remove();
                     }).catch(error => {
-                        alert('Error updating entity description: ' + error.message);
+                        alert('Error updating entity description: ' + error);
                     });
                 } else {
                     descriptionP.contentEditable = 'false';
@@ -213,7 +214,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
                 }).catch(error => {
-                    alert('Error updating short description: ' + error.message);
+                    alert('Error updating short description: ' + error);
                 });
             }
         };
@@ -227,10 +228,10 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 entity.segments.push(newSegment);
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
-                    newSegment.id = entity.segments[entity.segments.length - 1].id;
+                    newSegment.id = res.segments[res.segments.length - 1].id;
                     createSegmentElement(newSegment);
                 }).catch(error => {
-                    alert('Error adding new segment: ' + error.message);
+                    alert('Error adding new segment: ' + error);
                     console.error(error);
                 });
             }
@@ -249,7 +250,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     const statItem = buildStatItem(response);
                     statsList.appendChild(statItem);
                 }).catch(error => {
-                    alert('Error creating stat: ' + error.message);
+                    alert('Error creating stat: ' + error);
                 });
             }
         };
@@ -257,7 +258,6 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
         const entityThumbnail = el.imgs.id('entity-thumbnail');
         if (!entity.entityImgUrl) {
-            entityThumbnail.style.cursor = 'pointer';
             entityThumbnail.title = 'Click to change entity image';
             entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
         }
@@ -277,7 +277,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     entityThumbnail.title = 'Click to change entity image';
                     entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
                 }).catch(error => {
-                    alert('Error removing entity image: ' + error.message);
+                    alert('Error removing entity image: ' + error);
                 });
             }
         };
@@ -310,7 +310,7 @@ const buildStatItem = (stat: Stat) => {
                     stat = res;
                     statElement.querySelector('span')!.innerHTML = `<b>${stat.name}:</b> ${stat.value}`;
                 }).catch(error => {
-                    alert('Error updating stat: ' + error.message);
+                    alert('Error updating stat: ' + error);
                 });
             }
         };
@@ -323,7 +323,7 @@ const buildStatItem = (stat: Stat) => {
                     statElement.parentElement!.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
                     statElement.remove();
                 }).catch(error => {
-                    alert('Error deleting stat: ' + error.message);
+                    alert('Error deleting stat: ' + error);
                 });
             }
         };
@@ -343,6 +343,7 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
                     entityThumbnail.src = entity.entityImgUrl;
+                    entityThumbnail.title = 'Click to elarge image';
                     el.setLightBox();
                 }).catch(error => {
                     alert('Error updating entity with new image URL: ' + error);

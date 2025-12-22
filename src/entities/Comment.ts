@@ -1,4 +1,4 @@
-import User from "./User"
+import { User } from "@entities"
 
 export default class Comment {
     id!: number

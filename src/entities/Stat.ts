@@ -1,4 +1,4 @@
-import { WorldEntity } from "./WorldEntity";
+import { WorldEntity } from "@entities";
 
 export default class Stat {
     id!: number
