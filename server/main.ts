@@ -16,7 +16,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     let { url } = req;
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
     const sessionKey = headers['authorization'];
-    new SessionController(sessionKey);
+    if (sessionKey && !Array.isArray(sessionKey)) new SessionController(sessionKey);
     
     if (method !== 'GET') {
         let valid = cache.get('csrf-token-' + sessionId) === headers['csrf-token'];

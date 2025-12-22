@@ -3,26 +3,18 @@ import { Key } from 'node-cache';
 import AppDataSource from 'services/database';
 import { User } from 'services/database/entity/User';
 import EmailService from 'services/email';
-import BaseController from "./baseController";
 import cache from '../cache';
+import BaseController from "./baseController";
 
 export default class SessionController extends BaseController {
-    private static _sessionCache = cache;
-
-    public static get sessionCache() {
-        if (!this._sessionCache) {
-            this._sessionCache = cache;
-        }
-        return this._sessionCache;
-    }
     public static currentUser: User | undefined = undefined;
     constructor(sessionKey?: string) {
         super();
         if (sessionKey){
-            SessionController.currentUser = SessionController.sessionCache.get<User>(sessionKey);
+            SessionController.currentUser = cache.get<User>(sessionKey);
         }
         if (!SessionController.currentUser)
-            SessionController.sessionCache.flushAll();
+            cache.flushAll();
     }
 
     public static async getDiscordCreds(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -31,7 +23,7 @@ export default class SessionController extends BaseController {
         }
 
         const { state, originatingUrl } = this.parseUrlQuery(req.url);
-        this.sessionCache.set(state as Key, originatingUrl, 300);
+        cache.set(state as Key, originatingUrl, 300);
 
         const data = {
             client_id: process.env.DISCORD_CLIENT_ID,
@@ -48,8 +40,8 @@ export default class SessionController extends BaseController {
 
     public static async loginDiscord(req: http.IncomingMessage, res: http.ServerResponse) {
         const { code, state } = this.parseUrlQuery(req.url);
-        let redirectUrl = this.sessionCache.get(state as Key) as string;
-        this.sessionCache.del(state as Key);
+        let redirectUrl = cache.get(state as Key) as string;
+        cache.del(state as Key);
         const userRepository = AppDataSource.getRepository(User);
 
         if (!code) {
@@ -135,7 +127,7 @@ export default class SessionController extends BaseController {
             return {
                 response: 'Success',
                 headerName: 'Location',
-                header: `/start?url=${redirectUrl}&uid=${existingUser.id}`,
+                header: `/start?url=${redirectUrl ?? '/'}&uid=${existingUser.id}`,
                 status: 301
             }
         } catch (error) {
@@ -154,19 +146,19 @@ export default class SessionController extends BaseController {
     public static startSession(user: User) {
         const sessionKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + '%' + user.id;
 
-        this.sessionCache.set(sessionKey, user, 7776000); // three months
+        cache.set(sessionKey, user, 7776000); // three months
         this.currentUser = user;
         return sessionKey;
     }
 
     public static endSession(user: User) {
-        const sessionKey = this.sessionCache.keys().find(key => this.sessionCache.get(key) === user);
-        if (sessionKey) this.sessionCache.del(sessionKey);
+        const sessionKey = cache.keys().find(key => cache.get(key) === user);
+        if (sessionKey) cache.del(sessionKey);
         delete this.currentUser;
     }
 
     public static get isAuth() {
-        return !!this.sessionCache.keys().find(key => this.sessionCache.get<User>(key)?.id === this.currentUser?.id);
+        return !!cache.keys().find(key => cache.get<User>(key)?.id === this.currentUser?.id);
     }
 
     public static async startNewSession(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -199,8 +191,8 @@ export default class SessionController extends BaseController {
     }
 
     public static checkAuth() {
-        const sessionKey = this.sessionCache.keys().find(key => this.sessionCache.get(key) === this.currentUser);
-        return sessionKey ? this.sessionCache.has(sessionKey) : false;
+        const sessionKey = cache.keys().find(key => cache.get(key) === this.currentUser);
+        return sessionKey ? cache.has(sessionKey) : false;
     }
 
     public login() {
