@@ -238,13 +238,14 @@ el-many-worlds #img-and-stats {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
     margin-bottom: 20px;
     margin-left: 20px;
 }
 
 el-many-worlds #img-and-stats img {
     width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
     border-radius: 5px;
     box-shadow: var(--sm-shadow);
     border: 1px solid rgba(0, 0, 0, 0.179);

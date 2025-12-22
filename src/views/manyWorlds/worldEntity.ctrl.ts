@@ -157,6 +157,10 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     sortSegments(entity.segments);
     entity.segments.forEach(createSegmentElement);
 
+    if (entity.entityImgUrl) {
+        el.setLightBox();
+    }
+
     if (el.currentUser?.isAdmin) {
         const editEntityDescriptionBtn = html`<i class="fas fa-pen-alt edit-entity-description" title="Edit Description"></i>`;
         editEntityDescriptionBtn.onclick = () => {
@@ -249,6 +253,34 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             }
         };
         entityStatsDiv.appendChild(addStatBtn);
+
+        const entityThumbnail = el.imgs.id('entity-thumbnail');
+        if (!entity.entityImgUrl) {
+            entityThumbnail.style.cursor = 'pointer';
+            entityThumbnail.title = 'Click to change entity image';
+            entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
+        }
+
+        const removeImageBtn = html`<button id="remove-entity-image-btn">Remove Image</button>`;
+        removeImageBtn.onclick = () => {
+            if (!entity.entityImgUrl) {
+                alert('No entity image to remove.');
+                return;
+            }
+            if (confirm('Are you sure you want to remove the entity image?')) {
+                entity.entityImgUrl = '';
+                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                    entity = res;
+                    entityThumbnail.src = '/storage/images/default-thumbnail.jpg';
+                    entityThumbnail.style.cursor = 'pointer';
+                    entityThumbnail.title = 'Click to change entity image';
+                    entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
+                }).catch(error => {
+                    alert('Error removing entity image: ' + error.message);
+                });
+            }
+        };
+        entityThumbnail.insertAdjacentElement('afterend', removeImageBtn);
     }
 }
 
@@ -298,3 +330,29 @@ const buildStatItem = (stat: Stat) => {
 
     return statElement;
 }
+
+const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => {
+    const fileInput = html`<input type="file" accept="image/*" style="display: none;" />` as HTMLInputElement;
+    document.body.appendChild(fileInput);
+    fileInput.onchange = () => {
+        const file = fileInput.files ? fileInput.files[0] : null;
+        if (file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            post<{ imageUrl: string }>('/data/upload-file?folder=images', formData).then(response => {
+                entity.entityImgUrl = response.imageUrl;
+                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                    entity = res;
+                    entityThumbnail.src = entity.entityImgUrl;
+                    el.setLightBox();
+                }).catch(error => {
+                    alert('Error updating entity with new image URL: ' + error.message);
+                });
+            }).catch(error => {
+                alert('Error uploading image: ' + error.message);
+            });
+        }
+        document.body.removeChild(fileInput);
+    };
+    fileInput.click();
+};

@@ -6,9 +6,13 @@ const worldEntityTemplate = (entity: WorldEntity, category: Category, world: Wor
         <a style="margin-left: 10px" href="/many-worlds/world/${world.id}/category/${category.id}">&larr; Back to ${category.name}</a>
         <div id="entity-details">
             <div id="img-and-stats">
-                <img src="http://picsum.photos/300" alt="Entity Thumbnail" id="entity-thumbnail"/>
+                <img src="${
+                    entity.entityImgUrl.length > 1
+                    ? entity.entityImgUrl
+                    : `/storage/images/default-thumbnail.jpg`
+                }" alt="Entity Thumbnail" light-box id="entity-thumbnail"/>
                 <div id="entity-stats">
-                    <h3>Stats</h3>
+                    <h3>${entity.name}'s Quick Stats</h3>
                     <ul>
                         <li>This Entity Has No Stats</li>
                     </ul>

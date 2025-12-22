@@ -42,11 +42,11 @@ export default async function request<T = Response>(
 
     if (method !== 'GET') payLoad = Object.assign(payLoad ?? {}, {
         method,
-        headers: {
+        headers: data instanceof FormData ? undefined : {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         } as HeadersInit,
-        body: JSON.stringify(data) as BodyInit,
+        body: data instanceof FormData ? data : JSON.stringify(data) as BodyInit,
     });
 
     const routePostfix = getPostfix(method, data);

@@ -2,7 +2,7 @@ import http from 'http';
 import url from 'url';
 
 export default class BaseController {
-    static async readBody<T = any>(req: http.IncomingMessage): Promise<T> {
+    static async readBody<T = any>(req: http.IncomingMessage, parse = true): Promise<T> {
         let body: any = [];
         return new Promise((resolve, reject) => {
             req.on('readable', () => {
@@ -12,11 +12,14 @@ export default class BaseController {
                 }
             });
             req.on('end', () => {
-                body = Buffer.concat(body).toString();
-                try {
-                    body = JSON.parse(body);
-                } catch {
-                    reject('Invalid JSON');
+                body = Buffer.concat(body)
+                if (parse){
+                    body = body.toString();
+                    try {
+                        body = JSON.parse(body);
+                    } catch {
+                        reject('Invalid JSON');
+                    }
                 }
                 resolve(body as T);
             });

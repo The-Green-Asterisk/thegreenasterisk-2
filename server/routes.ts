@@ -1,6 +1,7 @@
 import CommentController from 'controllers/commentController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
+import StorageController from 'controllers/storageController';
 import WorldController from 'controllers/worldController';
 import YouTubeVideoController from 'controllers/youTubeVideoController';
 import http from 'http';
@@ -168,6 +169,11 @@ export default class Routes {
     @Method('PUT')
     private ['/edit-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return WorldController.editStat(req, res);
+    }
+
+    @Method('POST')
+    private ['/upload-file'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return StorageController.uploadFile(req, res);
     }
 
     get response(): ResponsePromise {
