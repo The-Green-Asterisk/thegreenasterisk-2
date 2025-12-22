@@ -1,7 +1,8 @@
 import el, { html } from "@elements";
 import { Category, Segment, World, WorldEntity } from "@entities";
-import { del, put } from "@services/request";
+import { del, post, put } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
+import Stat from "../../entities/Stat";
 
 export default async function worldEntityCtrl(entity: WorldEntity, category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
@@ -139,6 +140,20 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         segmentDiv.appendChild(segmentContent);
     };
 
+    const entityStatsDiv = el.divs.id('entity-stats');
+    const statsList = entityStatsDiv.querySelector('ul')!;
+    entityStatsDiv.appendChild(statsList);
+
+    if (entity.stats.length > 0) {
+        statsList.innerHTML = ''
+        entity.stats.forEach(stat => {
+            const statItem = buildStatItem(stat);
+            statsList.appendChild(statItem);
+        });
+    } else {
+        statsList.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
+    }
+
     sortSegments(entity.segments);
     entity.segments.forEach(createSegmentElement);
 
@@ -216,5 +231,70 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             }
         };
         segmentDiv.appendChild(addSegmentBtn);
+        
+        const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
+        addStatBtn.onclick = () => {
+            const statName = prompt('Enter stat name:')?.trim();
+            const statValue = prompt('Enter stat value:')?.trim();
+            if (statName && statValue) {
+                post<Stat>('/data/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
+                    const noStatsMessage = statsList.querySelector('#no-stats-msg');
+                    if (noStatsMessage) noStatsMessage.remove();
+                    entity.stats.push(response);
+                    const statItem = buildStatItem(response);
+                    statsList.appendChild(statItem);
+                }).catch(error => {
+                    alert('Error creating stat: ' + error.message);
+                });
+            }
+        };
+        entityStatsDiv.appendChild(addStatBtn);
     }
+}
+
+const buildStatItem = (stat: Stat) => {
+    const statElement = html`
+        <li>
+            <span><b>${stat.name}:</b> ${stat.value}</span>
+            ${el.currentUser?.isAdmin ? `
+                <span>
+                    <span class="fa fa-pencil" style="cursor: pointer;"></span>
+                    <span class="fa fa-times" style="cursor: pointer;"></span>
+                </span>
+            ` : ''}
+        </li>
+    `;
+
+    if (el.currentUser?.isAdmin) {
+        const editBtn = statElement.querySelector('.fa-pencil') as HTMLElement;
+        editBtn.onclick = () => {
+            const newName = prompt('Enter new stat name:', stat.name)?.trim();
+            const newValue = prompt('Enter new stat value:', stat.value)?.trim();
+            if (newName && newValue && (newName !== stat.name || newValue !== stat.value)) {
+                stat.name = newName;
+                stat.value = newValue;
+                put<Stat>('/data/edit-stat', stat).then((res) => {
+                    stat = res;
+                    statElement.querySelector('span')!.innerHTML = `<b>${stat.name}:</b> ${stat.value}`;
+                }).catch(error => {
+                    alert('Error updating stat: ' + error.message);
+                });
+            }
+        };
+
+        const deleteBtn = statElement.querySelector('.fa-times') as HTMLElement;
+        deleteBtn.onclick = () => {
+            if (confirm(`Are you sure you want to delete the stat "${stat.name}"? This action cannot be undone.`)) {
+                del<void>('/data/delete-stat', stat).then(() => {
+                    statElement.parentElement!.querySelectorAll('li').length === 1 &&
+                    statElement.parentElement!.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
+                    statElement.remove();
+                }).catch(error => {
+                    alert('Error deleting stat: ' + error.message);
+                });
+            }
+        };
+    }
+
+    return statElement;
 }

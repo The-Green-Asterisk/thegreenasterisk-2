@@ -1,10 +1,11 @@
 import http from "http";
 import AppDataSource from "services/database";
 import { Category } from "services/database/entity/Category";
+import { Segment } from "services/database/entity/Segment";
+import { Stat } from "services/database/entity/Stat";
 import { World } from "services/database/entity/World";
 import { WorldEntity } from "services/database/entity/WorldEntity";
 import BaseController from "./baseController";
-import { Segment } from "services/database/entity/Segment";
 
 export default class WorldController extends BaseController {
     constructor() {
@@ -465,6 +466,121 @@ export default class WorldController extends BaseController {
             };
         } catch (error) {
             console.error("Error deleting segment:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async addStat(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const stat = await this.readBody<Stat>(req);
+            if (!stat || !stat.name || !stat.value || !stat.worldEntity || !stat.worldEntity.id) {
+                return {
+                    response: JSON.stringify({ error: 'Stat name, value, and associated WorldEntity are required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+
+            const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
+            const associatedEntity = await worldEntityRepository.findOneBy({ id: stat.worldEntity.id });
+            if (!associatedEntity) {
+                return {
+                    response: JSON.stringify({ error: 'Associated WorldEntity not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+
+            const statRepository = AppDataSource.getRepository(Stat);
+            const newStat = statRepository.create(stat);
+            newStat.worldEntity = associatedEntity;
+            const savedStat = await statRepository.save(newStat);
+
+            return {
+                response: JSON.stringify(savedStat),
+                header: 'application/json',
+                status: 201
+            };
+        } catch (error) {
+            console.error("Error adding stat:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async editStat(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const updatedStat = await this.readBody<Stat>(req);
+            if (!updatedStat || !updatedStat.id) {
+                return {
+                    response: JSON.stringify({ error: 'Stat ID is required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+
+            const statRepository = AppDataSource.getRepository(Stat);
+            const existingStat = await statRepository.findOneBy({ id: updatedStat.id });
+            if (!existingStat) {
+                return {
+                    response: JSON.stringify({ error: 'Stat not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+
+            const mergedStat = statRepository.merge(existingStat, updatedStat);
+            const savedStat = await statRepository.save(mergedStat);
+
+            return {
+                response: JSON.stringify(savedStat),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error editing stat:", error);
+            return {
+                response: JSON.stringify({ error: 'Internal Server Error' }),
+                header: 'application/json',
+                status: 500
+            };
+        }
+    }
+
+    public static async deleteStat(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const stat = await this.readBody<Stat>(req);
+            if (!stat?.id) {
+                return {
+                    response: JSON.stringify({ error: 'Stat ID is required' }),
+                    header: 'application/json',
+                    status: 400
+                };
+            }
+            const statRepository = AppDataSource.getRepository(Stat);
+            const existingStat = await statRepository.findOneBy({ id: stat.id });
+            if (!existingStat) {
+                return {
+                    response: JSON.stringify({ error: 'Stat not found' }),
+                    header: 'application/json',
+                    status: 404
+                };
+            }
+            await statRepository.remove(existingStat);
+            return {
+                response: JSON.stringify({ message: 'Stat deleted successfully' }),
+                header: 'application/json',
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error deleting stat:", error);
             return {
                 response: JSON.stringify({ error: 'Internal Server Error' }),
                 header: 'application/json',

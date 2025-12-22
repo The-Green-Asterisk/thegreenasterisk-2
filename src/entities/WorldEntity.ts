@@ -12,6 +12,7 @@ export default class WorldEntity {
         public name: string,
         public description: string,
         public shortDescription: string,
+        public entityImgUrl: string,
         public worlds: World[] = [],
         public categories: Category[] = [],
         public stats: Stat[] = [],

@@ -41,7 +41,7 @@ export default async function categoryCtrl(category: Category, world: World) {
         newEntityBtn.onclick = () => {
             const entityName = prompt('Enter new entity name:')?.trim();
             if (entityName) {
-                const newEntity = new WorldEntity(entityName, '', '', [world], [category]);
+                const newEntity = new WorldEntity(entityName, '', '', '', [world], [category]);
                 post<WorldEntity>('/data/create-entity', newEntity).then(response => {
                     location.href = `/many-worlds/world/${world.id}/category/${category.id}/entity/${response.id}`;
                 }).catch(error => {

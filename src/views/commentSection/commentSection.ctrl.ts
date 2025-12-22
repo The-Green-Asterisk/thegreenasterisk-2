@@ -64,6 +64,9 @@ export default async function commentSection(commentableType: string, commentabl
 
         submitSection.appendChild(newCommentButton);
         section.appendChild(submitSection);
+    } else {
+        const loginPrompt = html`<p>Log in to post comments.</p>`;
+        section.appendChild(loginPrompt);
     }
 
     return section;

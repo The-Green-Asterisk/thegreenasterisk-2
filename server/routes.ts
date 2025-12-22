@@ -155,6 +155,21 @@ export default class Routes {
         return CommentController.deleteComment(req, res);
     }
 
+    @Method('POST')
+    private ['/add-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.addStat(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.deleteStat(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editStat(req, res);
+    }
+
     get response(): ResponsePromise {
         const response = this[this.url] as RouteFunction
         if (typeof response !== 'function') {
