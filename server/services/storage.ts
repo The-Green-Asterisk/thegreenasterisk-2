@@ -7,9 +7,18 @@ export default class StorageService {
         if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir);
         }
-        const filename = `${name ? name + Date.now().toString() : Date.now().toString()}`;
+
+        let extension = '';
+        if (name) {
+            extension = path.extname(name);
+            name = name.split('.').slice(0, -1).join('.');
+        }
+        const filename = `${name ? name + Date.now().toString() : Date.now().toString()}${extension}`;
         const filePath = `${uploadsDir}/${folder ? folder + '/' : ''}${filename}`;
-        await fs.promises.writeFile(filePath, data);
+        await fs.promises.writeFile(filePath, data).catch(err => {
+            throw new Error('Failed to save file: ' + err.message);
+        });
+
         return `/storage/${folder ? folder + '/' : ''}${filename}`;
     }
 
@@ -17,6 +26,8 @@ export default class StorageService {
         const fullPath = path.join(__dirname, '..', '..', '..', 'www', filePath);
         if (fs.existsSync(fullPath)) {
             await fs.promises.unlink(fullPath);
+        } else {
+            throw new Error('File does not exist');
         }
     }
 }
