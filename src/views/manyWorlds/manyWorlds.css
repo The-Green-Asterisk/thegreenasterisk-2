@@ -231,6 +231,7 @@ el-many-worlds #img-and-stats {
     border-radius: 5px;
     box-shadow: var(--md-shadow);
     border: 1px solid rgba(0, 0, 0, 0.279);
+    display: flex;
     flex-direction: column;
     align-items: center;
     margin-bottom: 20px;
@@ -284,8 +285,7 @@ el-many-worlds #entity-segments .delete-segment-btn {
     el-many-worlds #img-and-stats {
         width: 300px;
         border-right: none;
-        float:right;
-        display: flex;
+        float: right;
         margin-left: 20px;
     }
 
