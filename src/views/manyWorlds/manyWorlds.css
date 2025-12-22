@@ -191,7 +191,6 @@ el-many-worlds #entity-segments h3 {
 }
 
 el-many-worlds #entity-segments {
-    width: 100%;
     padding: 0 20px;
 }
 
@@ -228,23 +227,18 @@ el-many-worlds #entity-details #edit-short-description-btn {
 }
 
 el-many-worlds #img-and-stats {
-    width: 300px;
     padding: 10px;
     border-radius: 5px;
     box-shadow: var(--md-shadow);
     border: 1px solid rgba(0, 0, 0, 0.279);
-    border-right: none;
-    float:right;
-    display: flex;
     flex-direction: column;
     align-items: center;
     margin-bottom: 20px;
-    margin-left: 20px;
 }
 
 el-many-worlds #img-and-stats img {
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 3 / 2;
     object-fit: cover;
     border-radius: 5px;
     box-shadow: var(--sm-shadow);
@@ -285,5 +279,17 @@ el-many-worlds #entity-segments .delete-segment-btn {
 
     el-many-worlds .letter-box {
         width: calc(33.3333% - 22px);
+    }
+
+    el-many-worlds #img-and-stats {
+        width: 300px;
+        border-right: none;
+        float:right;
+        display: flex;
+        margin-left: 20px;
+    }
+
+    el-many-worlds #img-and-stats img {
+        aspect-ratio: 1 / 1;
     }
 }

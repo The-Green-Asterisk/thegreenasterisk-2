@@ -9,15 +9,7 @@ export default class StorageController extends BaseController {
         super();
     }
 
-    public static async uploadFile(req: http.IncomingMessage, res: http.ServerResponse): Promise<{ response: string; header: string; status: number }> {
-        const { folder } = this.parseUrlQuery(req.url);
-
-        if (Array.isArray(folder)) return {
-            response: 'Invalid folder parameter',
-            header: 'application/json',
-            status: 400
-        };
-        
+    public static async uploadFile(req: http.IncomingMessage, res: http.ServerResponse) {
         try {
             const form = formidable({
                 maxFileSize: 10 * 1024 * 1024, // 10MB limit
@@ -25,6 +17,7 @@ export default class StorageController extends BaseController {
     
             const [fields, files] = await form.parse(req);
             const uploadedFile = Array.isArray(files.file) ? files.file[0] : files.file;
+            const folder = fields.folder as string | undefined;
             
             if (!uploadedFile) {
                 return {
@@ -38,13 +31,13 @@ export default class StorageController extends BaseController {
             const fileBuffer = await fs.promises.readFile(uploadedFile.filepath);
             const filename = uploadedFile.originalFilename || 'uploaded_file';
             
-            const fileUrl = await StorageService.saveFile(fileBuffer, filename, folder);
+            const filePath = await StorageService.saveFile(fileBuffer, filename, folder);
             
             // Clean up temp file
             await fs.promises.unlink(uploadedFile.filepath);
             
             return {
-                response: JSON.stringify({ imageUrl: fileUrl }),
+                response: JSON.stringify({ filePath }),
                 header: 'application/json',
                 status: 200
             };

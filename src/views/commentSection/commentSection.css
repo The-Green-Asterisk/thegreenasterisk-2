@@ -8,7 +8,9 @@ section#comment-section .comment {
 section#comment-section #submit-comment-btn {
     padding: 5px 10px;
     border-radius: 5px;
-    background-color: gray;
+    box-shadow: var(--md-shadow);
+    background-color: rgb(200, 200, 200);
+    font-weight: bold;
 }
 
 section#comment-section .comment .comment-content {

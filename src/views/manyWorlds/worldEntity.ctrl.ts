@@ -1,5 +1,6 @@
 import el, { html } from "@elements";
 import { Category, Segment, World, WorldEntity } from "@entities";
+import FileService from "@services/fileService";
 import { del, post, put } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
 import Stat from "../../entities/Stat";
@@ -162,7 +163,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     }
 
     if (el.currentUser?.isAdmin) {
-        const editEntityDescriptionBtn = html`<i class="fas fa-pen-alt edit-entity-description" title="Edit Description"></i>`;
+        const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
         editEntityDescriptionBtn.onclick = () => {
             editEntityDescriptionBtn.style.display = 'none';
             const descriptionP = el.divs.id('entity-description').querySelector('p')!;
@@ -290,8 +291,8 @@ const buildStatItem = (stat: Stat) => {
             <span><b>${stat.name}:</b> ${stat.value}</span>
             ${el.currentUser?.isAdmin ? `
                 <span>
-                    <span class="fa fa-pencil" style="cursor: pointer;"></span>
-                    <span class="fa fa-times" style="cursor: pointer;"></span>
+                    <span class="fa fa-pencil" title="Edit Stat" style="cursor: pointer;"></span>
+                    <span class="fa fa-times" title="Delete Stat" style="cursor: pointer;"></span>
                 </span>
             ` : ''}
         </li>
@@ -337,20 +338,20 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
     fileInput.onchange = () => {
         const file = fileInput.files ? fileInput.files[0] : null;
         if (file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            post<{ imageUrl: string }>('/data/upload-file?folder=images', formData).then(response => {
-                entity.entityImgUrl = response.imageUrl;
+            FileService.uploadFile(file, 'images').then(filePath => {
+                entity.entityImgUrl = filePath;
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
                     entityThumbnail.src = entity.entityImgUrl;
                     el.setLightBox();
                 }).catch(error => {
-                    alert('Error updating entity with new image URL: ' + error.message);
+                    alert('Error updating entity with new image URL: ' + error);
                 });
             }).catch(error => {
-                alert('Error uploading image: ' + error.message);
+                alert('Error uploading image: ' + error);
             });
+        } else {
+            alert('No file selected.');
         }
         document.body.removeChild(fileInput);
     };
