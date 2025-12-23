@@ -62,8 +62,8 @@ export default class RoutesBase {
     ['logout']() {
         CookieJar.delete('sessionKey');
         CookieJar.delete('currentUser');
-        request('GET', '/data/logout').then(() => {;
-            window.location.reload();
+        request('GET', '/data/logout').then(() => {
+            window.history.back();
         });
     }
 
