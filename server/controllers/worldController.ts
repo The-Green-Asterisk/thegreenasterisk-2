@@ -122,6 +122,7 @@ export default class WorldController extends BaseController {
                     skip: totalEntities > 5 ? randomOffset : undefined,
                     take: 5
                 });
+                category.worldEntities.sort();
             }
 
             return {
