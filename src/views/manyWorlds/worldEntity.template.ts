@@ -14,7 +14,6 @@ const worldEntityTemplate = (entity: WorldEntity, category: Category, world: Wor
                 <div id="entity-stats">
                     <h3>${entity.name}'s Quick Stats</h3>
                     <ul>
-                        <li>This Entity Has No Stats</li>
                     </ul>
                 </div>
             </div>
