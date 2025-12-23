@@ -1,0 +1,301 @@
+el-many-worlds #tabs-container {
+    display: flex;
+    width: 100%;
+    margin-left: -1px;
+    align-items: end;
+}
+
+el-many-worlds #tabs-container .tab {
+    text-align: center;
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    box-shadow: var(--lg-shadow);
+    background-color: rgb(212, 212, 212);
+}
+
+el-many-worlds #tabs-container .tab.active {
+    background-color: white;
+    font-weight: bold;
+    z-index: 1;
+    position: relative;
+    font-size: 1rem;
+    padding: 10px;
+}
+
+el-many-worlds #tabs-container .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 0;
+    width: 100%;
+    height: 19px;
+    background-color: white;
+}
+
+el-many-worlds #world-content {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    box-shadow: var(--lg-shadow);
+    border-radius: 0 10px 10px 10px;
+    padding: 20px 0;
+    background-color: white;
+}
+
+el-many-worlds #world-categories {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
+}
+
+el-many-worlds .category-container {
+    border-radius: 10px;
+    box-shadow: var(--md-shadow);
+    margin: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    overflow: hidden;
+}
+
+el-many-worlds .category-container h2 {
+    text-align: center;
+    color: var(--ui-color);
+    background-color: rgb(193, 193, 193);
+    margin: 0;
+    padding: 10px;
+    box-shadow: var(--lg-shadow);
+    background: linear-gradient(135deg, rgb(220, 220, 220), rgb(180, 180, 180));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.279);
+}
+
+el-many-worlds .category-container p {
+    text-align: center;
+    font-style: italic;
+    color: gray;
+    padding: 10px;
+}
+
+el-many-worlds .category-container .entity-list {
+    padding: 0 20px 0 40px;
+}
+
+el-many-worlds #world-description {
+    width: 100%;
+    display: flex;
+}
+
+el-many-worlds #entity-description {
+    display: flex;
+}
+
+el-many-worlds #world-description p, el-many-worlds #entity-description p {
+    flex-grow: 1;
+    margin: 0;
+    padding: 0 20px;
+}
+
+el-many-worlds #world-description .edit-world-description, el-many-worlds #entity-description .edit-entity-description {
+    cursor: pointer;
+    color: var(--ui-color);
+    margin-right: 20px;
+    align-self: center;
+}
+
+el-many-worlds #no-categories, el-many-worlds #no-entities {
+    text-align: center;
+    font-style: italic;
+    color: gray;
+    width: 100%;
+}
+
+el-many-worlds #add-category-btn, el-many-worlds #new-entity-btn {
+    flex-grow: 1;
+    height: fit-content;
+    align-self: center;
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: var(--md-shadow);
+    background-color: rgb(200, 200, 200);
+    font-weight: bold;
+}
+
+el-many-worlds #category-title {
+    width: 100%;
+    text-align: center;
+    color: var(--ui-color);
+    margin-top: 0;
+}
+
+el-many-worlds #category-entities {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+el-many-worlds .letter-box {
+    border: 1px solid rgba(0, 0, 0, 0.179);
+    border-radius: 5px;
+    box-shadow: var(--sm-shadow);
+    margin: 10px;
+}
+
+el-many-worlds .letter-box h3 {
+    margin: 0;
+    padding: 5px 10px;
+    background-color: rgb(220, 220, 220);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    color: var(--ui-color);
+    text-align: center;
+}
+
+el-many-worlds .letter-box ul {
+    padding: 0 15px 10px 25px;
+}
+
+el-many-worlds .entity-list-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    padding: 10px 0;
+}
+
+el-many-worlds .entity-list-item .name {
+    font-weight: bold;
+    color: var(--ui-color);
+}
+
+el-many-worlds .entity-list-item .description {
+    margin: 0;
+    font-style: italic;
+    font-size: smaller;
+    line-height: 13px;
+    color: gray;
+}
+
+el-many-worlds #entity-details {
+    width: 100%;
+}
+
+el-many-worlds #entity-details h2 {
+    text-align: center;
+    color: var(--ui-color);
+}
+
+el-many-worlds #entity-segments h3 {
+    display: inline-block;
+    margin-bottom: 0;
+}
+
+el-many-worlds #entity-segments {
+    padding: 0 20px;
+}
+
+el-many-worlds #entity-segments .segment-order {
+    display: inline-block;
+}
+
+el-many-worlds #entity-segments .segment-order label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+el-many-worlds #entity-segments .segment-order input {
+    width: 40px;
+    margin-right: 10px;
+}
+
+el-many-worlds #entity-details #save-entity-description-btn,
+el-many-worlds #entity-details #edit-short-description-btn,
+el-many-worlds #entity-segments .edit-segment-btn,
+el-many-worlds #entity-segments #add-segment-btn,
+el-many-worlds #entity-segments .save-segment-btn,
+el-many-worlds #entity-segments .delete-segment-btn,
+el-many-worlds #add-stat-btn,
+el-many-worlds #remove-entity-image-btn {
+    margin-top: 5px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    box-shadow: var(--md-shadow);
+    background-color: rgb(200, 200, 200);
+    font-weight: bold;
+}
+
+el-many-worlds #entity-details #edit-short-description-btn {
+    margin: 5px 20px;
+}
+
+el-many-worlds #img-and-stats {
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: var(--md-shadow);
+    border: 1px solid rgba(0, 0, 0, 0.279);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+el-many-worlds #img-and-stats img {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border-radius: 5px;
+    box-shadow: var(--sm-shadow);
+    border: 1px solid rgba(0, 0, 0, 0.179);
+    cursor: pointer;
+}
+
+el-many-worlds #img-and-stats #entity-stats {
+    width: 100%;
+}
+
+el-many-worlds #img-and-stats ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+el-many-worlds #img-and-stats ul li {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    padding: 5px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+el-many-worlds #entity-segments .save-segment-btn,
+el-many-worlds #entity-details #save-entity-description-btn {
+    background-color: rgb(150, 250, 150);
+}
+
+el-many-worlds #entity-segments .delete-segment-btn,
+el-many-worlds #remove-entity-image-btn {
+    background-color: rgb(250, 150, 150);
+}
+
+@media screen and (min-width: 768px) {
+    el-many-worlds .category-container {
+        width: calc(50% - 22px);
+    }
+
+    el-many-worlds .letter-box {
+        width: calc(33.3333% - 22px);
+    }
+
+    el-many-worlds #img-and-stats {
+        width: 300px;
+        border-right: none;
+        float: right;
+        margin-left: 20px;
+    }
+
+    el-many-worlds #img-and-stats img {
+        aspect-ratio: 1 / 1;
+    }
+}

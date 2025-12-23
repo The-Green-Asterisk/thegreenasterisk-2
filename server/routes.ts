@@ -1,8 +1,11 @@
+import CommentController from 'controllers/commentController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
+import StorageController from 'controllers/storageController';
+import UserController from 'controllers/userController';
+import WorldController from 'controllers/worldController';
 import YouTubeVideoController from 'controllers/youTubeVideoController';
 import http from 'http';
-import EmailService from 'services/email';
 
 export default class Routes {
     private url: string;
@@ -72,6 +75,111 @@ export default class Routes {
     @Method('DELETE')
     private ['/remove-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return YouTubeVideoController.removeVideo(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-world'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.createWorld(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-worlds'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getWorlds(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-world'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editWorld(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-categories'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getCategories(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-category'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.createCategory(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-category'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getCategory(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-entities'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getEntities(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-entity'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.createEntity(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-world-entity'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.getWorldEntity(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-entity'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editEntity(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editSegment(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.deleteSegment(req, res);
+    }
+
+    @Method('POST')
+    private ['/add-comment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.addComment(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-comments'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.getComments(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-comment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.editComment(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-comment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CommentController.deleteComment(req, res);
+    }
+
+    @Method('POST')
+    private ['/add-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.addStat(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.deleteStat(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-stat'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editStat(req, res);
+    }
+
+    @Method('POST')
+    private ['/upload-file'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return StorageController.uploadFile(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-all-users'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return UserController.getAllUsers(req, res);
     }
 
     get response(): ResponsePromise {

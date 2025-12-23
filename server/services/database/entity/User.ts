@@ -1,4 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm"
+import { Comment } from "./Comment"
+import { WorldEntity } from "./WorldEntity"
 
 @Entity()
 export class User {
@@ -32,5 +34,11 @@ export class User {
 
     @Column()
     public isAdmin!: boolean
+
+    @OneToMany(() => Comment, (comment) => comment.author)
+    public comments!: Comment[]
+
+    @ManyToMany(() => WorldEntity, worldEntity => worldEntity.editors, { eager: false })
+    public editableEntities!: WorldEntity[]
 
 }

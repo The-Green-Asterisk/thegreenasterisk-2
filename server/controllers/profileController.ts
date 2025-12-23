@@ -13,15 +13,13 @@ export default class ProfileController extends BaseController {
         const userId = Number(query.id);
         if (!userId) {
             return {
-                response: JSON.stringify({ error: 'User ID is required' }),
-                header: 'application/json',
+                response: JSON.stringify('User ID is required'),
                 status: 400
             }
         }
         if (isNaN(userId) || userId <= 0) {
             return {
-                response: JSON.stringify({ error: 'Invalid User ID' }),
-                header: 'application/json',
+                response: JSON.stringify('Invalid User ID'),
                 status: 400
             }
         }
@@ -29,21 +27,18 @@ export default class ProfileController extends BaseController {
             const user = await AppDataSource.getRepository(User).findOneBy({ id: userId });
             if (!user) {
                 return {
-                    response: JSON.stringify({ error: 'User not found' }),
-                    header: 'application/json',
+                    response: JSON.stringify('User not found'),
                     status: 404
                 }
             }
             return {
                 response: JSON.stringify(user),
-                header: "application/json",
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching user profile:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }
@@ -56,8 +51,7 @@ export default class ProfileController extends BaseController {
             const user = await userRepository.findOneBy({ id: body.id });
             if (!user) {
                 return {
-                    response: JSON.stringify({ error: 'User not found' }),
-                    header: 'application/json',
+                    response: JSON.stringify('User not found'),
                     status: 404
                 }
             }
@@ -65,14 +59,12 @@ export default class ProfileController extends BaseController {
             await userRepository.save(user);
             return {
                 response: JSON.stringify(user),
-                header: "application/json",
                 status: 200
             };
         } catch (error) {
             console.error("Error updating user profile:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }

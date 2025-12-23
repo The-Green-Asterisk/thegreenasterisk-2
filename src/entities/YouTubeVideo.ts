@@ -1,4 +1,4 @@
-import Tag from './Tag'
+import { Tag } from '@entities'
 export default class YouTubeVideo {
     id!: number
     constructor(

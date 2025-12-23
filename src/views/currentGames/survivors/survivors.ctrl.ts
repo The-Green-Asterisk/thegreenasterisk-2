@@ -14,7 +14,7 @@ export default async function survivors() {
         if (videoList && youtubeVideos) youtubeVideos.forEach(printVideo);
 
         function printVideo(video: YouTubeVideo) {
-            videoList.appendChild(html`
+            const vid = html`
                 <div class="video-item">
                     <div class="video-title" title="${video.title}"><b>${video.episodeNum}:</b> ${video.title}</div>
                     <iframe src="${video.embedUrl}" 
@@ -35,7 +35,8 @@ export default async function survivors() {
                         </button>` : '')}
                     </div>
                 </div>
-            `);
+            `;
+            videoList.appendChild(vid);
             el.setLightBox();
             const removeButton = el.currentUser?.isAdmin ? el.buttons.id(`remove-video-${video.id}`) : undefined;
             if (removeButton)
@@ -52,7 +53,7 @@ export default async function survivors() {
         }
 
         if (content && el.currentUser?.isAdmin) {
-            content.appendChild(html`
+            const adminSection = html`
                 <section>
                     <div class="admin-controls">
                         <h2>Admin Controls</h2>
@@ -65,29 +66,30 @@ export default async function survivors() {
                         <button id="add-video">Add Video</button>
                     </div>
                 </section>
-            `);
+            `;
+            content.appendChild(adminSection);
 
             const addVideoButton = el.buttons.id('add-video');
 
             if (addVideoButton)
                 addVideoButton.onclick = () => {
                     const tags = el.inputs.id('tags')?.value.split(',').map(tag => new Tag(tag.trim(),'',true)) ?? [];
-                    const title = el.inputs.id('title')?.value;
+                    const title = el.inputs.id('title')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                     if (!title) {
                         alert('Title is required.');
                         return;
                     }
-                    const description = el.inputs.id('description')?.value;
+                    const description = el.inputs.id('description')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                     if (!description) {
                         alert('Description is required.');
                         return;
                     }
-                    const episodeNum = el.inputs.id('episode-num')?.value;
+                    const episodeNum = el.inputs.id('episode-num')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                     if (!episodeNum || isNaN(Number(episodeNum))) {
                         alert('Episode number is required and must be a number.');
                         return;
                     }
-                    const embedUrl = el.inputs.id('embedUrl')?.value;
+                    const embedUrl = el.inputs.id('embedUrl')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                     if (!embedUrl) {
                         alert('YouTube Embed URL is required.');
                         return;

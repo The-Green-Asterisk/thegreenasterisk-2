@@ -4,9 +4,11 @@ const manyWorldsTemplate = () => html`
     <el-many-worlds>
         <div class="content-slate">
             <section>
-                <h1>Many Worlds</h1>
-                <h4>Coming Soon</h4>
-                <p>Many worlds will be a compendium of important information regarding the games we play and the worlds they exist within. Come back later to learn more.</p>
+                <a href="/many-worlds"><h1>Many Worlds</h1></a>
+                <div id="tabs-container">
+                </div>
+            </section>
+            <section id="comment-section" style="display: none;">
             </section>
         </div>
     </el-many-worlds>

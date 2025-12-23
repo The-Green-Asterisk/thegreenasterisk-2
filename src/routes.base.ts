@@ -45,6 +45,10 @@ export default class RoutesBase {
         })
         .then((user: User | undefined) => {
             if (!user) throw new Error('No user returned');
+            delete user.password;
+            delete user.email;
+            delete user.discord_id;
+            delete user.age;
             CookieJar.set('currentUser', user, new Date(Date.now() + 86400000).toUTCString());
             el.currentUser = user;
             window.location.href = url;
@@ -58,8 +62,9 @@ export default class RoutesBase {
     ['logout']() {
         CookieJar.delete('sessionKey');
         CookieJar.delete('currentUser');
-        request('GET', '/data/logout');
-        window.location.href = '/';
+        request('GET', '/data/logout').then(() => {
+            window.history.back();
+        });
     }
 
     view() {
