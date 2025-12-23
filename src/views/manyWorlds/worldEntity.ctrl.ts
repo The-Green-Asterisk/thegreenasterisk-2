@@ -23,7 +23,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         saveBtn.onclick = () => {
             const newDescription = segmentDescription.innerText.trim();
             if (newDescription && newDescription !== segment.description) {
-                segment.description = newDescription;
+                segment.description = newDescription.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                 put<Segment>('/data/edit-segment', segment).then((res) => {
                     segment = res;
                 }).catch(error => {
@@ -174,7 +174,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             saveBtn.onclick = () => {
                 const newDescription = descriptionP.innerText.trim();
                 if (newDescription && newDescription !== entity.description) {
-                    entity.description = newDescription;
+                    entity.description = newDescription.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                     put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                         entity = res;
                         descriptionP.contentEditable = 'false';
@@ -210,7 +210,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         editShortDescBtn.onclick = () => {
             const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
             if (newShortDesc && newShortDesc !== entity.shortDescription) {
-                entity.shortDescription = newShortDesc;
+                entity.shortDescription = newShortDesc.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
                 }).catch(error => {
@@ -224,7 +224,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         addSegmentBtn.onclick = () => {
             const segmentName = prompt('Enter segment name:')?.trim();
             if (segmentName) {
-                const newSegment = new Segment(segmentName, '', entity.segments.length + 1);
+                const newSegment = new Segment(segmentName.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''), '', entity.segments.length + 1);
                 entity.segments.push(newSegment);
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
@@ -240,8 +240,8 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         
         const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
         addStatBtn.onclick = () => {
-            const statName = prompt('Enter stat name:')?.trim();
-            const statValue = prompt('Enter stat value:')?.trim();
+            const statName = prompt('Enter stat name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+            const statValue = prompt('Enter stat value:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (statName && statValue) {
                 post<Stat>('/data/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
                     const noStatsMessage = statsList.querySelector('#no-stats-msg');
@@ -252,6 +252,8 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 }).catch(error => {
                     alert('Error creating stat: ' + error);
                 });
+            } else {
+                alert('Stat name and value are required to add a new stat.');
             }
         };
         entityStatsDiv.appendChild(addStatBtn);
@@ -338,8 +340,8 @@ const buildStatItem = (stat: Stat) => {
             const newName = prompt('Enter new stat name:', stat.name)?.trim();
             const newValue = prompt('Enter new stat value:', stat.value)?.trim();
             if (newName && newValue && (newName !== stat.name || newValue !== stat.value)) {
-                stat.name = newName;
-                stat.value = newValue;
+                stat.name = newName.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                stat.value = newValue.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                 put<Stat>('/data/edit-stat', stat).then((res) => {
                     stat = res;
                     statElement.querySelector('span')!.innerHTML = `<b>${stat.name}:</b> ${stat.value}`;

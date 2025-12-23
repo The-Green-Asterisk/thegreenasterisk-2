@@ -40,7 +40,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             <button id="new-world" class="tab"><i class="fas fa-plus"></i></button>
         `);
         el.buttons.id('new-world').onclick = () => {
-            const worldName = prompt('Enter new world name:')?.trim();
+            const worldName = prompt('Enter new world name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (worldName) {
                 const newWorld = new World(worldName, '');
                 post<World>('/data/create-world', newWorld).then(response => {

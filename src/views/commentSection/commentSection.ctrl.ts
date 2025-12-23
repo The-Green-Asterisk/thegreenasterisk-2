@@ -46,7 +46,7 @@ export default async function commentSection(commentableType: string, commentabl
         const newCommentButton = html`<button id="submit-comment-btn">Submit Comment</button>`;
         newCommentButton.onclick = async () => {
             const commentContentDiv = el.divs.id('text-editor-content-new-comment');
-            const content = commentContentDiv.innerHTML.trim();
+            const content = commentContentDiv.innerHTML.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (content.length === 0) {
                 alert('Comment content cannot be empty.');
                 return;
@@ -78,7 +78,7 @@ const buildComment = (comment: Comment) => {
         <div class="comment">
             <div class="comment-content">
                 <img src="${comment.author.profilePicture}" alt="Avatar" class="comment-author-avatar"/>
-                <div>${comment.content}</div>
+                <div id="comment-${comment.id}">${comment.content}</div>
                 <span style="flex-grow:1"></span>
                 <span class="fa fa-pencil" title="Edit Comment" style="cursor:pointer;"></span>
                 <span class="fa fa-times delete-comment-button" title="Delete Comment" style="cursor:pointer;"></span>
@@ -106,13 +106,13 @@ const buildComment = (comment: Comment) => {
 
         editButton.style.display = 'inline';
         editButton.onclick = () => {
-            const contentDiv = commentElement.querySelector('p') as HTMLDivElement;
+            const contentDiv = commentElement.querySelector(`div#comment-${comment.id}`) as HTMLDivElement;
             const originalContent = contentDiv.innerHTML;
             const newContent = prompt('Edit your comment:', originalContent);
             if (newContent !== null && newContent.trim() !== '' && newContent !== originalContent) {
                 const updatedComment = new CommentModel();
                 updatedComment.id = comment.id;
-                updatedComment.content = newContent;
+                updatedComment.content = newContent.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''); // basic XSS prevention
                 put<Comment>('/data/edit-comment', updatedComment).then((res) => {
                     contentDiv.innerHTML = res.content;
                 }).catch(error => {

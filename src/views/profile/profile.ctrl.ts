@@ -123,9 +123,9 @@ export default function profile(query: {[key:string]: any}) {
     }
     const updateProfile = () => {
         const user = new User();
-        user.firstName = firstNameInput.value;
-        user.lastName = lastNameInput.value;
-        user.email = emailInput.value;
+        user.firstName = firstNameInput.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        user.lastName = lastNameInput.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        user.email = emailInput.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
         user.age = Number(ageInput.value);
         user.id = el.currentUser?.id ?? 0;
 

@@ -12,7 +12,7 @@ export default async function world(world: World) {
         editDescriptionBtn.onclick = () => {
             const newDescription = prompt('Enter new world description:', world.description) || world.description;
             if (!!newDescription && newDescription !== world.description) {
-                world.description = newDescription;
+                world.description = newDescription.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                 put<World>('/data/edit-world', world).then((res) => {
                     world = res;
                     const descriptionPara = el.divs.id('world-description').querySelector('p')!;
@@ -54,7 +54,7 @@ export default async function world(world: World) {
     if (el.currentUser?.isAdmin) {
         const addCategoryBtn = html`<button id="add-category-btn">Add Category</button>`;
         addCategoryBtn.onclick = () => {
-            const categoryName = prompt('Enter new category name:')?.trim();
+            const categoryName = prompt('Enter new category name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (categoryName) {
                 const newCategory = new Category(categoryName, '', [world]);
                 post<Category>('/data/create-category', newCategory).then(response => {
