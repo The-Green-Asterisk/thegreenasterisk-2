@@ -30,7 +30,7 @@ export default class StorageController extends BaseController {
             const fileBuffer = await fs.promises.readFile(uploadedFile.filepath);
             const filename = uploadedFile.originalFilename || 'uploaded_file';
             
-            const filePath = await StorageService.saveFile(fileBuffer, filename, folder);
+            const filePath = await StorageService.saveFileRemote(fileBuffer, filename, folder);
             
             // Clean up temp file
             await fs.promises.unlink(uploadedFile.filepath);

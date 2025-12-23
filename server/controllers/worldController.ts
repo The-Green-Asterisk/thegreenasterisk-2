@@ -360,7 +360,9 @@ export default class WorldController extends BaseController {
             }
 
             if (existingEntity.entityImgUrl !== updatedEntity.entityImgUrl && existingEntity.entityImgUrl) {
-                StorageService.deleteFile(existingEntity.entityImgUrl);
+                let fileName = existingEntity.entityImgUrl.split('/').pop()!;
+                fileName = fileName.split('.').slice(0, -1).join('.');
+                StorageService.deleteFileRemote(fileName);
             }
 
             const mergedEntity = worldEntityRepository.merge(existingEntity, updatedEntity);
