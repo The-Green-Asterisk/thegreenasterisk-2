@@ -31,7 +31,7 @@
   "scripts": {
     "browser-sync": "env-cmd -x browser-sync start --proxy \"http://$HOST:$PORT\" --serveStatic \"www\" -w --port $RELOAD_PORT",
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
-    "html": "cp -rn ./src/storage/* ./www/storage/ && cp ./src/index.html www && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
+    "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
     "build": "tsc --project ./server/tsconfig.json && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
     "build:watch:server": "tsc --project ./server/tsconfig.json -w",
     "build:watch:client": "concurrently \"tsc --project ./src/tsconfig.json --noEmit -w\" \"esbuild src/main.ts --bundle --outfile=www/main.js --watch\"",
@@ -63,7 +63,6 @@
   "dependencies": {
     "@types/formidable": "^3.4.6",
     "@types/nodemailer": "^6.4.17",
-    "cloudinary": "^2.8.0",
     "esbuild": "^0.23.1",
     "formidable": "^3.5.4",
     "module-alias": "^2.2.3",
