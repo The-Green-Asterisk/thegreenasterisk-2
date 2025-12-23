@@ -24,14 +24,12 @@ export default class YouTubeVideoController extends BaseController {
             });
             return {
                 response: JSON.stringify(videos.sort((a, b) => a.episodeNum - b.episodeNum)),
-                header: "application/json",
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching YouTube videos:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -42,8 +40,7 @@ export default class YouTubeVideoController extends BaseController {
             const body = await this.readBody<YouTubeVideo>(req);
             if (!body || !body.title || !body.url) {
                 return {
-                    response: JSON.stringify({ error: 'Title and URL are required' }),
-                    header: 'application/json',
+                    response: JSON.stringify('Title and URL are required' ),
                     status: 400
                 };
             }
@@ -63,14 +60,12 @@ export default class YouTubeVideoController extends BaseController {
             const savedVideo = await videoRepository.save(video);
             return {
                 response: JSON.stringify(savedVideo),
-                header: 'application/json',
                 status: 201
             };
         } catch (error) {
             console.error("Error saving YouTube video:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -82,8 +77,7 @@ export default class YouTubeVideoController extends BaseController {
             const videoId = Number(body.id);
             if (!videoId) {
                 return {
-                    response: JSON.stringify({ error: 'Video ID is required' }),
-                    header: 'application/json',
+                    response: JSON.stringify('Video ID is required'),
                     status: 400
                 };
             }
@@ -91,21 +85,18 @@ export default class YouTubeVideoController extends BaseController {
             const result = await videoRepository.delete(videoId);
             if (result.affected === 0) {
                 return {
-                    response: JSON.stringify({ error: 'Video not found' }),
-                    header: 'application/json',
+                    response: JSON.stringify('Video not found'),
                     status: 404
                 };
             }
             return {
-                response: JSON.stringify({ message: 'Video deleted successfully' }),
-                header: 'application/json',
+                response: JSON.stringify('Video deleted successfully'),
                 status: 200
             };
         } catch (error) {
             console.error("Error removing YouTube video:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }

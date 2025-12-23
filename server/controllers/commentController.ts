@@ -14,24 +14,21 @@ export default class CommentController extends BaseController {
 
         if (!comment.content) {
             return {
-                response: JSON.stringify({ error: 'Comment content is required' }),
-                header: 'application/json',
+                response: JSON.stringify('Comment content is required'),
                 status: 400
             }
         }
 
         if (!comment.authorId) {
             return {
-                response: JSON.stringify({ error: 'Author ID is required' }),
-                header: 'application/json',
+                response: JSON.stringify('Author ID is required'),
                 status: 400
             }
         }
 
         if (!comment.commentableId || !comment.commentableType) {
             return {
-                response: JSON.stringify({ error: 'Commentable ID and Type are required' }),
-                header: 'application/json',
+                response: JSON.stringify('Commentable ID and Type are required'),
                 status: 400
             }
         }
@@ -45,8 +42,7 @@ export default class CommentController extends BaseController {
 
             if (!author) {
                 return {
-                    response: JSON.stringify({ error: 'Author not found' }),
-                    header: 'application/json',
+                    response: JSON.stringify('Author not found'),
                     status: 400
                 }
             }
@@ -56,14 +52,12 @@ export default class CommentController extends BaseController {
             const savedComment = await commentRepository.save(newComment);
             return {
                 response: JSON.stringify(savedComment),
-                header: 'application/json',
                 status: 201
             };
         } catch (error) {
             console.error("Error adding comment:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }
@@ -73,8 +67,7 @@ export default class CommentController extends BaseController {
         const { commentableType, commentableId } = this.parseUrlQuery(req.url);
         if (!commentableType || !commentableId) {
             return {
-                response: JSON.stringify({ error: 'Commentable Type and ID are required' }),
-                header: 'application/json',
+                response: JSON.stringify('Commentable Type and ID are required'),
                 status: 400
             }
         }
@@ -90,14 +83,12 @@ export default class CommentController extends BaseController {
             });
             return {
                 response: JSON.stringify(comments),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching comments:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }
@@ -107,8 +98,7 @@ export default class CommentController extends BaseController {
         const commentModel = await this.readBody<CommentModel>(req);
         if (!commentModel.id) {
             return {
-                response: JSON.stringify({ error: 'Comment ID is required' }),
-                header: 'application/json',
+                response: JSON.stringify('Comment ID is required'),
                 status: 400
             }
         }
@@ -119,8 +109,7 @@ export default class CommentController extends BaseController {
 
             if (!comment) {
                 return {
-                    response: JSON.stringify({ error: 'Comment not found' }),
-                    header: 'application/json',
+                    response: JSON.stringify('Comment not found'),
                     status: 404
                 }
             }
@@ -130,14 +119,12 @@ export default class CommentController extends BaseController {
             await commentRepository.save(comment);
             return {
                 response: JSON.stringify(comment),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error editing comment:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }
@@ -147,8 +134,7 @@ export default class CommentController extends BaseController {
         const { commentId } = await this.readBody(req);
         if (!commentId) {
             return {
-                response: JSON.stringify({ error: 'Comment ID is required' }),
-                header: 'application/json',
+                response: JSON.stringify('Comment ID is required'),
                 status: 400
             }
         }
@@ -157,22 +143,19 @@ export default class CommentController extends BaseController {
             const comment = await commentRepository.findOneBy({ id: parseInt(commentId as string) });
             if (!comment) {
                 return {
-                    response: JSON.stringify({ error: 'Comment not found' }),
-                    header: 'application/json',
+                    response: JSON.stringify('Comment not found'),
                     status: 404
                 }
             }
             await commentRepository.remove(comment);
             return {
-                response: JSON.stringify({ message: 'Comment deleted successfully' }),
-                header: 'application/json',
+                response: JSON.stringify('Comment deleted successfully'),
                 status: 200
             };
         } catch (error) {
             console.error("Error deleting comment:", error);
             return {
-                response: JSON.stringify({ error: 'Internal Server Error' }),
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }

@@ -21,8 +21,7 @@ export default class StorageController extends BaseController {
             
             if (!uploadedFile) {
                 return {
-                    response: 'No file uploaded',
-                    header: 'application/json',
+                    response: JSON.stringify('No file uploaded'),
                     status: 400
                 };
             }
@@ -38,14 +37,12 @@ export default class StorageController extends BaseController {
             
             return {
                 response: JSON.stringify({ filePath }),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error('File upload error:', error);
             return {
-                response: 'File upload failed',
-                header: 'application/json',
+                response: JSON.stringify('File upload failed'),
                 status: 500
             };
         }

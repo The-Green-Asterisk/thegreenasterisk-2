@@ -13,7 +13,6 @@ export default class UserController extends BaseController {
         if (!SessionController.currentUser?.isAdmin) {
             return {
                 response: JSON.stringify('Unauthorized'),
-                header: 'application/json',
                 status: 401
             }
         }
@@ -22,14 +21,12 @@ export default class UserController extends BaseController {
             const users = await userRepository.find();
             return {
                 response: JSON.stringify(users),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching users:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             }
         }

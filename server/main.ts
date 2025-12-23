@@ -8,6 +8,7 @@ import path from 'path';
 import Routes from './routes';
 import SessionController from './controllers/sessionController';
 import cache from './cache';
+import { User } from 'services/database/entity/User';
 
 if (!process.env.PORT) require('dotenv').config();
 
@@ -16,14 +17,18 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     let { url } = req;
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
     const sessionKey = headers['authorization'];
-    if (sessionKey && !Array.isArray(sessionKey)) new SessionController(sessionKey);
+    const userCookie = (headers['cookie'] as string).split(';').find(f => f.startsWith(' currentUser='));
+    const currentUser = userCookie ? JSON.parse(userCookie.slice(' currentUser='.length) || '{}') as User : undefined;
+    if (sessionKey && !Array.isArray(sessionKey)) new SessionController(sessionKey, currentUser);
     
     if (method !== 'GET') {
-        let valid = cache.get('csrf-token-' + sessionId) === headers['csrf-token'];
+        let valid = cache.get('csrf-token-' + sessionId) === headers['x-csrf-token'];
         if (!valid) {
+            console.error(`Invalid CSRF token for ${method} ${url}`);
             res.statusCode = 403;
             res.setHeader('Content-Type', 'text/plain');
             res.end('403 Forbidden');
+            return;
         } else {
             cache.del('csrf-token-' + sessionId);
         }

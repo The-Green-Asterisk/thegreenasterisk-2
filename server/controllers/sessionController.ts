@@ -8,13 +8,20 @@ import BaseController from "./baseController";
 
 export default class SessionController extends BaseController {
     public static currentUser: User | undefined = undefined;
-    constructor(sessionKey?: string) {
+    constructor(sessionKey?: string, currentUserData?: User | undefined) {
         super();
         if (sessionKey){
             SessionController.currentUser = cache.get<User>(sessionKey);
+            if (!SessionController.currentUser && currentUserData) { // the client is still  logged in, the server just restarted
+                const userRepository = AppDataSource.getRepository(User);
+                userRepository.findOneBy({ id: currentUserData.id })
+                    .then(user => {
+                        if (!user) return;
+                        SessionController.currentUser = user;
+                        cache.set(sessionKey, user, 7776000); // three months
+                    });
+            }
         }
-        if (!SessionController.currentUser)
-            cache.flushAll();
     }
 
     public static async getDiscordCreds(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -33,7 +40,6 @@ export default class SessionController extends BaseController {
 
         return {
             response: JSON.stringify(data),
-            header: 'application/json',
             status: 200
         }
     }
@@ -185,7 +191,6 @@ export default class SessionController extends BaseController {
         res.setHeader('Authorization', sessionKey);
         return {
             response: JSON.stringify(user),
-            header: 'application/json',
             status: 200
         }
     }

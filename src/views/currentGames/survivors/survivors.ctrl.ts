@@ -14,7 +14,7 @@ export default async function survivors() {
         if (videoList && youtubeVideos) youtubeVideos.forEach(printVideo);
 
         function printVideo(video: YouTubeVideo) {
-            videoList.appendChild(html`
+            const vid = html`
                 <div class="video-item">
                     <div class="video-title" title="${video.title}"><b>${video.episodeNum}:</b> ${video.title}</div>
                     <iframe src="${video.embedUrl}" 
@@ -35,7 +35,8 @@ export default async function survivors() {
                         </button>` : '')}
                     </div>
                 </div>
-            `);
+            `;
+            videoList.appendChild(vid);
             el.setLightBox();
             const removeButton = el.currentUser?.isAdmin ? el.buttons.id(`remove-video-${video.id}`) : undefined;
             if (removeButton)
@@ -52,7 +53,7 @@ export default async function survivors() {
         }
 
         if (content && el.currentUser?.isAdmin) {
-            content.appendChild(html`
+            const adminSection = html`
                 <section>
                     <div class="admin-controls">
                         <h2>Admin Controls</h2>
@@ -65,7 +66,8 @@ export default async function survivors() {
                         <button id="add-video">Add Video</button>
                     </div>
                 </section>
-            `);
+            `;
+            content.appendChild(adminSection);
 
             const addVideoButton = el.buttons.id('add-video');
 

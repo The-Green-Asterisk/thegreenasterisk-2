@@ -18,8 +18,7 @@ export default class WorldController extends BaseController {
             const newWorld = await this.readBody<World>(req);
             if (!newWorld || !newWorld.name) {
                 return {
-                    response: JSON.stringify({ error: 'World name is required' }),
-                    header: 'application/json',
+                    response: JSON.stringify('World name is required'),
                     status: 400
                 };
             }
@@ -33,14 +32,12 @@ export default class WorldController extends BaseController {
             const savedWorld = await worldRepository.save(createdWorld);
             return {
                 response: JSON.stringify(savedWorld),
-                header: 'application/json',
                 status: 201
             };
         } catch (error) {
             console.error("Error creating world:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -52,14 +49,12 @@ export default class WorldController extends BaseController {
             const worlds = await worldRepository.find();
             return {
                 response: JSON.stringify(worlds),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching worlds:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -70,8 +65,7 @@ export default class WorldController extends BaseController {
             const updatedWorld = await this.readBody<World>(req);
             if (!updatedWorld || !updatedWorld.id) {
                 return {
-                    response: 'World ID is required',
-                    header: 'application/json',
+                    response: JSON.stringify('World ID is required'),
                     status: 400
                 };
             }
@@ -79,8 +73,7 @@ export default class WorldController extends BaseController {
             const existingWorld = await worldRepository.findOneBy({ id: updatedWorld.id });
             if (!existingWorld) {
                 return {
-                    response: 'World not found',
-                    header: 'application/json',
+                    response: JSON.stringify('World not found'),
                     status: 404
                 };
             }
@@ -88,14 +81,12 @@ export default class WorldController extends BaseController {
             const savedWorld = await worldRepository.save(mergedWorld);
             return {
                 response: JSON.stringify(savedWorld),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error editing world:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -105,8 +96,7 @@ export default class WorldController extends BaseController {
         const { worldId } = this.parseUrlQuery(req.url);
         if (!worldId || isNaN(Number(worldId)) || Array.isArray(worldId)) {
             return {
-                response: 'Invalid worldId parameter',
-                header: 'application/json',
+                response: JSON.stringify('Invalid worldId parameter'),
                 status: 400
             };
         }
@@ -130,14 +120,12 @@ export default class WorldController extends BaseController {
 
             return {
                 response: JSON.stringify(categories),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching categories:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -148,15 +136,13 @@ export default class WorldController extends BaseController {
             const newCategory = await this.readBody<Category>(req);
             if (!newCategory || !newCategory.name) {
                 return {
-                    response: 'Category name is required',
-                    header: 'application/json',
+                    response: JSON.stringify('Category name is required'),
                     status: 400
                 };
             }
             if (!newCategory.worlds || newCategory.worlds.length === 0) {
                 return {
-                    response: 'At least one world must be associated with the category',
-                    header: 'application/json',
+                    response: JSON.stringify('At least one world must be associated with the category'),
                     status: 400
                 };
             }
@@ -171,7 +157,6 @@ export default class WorldController extends BaseController {
                 const savedCategory = await categoryRepository.save(existingCategory);
                 return {
                     response: JSON.stringify(savedCategory),
-                    header: 'application/json',
                     status: 200
                 };
             }
@@ -179,14 +164,12 @@ export default class WorldController extends BaseController {
             const savedCategory = await categoryRepository.save(createdCategory);
             return {
                 response: JSON.stringify(savedCategory),
-                header: 'application/json',
                 status: 201
             };
         } catch (error) {
             console.error("Error creating category:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -197,8 +180,7 @@ export default class WorldController extends BaseController {
         if (!categoryId || isNaN(Number(categoryId)) || Array.isArray(categoryId) ||
             !worldId || isNaN(Number(worldId)) || Array.isArray(worldId)) {
             return {
-                response: 'Invalid categoryId or worldId parameter',
-                header: 'application/json',
+                response: JSON.stringify('Invalid categoryId or worldId parameter'),
                 status: 400
             };
         }
@@ -211,8 +193,7 @@ export default class WorldController extends BaseController {
 
             if (!category) {
                 return {
-                    response: 'Category not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Category not found'),
                     status: 404
                 };
             }
@@ -225,15 +206,13 @@ export default class WorldController extends BaseController {
 
             return {
                 response: JSON.stringify(category),
-                header: 'application/json',
                 status: 200
             };
 
         } catch (error) {
             console.error("Error fetching category:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -243,8 +222,7 @@ export default class WorldController extends BaseController {
         const { categoryId } = this.parseUrlQuery(req.url);
         if (!categoryId || isNaN(Number(categoryId)) || Array.isArray(categoryId)) {
             return {
-                response: 'Invalid categoryId parameter',
-                header: 'application/json',
+                response: JSON.stringify('Invalid categoryId parameter'),
                 status: 400
             };
         }
@@ -257,7 +235,6 @@ export default class WorldController extends BaseController {
             if (!entities || entities.length === 0) {
                 return {
                     response: JSON.stringify([]),
-                    header: 'application/json',
                     status: 200
                 };
             }
@@ -276,14 +253,12 @@ export default class WorldController extends BaseController {
             }
             return {
                 response: JSON.stringify(organizedEntities),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching entities:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -294,8 +269,7 @@ export default class WorldController extends BaseController {
             const newEntity = await this.readBody<WorldEntity>(req);
             if (!newEntity || !newEntity.name) {
                 return {
-                    response: 'Entity name is required',
-                    header: 'application/json',
+                    response: JSON.stringify('Entity name is required'),
                     status: 400
                 };
             }
@@ -304,14 +278,12 @@ export default class WorldController extends BaseController {
             const savedEntity = await worldEntityRepository.save(createdEntity);
             return {
                 response: JSON.stringify(savedEntity),
-                header: 'application/json',
                 status: 201
             };
         } catch (error) {
             console.error("Error creating entity:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -323,8 +295,7 @@ export default class WorldController extends BaseController {
             !categoryId || isNaN(Number(categoryId)) || Array.isArray(categoryId) ||
             !worldId || isNaN(Number(worldId)) || Array.isArray(worldId)) {
             return {
-                response: 'Invalid entityId, categoryId, or worldId parameter',
-                header: 'application/json',
+                response: JSON.stringify('Invalid entityId, categoryId, or worldId parameter'),
                 status: 400
             };
         }
@@ -341,8 +312,7 @@ export default class WorldController extends BaseController {
 
             if (!entity) {
                 return {
-                    response: 'Entity not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Entity not found'),
                     status: 404
                 };
             }
@@ -353,35 +323,31 @@ export default class WorldController extends BaseController {
 
             return {
                 response: JSON.stringify(entity),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error fetching world entity:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
     }
 
     public static async editEntity(req: http.IncomingMessage, res: http.ServerResponse) {
+        const updatedEntity = await this.readBody<WorldEntity>(req);
+        if (!updatedEntity || !updatedEntity.id) {
+            return {
+                response: JSON.stringify('Entity ID is required'),
+                status: 400
+            };
+        }
         try {
-            const updatedEntity = await this.readBody<WorldEntity>(req);
-            if (!updatedEntity || !updatedEntity.id) {
-                return {
-                    response: 'Entity ID is required',
-                    header: 'application/json',
-                    status: 400
-                };
-            }
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
             const existingEntity = await worldEntityRepository.findOneBy({ id: updatedEntity.id });
             if (!existingEntity) {
                 return {
-                    response: 'Entity not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Entity not found'),
                     status: 404
                 };
             }
@@ -394,14 +360,12 @@ export default class WorldController extends BaseController {
             const savedEntity = await worldEntityRepository.save(mergedEntity);
             return {
                 response: JSON.stringify(savedEntity),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error editing entity:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -412,8 +376,7 @@ export default class WorldController extends BaseController {
             const updatedSegment = await this.readBody<Segment>(req);
             if (!updatedSegment || !updatedSegment.id) {
                 return {
-                    response: 'Segment ID is required',
-                    header: 'application/json',
+                    response: JSON.stringify('Segment ID is required'),
                     status: 400
                 };
             }
@@ -421,8 +384,7 @@ export default class WorldController extends BaseController {
             const existingSegment = await segmentRepository.findOneBy({ id: updatedSegment.id });
             if (!existingSegment) {
                 return {
-                    response: 'Segment not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Segment not found'),
                     status: 404
                 };
             }
@@ -430,14 +392,12 @@ export default class WorldController extends BaseController {
             const savedSegment = await segmentRepository.save(mergedSegment);
             return {
                 response: JSON.stringify(savedSegment),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error editing segment:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -449,8 +409,7 @@ export default class WorldController extends BaseController {
 
             if (!segment || !segment.id) {
                 return {
-                    response: 'Segment ID is required',
-                    header: 'application/json',
+                    response: JSON.stringify('Segment ID is required'),
                     status: 400
                 };
             }
@@ -458,23 +417,20 @@ export default class WorldController extends BaseController {
             const existingSegment = await segmentRepository.findOneBy({ id: segment.id });
             if (!existingSegment) {
                 return {
-                    response: 'Segment not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Segment not found'),
                     status: 404
                 };
             }
             existingSegment.isActive = false;
             await segmentRepository.save(existingSegment);
             return {
-                response: 'Segment deleted successfully',
-                header: 'application/json',
+                response: JSON.stringify('Segment deleted successfully'),
                 status: 200
             };
         } catch (error) {
             console.error("Error deleting segment:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -485,8 +441,7 @@ export default class WorldController extends BaseController {
             const stat = await this.readBody<Stat>(req);
             if (!stat || !stat.name || !stat.value || !stat.worldEntity || !stat.worldEntity.id) {
                 return {
-                    response: 'Stat name, value, and associated WorldEntity are required',
-                    header: 'application/json',
+                    response: JSON.stringify('Stat name, value, and associated WorldEntity are required'),
                     status: 400
                 };
             }
@@ -495,8 +450,7 @@ export default class WorldController extends BaseController {
             const associatedEntity = await worldEntityRepository.findOneBy({ id: stat.worldEntity.id });
             if (!associatedEntity) {
                 return {
-                    response: 'Associated WorldEntity not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Associated WorldEntity not found'),
                     status: 404
                 };
             }
@@ -508,14 +462,12 @@ export default class WorldController extends BaseController {
 
             return {
                 response: JSON.stringify(savedStat),
-                header: 'application/json',
                 status: 201
             };
         } catch (error) {
             console.error("Error adding stat:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -526,8 +478,7 @@ export default class WorldController extends BaseController {
             const updatedStat = await this.readBody<Stat>(req);
             if (!updatedStat || !updatedStat.id) {
                 return {
-                    response: 'Stat ID is required',
-                    header: 'application/json',
+                    response: JSON.stringify('Stat ID is required'),
                     status: 400
                 };
             }
@@ -536,8 +487,7 @@ export default class WorldController extends BaseController {
             const existingStat = await statRepository.findOneBy({ id: updatedStat.id });
             if (!existingStat) {
                 return {
-                    response: 'Stat not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Stat not found'),
                     status: 404
                 };
             }
@@ -547,14 +497,12 @@ export default class WorldController extends BaseController {
 
             return {
                 response: JSON.stringify(savedStat),
-                header: 'application/json',
                 status: 200
             };
         } catch (error) {
             console.error("Error editing stat:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }
@@ -565,8 +513,7 @@ export default class WorldController extends BaseController {
             const stat = await this.readBody<Stat>(req);
             if (!stat?.id) {
                 return {
-                    response: 'Stat ID is required',
-                    header: 'application/json',
+                    response: JSON.stringify('Stat ID is required'),
                     status: 400
                 };
             }
@@ -574,22 +521,19 @@ export default class WorldController extends BaseController {
             const existingStat = await statRepository.findOneBy({ id: stat.id });
             if (!existingStat) {
                 return {
-                    response: 'Stat not found',
-                    header: 'application/json',
+                    response: JSON.stringify('Stat not found'),
                     status: 404
                 };
             }
             await statRepository.remove(existingStat);
             return {
-                response: 'Stat deleted successfully',
-                header: 'application/json',
+                response: JSON.stringify('Stat deleted successfully'),
                 status: 200
             };
         } catch (error) {
             console.error("Error deleting stat:", error);
             return {
-                response: 'Internal Server Error',
-                header: 'application/json',
+                response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
         }

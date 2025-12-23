@@ -74,15 +74,15 @@ export default function profile(query: {[key:string]: any}) {
                     editButton?.remove();
                 }
                 profileName.textContent = response.firstName + ' ' + response.lastName;
-                profileEmail.textContent = response.email;
+                profileEmail.textContent = response.email ?? '';
                 profileUsername.textContent = response.username;
                 profilePicture.src = response.profilePicture;
-                profileAge.textContent = response.age.toString() + ' years old';
+                profileAge.textContent = (response.age?.toString() ?? 'unknown') + ' years old';
 
                 firstNameInput.value = response.firstName;
                 lastNameInput.value = response.lastName;
-                emailInput.value = response.email;
-                ageInput.value = response.age.toString();
+                emailInput.value = response.email ?? '';
+                ageInput.value = response.age?.toString() ?? '';
 
                 if (profileName.textContent === '' && editButton) {
                     activateEditMode();
@@ -135,8 +135,8 @@ export default function profile(query: {[key:string]: any}) {
                     if (response && editButton) {
                         firstNameInput.value = response.firstName;
                         lastNameInput.value = response.lastName;
-                        emailInput.value = response.email;
-                        ageInput.value = response.age.toString();
+                        emailInput.value = response.email ?? '';
+                        ageInput.value = response.age?.toString() ?? '';
                         deactivateEditMode();
                         editButton.textContent = 'Edit Profile';
                         editButton.onclick = () => {

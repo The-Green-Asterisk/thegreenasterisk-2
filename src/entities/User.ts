@@ -10,13 +10,13 @@ export default class User {
 
     public profilePicture!: string
 
-    public discord_id!: string
+    public discord_id?: string
 
-    public age!: number
+    public age?: number
 
-    public email!: string
+    public email?: string
 
-    public password!: string
+    public password?: string
 
     public isAdmin!: boolean
 
