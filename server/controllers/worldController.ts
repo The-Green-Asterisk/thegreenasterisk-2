@@ -122,7 +122,7 @@ export default class WorldController extends BaseController {
                     skip: totalEntities > 5 ? randomOffset : undefined,
                     take: 5
                 });
-                category.worldEntities = category.worldEntities.sort();
+                category.worldEntities.sort((a, b) => a.name.localeCompare(b.name));
             }
 
             return {
