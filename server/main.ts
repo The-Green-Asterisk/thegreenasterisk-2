@@ -5,10 +5,10 @@ import fs from 'fs';
 import http from 'http';
 import path from 'path';
 
-import Routes from './routes';
-import SessionController from './controllers/sessionController';
-import cache from './cache';
 import { User } from 'services/database/entity/User';
+import cache from './cache';
+import SessionController from './controllers/sessionController';
+import Routes from './routes';
 
 if (!process.env.PORT) require('dotenv').config();
 
@@ -17,7 +17,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
     let { url } = req;
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
     const sessionKey = headers['authorization'];
-    const userCookie = (headers['cookie'] as string).split(';').find(f => f.startsWith(' currentUser='));
+    const userCookie = (headers['cookie'] as string | undefined)?.split(';').find(f => f.startsWith(' currentUser='));
     const currentUser = userCookie ? JSON.parse(userCookie.slice(' currentUser='.length) || '{}') as User : undefined;
     if (sessionKey && !Array.isArray(sessionKey)) new SessionController(sessionKey, currentUser);
     
