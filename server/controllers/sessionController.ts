@@ -12,7 +12,7 @@ export default class SessionController extends BaseController {
         super();
         if (sessionKey){
             SessionController.currentUser = cache.get<User>(sessionKey);
-            if (!SessionController.currentUser && currentUserData) { // the client is still  logged in, the server just restarted
+            if (!SessionController.currentUser && currentUserData) { // the client is still logged in, the server just restarted
                 const userRepository = AppDataSource.getRepository(User);
                 userRepository.findOneBy({ id: currentUserData.id })
                     .then(user => {

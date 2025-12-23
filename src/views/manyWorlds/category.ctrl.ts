@@ -26,7 +26,7 @@ export default async function categoryCtrl(category: Category, world: World) {
                 const entityItem = html`
                     <li class="entity-list-item">
                         <a href="/many-worlds/world/${world.id}/category/${category.id}/entity/${entity.id}">
-                            <p class="name">${entity.name}</p>
+                            <span class="name">${entity.name}</span>
                         </a>
                         <p class="description">${entity.shortDescription}</p>
                     </li>

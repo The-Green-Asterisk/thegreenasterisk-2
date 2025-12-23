@@ -22,15 +22,14 @@ export default async function commentSection(commentableType: string, commentabl
         section.innerHTML = '';
     }
 
+    const commentsHeader = html`<h2>Comments</h2>`;
+    section.appendChild(commentsHeader);
+
     const comments = await get<Comment[]>('/data/get-comments', { commentableType, commentableId });
-    
     if (comments?.length > 0) {
-        const commentsHeader = html`<h2>Comments</h2>`;
-        section.appendChild(commentsHeader);
         comments.forEach(comment => {
             section.appendChild(buildComment(comment));
-        }
-        );
+        });
     } else {
         section.appendChild(noCommentsMsg);
     };
@@ -89,46 +88,42 @@ const buildComment = (comment: Comment) => {
     `;
 
     const deleteButton = commentElement.querySelector('.delete-comment-button') as HTMLSpanElement;
+    const editButton = commentElement.querySelector('.fa-pencil') as HTMLSpanElement;
+
     if (el.currentUser?.isAdmin || el.currentUser?.id === comment.author.id) {
         deleteButton.style.display = 'inline';
+        deleteButton.onclick = async () => {
+            if (confirm('Are you sure you want to delete this comment?')) {
+                await del('/data/delete-comment', { commentId: comment.id });
+                commentElement.remove();
+
+                const commentNum = el.sections.id('comment-section')?.querySelectorAll('.comment').length || 0;
+                if (commentNum === 0) {
+                    el.sections.id('comment-section')?.querySelector('h2')?.insertAdjacentElement("afterend", noCommentsMsg);
+                }
+            }
+        };
+
+        editButton.style.display = 'inline';
+        editButton.onclick = () => {
+            const contentDiv = commentElement.querySelector('p') as HTMLDivElement;
+            const originalContent = contentDiv.innerHTML;
+            const newContent = prompt('Edit your comment:', originalContent);
+            if (newContent !== null && newContent.trim() !== '' && newContent !== originalContent) {
+                const updatedComment = new CommentModel();
+                updatedComment.id = comment.id;
+                updatedComment.content = newContent;
+                put<Comment>('/data/edit-comment', updatedComment).then((res) => {
+                    contentDiv.innerHTML = res.content;
+                }).catch(error => {
+                    alert('Error updating comment: ' + error.message);
+                });
+            }
+        };
     } else {
         deleteButton.style.display = 'none';
-    }
-
-    deleteButton.onclick = async () => {
-        if (confirm('Are you sure you want to delete this comment?')) {
-            await del('/data/delete-comment', { commentId: comment.id });
-            commentElement.remove();
-
-            const commentNum = el.sections.id('comment-section')?.querySelectorAll('.comment').length || 0;
-            if (commentNum === 0) {
-                el.sections.id('comment-section')?.insertAdjacentElement("afterbegin", noCommentsMsg);
-            }
-        }
-    };
-
-    const editButton = commentElement.querySelector('.fa-pencil') as HTMLSpanElement;
-    if (el.currentUser?.id === comment.author.id) {
-        editButton.style.display = 'inline';
-    } else {
         editButton.style.display = 'none';
     }
-
-    editButton.onclick = () => {
-        const contentDiv = commentElement.querySelector('p') as HTMLDivElement;
-        const originalContent = contentDiv.innerHTML;
-        const newContent = prompt('Edit your comment:', originalContent);
-        if (newContent !== null && newContent.trim() !== '' && newContent !== originalContent) {
-            const updatedComment = new CommentModel();
-            updatedComment.id = comment.id;
-            updatedComment.content = newContent;
-            put<Comment>('/data/edit-comment', updatedComment).then((res) => {
-                contentDiv.innerHTML = res.content;
-            }).catch(error => {
-                alert('Error updating comment: ' + error.message);
-            });
-        }
-    };
 
     return commentElement;
 }

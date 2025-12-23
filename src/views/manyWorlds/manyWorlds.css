@@ -165,7 +165,6 @@ el-many-worlds .entity-list-item {
 }
 
 el-many-worlds .entity-list-item .name {
-    margin-bottom: 0;
     font-weight: bold;
     color: var(--ui-color);
 }
@@ -173,6 +172,9 @@ el-many-worlds .entity-list-item .name {
 el-many-worlds .entity-list-item .description {
     margin: 0;
     font-style: italic;
+    font-size: smaller;
+    line-height: 13px;
+    color: gray;
 }
 
 el-many-worlds #entity-details {
