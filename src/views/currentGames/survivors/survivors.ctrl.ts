@@ -5,7 +5,7 @@ import { del, get, post } from '@services/request';
 export default async function survivors() {
     if (el.survivors) {
         el.title.textContent = 'Survivors of the Emergence';
-        const videoList = el.divs.id('video-list');
+        const videoList = el.divs.id('video-list')!;
         const content = el.divs.id('content');
 
         const youtubeVideos = await get<YouTubeVideo[]>('/data/get-youtube-videos')

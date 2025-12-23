@@ -9,7 +9,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
     const commentSect = commentSection('worldEntity', entity.id);
     
-    const segmentDiv = el.divs.id('entity-segments');
+    const segmentDiv = el.divs.id('entity-segments')!;
 
     const sortSegments = (segments: Segment[]) => {
         segments.sort((a, b) => a.displayOrder - b.displayOrder);
@@ -141,7 +141,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         segmentDiv.appendChild(segmentContent);
     };
 
-    const entityStatsDiv = el.divs.id('entity-stats');
+    const entityStatsDiv = el.divs.id('entity-stats')!;
     const statsList = entityStatsDiv.querySelector('ul')!;
     entityStatsDiv.appendChild(statsList);
 
@@ -159,7 +159,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     entity.segments.forEach(createSegmentElement);
 
     if (entity.entityImgUrl) {
-        el.imgs.id('entity-thumbnail').title = 'Click to enlarge image';
+        el.imgs.id('entity-thumbnail')!.title = 'Click to enlarge image';
         el.setLightBox();
     }
 
@@ -167,7 +167,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
         editEntityDescriptionBtn.onclick = () => {
             editEntityDescriptionBtn.style.display = 'none';
-            const descriptionP = el.divs.id('entity-description').querySelector('p')!;
+            const descriptionP = el.divs.id('entity-description')!.querySelector('p')!;
             descriptionP.contentEditable = 'true';
             descriptionP.focus();
             const saveBtn = html`<button id="save-entity-description-btn">Save Description</button>`;
@@ -204,7 +204,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             });
             descriptionP.parentElement!.appendChild(saveBtn);
         };
-        el.divs.id('entity-description').appendChild(editEntityDescriptionBtn);
+        el.divs.id('entity-description')!.appendChild(editEntityDescriptionBtn);
 
         const editShortDescBtn = html`<button id="edit-short-description-btn">Edit Short Description</button>`;
         editShortDescBtn.onclick = () => {
@@ -218,7 +218,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 });
             }
         };
-        el.divs.id('entity-description').insertAdjacentElement('afterend', editShortDescBtn);
+        el.divs.id('entity-description')!.insertAdjacentElement('afterend', editShortDescBtn);
 
         const addSegmentBtn = html`<button id="add-segment-btn">Add Segment</button>`;
         addSegmentBtn.onclick = () => {
@@ -258,7 +258,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         };
         entityStatsDiv.appendChild(addStatBtn);
 
-        const entityThumbnail = el.imgs.id('entity-thumbnail');
+        const entityThumbnail = el.imgs.id('entity-thumbnail')!;
         if (!entity.entityImgUrl) {
             entityThumbnail.title = 'Click to change entity image';
             entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);

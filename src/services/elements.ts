@@ -9,7 +9,7 @@ declare global {
         /**
          * Returns a single element from the node list that matches the id 
          */
-        id(id: string): TNode;
+        id(id: string): TNode | undefined;
     }
 }
 
@@ -24,9 +24,8 @@ export default class El {
             console.error(`Nodes with selector "${selector}" not found!`);
             return null;
         } else {
-            els.id = (id: string): T => {
+            els.id = (id: string): T | undefined => {
                 const el = [...els].find(el => el.id === id);
-                if (!el) throw new Error(`Element with id "${id}" not found.`);
                 return el;
             }
             return els;

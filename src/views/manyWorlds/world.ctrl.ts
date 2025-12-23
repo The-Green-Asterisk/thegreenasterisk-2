@@ -15,18 +15,18 @@ export default async function world(world: World) {
                 world.description = newDescription.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                 put<World>('/data/edit-world', world).then((res) => {
                     world = res;
-                    const descriptionPara = el.divs.id('world-description').querySelector('p')!;
+                    const descriptionPara = el.divs.id('world-description')!.querySelector('p')!;
                     descriptionPara.textContent = world.description || 'No description available for this world.';
                 }).catch(error => {
                     alert('Error updating world description: ' + error.message);
                 });
             }
         };
-        el.divs.id('world-description').appendChild(editDescriptionBtn);
+        el.divs.id('world-description')!.appendChild(editDescriptionBtn);
     }
 
     const categories = await get<Category[]>('/data/get-categories', { worldId: world.id });
-    const categoriesContainer = el.divs.id('world-categories');
+    const categoriesContainer = el.divs.id('world-categories')!;
     
     if (categories?.length > 0) {
         categoriesContainer.innerHTML = '';

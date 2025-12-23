@@ -19,7 +19,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
 
     const worlds = await get<World[]>('/data/get-worlds')
     
-    const tabsContainer = el.divs.id('tabs-container');
+    const tabsContainer = el.divs.id('tabs-container')!;
     worlds.forEach(world => {
         const tab = html`<button class="tab">${world.name}</button>`;
         tab.onclick = () => {
@@ -28,7 +28,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             });
             tab.classList.add('active');
             history.pushState({ world: world }, '', `/many-worlds/world/${world.id}`);
-            contentSection.replaceChild(worldTemplate(world), el.divs.id('world-content'));
+            contentSection.replaceChild(worldTemplate(world), el.divs.id('world-content')!);
             worldCtrl(world);
             el.title.textContent = `Many Worlds: ${world.name}`;
         };
@@ -39,7 +39,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         tabsContainer.appendChild(html`
             <button id="new-world" class="tab"><i class="fas fa-plus"></i></button>
         `);
-        el.buttons.id('new-world').onclick = () => {
+        el.buttons.id('new-world')!.onclick = () => {
             const worldName = prompt('Enter new world name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (worldName) {
                 const newWorld = new World(worldName, '');
@@ -52,9 +52,9 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
                         });
                         newTab.classList.add('active');
                         history.pushState({ world: response }, '', `/many-worlds/world/${response.id}`);
-                        contentSection.replaceChild(worldTemplate(response), el.divs.id('world-content'));
+                        contentSection.replaceChild(worldTemplate(response), el.divs.id('world-content')!);
                         worldCtrl(response);
-                        tabsContainer.insertBefore(newTab, el.buttons.id('new-world'));
+                        tabsContainer.insertBefore(newTab, el.buttons.id('new-world')!);
                         newTab.click();
                     };
                 }).catch(error => {
@@ -113,10 +113,10 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             .find(tab => tab.textContent === worlds.find(w => w.id === activeWorld?.id)?.name);
         if (activeTab && activeWorld) {
             activeTab.classList.add('active');
-            contentSection.replaceChild(worldTemplate(activeWorld), el.divs.id('world-content'));
+            contentSection.replaceChild(worldTemplate(activeWorld), el.divs.id('world-content')!);
             worldCtrl(activeWorld);
         } else {
-            contentSection.replaceChild(defaultContent, el.divs.id('world-content'));
+            contentSection.replaceChild(defaultContent, el.divs.id('world-content')!);
         }
     });
 }

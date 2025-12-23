@@ -8,7 +8,7 @@ export default async function categoryCtrl(category: Category, world: World) {
     const commentSect = commentSection('category', category.id);
 
     const entities = await get<any[]>('/data/get-entities', { categoryId: category.id }).catch(() => []);
-    const entitiesContainer = el.divs.id('category-entities');
+    const entitiesContainer = el.divs.id('category-entities')!;
     if (entities?.length > 0) {
         entitiesContainer.innerHTML = '';
         entities.forEach((letter, i) => {
