@@ -248,7 +248,6 @@ el-many-worlds #img-and-stats img {
     border-radius: 5px;
     box-shadow: var(--sm-shadow);
     border: 1px solid rgba(0, 0, 0, 0.179);
-    cursor: pointer;
 }
 
 el-many-worlds #img-and-stats #entity-stats {

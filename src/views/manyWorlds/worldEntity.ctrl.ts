@@ -165,6 +165,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
     if (entity.entityImgUrl) {
         el.imgs.id('entity-thumbnail')!.title = 'Click to enlarge image';
+        el.imgs.id('entity-thumbnail')!.style.cursor = 'pointer';
         el.setLightBox();
     }
 
@@ -264,6 +265,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         entityStatsDiv.appendChild(addStatBtn);
 
         const entityThumbnail = el.imgs.id('entity-thumbnail')!;
+        entityThumbnail.style.cursor = 'pointer';
         if (!entity.entityImgUrl) {
             entityThumbnail.title = 'Click to change entity image';
             entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
