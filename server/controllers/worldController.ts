@@ -365,6 +365,8 @@ export default class WorldController extends BaseController {
                 StorageService.deleteFileRemote(fileName);
             }
 
+            updatedEntity.description = updatedEntity.description.replace(/\n/g, '<br/>');
+
             const mergedEntity = worldEntityRepository.merge(existingEntity, updatedEntity);
             const savedEntity = await worldEntityRepository.save(mergedEntity);
             return {
@@ -397,6 +399,9 @@ export default class WorldController extends BaseController {
                     status: 404
                 };
             }
+
+            updatedSegment.description = updatedSegment.description.replace(/\n/g, '<br/>');
+
             const mergedSegment = segmentRepository.merge(existingSegment, updatedSegment);
             const savedSegment = await segmentRepository.save(mergedSegment);
             return {
