@@ -138,7 +138,12 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         const deleteSegmentBtn = segmentContent.querySelector('.delete-segment-btn') as HTMLButtonElement | undefined;
         if (deleteSegmentBtn) deleteSegmentBtn.onclick = deleteSegment(segment);
 
-        segmentDiv.appendChild(segmentContent);
+        const btn = el.buttons.id('add-segment-btn');
+        if (btn) {
+            btn.insertAdjacentElement('beforebegin', segmentContent)
+        } else {
+            segmentDiv.appendChild(segmentContent);
+        }
     };
 
     const entityStatsDiv = el.divs.id('entity-stats')!;
