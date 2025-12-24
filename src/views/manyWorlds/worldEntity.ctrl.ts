@@ -41,7 +41,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 editBtn.style.display = 'inline-block';
                 document.removeEventListener('keydown', handler);
             }
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && e.shiftKey) {
                 e.preventDefault();
                 saveBtn.click();
                 editBtn.style.display = 'inline-block';
@@ -195,7 +195,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     editEntityDescriptionBtn.style.display = 'inline-block';
                     document.removeEventListener('keydown', handler);
                 }
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && e.shiftKey) {
                     e.preventDefault();
                     saveBtn.click();
                     editEntityDescriptionBtn.style.display = 'inline-block';
