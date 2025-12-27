@@ -37,7 +37,7 @@ export default async function categoryCtrl(category: Category, world: World) {
     }
 
     if (el.currentUser?.isAdmin) {
-        const newEntityBtn = html`<button id="new-entity-btn">Add New Entity</button>`;
+        const newEntityBtn = html`<button id="new-entity-btn">Add New ${singularize(category.name)}</button>`;
         newEntityBtn.onclick = () => {
             const entityName = prompt('Enter new entity name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (entityName) {
@@ -52,3 +52,32 @@ export default async function categoryCtrl(category: Category, world: World) {
         entitiesContainer.appendChild(newEntityBtn);
     }
 }
+
+const singularize = (word: string) => {
+    const endings: { [string: string]: string } = {
+      ves: 'f',
+      ivies: 'ivy', // handles exceptions like 'ivies' -> 'ivy'
+      ies: 'y',
+      i: 'us', // Latin plurals like 'cacti' -> 'cactus'
+      ea: 'eum', // Latin plurals like 'data' -> 'datum' (often treated as uncountable in modern English)
+      zes: 'ze',
+      ses: 's',
+      es: 'e',
+      s: ''
+    };
+  
+    // Sort endings by length in descending order to match the longest suffix first
+    const sortedEndings = Object.keys(endings).sort((a, b) => b.length - a.length);
+  
+    for (const ending of sortedEndings) {
+      const regex = new RegExp(`${ending}$`);
+      if (regex.test(word)) {
+        // Handle 'lives' -> 'life' exception correctly with 'f'
+        if (ending === 'ves' && word !== 'lives') {
+            return word.replace(regex, endings[ending] + 'e'); // e.g., 'knives' -> 'knife'
+        }
+        return word.replace(regex, endings[ending]);
+      }
+    }
+    return word; // return original word if no rule matches
+};
