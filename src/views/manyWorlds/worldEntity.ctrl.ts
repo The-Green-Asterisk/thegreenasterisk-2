@@ -196,6 +196,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             };
             document.addEventListener('keydown', function handler(e) {
                 if (e.key === 'Escape') {
+                    descriptionP.innerHTML = entity.description;
                     descriptionP.contentEditable = 'false';
                     saveBtn.remove();
                     editEntityDescriptionBtn.style.display = 'inline-block';
@@ -212,7 +213,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         };
         el.divs.id('entity-description')!.appendChild(editEntityDescriptionBtn);
 
-        const editShortDescBtn = html`<button id="edit-short-description-btn">Edit Short Description</button>`;
+        const editShortDescBtn = html`<button id="edit-short-description-btn" title="The short description is for display on the list of entities on the World and Category pages, and will not show on the Entity page.">Edit Short Description</button>`;
         editShortDescBtn.onclick = () => {
             const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
             if (newShortDesc && newShortDesc !== entity.shortDescription) {

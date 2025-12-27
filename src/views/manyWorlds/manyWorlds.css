@@ -91,6 +91,7 @@ el-many-worlds #world-description {
 
 el-many-worlds #entity-description {
     display: flex;
+    align-items: start;
 }
 
 el-many-worlds #world-description p, el-many-worlds #entity-description p {
@@ -103,7 +104,6 @@ el-many-worlds #world-description .edit-world-description, el-many-worlds #entit
     cursor: pointer;
     color: var(--ui-color);
     margin-right: 20px;
-    align-self: center;
 }
 
 el-many-worlds #no-categories, el-many-worlds #no-entities {
