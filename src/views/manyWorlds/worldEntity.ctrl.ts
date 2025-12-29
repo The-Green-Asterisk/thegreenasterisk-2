@@ -30,6 +30,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     alert('Error updating segment: ' + error);
                 });
             }
+            segmentDescription.innerHTML = segment.description || 'No description available for this segment.';
             segmentDescription.contentEditable = 'false';
             saveBtn.remove();
             editBtn.style.display = 'inline-block';
@@ -54,6 +55,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     const editSegment = (segment: Segment) => (event: Event) => {
         const segmentDescription = (event.target as HTMLElement).parentElement!.querySelector('p');
         segmentDescription!.contentEditable = 'true';
+        segmentDescription!.innerText = segment.description || 'No description available for this segment.';
         segmentDescription!.focus();
         (event.target as HTMLButtonElement).style.display = 'none';
 
@@ -175,6 +177,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             editEntityDescriptionBtn.style.display = 'none';
             const descriptionP = el.divs.id('entity-description')!.querySelector('p')!;
             descriptionP.contentEditable = 'true';
+            descriptionP.innerText = entity.description || 'No description available for this entity.';
             descriptionP.focus();
             const saveBtn = html`<button id="save-entity-description-btn">Save Description</button>`;
             saveBtn.onclick = () => {
@@ -183,15 +186,13 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     entity.description = newDescription.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
                     put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                         entity = res;
-                        descriptionP.contentEditable = 'false';
-                        saveBtn.remove();
                     }).catch(error => {
                         alert('Error updating entity description: ' + error);
                     });
-                } else {
-                    descriptionP.contentEditable = 'false';
-                    saveBtn.remove();
                 }
+                descriptionP.innerHTML = entity.description || 'No description available for this entity.';
+                descriptionP.contentEditable = 'false';
+                saveBtn.remove();
                 editEntityDescriptionBtn.style.display = 'inline-block';
             };
             document.addEventListener('keydown', function handler(e) {
