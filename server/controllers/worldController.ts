@@ -114,9 +114,10 @@ export default class WorldController extends BaseController {
                 const totalEntities = await worldEntityRepository.count({
                     where: { worlds: { id: Number(worldId) }, categories: { id: category.id } }
                 });
-                // take a random selection of entities to feature on world page (only if there are more than 5)
-                const randomOffset = Math.floor(Math.random() * totalEntities);
-                debugger;
+
+                let randomOffset = Math.floor(Math.random() * totalEntities);
+                if (randomOffset > totalEntities - 5) randomOffset = totalEntities - 5;
+
                 category.worldEntities = await worldEntityRepository.find({
                     where: { worlds: { id: Number(worldId) }, categories: { id: category.id } },
                     relations: ['tags', 'categories'],
