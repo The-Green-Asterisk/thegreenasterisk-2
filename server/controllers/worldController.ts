@@ -115,9 +115,7 @@ export default class WorldController extends BaseController {
                     where: { worlds: { id: Number(worldId) }, categories: { id: category.id } }
                 });
 
-                let randomOffset = Math.floor(Math.random() * totalEntities);
-                if (randomOffset > totalEntities - 5) randomOffset = totalEntities - 5;
-
+                const randomOffset = Math.floor(Math.random() * (totalEntities - 5));
                 category.worldEntities = await worldEntityRepository.find({
                     where: { worlds: { id: Number(worldId) }, categories: { id: category.id } },
                     relations: ['tags', 'categories'],
