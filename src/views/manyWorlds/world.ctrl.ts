@@ -34,6 +34,9 @@ export default async function world(world: World) {
             const categoryDiv = html`
                 <div class="category-container">
                     <a href="/many-worlds/world/${world.id}/category/${category.id}"><h2>${category.name}</h2></a>
+                    <small style="text-align: center;display: block;width: 100%;">
+                        <i>random selection of ${category.worldEntities.length} entries in this category</i>
+                    </small>
                     <ul class="entity-list"></ul>
                 </div>
             `;

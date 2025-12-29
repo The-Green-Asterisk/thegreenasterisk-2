@@ -111,18 +111,17 @@ export default class WorldController extends BaseController {
 
             
             for (const category of categories) {
-                const totalEntities = await worldEntityRepository.count({
-                    where: { worlds: { id: Number(worldId) }, categories: { id: category.id } }
-                });
-
-                const randomOffset = Math.floor(Math.random() * (totalEntities - 5));
-                category.worldEntities = await worldEntityRepository.find({
-                    where: { worlds: { id: Number(worldId) }, categories: { id: category.id } },
-                    relations: ['tags', 'categories'],
-                    skip: totalEntities > 5 ? randomOffset : undefined,
-                    take: 5
-                });
-                category.worldEntities.sort((a, b) => a.name.localeCompare(b.name));
+                category.worldEntities = await worldEntityRepository
+                    .createQueryBuilder('entity')
+                    .leftJoinAndSelect('entity.tags', 'tags')
+                    .leftJoinAndSelect('entity.categories', 'categories')
+                    .innerJoin('entity.worlds', 'world')
+                    .innerJoin('entity.categories', 'category')
+                    .where('world.id = :worldId', { worldId: Number(worldId) })
+                    .andWhere('category.id = :categoryId', { categoryId: category.id })
+                    .orderBy('RAND()')
+                    .limit(5)
+                    .getMany();
             }
 
             return {
