@@ -39,7 +39,7 @@ export default async function categoryCtrl(category: Category, world: World) {
     if (el.currentUser?.isAdmin) {
         const newEntityBtn = html`<button id="new-entity-btn">Add New ${singularize(category.name)}</button>`;
         newEntityBtn.onclick = () => {
-            const entityName = prompt(`Enter new ${singularize(category.name)}:`)?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+            const entityName = prompt(`Enter new ${singularize(category.name)} name:`)?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             if (entityName) {
                 const newEntity = new WorldEntity(entityName, '', '', '', [world], [category]);
                 post<WorldEntity>('/data/create-entity', newEntity).then(response => {
