@@ -335,7 +335,7 @@ const buildStatItem = (stat: Stat) => {
         <li>
             <span><b>${stat.name}:</b> ${stat.value}</span>
             ${el.currentUser?.isAdmin ? `
-                <span>
+                <span style="display:flex;gap:5px;">
                     <span class="fa fa-pencil" title="Edit Stat" style="cursor: pointer;"></span>
                     <span class="fa fa-times" title="Delete Stat" style="cursor: pointer;"></span>
                 </span>
