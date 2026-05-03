@@ -9,10 +9,11 @@ import { User } from 'services/database/entity/User';
 import cache from './cache';
 import SessionController from './controllers/sessionController';
 import Routes from './routes';
+import BrowserSync from './services/browserSyncService';
 
 if (!process.env.PORT) require('dotenv').config();
 
-const server = http.createServer(async (req: http.IncomingMessage, res: http.ServerResponse) => {
+const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const { method, headers } = req;
     let { url } = req;
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
@@ -132,16 +133,29 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
             }
             break;
     }
+};
 
-});
-const port = parseInt(process.env.PORT || '8080');
+const server = http.createServer(makeServer);
 const host = process.env.HOST || '0.0.0.0';
-const reloadPort = process.env.RELOAD_PORT;
-server.listen(port, host, () => {
-    console.log(`Static server started on http://${host}:${port}.`);
-    if (process.env.ENV === 'development' && reloadPort !== undefined)
-        console.log(`Live reload server started on http://${host}:${reloadPort}.`);
+const port = parseInt(process.env.PORT || '8080');
+const reloadPort = parseInt(process.env.RELOAD_PORT || '35729');
+const isDev = process.env.ENV === 'development' && !!reloadPort;
+const isBrowserSyncChild = process.env.BROWSER_SYNC_CHILD === 'true';
+process.on('SIGINT', () => {
+    console.log('Shutting down server...');
+    server.close(() => {
+        console.log('Server stopped.');
+        process.exit(0);
+    });
 });
+if (isDev && !isBrowserSyncChild) {
+    console.log('Starting browser-sync development runtime.');
+    BrowserSync(port, host, reloadPort);
+} else {
+    server.listen(port, host, () => {
+        console.log(`Static server started on http://${host}:${port}.`);
+    });
+}
 
 function findExtension(filename: string): string {
     return filename.substring(filename.lastIndexOf('.')+1, filename.length) || filename;
