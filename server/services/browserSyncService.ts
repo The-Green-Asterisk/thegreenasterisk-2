@@ -42,11 +42,15 @@ export const startBrowserSync = (port: number, host: string, reloadPort: number)
                     reloadDelay: 500, // Wait half a second before reloading
                     reloadDebounce: 500,
                     proxy: `http://${host}:${port}`,
-                    port: reloadPort
+                    port: reloadPort,
+                    notify: false
                 });
             }
         }).on('quit', () => {
             console.log('Nodemon quit.');
+            if (bs && bs.active) {
+                bs.exit();
+            }
         }).on('restart', (files) => {
             console.log('Nodemon restarted due to: ', files);
             setTimeout(() => {

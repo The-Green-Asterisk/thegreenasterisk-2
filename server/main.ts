@@ -18,8 +18,11 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
     let { url } = req;
     const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
     const sessionKey = headers['authorization'];
-    const userCookie = (headers['cookie'] as string | undefined)?.split(';').find(f => f.startsWith(' currentUser='));
-    const currentUser = userCookie ? JSON.parse(userCookie.slice(' currentUser='.length) || '{}') as User : undefined;
+    const userCookie = (headers['cookie'] as string | undefined)
+        ?.split(';').find(f => f.startsWith(' currentUser='));
+    const currentUser = userCookie
+        ? JSON.parse(userCookie.slice(' currentUser='.length) || '{}') as User
+            : undefined;
     if (sessionKey && !Array.isArray(sessionKey)) new SessionController(sessionKey, currentUser);
     
     if (method !== 'GET') {
@@ -141,6 +144,7 @@ const port = parseInt(process.env.PORT || '8080');
 const reloadPort = parseInt(process.env.RELOAD_PORT || '35729');
 const isDev = process.env.ENV === 'development' && !!reloadPort;
 const isBrowserSyncChild = process.env.BROWSER_SYNC_CHILD === 'true';
+
 process.on('SIGINT', () => {
     console.log('Shutting down server...');
     server.close(() => {
@@ -148,6 +152,7 @@ process.on('SIGINT', () => {
         process.exit(0);
     });
 });
+
 if (isDev && !isBrowserSyncChild) {
     console.log('Starting browser-sync development runtime.');
     BrowserSync(port, host, reloadPort);
