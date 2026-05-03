@@ -103,7 +103,7 @@ export default class SessionController extends BaseController {
                 newUser.age = 0;
                 newUser.isAdmin = false;
                 newUser.profilePicture = userData.avatar
-                    ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+                    ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar ?? ''}.png`
                     : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
                 redirectUrl = '/profile';
@@ -121,13 +121,13 @@ export default class SessionController extends BaseController {
                 );
                 existingUser = newUser;
             } else {
-                existingUser.profilePicture = userData.avatar
-                    ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
-
-                existingUser.username = userData.username;
-
-                await userRepository.save(existingUser);
+                const newPfp = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar ?? ''}.png`;
+                let shouldSave = this.checkAndMakeChanges(existingUser, {
+                    username: userData.username,
+                    email: userData.email,
+                    profilePicture: newPfp
+                });
+                if (shouldSave) await userRepository.save(existingUser);
             }
 
             return {
