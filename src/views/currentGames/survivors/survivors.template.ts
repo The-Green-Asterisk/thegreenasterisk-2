@@ -27,7 +27,7 @@ const survivorsTemplate = () => html`
                 <div class="player-card grim">
                     <img class="player-img" light-box src="/storage/images/Dilly.png" alt="Dylan Perry" />
                     <div>
-                        <h3>Dylan Perry: Fries "Grim" Grimstone</h3>
+                        <h3>Dylan Ellis: Fries "Grim" Grimstone</h3>
                         <p>Dylan is relatively newer to D&D but has always loved tabletop and role-playing games. He likes to dive headfirst into his characters and will use any excuse to pull out a horrible, botched accent. If he's not rolling a d20, you can find him working at the hospital, at the gym, or picking up a big rock outside to look at all the bugs that were hiding under it. He also has a collection of horrible t-shirts that he wears proudly and seems to pull out of thin air.</p>
                         <p>Fries Grimstone is a devoted cleric to the Raven Queen. He has a deep-rooted hatred for all things undead and in violation of the natural order. He takes his work very seriously and oftentimes finds it hard to put it down. He holds the natural cycle of life and death with utmost reverence, and believes it is a gift, perfectly entwined with a curse. In this balance, there is beauty that Grim is willing to sacrifice his life for. When he's not working, he's usually imbibing in whatever he can get his hands on. Grim finds that death likes to follow those who tend to it, and alcohol is one of the few reliefs he can find from the scars his pursuit has left on his mind.</p>
                     </div>
