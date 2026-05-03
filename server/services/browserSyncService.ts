@@ -27,7 +27,6 @@ export const startBrowserSync = (port: number, host: string, reloadPort: number)
             ignore: [
                 'www/',
                 'node_modules/',
-                'server/scratch/',
                 'src/',
                 'server/comp/services/database/migration/'
             ],
@@ -38,13 +37,13 @@ export const startBrowserSync = (port: number, host: string, reloadPort: number)
         }).on('start', () => {
             console.log('Nodemon started.');
             if (bs && !bs.active) {
-                bs.init({
-                    reloadDelay: 500, // Wait half a second before reloading
-                    reloadDebounce: 500,
-                    proxy: `http://${host}:${port}`,
-                    port: reloadPort,
-                    notify: false
-                });
+                setTimeout(() => {
+                    bs!.init({
+                        proxy: `http://${host}:${port}`,
+                        port: reloadPort,
+                        notify: false
+                    });
+                }, 1000); // Wait a second to ensure the server is up before starting BrowserSync
             }
         }).on('quit', () => {
             console.log('Nodemon quit.');

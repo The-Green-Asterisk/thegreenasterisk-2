@@ -23,7 +23,7 @@
     "we use npm-watch to copy html and css files when one of them changes",
     "prod script builds the project and runs the server",
     "dev script runs the server, builds the project, watches for changes, and refreshes the browser",
-    "migrations generate to server/services/database/migration/"
+    "migrations generate to server/services/database/migration/ (must manually input this path)"
   ],
   "scripts": {
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
@@ -35,7 +35,7 @@
     "watch:html": "npm-watch html",
     "prod": "npm run build && npm run start",
     "start": "node ./server/comp/main.js",
-    "dev": "concurrently \"npm run build:watch\" \"npm run watch:html\" \"node ./server/comp/main.js\"",
+    "dev": "tsc --project ./server/tsconfig.json && concurrently \"npm run build:watch\" \"npm run watch:html\" \"node ./server/comp/main.js\"",
     "migration:generate": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:generate -d ./server/services/database/data-source.ts",
     "migration:run": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:run -d ./server/services/database/data-source.ts",
     "migration:revert": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:revert -d ./server/services/database/data-source.ts",

@@ -138,25 +138,24 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
     }
 };
 
-const server = http.createServer(makeServer);
 const host = process.env.HOST || '0.0.0.0';
 const port = parseInt(process.env.PORT || '8080');
 const reloadPort = parseInt(process.env.RELOAD_PORT || '35729');
 const isDev = process.env.ENV === 'development' && !!reloadPort;
 const isBrowserSyncChild = process.env.BROWSER_SYNC_CHILD === 'true';
 
-process.on('SIGINT', () => {
-    console.log('Shutting down server...');
-    server.close(() => {
-        console.log('Server stopped.');
-        process.exit(0);
-    });
-});
-
 if (isDev && !isBrowserSyncChild) {
     console.log('Starting browser-sync development runtime.');
     BrowserSync(port, host, reloadPort);
 } else {
+    const server = http.createServer(makeServer);
+    process.on('SIGINT', () => {
+        console.log('Shutting down server...');
+        server.close(() => {
+            console.log('Server stopped.');
+            process.exit(0);
+        });
+    });
     server.listen(port, host, () => {
         console.log(`Static server started on http://${host}:${port}.`);
     });
