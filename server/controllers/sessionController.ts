@@ -121,7 +121,10 @@ export default class SessionController extends BaseController {
                 );
                 existingUser = newUser;
             } else {
-                const newPfp = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar ?? ''}.png`;
+                const newPfp = userData.avatar
+                    ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+                        : 'https://cdn.discordapp.com/embed/avatars/0.png';
+
                 let shouldSave = this.checkAndMakeChanges(existingUser, {
                     username: userData.username,
                     email: userData.email,
