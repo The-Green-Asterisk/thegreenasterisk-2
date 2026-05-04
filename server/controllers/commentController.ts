@@ -108,7 +108,6 @@ export default class CommentController extends BaseController {
         }
 
         try {
-            commentModel.content = commentModel.content.replace(/\n/g, '<br/>');
             const commentRepository = AppDataSource.getRepository(Comment);
             const comment = await commentRepository.findOneBy({ id: commentModel.id });
 
