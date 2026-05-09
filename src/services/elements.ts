@@ -11,7 +11,28 @@ declare global {
          */
         id(id: string): TNode | undefined;
     }
+
+    interface String {
+        stripScripts(): string;
+        doubleBreakDivs(): string;
+    }
 }
+
+String.prototype.stripScripts = function(): string {
+    return this.replace(/<script[^>]*>([\S\s]*?)<\/script>/gmi, '');
+};
+
+String.prototype.doubleBreakDivs = function(): string {
+    // find divs with brs in them, remove them and replace them with double brs
+    return this.replace(/<div[^>]*>([\s\S]*?)<\/div>/gmi, (match, p1) => {
+        if (p1.includes('<br')) {
+            return p1.replace(/<br[^>]*>/gmi, '<br><br>');
+        } else {
+            return match;
+        }
+    }) // remove all other div tags
+    .replace(/<div[^>]*>([\s\S]*?)<\/div>/gmi, '$1');
+};
 
 export default class El {
     private static getElement = <T extends HTMLElement = HTMLElement>(selector: string): T | null=> {

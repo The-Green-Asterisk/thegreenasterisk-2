@@ -21,11 +21,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     const createSaveSegmentBtn = (segmentDescription: HTMLElement, segment: Segment, editBtn: HTMLButtonElement) => {
         const saveBtn = html`<button class="save-segment-btn">Save Segment</button>`;
         saveBtn.onclick = () => {
-            const newDescription = segmentDescription.innerText
-                .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-                .replace(/\n\n+/g, '<br/><br/>')
-                .replace(/\n/g, '<br/>')
-                .replace(/^\s+|\s+$/g, '').trim();
+            const newDescription = segmentDescription.innerHTML.doubleBreakDivs().stripScripts().trim();
             if (newDescription && newDescription !== segment.description) {
                 segment.description = newDescription;
                 put<Segment>('/data/edit-segment', segment).then((res) => {
@@ -34,11 +30,8 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     alert('Error updating segment: ' + error);
                 });
             }
-            segmentDescription.innerText = segment.description
+            segmentDescription.innerHTML = segment.description
                 ? segment.description
-                    .replace(/<br\s*\/?>/gi, '\n')
-                    .replace(/^\s+|\s+$/g, '')
-
                 : 'No description available for this segment.';
             segmentDescription.contentEditable = 'false';
             saveBtn.remove();
@@ -64,11 +57,8 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     const editSegment = (segment: Segment) => (event: Event) => {
         const segmentDescription = (event.target as HTMLElement).parentElement!.querySelector('p');
         segmentDescription!.contentEditable = 'true';
-        segmentDescription!.innerText = segment.description
+        segmentDescription!.innerHTML = segment.description
             ? segment.description
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/^\s+|\s+$/g, '')
-                .trim()
                 : 'No description available for this segment.';
         segmentDescription!.focus();
         (event.target as HTMLButtonElement).style.display = 'none';
@@ -191,18 +181,15 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             editEntityDescriptionBtn.style.display = 'none';
             const descriptionP = el.divs.id('entity-description')!.querySelector('p')!;
             descriptionP.contentEditable = 'true';
-            descriptionP.innerText = entity.description
-                ? entity.description.replace(/<br\s*\/?>/gi, '\n').trim()
+            descriptionP.innerHTML = entity.description
+                ? entity.description
                 : 'No description available for this entity.';
             descriptionP.focus();
             const saveBtn = html`<button id="save-entity-description-btn">Save Description</button>`;
             saveBtn.onclick = () => {
-                const newDescription = descriptionP.innerText.trim();
+                const newDescription = descriptionP.innerHTML.doubleBreakDivs().stripScripts().trim();
                 if (newDescription && newDescription !== entity.description) {
-                    entity.description = newDescription
-                        .replace(/\n\n+/g, '<br/><br/>')
-                        .replace(/\n/g, '<br/>')
-                        .replace(/^\s+|\s+$/g, '');
+                    entity.description = newDescription;
                     put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                         entity = res;
                     }).catch(error => {

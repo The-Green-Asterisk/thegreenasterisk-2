@@ -46,7 +46,7 @@ export default async function commentSection(commentableType: string, commentabl
         const newCommentButton = html`<button id="submit-comment-btn">Submit Comment</button>`;
         newCommentButton.onclick = async () => {
             const commentContentDiv = el.divs.id('text-editor-content-new-comment')!;
-            const content = commentContentDiv.innerHTML.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+            const content = commentContentDiv.innerHTML.doubleBreakDivs().stripScripts().trim();
             if (content.length === 0) {
                 alert('Comment content cannot be empty.');
                 return;
@@ -112,7 +112,7 @@ const buildComment = (comment: Comment) => {
             if (newContent !== null && newContent.trim() !== '' && newContent !== originalContent) {
                 const updatedComment = new CommentModel();
                 updatedComment.id = comment.id;
-                updatedComment.content = newContent.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''); // basic XSS prevention
+                updatedComment.content = newContent.doubleBreakDivs().stripScripts().trim();
                 put<Comment>('/data/edit-comment', updatedComment).then((res) => {
                     contentDiv.innerHTML = res.content;
                 }).catch(error => {
