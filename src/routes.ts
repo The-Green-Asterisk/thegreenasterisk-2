@@ -49,4 +49,9 @@ export default class Routes extends RoutesBase {
         views.profile(this.query);
     }
 
+    ['links']() {
+        el.body.appendChild(views.linksTemplate());
+        views.links();
+    }
+
 }

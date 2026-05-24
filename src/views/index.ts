@@ -20,6 +20,8 @@ import cookieBannerTemplate from './cookieBanner/cookieBanner.template';
 import cookieBanner from './cookieBanner/cookieBanner.ctrl';
 import textEditor from './textEditor/textEditor.ctrl';
 import textEditorTemplate from './textEditor/textEditor.template';
+import links from './links/links.ctrl';
+import linksTemplate from './links/links.template';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -43,6 +45,8 @@ export { default as cookieBanner } from './cookieBanner/cookieBanner.ctrl';
 export { default as cookieBannerTemplate } from './cookieBanner/cookieBanner.template';
 export { default as textEditor } from './textEditor/textEditor.ctrl';
 export { default as textEditorTemplate } from './textEditor/textEditor.template';
+export { default as links } from './links/links.ctrl';
+export { default as linksTemplate } from './links/links.template';
 
 const views = {
     home,
@@ -67,5 +71,7 @@ const views = {
     cookieBannerTemplate,
     textEditor,
     textEditorTemplate,
+    links,
+    linksTemplate
 };
 export default views;
