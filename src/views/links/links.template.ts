@@ -77,6 +77,22 @@ const linksTemplate = () => html`
                     LinkedIn
                 </div>
             </a>
+            <a class="link" href="https://ngl.link/lordsteve14223">
+                <div class="link-image">
+                    <img src="/storage/images/ngl-logo.png" />
+                </div>
+                <div class="link-text">
+                    NGL
+                </div>
+            </a>
+            <a class="link" href="https://cash.app/$lordsteve1701">
+                <div class="link-image">
+                    <img src="/storage/images/cashapp.png" />
+                </div>
+                <div class="link-text">
+                    Cash App
+                </div>
+            </a>
             <a class="link" href="mailto:steve@mail.thegreenasterisk.com">
                 <div class="link-image">
                     <span class="fas fa-envelope"></span>
