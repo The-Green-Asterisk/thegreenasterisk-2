@@ -84,10 +84,6 @@ pre {
     overflow: auto;
 }
 
-.flex-align-center {
-    align-content: center;
-}
-
 select[multiple] {
     width: 100%;
     min-height: 100px;
