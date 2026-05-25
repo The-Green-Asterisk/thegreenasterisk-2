@@ -41,6 +41,7 @@ el-links section .link {
 }
 
 el-links section .link:hover {
+    transform: scale(1.02);
     background-color: #e0f7fa;
     outline: 1px solid black;
 }

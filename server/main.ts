@@ -51,7 +51,8 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'image/png');
                 res.end(favicon);
-            } catch {
+            } catch(error) {
+                console.error(`Error serving favicon: ${error}`);
                 res.statusCode = 404;
                 res.setHeader('Content-Type', 'text/plain');
                 res.end('404 Not Found');
@@ -82,7 +83,8 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                     res.statusCode = 200;
                     res.setHeader('Content-Type', findContentType(findExtension(url)));
                     res.end(file);
-                } catch {
+                } catch(error) {
+                    console.error(`Error serving storage file: ${error}`);
                     res.statusCode = 404;
                     res.setHeader('Content-Type', 'text/plain');
                     res.end('404 Not Found');
@@ -126,7 +128,8 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                         res.statusCode = 200;
                         res.setHeader('Content-Type', findContentType(findExtension(url)));
                         res.end(file);
-                    } catch {
+                    } catch(error) {
+                        console.error(`Error serving main page: ${error}`);
                         res.statusCode = 404;
                         res.setHeader('Content-Type', 'text/plain');
                         res.end('404 Not Found');

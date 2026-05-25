@@ -5,7 +5,7 @@ const linksTemplate = () => html`
         <section>
             <h1>Lord Steve's Links</h1>
             <p>You succeeded in your investigation roll. You now know where to find Lord Steve. Use this knowledge cautiously.</p>
-            <a class="link" href="https://thegreenasterisk.com">
+            <a class="link" target="_blank" href="https://thegreenasterisk.com">
                 <div class="link-image primary">
                     <img src="/storage/images/BIG-AS.png" />
                 </div>
@@ -13,7 +13,7 @@ const linksTemplate = () => html`
                     The Green Asterisk
                 </div>
             </a>
-            <a class="link" href="https://instagram.com/lordsteve">
+            <a class="link" target="_blank" href="https://instagram.com/lordsteve">
                 <div class="link-image">
                     <span class="fab fa-instagram"></span>
                 </div>
@@ -21,7 +21,7 @@ const linksTemplate = () => html`
                     Instagram
                 </div>
             </a>
-            <a class="link" href="https://threads.com/@lordsteve">
+            <a class="link" target="_blank" href="https://threads.com/@lordsteve">
                 <div class="link-image">
                     <span class="fab fa-threads"></span>
                 </div>
@@ -29,7 +29,7 @@ const linksTemplate = () => html`
                     Threads
                 </div>
             </a>
-            <a class="link" href="https://facebook.com/LordSteveBeaudry">
+            <a class="link" target="_blank" href="https://facebook.com/LordSteveBeaudry">
                 <div class="link-image">
                     <span class="fab fa-facebook"></span>
                 </div>
@@ -37,7 +37,7 @@ const linksTemplate = () => html`
                     Facebook
                 </div>
             </a>
-            <a class="link" href="https://www.youtube.com/@TheGreenAsterisk">
+            <a class="link" target="_blank" href="https://www.youtube.com/@TheGreenAsterisk">
                 <div class="link-image">
                     <span class="fab fa-youtube"></span>
                 </div>
@@ -45,7 +45,7 @@ const linksTemplate = () => html`
                     YouTube
                 </div>
             </a>
-            <a class="link" href="https://discord.gg/w8fENR63">
+            <a class="link" target="_blank" href="https://discord.gg/w8fENR63">
                 <div class="link-image">
                     <span class="fab fa-discord"></span>
                 </div>
@@ -53,7 +53,7 @@ const linksTemplate = () => html`
                     Discord
                 </div>
             </a>
-            <a class="link" href="https://github.com/lordsteve">
+            <a class="link" target="_blank" href="https://github.com/lordsteve">
                 <div class="link-image">
                     <span class="fab fa-github"></span>
                 </div>
@@ -61,7 +61,7 @@ const linksTemplate = () => html`
                     GitHub
                 </div>
             </a>
-            <a class="link" href="https://twitch.com/thegreenasterisk">
+            <a class="link" target="_blank" href="https://twitch.com/thegreenasterisk">
                 <div class="link-image">
                     <span class="fab fa-twitch"></span>
                 </div>
@@ -69,7 +69,7 @@ const linksTemplate = () => html`
                     Twitch
                 </div>
             </a>
-            <a class="link" href="https://linkedin.com/in/lordsteve">
+            <a class="link" target="_blank" href="https://linkedin.com/in/lordsteve">
                 <div class="link-image">
                     <span class="fab fa-linkedin"></span>
                 </div>
@@ -77,7 +77,7 @@ const linksTemplate = () => html`
                     LinkedIn
                 </div>
             </a>
-            <a class="link" href="https://ngl.link/lordsteve14223">
+            <a class="link" target="_blank" href="https://ngl.link/lordsteve14223">
                 <div class="link-image">
                     <img src="/storage/images/ngl-logo.png" />
                 </div>
@@ -85,7 +85,7 @@ const linksTemplate = () => html`
                     NGL
                 </div>
             </a>
-            <a class="link" href="https://cash.app/$lordsteve1701">
+            <a class="link" target="_blank" href="https://cash.app/$lordsteve1701">
                 <div class="link-image">
                     <img src="/storage/images/cashapp.png" />
                 </div>
@@ -93,7 +93,7 @@ const linksTemplate = () => html`
                     Cash App
                 </div>
             </a>
-            <a class="link" href="mailto:steve@mail.thegreenasterisk.com">
+            <a class="link" target="_blank" href="mailto:steve@mail.thegreenasterisk.com">
                 <div class="link-image">
                     <span class="fas fa-envelope"></span>
                 </div>
