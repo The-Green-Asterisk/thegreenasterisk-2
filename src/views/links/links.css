@@ -53,7 +53,7 @@ el-links section .link:active {
 
 el-links section .link .link-image {
     margin-right: 10px;
-    background-color: #2b9526;
+    background-color: var(--ui-color);
     width: 40px;
     height: 40px;
     display: flex;
