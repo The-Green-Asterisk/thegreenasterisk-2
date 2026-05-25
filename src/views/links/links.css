@@ -42,6 +42,7 @@ el-links section .link {
 
 el-links section .link:hover {
     background-color: #e0f7fa;
+    outline: 1px solid black;
 }
 
 el-links section .link:active {
