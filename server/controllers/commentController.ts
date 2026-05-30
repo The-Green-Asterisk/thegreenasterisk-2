@@ -2,8 +2,8 @@ import http from "http";
 import AppDataSource from "services/database";
 import { Comment, CommentModel } from "services/database/entity/Comment";
 import { User } from "services/database/entity/User";
-import BaseController from "./baseController";
 import EmailService from "services/email";
+import BaseController from "./baseController";
 
 export default class CommentController extends BaseController {
     constructor() {
@@ -53,7 +53,7 @@ export default class CommentController extends BaseController {
 
             const savedComment = await commentRepository.save(newComment);
 
-            EmailService.sendEmail('live.remix@gmail.com', 'New Comment!', `{${author.username} has posted new comment: ${savedComment.content}`)
+            EmailService.sendEmail('steve@mail.thegreenasterisk.com', 'New Comment!', `${author.username} has posted new comment: ${savedComment.content}`)
             return {
                 response: JSON.stringify(savedComment),
                 status: 201
