@@ -7,7 +7,7 @@ export default async function categoryCtrl(category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${category.name}`;
     const commentSect = commentSection('category', category.id);
 
-    const entities = await get<any[]>('/data/get-entities', { categoryId: category.id }).catch(() => []);
+    const entities = await get<WorldEntity[][]>('/data/get-entities', { categoryId: category.id }).catch(() => []);
     const entitiesContainer = el.divs.id('category-entities')!;
     if (entities?.length > 0) {
         entitiesContainer.innerHTML = '';
