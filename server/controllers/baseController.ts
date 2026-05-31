@@ -1,5 +1,4 @@
 import http from 'http';
-import url from 'url';
 
 export default class BaseController {
     static async readBody<T = any>(req: http.IncomingMessage, parse = true): Promise<T> {
@@ -26,9 +25,10 @@ export default class BaseController {
         });
     }
 
-    static parseUrlQuery(incommingUrl?: string) {
-        const parsedUrl = url.parse(incommingUrl ?? '', true);
-        return parsedUrl.query;
+    static parseUrlQuery(incomingUrl?: string) {
+        if (!incomingUrl) return {};
+        const parsedUrl = new URL(incomingUrl ?? '', 'http://localhost');
+        return Object.fromEntries(parsedUrl.searchParams);
     }
 
     static async getData(req: http.IncomingMessage, res: http.ServerResponse) {

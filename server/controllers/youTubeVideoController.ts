@@ -13,10 +13,8 @@ export default class YouTubeVideoController extends BaseController {
     public static async getVideos(req: http.IncomingMessage, res: http.ServerResponse) {
         try {
             const query = this.parseUrlQuery(req.url);
-            const tagIds = query.tagIds 
-                ? typeof query.tagIds === 'string' 
-                    ? query.tagIds.split(',').map(Number) 
-                    : query.tagIds.map(Number) 
+            const tagIds = query.tagIds
+                ? query.tagIds.split(',').map(Number)
                 : [];
             const videos = await AppDataSource.getRepository(YouTubeVideo).find({
                 relations: ["tags"],
