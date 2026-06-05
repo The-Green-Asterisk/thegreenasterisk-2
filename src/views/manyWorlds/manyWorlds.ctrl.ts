@@ -35,7 +35,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         tab.classList.toggle('active', world.id === worldId);
         tabsContainer.appendChild(tab);
     });
-    if (el.currentUser?.isAdmin) {
+    el.checkAdmin(() => {
         tabsContainer.appendChild(html`
             <button id="new-world" class="tab"><i class="fas fa-plus"></i></button>
         `);
@@ -62,7 +62,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
                 });
             }
         };
-    }
+    })
 
     const defaultContent = html`
         <div id="world-content">

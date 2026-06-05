@@ -84,16 +84,16 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 <input type="number" id="display-order-${segment.id}" value="${segment.displayOrder}" min="1" />
             </div>
         `;
+        const editDeleteSegment = `
+            <button class="edit-segment-btn">Edit Segment</button>
+            <button class="delete-segment-btn">Delete Segment</button>
+        `;
         const segmentContent = html`
             <div class="entity-segment">
-                ${el.currentUser?.isAdmin ? displayOrder : ''}
+                ${el.checkAdmin(displayOrder, true)}
                 <h3>${segment.name}</h3>
                 <p>${segment.description}</p>
-                ${el.currentUser?.isAdmin ? `
-                    <button class="edit-segment-btn">Edit Segment</button>
-                    <button class="delete-segment-btn">Delete Segment</button>
-                ` : ''}
-
+                ${el.checkAdmin(editDeleteSegment, true)}
             </div>
         `;
 
@@ -175,7 +175,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         el.setLightBox();
     }
 
-    if (el.currentUser?.isAdmin || entity.editors.find(e => e.id === el.currentUser?.id)) {
+    if (el.checkAdmin<boolean>() || entity.editors.find(e => e.id === el.currentUser?.id)) {
         const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
         editEntityDescriptionBtn.onclick = () => {
             editEntityDescriptionBtn.style.display = 'none';
@@ -300,7 +300,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         };
         entityThumbnail.insertAdjacentElement('afterend', removeImageBtn);
 
-        if (el.currentUser?.isAdmin) {
+        el.checkAdmin(() => {
             // add multiple selection for editors
             let allUsers: User[] = [];
             const editEditors = html`<select multiple id="edit-entity-editors"></select>` as HTMLSelectElement;
@@ -332,24 +332,25 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             entityStatsDiv.appendChild(html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`);
 
             entityStatsDiv.appendChild(editEditors);
-        }
+        });
     }
 }
 
 const buildStatItem = (stat: Stat) => {
+    const editDeleteStat = `
+        <span style="display:flex;gap:5px;">
+            <span class="fa fa-pencil" title="Edit Stat" style="cursor: pointer;"></span>
+            <span class="fa fa-times" title="Delete Stat" style="cursor: pointer;"></span>
+        </span>
+    `
     const statElement = html`
         <li>
             <span><b>${stat.name}:</b> ${stat.value}</span>
-            ${el.currentUser?.isAdmin ? `
-                <span style="display:flex;gap:5px;">
-                    <span class="fa fa-pencil" title="Edit Stat" style="cursor: pointer;"></span>
-                    <span class="fa fa-times" title="Delete Stat" style="cursor: pointer;"></span>
-                </span>
-            ` : ''}
+            ${el.checkAdmin(editDeleteStat, true)}
         </li>
     `;
 
-    if (el.currentUser?.isAdmin) {
+    el.checkAdmin(() => {
         const editBtn = statElement.querySelector('.fa-pencil') as HTMLElement;
         editBtn.onclick = () => {
             const newName = prompt('Enter new stat name:', stat.name)?.trim();
@@ -378,7 +379,7 @@ const buildStatItem = (stat: Stat) => {
                 });
             }
         };
-    }
+    });
 
     return statElement;
 }
@@ -394,7 +395,7 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
                     entityThumbnail.src = entity.entityImgUrl;
-                    entityThumbnail.title = 'Click to elarge image';
+                    entityThumbnail.title = 'Click to enlarge image';
                     el.setLightBox();
                 }).catch(error => {
                     alert('Error updating entity with new image URL: ' + error);

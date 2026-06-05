@@ -59,6 +59,34 @@ export default class El {
             : false;
     };
 
+    /**
+     * Checks if the current user is authenticated.
+     * @param input Optional parameter or function to execute if the user is authenticated.
+     * @param silent Set to true to suppress the boolean return.
+     * @returns The result of the function or the passed through parameter if provided and the user is authenticated, otherwise true if no function is provided, or false if the user is not authenticated.
+     */
+    public static checkAuth<T>(input?: T | (() => T), silent = false) {
+        if (this.isAuth) {
+            return typeof input === 'function' ? (input as () => T)() : input ?? true;
+        } else {
+            return silent ? void 0 : false;
+        }
+    }
+
+    /**
+     * Checks if the current user is an admin.
+     * @param input Optional parameter or function to execute if the user is an admin.
+     * @param silent Set to true to suppress the boolean return.
+     * @returns The result of the function or the passed through parameter if provided and the user is an admin, otherwise true if no function is provided, or false if the user is not an admin.
+     */
+    public static checkAdmin<T>(input?: T | (() => T), silent = false) {
+        if (this.currentUser?.isAdmin) {
+            return typeof input === 'function' ? (input as () => T)() : input ?? true;
+        } else {
+            return silent ? void 0 : false;
+        }
+    }
+
     public static currentUser: User | undefined = undefined;
 
     public static sessionKey: string = '';

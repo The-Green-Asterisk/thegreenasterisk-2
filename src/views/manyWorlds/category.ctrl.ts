@@ -36,7 +36,7 @@ export default async function categoryCtrl(category: Category, world: World) {
         });
     }
 
-    if (el.currentUser?.isAdmin) {
+    el.checkAdmin(() => {
         const newEntityBtn = html`<button id="new-entity-btn">Add New ${singularize(category.name)}</button>`;
         newEntityBtn.onclick = () => {
             const entityName = prompt(`Enter new ${singularize(category.name)} name:`)?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
@@ -50,7 +50,7 @@ export default async function categoryCtrl(category: Category, world: World) {
             }
         };
         entitiesContainer.appendChild(newEntityBtn);
-    }
+    })
 }
 
 const singularize = (word: string) => {

@@ -14,6 +14,11 @@ export default async function survivors() {
         if (videoList && youtubeVideos) youtubeVideos.forEach(printVideo);
 
         function printVideo(video: YouTubeVideo) {
+            const removeVid = `
+                <button class="remove-video" id="remove-video-${video.id}">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            `
             const vid = html`
                 <div class="video-item">
                     <div class="video-title" title="${video.title}"><b>${video.episodeNum}:</b> ${video.title}</div>
@@ -29,17 +34,14 @@ export default async function survivors() {
                         <button class="full-screen-button" id="full-screen-${video.id}" light-box="${video.embedUrl}" light-box-type="iframe">
                             <i class="fas fa-expand"></i>
                         </button>
-                        ${(el.currentUser?.isAdmin ? `
-                        <button class="remove-video" id="remove-video-${video.id}">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>` : '')}
+                        ${el.checkAdmin(removeVid, true)}
                     </div>
                 </div>
             `;
             videoList.appendChild(vid);
             el.setLightBox();
-            const removeButton = el.currentUser?.isAdmin ? el.buttons.id(`remove-video-${video.id}`) : undefined;
-            if (removeButton)
+            const removeButton = el.checkAdmin(el.buttons.id(`remove-video-${video.id}`));
+            if (removeButton && typeof removeButton !== 'boolean')
                 removeButton.onclick = () => {
                     if (confirm(`Are you sure you want to remove ${video.title}?`)) {
                         del('/data/remove-youtube-video', { id: video.id }).then(() => {
@@ -52,7 +54,7 @@ export default async function survivors() {
                 };
         }
 
-        if (content && el.currentUser?.isAdmin) {
+        if (content && el.checkAdmin<boolean>()) {
             const adminSection = html`
                 <section>
                     <div class="admin-controls">
@@ -73,23 +75,23 @@ export default async function survivors() {
 
             if (addVideoButton)
                 addVideoButton.onclick = () => {
-                    const tags = el.inputs.id('tags')?.value.split(',').map(tag => new Tag(tag.trim(),'',true)) ?? [];
-                    const title = el.inputs.id('title')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                    const tags = el.inputs.id('tags')?.value.stripScripts().split(',').map(tag => new Tag(tag.trim(), '', true)) ?? [];
+                    const title = el.inputs.id('title')?.value.stripScripts();
                     if (!title) {
                         alert('Title is required.');
                         return;
                     }
-                    const description = el.inputs.id('description')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                    const description = el.inputs.id('description')?.value.stripScripts();
                     if (!description) {
                         alert('Description is required.');
                         return;
                     }
-                    const episodeNum = el.inputs.id('episode-num')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                    const episodeNum = el.inputs.id('episode-num')?.value.stripScripts();
                     if (!episodeNum || isNaN(Number(episodeNum))) {
                         alert('Episode number is required and must be a number.');
                         return;
                     }
-                    const embedUrl = el.inputs.id('embedUrl')?.value.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                    const embedUrl = el.inputs.id('embedUrl')?.value.stripScripts();
                     if (!embedUrl) {
                         alert('YouTube Embed URL is required.');
                         return;
@@ -101,7 +103,7 @@ export default async function survivors() {
                     }
                     const videoId = videoIdMatch[1];
                     const url = `https://www.youtube.com/watch?v=${videoId}`;
-                    
+
                     const newVideo = new YouTubeVideo(
                         title,
                         description,

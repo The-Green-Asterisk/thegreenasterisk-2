@@ -7,7 +7,7 @@ export default async function world(world: World) {
     el.title.textContent = `Many Worlds: ${world.name}`;
     const commentSect = commentSection('world', world.id);
 
-    if (el.currentUser?.isAdmin) {
+    el.checkAdmin(() => {
         const editDescriptionBtn = html`<i class="fas fa-pencil edit-world-description" title="Edit Description"></i>`;
         editDescriptionBtn.onclick = () => {
             const newDescription = prompt('Enter new world description:', world.description) || world.description;
@@ -23,7 +23,7 @@ export default async function world(world: World) {
             }
         };
         el.divs.id('world-description')!.appendChild(editDescriptionBtn);
-    }
+    })
 
     const categories = await get<Category[]>('/data/get-categories', { worldId: world.id });
     const categoriesContainer = el.divs.id('world-categories')!;
@@ -54,7 +54,7 @@ export default async function world(world: World) {
         });
     }
 
-    if (el.currentUser?.isAdmin) {
+    el.checkAdmin(() => {
         const addCategoryBtn = html`<button id="add-category-btn">Add Category</button>`;
         addCategoryBtn.onclick = () => {
             const categoryName = prompt('Enter new category name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
@@ -76,5 +76,5 @@ export default async function world(world: World) {
             }
         };
         categoriesContainer.appendChild(addCategoryBtn);
-    }
+    })
 }

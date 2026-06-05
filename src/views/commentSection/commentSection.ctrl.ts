@@ -90,7 +90,7 @@ const buildComment = (comment: Comment) => {
     const deleteButton = commentElement.querySelector('.delete-comment-button') as HTMLSpanElement;
     const editButton = commentElement.querySelector('.fa-pencil') as HTMLSpanElement;
 
-    if (el.currentUser?.isAdmin || el.currentUser?.id === comment.author.id) {
+    if (el.checkAdmin<boolean>() || el.currentUser?.id === comment.author.id) {
         deleteButton.style.display = 'inline';
         deleteButton.onclick = async () => {
             if (confirm('Are you sure you want to delete this comment?')) {
