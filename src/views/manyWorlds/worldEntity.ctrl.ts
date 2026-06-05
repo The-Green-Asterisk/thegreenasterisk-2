@@ -1,9 +1,8 @@
 import el, { html } from "@elements";
-import { Category, Segment, User, World, WorldEntity } from "@entities";
+import { Category, Segment, Stat, User, World, WorldEntity } from "@entities";
 import FileService from "@services/fileService";
 import { del, get, post, put } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
-import Stat from "../../entities/Stat";
 
 export default async function worldEntityCtrl(entity: WorldEntity, category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
@@ -163,7 +162,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             statsList.appendChild(statItem);
         });
     } else {
-        statsList.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
+        statsList.appendChild( html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
     }
 
     sortSegments(entity.segments);
@@ -224,7 +223,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         editShortDescBtn.onclick = () => {
             const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
             if (newShortDesc && newShortDesc !== entity.shortDescription) {
-                entity.shortDescription = newShortDesc.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                entity.shortDescription = newShortDesc.stripScripts();
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
                 }).catch(error => {
@@ -238,7 +237,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         addSegmentBtn.onclick = () => {
             const segmentName = prompt('Enter segment name:')?.trim();
             if (segmentName) {
-                const newSegment = new Segment(segmentName.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ''), '', entity.segments.length + 1);
+                const newSegment = new Segment(segmentName.stripScripts(), '', entity.segments.length + 1);
                 entity.segments.push(newSegment);
                 put<WorldEntity>('/data/edit-entity', entity).then((res) => {
                     entity = res;
@@ -254,8 +253,8 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         
         const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
         addStatBtn.onclick = () => {
-            const statName = prompt('Enter stat name:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
-            const statValue = prompt('Enter stat value:')?.trim().replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+            const statName = prompt('Enter stat name:')?.trim().stripScripts();
+            const statValue = prompt('Enter stat value:')?.trim().stripScripts();
             if (statName && statValue) {
                 post<Stat>('/data/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
                     const noStatsMessage = statsList.querySelector('#no-stats-msg');
@@ -356,8 +355,8 @@ const buildStatItem = (stat: Stat) => {
             const newName = prompt('Enter new stat name:', stat.name)?.trim();
             const newValue = prompt('Enter new stat value:', stat.value)?.trim();
             if (newName && newValue && (newName !== stat.name || newValue !== stat.value)) {
-                stat.name = newName.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
-                stat.value = newValue.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+                stat.name = newName.stripScripts();
+                stat.value = newValue.stripScripts();
                 put<Stat>('/data/edit-stat', stat).then((res) => {
                     stat = res;
                     statElement.querySelector('span')!.innerHTML = `<b>${stat.name}:</b> ${stat.value}`;
