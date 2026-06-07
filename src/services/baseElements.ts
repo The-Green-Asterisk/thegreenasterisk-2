@@ -1,4 +1,3 @@
-import CookieJar from "@services/cookieJar";
 import StorageBox from "@services/storageBox";
 import { lightbox, lightboxTemplate } from "@views";
 import User from "../entities/User";
@@ -18,11 +17,11 @@ declare global {
     }
 }
 
-String.prototype.stripScripts = function(): string {
+String.prototype.stripScripts = function (): string {
     return this.replace(/<script[^>]*>([\S\s]*?)<\/script>/gmi, '');
 };
 
-String.prototype.doubleBreakDivs = function(): string {
+String.prototype.doubleBreakDivs = function (): string {
     // find divs with brs in them, remove them and replace them with double brs
     return this.replace(/<div[^>]*>([\s\S]*?)<\/div>/gmi, (match, p1) => {
         if (p1.includes('<br')) {
@@ -31,11 +30,11 @@ String.prototype.doubleBreakDivs = function(): string {
             return match;
         }
     }) // remove all other div tags
-    .replace(/<div[^>]*>([\s\S]*?)<\/div>/gmi, '$1');
+        .replace(/<div[^>]*>([\s\S]*?)<\/div>/gmi, '$1');
 };
 
 export default class BaseEl {
-    public static getElement = <T extends HTMLElement = HTMLElement>(selector: string): T | null=> {
+    public static getElement = <T extends HTMLElement = HTMLElement>(selector: string): T | null => {
         let el = document.querySelector<T>(selector);
         return el;
     }
@@ -92,14 +91,16 @@ export default class BaseEl {
     public static sessionKey: string = '';
 
     public static establishAuth() {
-        this.currentUser = CookieJar.get<User>('currentUser');
-        this.sessionKey = CookieJar.get<string>('sessionKey');
+        this.currentUser = sessionStorage.getItem('currentUser')
+            ? JSON.parse(sessionStorage.getItem('currentUser')!)
+            : undefined;
+        this.sessionKey = sessionStorage.getItem('sessionKey') ?? '';
     }
 
     public static logout() {
         if (this.currentUser) {
-            CookieJar.delete('currentUser');
-            CookieJar.delete('sessionKey');
+            sessionStorage.removeItem('currentUser');
+            sessionStorage.removeItem('sessionKey');
             delete this.currentUser;
             this.sessionKey = '';
         }
@@ -350,10 +351,10 @@ export default class BaseEl {
 setTimeout(() => {
     let ids = new Set<string>();
     document.querySelectorAll('[id]').forEach((el) => {
-         if (ids.has(el.id)) {
-              console.warn(`Duplicate id "${el.id}" found!`);
-         } else {
-              ids.add(el.id);
-         }
+        if (ids.has(el.id)) {
+            console.warn(`Duplicate id "${el.id}" found!`);
+        } else {
+            ids.add(el.id);
+        }
     });
 }, 1000);

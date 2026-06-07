@@ -1,11 +1,10 @@
 import el from "@elements";
-import CookieJar from "@services/cookieJar";
 import request, { get, getHtml } from "@services/request";
 import views from "@views";
 import User from "./entities/User";
 
 export default class RoutesBase {
-    query: {[key: string]: any} = {};
+    query: { [key: string]: boolean | number | string } = {};
     constructor(
         public path: string[]
     ) {
@@ -18,7 +17,7 @@ export default class RoutesBase {
         }
 
         if (!!this.query.sessionKey) {
-            CookieJar.set('sessionKey', this.query.sessionKey, new Date(Date.now() + 86400000).toUTCString());
+            sessionStorage.setItem('sessionKey', this.query.sessionKey as string);
             get('/data/check-auth');
         }
     }
@@ -29,39 +28,39 @@ export default class RoutesBase {
     }
 
     ['start']() {
-        const url = this.query.url;
+        const url = this.query.url as string;
         const uid = this.query.uid;
         request('GET', '/data/start', { uid }, false)
-        .then((response) => {
-            if (response.ok) {
-                const sessionKey = response.headers.get('Authorization');
-                if (!sessionKey) throw new Error('No session key returned');
-                CookieJar.set('sessionKey', sessionKey, new Date(Date.now() + 86400000).toUTCString());
-                el.sessionKey = sessionKey;
-                return response.json();
-            } else {
-                throw new Error(response.statusText);
-            }
-        })
-        .then((user: User | undefined) => {
-            if (!user) throw new Error('No user returned');
-            delete user.password;
-            delete user.email;
-            delete user.discord_id;
-            delete user.age;
-            CookieJar.set('currentUser', user, new Date(Date.now() + 86400000).toUTCString());
-            el.currentUser = user;
-            window.location.href = url;
-        })
-        .catch((error) => {
-            console.error(error.message ?? error);
-            window.location.href = url;
-        });
+            .then((response) => {
+                if (response.ok) {
+                    const sessionKey = response.headers.get('Authorization');
+                    if (!sessionKey) throw new Error('No session key returned');
+                    sessionStorage.setItem('sessionKey', sessionKey);
+                    el.sessionKey = sessionKey;
+                    return response.json();
+                } else {
+                    throw new Error(response.statusText);
+                }
+            })
+            .then((user: User | undefined) => {
+                if (!user) throw new Error('No user returned');
+                delete user.password;
+                delete user.email;
+                delete user.discord_id;
+                delete user.age;
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                el.currentUser = user;
+                window.location.href = url;
+            })
+            .catch((error) => {
+                console.error(error.message ?? error);
+                window.location.href = url;
+            });
     }
 
     ['logout']() {
-        CookieJar.delete('sessionKey');
-        CookieJar.delete('currentUser');
+        sessionStorage.removeItem('sessionKey');
+        sessionStorage.removeItem('currentUser');
         request('GET', '/data/logout').then(() => {
             window.history.back();
         });
@@ -71,20 +70,20 @@ export default class RoutesBase {
         const view = this[this.path[0]]?.bind(this);
         if (typeof view !== 'function') {
             getHtml(location.pathname)
-            .then((page) => {
-                if (page instanceof HTMLElement) {
-                    el.body.appendChild(page);
-                } else if (page instanceof NodeList) {
-                    page.forEach((element) => {
-                        el.body.appendChild(element);
-                    });
-                }
+                .then((page) => {
+                    if (page instanceof HTMLElement) {
+                        el.body.appendChild(page);
+                    } else if (page instanceof NodeList) {
+                        page.forEach((element) => {
+                            el.body.appendChild(element);
+                        });
+                    }
 
-                if (!el.nav?.nextElementSibling) {
-                    el.body.appendChild(views.errorPage(404));
-                    views.home();
-                }
-            });
+                    if (!el.nav?.nextElementSibling) {
+                        el.body.appendChild(views.errorPage(404));
+                        views.home();
+                    }
+                });
         } else {
             view();
         }
