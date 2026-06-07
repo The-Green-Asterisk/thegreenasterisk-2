@@ -1,6 +1,6 @@
-import { html } from "@elements";
+import Helpers from "@services/helpers";
 
-const textEditorTemplate = (identifier: string | null = null) => html`
+const textEditorTemplate = (identifier: string | null = null) => Helpers.html`
     <el-text-editor>
         <div id="text-editor-controls">
             <button id="italic-button" title="Italic"><i>I</i></button>

@@ -1,8 +1,8 @@
-import el from '@services/elements';
+import el from '@elements';
+import CookieJar from '@services/cookieJar';
 import { initLoader } from '@services/request';
 import views from '@views';
 import Routes from './routes';
-import CookieJar from '@services/cookieJar';
 
 initLoader();
 el.establishAuth();

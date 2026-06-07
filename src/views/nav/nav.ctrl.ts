@@ -1,4 +1,4 @@
-import el from "@elements";
+import el from "@services/baseElements";
 import { get } from "@services/request";
 
 export default function nav() {

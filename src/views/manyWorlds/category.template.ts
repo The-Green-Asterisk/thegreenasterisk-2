@@ -1,5 +1,7 @@
-import { html } from "@elements";
 import { Category, World } from "@entities";
+import Helpers from "@services/helpers";
+
+const html = Helpers.html;
 
 const categoryTemplate = (category: Category, world: World) => html`
     <div id="world-content">

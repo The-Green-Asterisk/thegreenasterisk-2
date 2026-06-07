@@ -1,4 +1,6 @@
-import el, {html} from '@elements';
+import Helpers from '@services/helpers';
+
+const html = Helpers.html;
 
 const lightboxTemplate = (srcUrl: string | null, type: 'img' | 'video' | 'iframe', iframeTemplate?: string) => html`
     <el-lightbox>

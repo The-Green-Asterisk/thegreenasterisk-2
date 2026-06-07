@@ -1,7 +1,10 @@
-import el, { html } from "@elements";
 import { Category, World, WorldEntity } from "@entities";
+import el from "@services/elements";
+import Helpers from "@services/helpers";
 import { get, post } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
+
+const html = Helpers.html;
 
 export default async function categoryCtrl(category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${category.name}`;

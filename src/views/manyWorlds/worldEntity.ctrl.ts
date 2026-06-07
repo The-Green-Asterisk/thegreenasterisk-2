@@ -1,8 +1,11 @@
-import el, { html } from "@elements";
 import { Category, Segment, Stat, User, World, WorldEntity } from "@entities";
+import el from "@services/baseElements";
 import FileService from "@services/fileService";
+import Helpers from "@services/helpers";
 import { del, get, post, put } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
+
+const html = Helpers.html;
 
 export default async function worldEntityCtrl(entity: WorldEntity, category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
@@ -162,7 +165,8 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             statsList.appendChild(statItem);
         });
     } else {
-        statsList.appendChild( html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
+        const noStatsMsg = html`<li id="no-stats-msg">This Entity Has No Stats</li>`;
+        statsList.appendChild(noStatsMsg);
     }
 
     sortSegments(entity.segments);
@@ -328,7 +332,9 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 });
             }
 
-            entityStatsDiv.appendChild(html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`);
+            entityStatsDiv.appendChild(
+                html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`
+            );
 
             entityStatsDiv.appendChild(editEditors);
         });

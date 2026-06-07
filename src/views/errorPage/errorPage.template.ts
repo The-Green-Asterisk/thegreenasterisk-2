@@ -1,4 +1,6 @@
-import { html } from "@elements";
+import Helpers from "@services/helpers";
+
+const html = Helpers.html;
 
 const errorPage = (errorCode: number) => html`
     <section>

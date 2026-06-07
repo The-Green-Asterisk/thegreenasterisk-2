@@ -1,6 +1,9 @@
-import el, { html } from '@elements';
+import el from '@elements';
 import { Tag, YouTubeVideo } from '@entities';
+import Helpers from '@services/helpers';
 import { del, get, post } from '@services/request';
+
+const html = Helpers.html;
 
 export default async function survivors() {
     if (el.survivors) {

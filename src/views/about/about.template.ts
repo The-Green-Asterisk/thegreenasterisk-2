@@ -1,4 +1,6 @@
-import { html } from "@services/elements";
+import Helpers from "@services/helpers";
+
+const html = Helpers.html;
 
 const about = () => html`
         <el-about>

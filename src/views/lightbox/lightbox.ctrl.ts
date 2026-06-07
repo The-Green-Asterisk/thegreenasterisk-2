@@ -1,4 +1,3 @@
-import el from '@elements';
 
 export default function lightbox() {
     const closeButton = document.getElementById('close-lightbox');

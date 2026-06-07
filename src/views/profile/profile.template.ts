@@ -1,6 +1,6 @@
-import { html } from "@services/elements";
+import Helpers from "@services/helpers";
 
-const profileTemplate = () => html`
+const profileTemplate = () => Helpers.html`
     <el-profile>
         <div class="content-slate">
             <div class="hero-slate" bg="/storage/images/spelljammer.jpg">

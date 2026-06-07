@@ -1,5 +1,7 @@
-import { html } from "@services/elements";
+import Helpers from "@services/helpers";
 import survivorsTemplate from "./survivors/survivors.template";
+
+const html = Helpers.html;
 
 const currentGamesTemplate = () => html`
     <el-current-games>

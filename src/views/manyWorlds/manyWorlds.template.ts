@@ -1,4 +1,5 @@
-import { html } from "@services/elements";
+import Helpers from "@services/helpers";
+const html = Helpers.html;
 
 const manyWorldsTemplate = () => html`
     <el-many-worlds>

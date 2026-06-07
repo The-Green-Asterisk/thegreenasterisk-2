@@ -1,5 +1,6 @@
-import el, { html } from '@elements';
+import el from '@elements';
 import { Category, World, WorldEntity } from '@entities';
+import Helpers from "@services/helpers";
 import { get, post } from '@services/request';
 import categoryCtrl from './category.ctrl';
 import categoryTemplate from './category.template';
@@ -7,6 +8,8 @@ import worldCtrl from './world.ctrl';
 import worldTemplate from './world.template';
 import worldEntityCtrl from './worldEntity.ctrl';
 import worldEntityTemplate from './worldEntity.template';
+
+const html = Helpers.html;
 
 export default async function manyWorlds(pathParams: Record<string, number>) {
     const { world, category, entity } = pathParams;

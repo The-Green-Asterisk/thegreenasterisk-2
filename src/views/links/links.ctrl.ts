@@ -1,4 +1,4 @@
-import el from '@elements'
+import el from '@elements';
 
 export default function links() {
     if (el.title) el.title.innerText = "Lord Steve's Links";

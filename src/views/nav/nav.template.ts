@@ -1,6 +1,7 @@
-import el, { html } from "@services/elements";
+import el from "@services/baseElements";
+import Helpers from "@services/helpers";
 
-const navTemplate = () => html`
+const navTemplate = () => Helpers.html`
     <nav>
         <a href="/">
             <img id="logo" src="/storage/images/BIG-AS.png" alt="The Green Asterisk" />

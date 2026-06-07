@@ -1,6 +1,6 @@
-import { html } from "@elements";
+import Helpers from "@services/helpers";
 
-const storeTemplate = () => html`
+const storeTemplate = () => Helpers.html`
     <el-store>
         <div class="content-slate">
             <section>

@@ -1,9 +1,11 @@
-import el, { html } from "@elements";
 import { Comment } from "@entities";
+import el from "@services/elements";
+import Helpers from "@services/helpers";
 import { del, get, post, put } from "@services/request";
 import textEditor from "@views/textEditor/textEditor.ctrl";
 import { CommentModel } from "../../entities/Comment";
 
+const html = Helpers.html;
 const noCommentsMsg = html`<p>No comments yet</p>`;
 
 export default async function commentSection(commentableType: string, commentableId: number) {

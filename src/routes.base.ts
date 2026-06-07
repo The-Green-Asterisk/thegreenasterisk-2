@@ -1,4 +1,4 @@
-import el from "@elements";
+import el from "@services/baseElements";
 import CookieJar from "@services/cookieJar";
 import request, { get, getHtml } from "@services/request";
 import views from "@views";
