@@ -1,5 +1,5 @@
+import el from "@elements";
 import { Category, World, WorldEntity } from "@entities";
-import el from "@services/elements";
 import Helpers from "@services/helpers";
 import { get, post } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";

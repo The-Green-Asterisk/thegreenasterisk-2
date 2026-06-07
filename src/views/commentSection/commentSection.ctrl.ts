@@ -1,5 +1,5 @@
+import el from "@elements";
 import { Comment } from "@entities";
-import el from "@services/elements";
 import Helpers from "@services/helpers";
 import { del, get, post, put } from "@services/request";
 import textEditor from "@views/textEditor/textEditor.ctrl";

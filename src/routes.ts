@@ -1,4 +1,4 @@
-import el from "@services/baseElements";
+import el from "@elements";
 import views from "@views";
 import RoutesBase from "./routes.base";
 

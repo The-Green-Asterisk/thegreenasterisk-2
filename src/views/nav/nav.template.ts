@@ -1,4 +1,4 @@
-import el from "@services/baseElements";
+import el from "@elements";
 import Helpers from "@services/helpers";
 
 const navTemplate = () => Helpers.html`

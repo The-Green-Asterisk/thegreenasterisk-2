@@ -1,5 +1,5 @@
+import el from "@elements";
 import { Category, Segment, Stat, User, World, WorldEntity } from "@entities";
-import el from "@services/baseElements";
 import FileService from "@services/fileService";
 import Helpers from "@services/helpers";
 import { del, get, post, put } from "@services/request";
