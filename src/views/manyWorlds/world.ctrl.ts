@@ -1,7 +1,7 @@
 import el from "@elements";
 import { Category, World } from "@entities";
 import Helpers from "@services/helpers";
-import { get, post, put } from "@services/request";
+import { getData, postData, putData } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
 
 const html = Helpers.html;
@@ -16,7 +16,7 @@ export default async function world(world: World) {
             const newDescription = prompt('Enter new world description:', world.description) || world.description;
             if (!!newDescription && newDescription !== world.description) {
                 world.description = newDescription.stripScripts();
-                put<World>('/data/edit-world', world).then((res) => {
+                putData<World>('/edit-world', world).then((res) => {
                     world = res;
                     const descriptionPara = el.divs.id('world-description')!.querySelector('p')!;
                     descriptionPara.textContent = world.description || 'No description available for this world.';
@@ -28,9 +28,9 @@ export default async function world(world: World) {
         el.divs.id('world-description')!.appendChild(editDescriptionBtn);
     })
 
-    const categories = await get<Category[]>('/data/get-categories', { worldId: world.id });
+    const categories = await getData<Category[]>('/get-categories', { worldId: world.id });
     const categoriesContainer = el.divs.id('world-categories')!;
-    
+
     if (categories?.length > 0) {
         categoriesContainer.innerHTML = '';
         categories.forEach(category => {
@@ -63,7 +63,7 @@ export default async function world(world: World) {
             const categoryName = prompt('Enter new category name:')?.trim().stripScripts();
             if (categoryName) {
                 const newCategory = new Category(categoryName, '', [world]);
-                post<Category>('/data/create-category', newCategory).then(response => {
+                postData<Category>('/create-category', newCategory).then(response => {
                     const noCatsMsg = el.paragraphs.id('no-categories');
                     if (noCatsMsg) noCatsMsg.remove();
                     const categoryDiv = html`

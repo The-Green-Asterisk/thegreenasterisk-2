@@ -1,16 +1,16 @@
 import el from "@elements";
 import { Category, World, WorldEntity } from "@entities";
 import Helpers from "@services/helpers";
-import { get, post } from "@services/request";
+import { getData, postData } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
 
 const html = Helpers.html;
 
 export default async function categoryCtrl(category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${category.name}`;
-    const commentSect = commentSection('category', category.id);
+    const commentSect = await commentSection('category', category.id);
 
-    const entities = await get<WorldEntity[][]>('/data/get-entities', { categoryId: category.id }).catch(() => []);
+    const entities = await getData<WorldEntity[][]>('/get-entities', { categoryId: category.id }).catch(() => []);
     const entitiesContainer = el.divs.id('category-entities')!;
     if (entities?.length > 0) {
         entitiesContainer.innerHTML = '';
@@ -45,7 +45,7 @@ export default async function categoryCtrl(category: Category, world: World) {
             const entityName = prompt(`Enter new ${singularize(category.name)} name:`)?.trim().stripScripts();
             if (entityName) {
                 const newEntity = new WorldEntity(entityName, '', '', '', [world], [category]);
-                post<WorldEntity>('/data/create-entity', newEntity).then(response => {
+                postData<WorldEntity>('/create-entity', newEntity).then(response => {
                     location.href = `/many-worlds/world/${world.id}/category/${category.id}/entity/${response.id}`;
                 }).catch(error => {
                     alert(`Error creating new ${singularize(category.name)}: ` + error.message);
@@ -58,29 +58,29 @@ export default async function categoryCtrl(category: Category, world: World) {
 
 const singularize = (word: string) => {
     const endings: { [string: string]: string } = {
-      ves: 'f',
-      ivies: 'ivy', // handles exceptions like 'ivies' -> 'ivy'
-      ies: 'y',
-      i: 'us', // Latin plurals like 'cacti' -> 'cactus'
-      ea: 'eum', // Latin plurals like 'data' -> 'datum' (often treated as uncountable in modern English)
-      zes: 'ze',
-      ses: 's',
-      es: 'e',
-      s: ''
+        ves: 'f',
+        ivies: 'ivy', // handles exceptions like 'ivies' -> 'ivy'
+        ies: 'y',
+        i: 'us', // Latin plurals like 'cacti' -> 'cactus'
+        ea: 'eum', // Latin plurals like 'data' -> 'datum' (often treated as uncountable in modern English)
+        zes: 'ze',
+        ses: 's',
+        es: 'e',
+        s: ''
     };
-  
+
     // Sort endings by length in descending order to match the longest suffix first
     const sortedEndings = Object.keys(endings).sort((a, b) => b.length - a.length);
-  
+
     for (const ending of sortedEndings) {
-      const regex = new RegExp(`${ending}$`);
-      if (regex.test(word)) {
-        // Handle 'lives' -> 'life' exception correctly with 'f'
-        if (ending === 'ves' && word !== 'lives') {
-            return word.replace(regex, endings[ending] + 'e'); // e.g., 'knives' -> 'knife'
+        const regex = new RegExp(`${ending}$`);
+        if (regex.test(word)) {
+            // Handle 'lives' -> 'life' exception correctly with 'f'
+            if (ending === 'ves' && word !== 'lives') {
+                return word.replace(regex, endings[ending] + 'e'); // e.g., 'knives' -> 'knife'
+            }
+            return word.replace(regex, endings[ending]);
         }
-        return word.replace(regex, endings[ending]);
-      }
     }
     return word; // return original word if no rule matches
 };

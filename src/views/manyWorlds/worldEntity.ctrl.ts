@@ -2,7 +2,7 @@ import el from "@elements";
 import { Category, Segment, Stat, User, World, WorldEntity } from "@entities";
 import FileService from "@services/fileService";
 import Helpers from "@services/helpers";
-import { del, get, post, put } from "@services/request";
+import { delData, getData, postData, putData } from "@services/request";
 import commentSection from "@views/commentSection/commentSection.ctrl";
 
 const html = Helpers.html;
@@ -10,7 +10,7 @@ const html = Helpers.html;
 export default async function worldEntityCtrl(entity: WorldEntity, category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name}`;
     const commentSect = await commentSection('worldEntity', entity.id);
-    
+
     const segmentDiv = el.divs.id('entity-segments')!;
 
     const sortSegments = (segments: Segment[]) => {
@@ -26,7 +26,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             const newDescription = segmentDescription.innerHTML.doubleBreakDivs().stripScripts().trim();
             if (newDescription && newDescription !== segment.description) {
                 segment.description = newDescription;
-                put<Segment>('/data/edit-segment', segment).then((res) => {
+                putData<Segment>('/edit-segment', segment).then((res) => {
                     segment = res;
                 }).catch(error => {
                     alert('Error updating segment: ' + error);
@@ -61,7 +61,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         segmentDescription!.contentEditable = 'true';
         segmentDescription!.innerHTML = segment.description
             ? segment.description
-                : 'No description available for this segment.';
+            : 'No description available for this segment.';
         segmentDescription!.focus();
         (event.target as HTMLButtonElement).style.display = 'none';
 
@@ -70,7 +70,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
     const deleteSegment = (segment: Segment) => (event: Event) => {
         if (confirm(`Are you sure you want to delete the segment "${segment.name}"? This action cannot be undone.`)) {
-            del<void>('/data/delete-segment', segment).then(() => {
+            delData<void>('/delete-segment', segment).then(() => {
                 entity.segments = entity.segments.filter(s => s.id !== segment.id);
                 (event.target as HTMLButtonElement).parentElement!.remove();
             }).catch(error => {
@@ -124,12 +124,12 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                         });
                     }
                     segment.displayOrder = newOrder;
-                    put<Segment>('/data/edit-segment', segment).then(() => {
+                    putData<Segment>('/edit-segment', segment).then(() => {
                         sortSegments(entity.segments);
                         segmentDiv.innerHTML = '';
                         entity.segments.forEach(createSegmentElement);
 
-                        put<WorldEntity>('/data/edit-entity', entity).catch(error => {
+                        putData<WorldEntity>('/edit-entity', entity).catch(error => {
                             alert('Error updating entity with new segment order: ' + error);
                         });
                     }).catch(error => {
@@ -193,7 +193,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 const newDescription = descriptionP.innerHTML.doubleBreakDivs().stripScripts().trim();
                 if (newDescription && newDescription !== entity.description) {
                     entity.description = newDescription;
-                    put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                    putData<WorldEntity>('/edit-entity', entity).then((res) => {
                         entity = res;
                     }).catch(error => {
                         alert('Error updating entity description: ' + error);
@@ -228,7 +228,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
             if (newShortDesc && newShortDesc !== entity.shortDescription) {
                 entity.shortDescription = newShortDesc.stripScripts();
-                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                putData<WorldEntity>('/edit-entity', entity).then((res) => {
                     entity = res;
                 }).catch(error => {
                     alert('Error updating short description: ' + error);
@@ -243,7 +243,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             if (segmentName) {
                 const newSegment = new Segment(segmentName.stripScripts(), '', entity.segments.length + 1);
                 entity.segments.push(newSegment);
-                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                putData<WorldEntity>('/edit-entity', entity).then((res) => {
                     entity = res;
                     newSegment.id = res.segments[res.segments.length - 1].id;
                     createSegmentElement(newSegment);
@@ -254,13 +254,13 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             }
         };
         segmentDiv.appendChild(addSegmentBtn);
-        
+
         const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
         addStatBtn.onclick = () => {
             const statName = prompt('Enter stat name:')?.trim().stripScripts();
             const statValue = prompt('Enter stat value:')?.trim().stripScripts();
             if (statName && statValue) {
-                post<Stat>('/data/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
+                postData<Stat>('/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
                     const noStatsMessage = statsList.querySelector('#no-stats-msg');
                     if (noStatsMessage) noStatsMessage.remove();
                     entity.stats.push(response);
@@ -290,7 +290,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             }
             if (confirm('Are you sure you want to remove the entity image?')) {
                 entity.entityImgUrl = '';
-                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                putData<WorldEntity>('/edit-entity', entity).then((res) => {
                     entity = res;
                     entityThumbnail.src = '/storage/images/default-thumbnail.jpg';
                     entityThumbnail.style.cursor = 'pointer';
@@ -307,7 +307,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             // add multiple selection for editors
             let allUsers: User[] = [];
             const editEditors = html`<select multiple id="edit-entity-editors"></select>` as HTMLSelectElement;
-            get<User[]>('/data/get-all-users').then(allUsersRes => {
+            getData<User[]>('/get-all-users').then(allUsersRes => {
                 allUsers = allUsersRes;
                 allUsers.forEach(user => {
                     const option = html`<option value="${user.id}">${user.firstName} ${user.lastName} (${user.username})</option>` as HTMLOptionElement;
@@ -325,7 +325,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     return allUsers.find(user => user.id === id);
                 }).filter(user => user !== undefined) as User[];
                 entity.editors = selectedUsers;
-                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                putData<WorldEntity>('/edit-entity', entity).then((res) => {
                     entity = res;
                 }).catch(error => {
                     alert('Error updating entity editors: ' + error);
@@ -363,7 +363,7 @@ const buildStatItem = (stat: Stat) => {
             if (newName && newValue && (newName !== stat.name || newValue !== stat.value)) {
                 stat.name = newName.stripScripts();
                 stat.value = newValue.stripScripts();
-                put<Stat>('/data/edit-stat', stat).then((res) => {
+                putData<Stat>('/edit-stat', stat).then((res) => {
                     stat = res;
                     statElement.querySelector('span')!.innerHTML = `<b>${stat.name}:</b> ${stat.value}`;
                 }).catch(error => {
@@ -375,9 +375,9 @@ const buildStatItem = (stat: Stat) => {
         const deleteBtn = statElement.querySelector('.fa-times') as HTMLElement;
         deleteBtn.onclick = () => {
             if (confirm(`Are you sure you want to delete the stat "${stat.name}"? This action cannot be undone.`)) {
-                del<void>('/data/delete-stat', stat).then(() => {
+                delData<void>('/delete-stat', stat).then(() => {
                     statElement.parentElement!.querySelectorAll('li').length === 1 &&
-                    statElement.parentElement!.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
+                        statElement.parentElement!.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
                     statElement.remove();
                 }).catch(error => {
                     alert('Error deleting stat: ' + error);
@@ -397,7 +397,7 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
         if (file) {
             FileService.uploadFile(file, 'images').then(filePath => {
                 entity.entityImgUrl = filePath;
-                put<WorldEntity>('/data/edit-entity', entity).then((res) => {
+                putData<WorldEntity>('/edit-entity', entity).then((res) => {
                     entity = res;
                     entityThumbnail.src = entity.entityImgUrl;
                     entityThumbnail.title = 'Click to enlarge image';

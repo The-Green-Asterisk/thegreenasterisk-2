@@ -1,5 +1,5 @@
 import el from "@elements";
-import request, { get, getHtml } from "@services/request";
+import request, { getData, getHtml } from "@services/request";
 import views from "@views";
 import User from "./entities/User";
 
@@ -18,7 +18,7 @@ export default class RoutesBase {
 
         if (!!this.query.sessionKey) {
             sessionStorage.setItem('sessionKey', this.query.sessionKey as string);
-            get('/data/check-auth');
+            getData('/check-auth');
         }
     }
 

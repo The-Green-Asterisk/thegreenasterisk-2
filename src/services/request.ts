@@ -17,7 +17,7 @@ export function initLoader() {
             if (!options.headers) options.headers = { 'X-Requested-With': 'Elemental' } as HeadersInit;
             return oldFetch(url, options).then((resp) => {
                 el.loader.remove();
-                if (!resp.ok) return resp.json().then(err => {throw err;});
+                if (!resp.ok) return resp.json().then(err => { throw err; });
                 return resp;
             });
         }
@@ -30,7 +30,7 @@ export default async function request<T = Response>(
     path: string,
     data: RequestData | object | null = null,
     evalResult = true,
- ): Promise<T extends Response ? Response : T> {
+): Promise<T extends Response ? Response : T> {
     let payLoad!: RequestInit;
     let sessionKey = CookieJar.get<string>('sessionKey');
 
@@ -86,7 +86,7 @@ export async function get<T = Response>(path: string, data: RequestData | null =
 export async function getHtml<T extends HTMLElement | NodeListOf<HTMLElement>>(path: string, data: RequestData | null = null) {
     return await request('GET', path, data, false)
         .then(response => response.text())
-        .then(html => { 
+        .then(html => {
             const ele = new DOMParser().parseFromString(html, 'text/html').body.childNodes;
             var result = ele.length === 1 ? ele[0] as T : ele as NodeList;
             return result as T;
@@ -103,6 +103,22 @@ export async function put<T = Response>(path: string, data: RequestData | object
 
 export async function del<T = Response>(path: string, data: RequestData | object | null = null) {
     return await request<T>('DELETE', path, data, false);
+}
+
+export async function getData<T = Response>(path: string, data: RequestData | null = null) {
+    return await request<T>('GET', `/data${path}`, data);
+}
+
+export async function postData<T = Response>(path: string, data: RequestData | object | null = null) {
+    return await request<T>('POST', `/data${path}`, data);
+}
+
+export async function putData<T = Response>(path: string, data: RequestData | object | null = null) {
+    return await request<T>('PUT', `/data${path}`, data);
+}
+
+export async function delData<T = Response>(path: string, data: RequestData | object | null = null) {
+    return await request<T>('DELETE', `/data${path}`, data, false);
 }
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';

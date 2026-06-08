@@ -1,7 +1,7 @@
 import el from '@elements';
 import { Category, World, WorldEntity } from '@entities';
 import Helpers from "@services/helpers";
-import { get, post } from '@services/request';
+import { getData, postData } from '@services/request';
 import categoryCtrl from './category.ctrl';
 import categoryTemplate from './category.template';
 import worldCtrl from './world.ctrl';
@@ -20,8 +20,8 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
     el.title.textContent = 'Many Worlds';
     const contentSection = el.sections[0];
 
-    const worlds = await get<World[]>('/data/get-worlds')
-    
+    const worlds = await getData<World[]>('/get-worlds')
+
     const tabsContainer = el.divs.id('tabs-container')!;
     worlds.forEach(world => {
         const tab = html`<button class="tab">${world.name}</button>`;
@@ -46,7 +46,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             const worldName = prompt('Enter new world name:')?.trim().stripScripts();
             if (worldName) {
                 const newWorld = new World(worldName, '');
-                post<World>('/data/create-world', newWorld).then(response => {
+                postData<World>('/create-world', newWorld).then(response => {
                     worlds.push(response);
                     const newTab = html`<button class="tab">${response.name}</button>`;
                     newTab.onclick = () => {
@@ -78,8 +78,8 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
     `;
 
     if (entityId && categoryId && worldId) {
-        const entity = await get<WorldEntity>('/data/get-world-entity', { entityId, categoryId, worldId });
-        const category = await get<Category>('/data/get-category', { categoryId, worldId });
+        const entity = await getData<WorldEntity>('/get-world-entity', { entityId, categoryId, worldId });
+        const category = await getData<Category>('/get-category', { categoryId, worldId });
         if (!entity || !category) {
             contentSection.appendChild(defaultContent);
             history.replaceState({}, '', `/many-worlds`);
@@ -89,7 +89,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         worldEntityCtrl(entity, category, worlds.find(w => w.id === worldId)!);
         history.replaceState({ world: worlds.find(w => w.id === worldId) }, '', `/many-worlds/world/${worldId}/category/${categoryId}/entity/${entityId}`);
     } else if (categoryId && worldId) {
-        const category = await get<Category>('/data/get-category', { categoryId, worldId });
+        const category = await getData<Category>('/get-category', { categoryId, worldId });
         if (!category) {
             contentSection.appendChild(defaultContent);
             history.replaceState({}, '', `/many-worlds`);

@@ -1,7 +1,7 @@
 import el from '@elements';
 import { Tag, YouTubeVideo } from '@entities';
 import Helpers from '@services/helpers';
-import { del, get, post } from '@services/request';
+import { delData, getData, postData } from '@services/request';
 
 const html = Helpers.html;
 
@@ -11,7 +11,7 @@ export default async function survivors() {
         const videoList = el.divs.id('video-list')!;
         const content = el.divs.id('content');
 
-        const youtubeVideos = await get<YouTubeVideo[]>('/data/get-youtube-videos')
+        const youtubeVideos = await getData<YouTubeVideo[]>('/get-youtube-videos')
             .catch(error => console.error('Error fetching YouTube videos:', error));
 
         if (videoList && youtubeVideos) youtubeVideos.forEach(printVideo);
@@ -47,7 +47,7 @@ export default async function survivors() {
             if (removeButton && typeof removeButton !== 'boolean')
                 removeButton.onclick = () => {
                     if (confirm(`Are you sure you want to remove ${video.title}?`)) {
-                        del('/data/remove-youtube-video', { id: video.id }).then(() => {
+                        delData<void>('/remove-youtube-video', { id: video.id }).then(() => {
                             removeButton.parentElement?.remove();
                         }).catch(error => {
                             console.error('Error removing video:', error);
@@ -117,7 +117,7 @@ export default async function survivors() {
                         tags
                     )
 
-                    post<YouTubeVideo>('/data/save-youtube-video', newVideo).then(video => {
+                    postData<YouTubeVideo>('/save-youtube-video', newVideo).then(video => {
                         printVideo(video);
                         el.inputs.forEach(input => input.value = '');
                     }).catch(error => {

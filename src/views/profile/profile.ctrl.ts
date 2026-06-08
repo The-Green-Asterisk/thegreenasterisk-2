@@ -1,8 +1,8 @@
 import el from '@elements';
-import { get, put } from '@services/request';
+import { getData, putData } from '@services/request';
 import User from '../../entities/User';
 
-export default function profile(query: {[key:string]: any}) {
+export default function profile(query: { [key: string]: any }) {
     el.title.textContent = 'Profile';
     const editButton = el.buttons?.id('edit-profile');
     if (!el.currentUser) {
@@ -13,7 +13,7 @@ export default function profile(query: {[key:string]: any}) {
     let profileUsername = el.paragraphs?.id('profile-username');
     let profilePicture = el.imgs?.id('profile-picture') as HTMLImageElement;
     let profileAge = el.paragraphs?.id('profile-age');
-    
+
     if (!profileName || !profileEmail || !profileUsername || !profilePicture || !profileAge) {
         console.error('Failed to load profile data.');
         return;
@@ -36,9 +36,9 @@ export default function profile(query: {[key:string]: any}) {
             titleDisplay.style.zIndex = '1000';
             document.body.appendChild(titleDisplay);
 
-            setTimeout(function() {
+            setTimeout(function () {
                 if (document.body.contains(titleDisplay)) {
-                document.body.removeChild(titleDisplay);
+                    document.body.removeChild(titleDisplay);
                 }
             }, 3000);
         }
@@ -64,7 +64,7 @@ export default function profile(query: {[key:string]: any}) {
     ageInput.min = '0';
     ageInput.max = '120';
 
-    get<User>('/data/profile', {id: query.id ?? el.currentUser?.id ?? 0})
+    getData<User>('/profile', { id: query.id ?? el.currentUser?.id ?? 0 })
         .then((response) => {
             if (response) {
                 if (response.firstName && response.firstName !== '') {
@@ -130,7 +130,7 @@ export default function profile(query: {[key:string]: any}) {
         user.id = el.currentUser?.id ?? 0;
 
         if (user.firstName && user.lastName && user.email) {
-            put<User>('/data/update-profile', user)
+            putData<User>('/update-profile', user)
                 .then((response) => {
                     if (response && editButton) {
                         firstNameInput.value = response.firstName;

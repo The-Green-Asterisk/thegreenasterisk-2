@@ -1,17 +1,17 @@
 import el from "@elements";
-import { get } from "@services/request";
+import { getData } from "@services/request";
 
 export default function nav() {
     const discordLoginButton = el.buttons?.id('discord_login');
-    if (discordLoginButton) 
+    if (discordLoginButton)
         discordLoginButton.onclick = async () => {
             if (el.isAuth) {
                 window.location.href = '/logout';
             } else {
-                type DiscordCreds = { client_id:string, redirect_url:string, scope:string };
+                type DiscordCreds = { client_id: string, redirect_url: string, scope: string };
                 const originatingUrl = location.pathname;
                 const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                const { client_id, redirect_url, scope } = await get<DiscordCreds>('/data/get-discord-creds', { state, originatingUrl });
+                const { client_id, redirect_url, scope } = await getData<DiscordCreds>('/get-discord-creds', { state, originatingUrl });
                 window.location.href = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(client_id)}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
             }
         }

@@ -1,7 +1,7 @@
 import el from "@elements";
 import { Comment } from "@entities";
 import Helpers from "@services/helpers";
-import { del, get, post, put } from "@services/request";
+import { delData, getData, postData, putData } from "@services/request";
 import textEditor from "@views/textEditor/textEditor.ctrl";
 import { CommentModel } from "../../entities/Comment";
 
@@ -27,7 +27,7 @@ export default async function commentSection(commentableType: string, commentabl
     const commentsHeader = html`<h2>Comments</h2>`;
     section.appendChild(commentsHeader);
 
-    const comments = await get<Comment[]>('/data/get-comments', { commentableType, commentableId });
+    const comments = await getData<Comment[]>('/get-comments', { commentableType, commentableId });
     if (comments?.length > 0) {
         comments.forEach(comment => {
             section.appendChild(buildComment(comment));
@@ -59,10 +59,10 @@ export default async function commentSection(commentableType: string, commentabl
             newComment.commentableId = commentableId;
             newComment.authorId = el.currentUser!.id;
 
-            const savedCommment = await post<Comment>('/data/add-comment', newComment);
+            const savedCommment = await postData<Comment>('/add-comment', newComment);
             noCommentsMsg.remove();
             commentContentDiv.innerHTML = '';
-            el.textEditor?.insertAdjacentElement('beforebegin',buildComment(savedCommment));
+            el.textEditor?.insertAdjacentElement('beforebegin', buildComment(savedCommment));
         };
 
         submitSection.appendChild(newCommentButton);
@@ -96,7 +96,7 @@ const buildComment = (comment: Comment) => {
         deleteButton.style.display = 'inline';
         deleteButton.onclick = async () => {
             if (confirm('Are you sure you want to delete this comment?')) {
-                await del('/data/delete-comment', { commentId: comment.id });
+                await delData('/delete-comment', { commentId: comment.id });
                 commentElement.remove();
 
                 const commentNum = el.sections.id('comment-section')?.querySelectorAll('.comment').length || 0;
@@ -115,7 +115,7 @@ const buildComment = (comment: Comment) => {
                 const updatedComment = new CommentModel();
                 updatedComment.id = comment.id;
                 updatedComment.content = newContent.doubleBreakDivs().stripScripts().trim();
-                put<Comment>('/data/edit-comment', updatedComment).then((res) => {
+                putData<Comment>('/edit-comment', updatedComment).then((res) => {
                     contentDiv.innerHTML = res.content;
                 }).catch(error => {
                     alert('Error updating comment: ' + error.message);
