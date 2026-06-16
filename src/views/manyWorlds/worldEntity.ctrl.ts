@@ -175,7 +175,6 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     if (entity.entityImgUrl) {
         el.imgs.id('entity-thumbnail')!.title = 'Click to enlarge image';
         el.imgs.id('entity-thumbnail')!.style.cursor = 'pointer';
-        el.setLightBox();
     }
 
     if (el.checkAdmin<boolean>() || entity.editors.find(e => e.id === el.currentUser?.id)) {
@@ -401,7 +400,6 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
                     entity = res;
                     entityThumbnail.src = entity.entityImgUrl;
                     entityThumbnail.title = 'Click to enlarge image';
-                    el.setLightBox();
                 }).catch(error => {
                     alert('Error updating entity with new image URL: ' + error);
                 });

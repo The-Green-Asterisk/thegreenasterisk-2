@@ -42,7 +42,6 @@ export default async function survivors() {
                 </div>
             `;
             videoList.appendChild(vid);
-            el.setLightBox();
             const removeButton = el.checkAdmin(el.buttons.id(`remove-video-${video.id}`));
             if (removeButton && typeof removeButton !== 'boolean')
                 removeButton.onclick = () => {
