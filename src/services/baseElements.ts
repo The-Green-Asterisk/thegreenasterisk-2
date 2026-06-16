@@ -1,6 +1,7 @@
 import StorageBox from "@services/storageBox";
 import { lightbox, lightboxTemplate } from "@views";
 import User from "../entities/User";
+import Helpers from "./helpers";
 
 type FormValues = { [key: string]: string };
 declare global {
@@ -161,6 +162,7 @@ export default class BaseEl {
             let spinner = document.createElement('spinner');
             loader = document.createElement('loader') as HTMLElement;
             loader.appendChild(spinner);
+            // If multiple loaders end up being created, keep track of them and remove them as necessary
             loader.remove = ((oldRemove) => {
                 return () => {
                     this.loaderCount--;
@@ -230,30 +232,7 @@ export default class BaseEl {
         return this.getElement<HTMLElement>('el-text-editor');
     }
 
-    public static setLightBox = () => document.querySelectorAll('[light-box]').forEach(el => {
-        // this will create the lightBox attribute and use it to set the element's onclick event
-        (el as HTMLElement).onclick = () => {
-            const srcUrl = el.getAttribute('src') ?? el.getAttribute('light-box');
-            let type = el.tagName.toLowerCase() as 'img' | 'video' | 'iframe';
-            if (type !== 'img' && type !== 'video' && type !== 'iframe' && el.hasAttribute('light-box-type')) {
-                type = el.getAttribute('light-box-type') as 'img' | 'video' | 'iframe';
-            }
-            if (srcUrl) {
-                document.querySelector('body')?.appendChild(lightboxTemplate(srcUrl, type));
-                lightbox();
-            }
-        };
-    });
-
-    public static setBackground = () => document.querySelectorAll('[bg]').forEach(el => {
-        // this will create the bg attribute and use it to set the element's background image
-        (el as HTMLElement).style.backgroundImage = `url(${el.getAttribute('bg')})`;
-    });
-
     constructor(private submitted = false) {
-        BaseEl.setBackground();
-        BaseEl.setLightBox();
-
         if (this.selectors && this.selectors.length > 0) {
             // this will make selector options toggle on mousedown
             // which is not the default behavior. This can be deleted
@@ -349,12 +328,42 @@ export default class BaseEl {
 };
 
 setTimeout(() => {
+    // these functions will run after the page is built and displayed so that
+    // any programmatic changes can be made in the page's controller
+
     let ids = new Set<string>();
     document.querySelectorAll('[id]').forEach((el) => {
+        // this will check for duplicate IDs and warn you when one is found.
+        // unique IDs are necessary for certain aspects of the way Elemental is set up.
         if (ids.has(el.id)) {
             console.warn(`Duplicate id "${el.id}" found!`);
         } else {
             ids.add(el.id);
         }
+    });
+
+    document.querySelectorAll('[light-box]').forEach(el => {
+        // this will create the lightBox attribute and use it to set the element's onclick event
+        (el as HTMLElement).onclick = () => {
+            const srcUrl = el.getAttribute('src') ?? el.getAttribute('light-box');
+            let type = el.tagName.toLowerCase() as 'img' | 'video' | 'iframe';
+            if (type !== 'img' && type !== 'video' && type !== 'iframe' && el.hasAttribute('light-box-type')) {
+                type = el.getAttribute('light-box-type') as 'img' | 'video' | 'iframe';
+            }
+            if (srcUrl) {
+                document.querySelector('body')?.appendChild(lightboxTemplate(srcUrl, type));
+                lightbox();
+            }
+        };
+    });
+
+    document.querySelectorAll('[bg]').forEach(el => {
+        // this will create the bg attribute and use it to set the element's background image
+        (el as HTMLElement).style.backgroundImage = `url(${el.getAttribute('bg')})`;
+    });
+
+    document.querySelectorAll<HTMLElement>('[title]').forEach(el => {
+        // this will display the title of the element when it is tapped
+        el.addEventListener('touchstart', Helpers.displayTitleOnTap);
     });
 }, 1000);

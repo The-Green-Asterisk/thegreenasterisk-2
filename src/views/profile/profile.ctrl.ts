@@ -19,31 +19,6 @@ export default function profile(query: { [key: string]: any }) {
         return;
     }
 
-    function displayTitleOnTap(this: HTMLElement, event: TouchEvent) {
-        if (this.title) {
-            const titleDisplay = document.createElement('div');
-            titleDisplay.textContent = this.title;
-            titleDisplay.style.position = 'absolute';
-
-            const rect = this.getBoundingClientRect();
-            titleDisplay.style.left = (event.touches[0].clientX - (titleDisplay.offsetWidth / 2)) + 'px';
-            titleDisplay.style.top = (rect.bottom + 5) + 'px';
-
-            titleDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            titleDisplay.style.color = 'white';
-            titleDisplay.style.padding = '5px';
-            titleDisplay.style.borderRadius = '3px';
-            titleDisplay.style.zIndex = '1000';
-            document.body.appendChild(titleDisplay);
-
-            setTimeout(function () {
-                if (document.body.contains(titleDisplay)) {
-                    document.body.removeChild(titleDisplay);
-                }
-            }, 3000);
-        }
-    }
-
     const firstNameInput = document.createElement('input');
     firstNameInput.type = 'text';
     firstNameInput.placeholder = 'First Name';
@@ -105,9 +80,6 @@ export default function profile(query: { [key: string]: any }) {
         profileEmail.appendChild(emailInput);
         profileAge.textContent = '';
         profileAge.appendChild(ageInput);
-
-        profilePicture.addEventListener('touchstart', displayTitleOnTap);
-        profileUsername.addEventListener('touchstart', displayTitleOnTap);
     }
     const deactivateEditMode = () => {
         profileName.textContent = firstNameInput.value + ' ' + lastNameInput.value;
@@ -117,9 +89,6 @@ export default function profile(query: { [key: string]: any }) {
         lastNameInput.remove();
         emailInput.remove();
         ageInput.remove();
-
-        profilePicture.removeEventListener('touchstart', displayTitleOnTap);
-        profileUsername.removeEventListener('touchstart', displayTitleOnTap);
     }
     const updateProfile = () => {
         const user = new User();
