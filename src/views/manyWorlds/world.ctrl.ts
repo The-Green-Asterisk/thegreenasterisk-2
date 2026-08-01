@@ -12,7 +12,7 @@ export default async function world(world: World) {
 
     el.checkAdmin(() => {
         const editDescriptionBtn = html`<i class="fas fa-pencil edit-world-description" title="Edit Description"></i>`;
-        editDescriptionBtn.onclick = () => {
+        editDescriptionBtn.addEventListener('click', () => {
             const newDescription = prompt('Enter new world description:', world.description) || world.description;
             if (!!newDescription && newDescription !== world.description) {
                 world.description = newDescription.stripScripts();
@@ -24,7 +24,7 @@ export default async function world(world: World) {
                     alert('Error updating world description: ' + error.message);
                 });
             }
-        };
+        }, { signal: el.signal });
         el.divs.id('world-description')!.appendChild(editDescriptionBtn);
     })
 
@@ -59,7 +59,7 @@ export default async function world(world: World) {
 
     el.checkAdmin(() => {
         const addCategoryBtn = html`<button id="add-category-btn">Add Category</button>`;
-        addCategoryBtn.onclick = () => {
+        addCategoryBtn.addEventListener('click', () => {
             const categoryName = prompt('Enter new category name:')?.trim().stripScripts();
             if (categoryName) {
                 const newCategory = new Category(categoryName, '', [world]);
@@ -77,7 +77,7 @@ export default async function world(world: World) {
                     alert('Error creating category: ' + error.message);
                 });
             }
-        };
+        }, { signal: el.signal });
         categoriesContainer.appendChild(addCategoryBtn);
     })
 }

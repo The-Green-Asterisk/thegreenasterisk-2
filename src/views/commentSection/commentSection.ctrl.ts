@@ -46,7 +46,7 @@ export default async function commentSection(commentableType: string, commentabl
         section.appendChild(submitSection);
 
         const newCommentButton = html`<button id="submit-comment-btn">Submit Comment</button>`;
-        newCommentButton.onclick = async () => {
+        newCommentButton.addEventListener('click', async () => {
             const commentContentDiv = el.divs.id('text-editor-content-new-comment')!;
             const content = commentContentDiv.innerHTML.doubleBreakDivs().stripScripts().trim();
             if (content.length === 0) {
@@ -63,8 +63,7 @@ export default async function commentSection(commentableType: string, commentabl
             noCommentsMsg.remove();
             commentContentDiv.innerHTML = '';
             el.textEditor?.insertAdjacentElement('beforebegin', buildComment(savedCommment));
-        };
-
+        }, { signal: el.signal });
         submitSection.appendChild(newCommentButton);
         section.appendChild(submitSection);
     } else {
@@ -94,7 +93,7 @@ const buildComment = (comment: Comment) => {
 
     if (el.checkAdmin<boolean>() || el.currentUser?.id === comment.author.id) {
         deleteButton.style.display = 'inline';
-        deleteButton.onclick = async () => {
+        deleteButton.addEventListener('click', async () => {
             if (confirm('Are you sure you want to delete this comment?')) {
                 await delData('/delete-comment', { commentId: comment.id });
                 commentElement.remove();
@@ -104,10 +103,10 @@ const buildComment = (comment: Comment) => {
                     el.sections.id('comment-section')?.querySelector('h2')?.insertAdjacentElement("afterend", noCommentsMsg);
                 }
             }
-        };
+        }, { signal: el.signal });
 
         editButton.style.display = 'inline';
-        editButton.onclick = () => {
+        editButton.addEventListener('click', () => {
             const contentDiv = commentElement.querySelector(`div#comment-${comment.id}`) as HTMLDivElement;
             const originalContent = contentDiv.innerHTML;
             const newContent = prompt('Edit your comment:', originalContent);
@@ -121,7 +120,7 @@ const buildComment = (comment: Comment) => {
                     alert('Error updating comment: ' + error.message);
                 });
             }
-        };
+        }, { signal: el.signal });
     } else {
         deleteButton.style.display = 'none';
         editButton.style.display = 'none';

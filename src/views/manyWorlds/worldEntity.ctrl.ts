@@ -22,7 +22,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
     const createSaveSegmentBtn = (segmentDescription: HTMLElement, segment: Segment, editBtn: HTMLButtonElement) => {
         const saveBtn = html`<button class="save-segment-btn">Save Segment</button>`;
-        saveBtn.onclick = () => {
+        saveBtn.addEventListener('click', () => {
             const newDescription = segmentDescription.innerHTML.doubleBreakDivs().stripScripts().trim();
             if (newDescription && newDescription !== segment.description) {
                 segment.description = newDescription;
@@ -38,7 +38,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             segmentDescription.contentEditable = 'false';
             saveBtn.remove();
             editBtn.style.display = 'inline-block';
-        };
+        }, { signal: el.signal });
         document.addEventListener('keydown', function handler(e) {
             if (e.key === 'Escape') {
                 segmentDescription.contentEditable = 'false';
@@ -101,7 +101,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
         const displayOrderInput = segmentContent.querySelector(`#display-order-${segment.id}`) as HTMLInputElement | undefined;
         if (displayOrderInput) {
-            displayOrderInput.onchange = () => {
+            displayOrderInput.addEventListener('change', () => {
                 let newOrder = parseInt(displayOrderInput.value, 10);
                 if (!isNaN(newOrder) && newOrder !== segment.displayOrder) {
                     if (newOrder < 1) newOrder = 1;
@@ -137,14 +137,13 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     });
 
                 }
-            };
+            }, { signal: el.signal });
         }
 
         const editSegmentBtn = segmentContent.querySelector('.edit-segment-btn') as HTMLButtonElement | undefined;
-        if (editSegmentBtn) editSegmentBtn.onclick = editSegment(segment);
-
+        if (editSegmentBtn) editSegmentBtn.addEventListener('click', editSegment(segment), { signal: el.signal });
         const deleteSegmentBtn = segmentContent.querySelector('.delete-segment-btn') as HTMLButtonElement | undefined;
-        if (deleteSegmentBtn) deleteSegmentBtn.onclick = deleteSegment(segment);
+        if (deleteSegmentBtn) deleteSegmentBtn.addEventListener('click', deleteSegment(segment), { signal: el.signal });
 
         const btn = el.buttons.id('add-segment-btn');
         if (btn) {
@@ -179,7 +178,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
     if (el.checkAdmin<boolean>() || entity.editors.find(e => e.id === el.currentUser?.id)) {
         const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
-        editEntityDescriptionBtn.onclick = () => {
+        editEntityDescriptionBtn.addEventListener('click', () => {
             editEntityDescriptionBtn.style.display = 'none';
             const descriptionP = el.divs.id('entity-description')!.querySelector('p')!;
             descriptionP.contentEditable = 'true';
@@ -188,7 +187,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 : 'No description available for this entity.';
             descriptionP.focus();
             const saveBtn = html`<button id="save-entity-description-btn">Save Description</button>`;
-            saveBtn.onclick = () => {
+            saveBtn.addEventListener('click', () => {
                 const newDescription = descriptionP.innerHTML.doubleBreakDivs().stripScripts().trim();
                 if (newDescription && newDescription !== entity.description) {
                     entity.description = newDescription;
@@ -202,7 +201,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 descriptionP.contentEditable = 'false';
                 saveBtn.remove();
                 editEntityDescriptionBtn.style.display = 'inline-block';
-            };
+            }, { signal: el.signal });
             document.addEventListener('keydown', function handler(e) {
                 if (e.key === 'Escape') {
                     descriptionP.innerHTML = entity.description;
@@ -219,11 +218,11 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 }
             });
             descriptionP.parentElement!.appendChild(saveBtn);
-        };
+        }, { signal: el.signal });
         el.divs.id('entity-description')!.appendChild(editEntityDescriptionBtn);
 
         const editShortDescBtn = html`<button id="edit-short-description-btn" title="The short description is for display on the list of entities on the World and Category pages, and will not show on the Entity page.">Edit Short Description</button>`;
-        editShortDescBtn.onclick = () => {
+        editShortDescBtn.addEventListener('click', () => {
             const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
             if (newShortDesc && newShortDesc !== entity.shortDescription) {
                 entity.shortDescription = newShortDesc.stripScripts();
@@ -233,11 +232,11 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     alert('Error updating short description: ' + error);
                 });
             }
-        };
+        }, { signal: el.signal });
         el.divs.id('entity-description')!.insertAdjacentElement('afterend', editShortDescBtn);
 
         const addSegmentBtn = html`<button id="add-segment-btn">Add Segment</button>`;
-        addSegmentBtn.onclick = () => {
+        addSegmentBtn.addEventListener('click', () => {
             const segmentName = prompt('Enter segment name:')?.trim();
             if (segmentName) {
                 const newSegment = new Segment(segmentName.stripScripts(), '', entity.segments.length + 1);
@@ -251,11 +250,11 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     console.error(error);
                 });
             }
-        };
+        }, { signal: el.signal });
         segmentDiv.appendChild(addSegmentBtn);
 
         const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
-        addStatBtn.onclick = () => {
+        addStatBtn.addEventListener('click', () => {
             const statName = prompt('Enter stat name:')?.trim().stripScripts();
             const statValue = prompt('Enter stat value:')?.trim().stripScripts();
             if (statName && statValue) {
@@ -271,18 +270,18 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             } else {
                 alert('Stat name and value are required to add a new stat.');
             }
-        };
+        }, { signal: el.signal });
         entityStatsDiv.appendChild(addStatBtn);
 
         const entityThumbnail = el.imgs.id('entity-thumbnail')!;
         entityThumbnail.style.cursor = 'pointer';
         if (!entity.entityImgUrl) {
             entityThumbnail.title = 'Click to change entity image';
-            entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
+            entityThumbnail.addEventListener('click', () => uploadImage(entity, entityThumbnail), { signal: el.signal });
         }
 
         const removeImageBtn = html`<button id="remove-entity-image-btn">Remove Image</button>`;
-        removeImageBtn.onclick = () => {
+        removeImageBtn.addEventListener('click', () => {
             if (!entity.entityImgUrl) {
                 alert('No entity image to remove.');
                 return;
@@ -294,12 +293,12 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     entityThumbnail.src = '/storage/images/default-thumbnail.jpg';
                     entityThumbnail.style.cursor = 'pointer';
                     entityThumbnail.title = 'Click to change entity image';
-                    entityThumbnail.onclick = () => uploadImage(entity, entityThumbnail);
+                    entityThumbnail.addEventListener('click', () => uploadImage(entity, entityThumbnail), { signal: el.signal });
                 }).catch(error => {
                     alert('Error removing entity image: ' + error);
                 });
             }
-        };
+        }, { signal: el.signal });
         entityThumbnail.insertAdjacentElement('afterend', removeImageBtn);
 
         el.checkAdmin(() => {
@@ -318,7 +317,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
             }).catch(error => {
                 alert('Error fetching users for editors list: ' + error);
             });
-            editEditors.onchange = () => {
+            editEditors.addEventListener('change', () => {
                 const selectedOptions = Array.from(editEditors.selectedOptions).map(option => Number(option.value));
                 const selectedUsers = selectedOptions.map(id => {
                     return allUsers.find(user => user.id === id);
@@ -329,7 +328,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 }).catch(error => {
                     alert('Error updating entity editors: ' + error);
                 });
-            }
+            }, { signal: el.signal });
 
             entityStatsDiv.appendChild(
                 html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`
@@ -356,7 +355,7 @@ const buildStatItem = (stat: Stat) => {
 
     el.checkAdmin(() => {
         const editBtn = statElement.querySelector('.fa-pencil') as HTMLElement;
-        editBtn.onclick = () => {
+        editBtn.addEventListener('click', () => {
             const newName = prompt('Enter new stat name:', stat.name)?.trim();
             const newValue = prompt('Enter new stat value:', stat.value)?.trim();
             if (newName && newValue && (newName !== stat.name || newValue !== stat.value)) {
@@ -369,10 +368,10 @@ const buildStatItem = (stat: Stat) => {
                     alert('Error updating stat: ' + error);
                 });
             }
-        };
+        }, { signal: el.signal });
 
         const deleteBtn = statElement.querySelector('.fa-times') as HTMLElement;
-        deleteBtn.onclick = () => {
+        deleteBtn.addEventListener('click', () => {
             if (confirm(`Are you sure you want to delete the stat "${stat.name}"? This action cannot be undone.`)) {
                 delData<void>('/delete-stat', stat).then(() => {
                     statElement.parentElement!.querySelectorAll('li').length === 1 &&
@@ -382,7 +381,7 @@ const buildStatItem = (stat: Stat) => {
                     alert('Error deleting stat: ' + error);
                 });
             }
-        };
+        }, { signal: el.signal });
     });
 
     return statElement;
@@ -391,7 +390,7 @@ const buildStatItem = (stat: Stat) => {
 const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => {
     const fileInput = html`<input type="file" accept="image/*" style="display: none;" />` as HTMLInputElement;
     document.body.appendChild(fileInput);
-    fileInput.onchange = () => {
+    fileInput.addEventListener('change', () => {
         const file = fileInput.files ? fileInput.files[0] : null;
         if (file) {
             FileService.uploadFile(file, 'images').then(filePath => {
@@ -410,6 +409,6 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
             alert('No file selected.');
         }
         document.body.removeChild(fileInput);
-    };
+    }, { signal: el.signal });
     fileInput.click();
 };

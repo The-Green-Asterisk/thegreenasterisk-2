@@ -41,7 +41,7 @@ export default async function categoryCtrl(category: Category, world: World) {
 
     el.checkAdmin(() => {
         const newEntityBtn = html`<button id="new-entity-btn">Add New ${singularize(category.name)}</button>`;
-        newEntityBtn.onclick = () => {
+        newEntityBtn.addEventListener('click', () => {
             const entityName = prompt(`Enter new ${singularize(category.name)} name:`)?.trim().stripScripts();
             if (entityName) {
                 const newEntity = new WorldEntity(entityName, '', '', '', [world], [category]);
@@ -51,7 +51,7 @@ export default async function categoryCtrl(category: Category, world: World) {
                     alert(`Error creating new ${singularize(category.name)}: ` + error.message);
                 });
             }
-        };
+        }, { signal: el.signal });
         entitiesContainer.appendChild(newEntityBtn);
     })
 }

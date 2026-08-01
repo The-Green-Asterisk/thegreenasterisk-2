@@ -34,7 +34,22 @@ String.prototype.doubleBreakDivs = function (): string {
         .replace(/<div[^>]*>([\s\S]*?)<\/div>/gmi, '$1');
 };
 
+const abortController = new AbortController();
+const signal = abortController.signal;
+window.addEventListener('pagehide', () => {
+    abortController.abort();
+}, { once: true });
+
 export default class BaseEl {
+    /**
+     * abort() already gets called upon the window's pagehide event
+     * this is here in case listeners ever need to be removed manually
+     */
+    public static readonly removeListeners = abortController.abort;
+    /**
+     * this is only to be used for event listeners
+     */
+    public static readonly signal = signal;
     public static getElement = <T extends HTMLElement = HTMLElement>(selector: string): T | null => {
         let el = document.querySelector<T>(selector);
         return el;
@@ -46,8 +61,7 @@ export default class BaseEl {
             return null;
         } else {
             els.id = (id: string): T | undefined => {
-                const el = [...els].find(el => el.id === id);
-                return el;
+                return els.values().find(el => el.id === id);
             }
             return els;
         }
@@ -238,92 +252,80 @@ export default class BaseEl {
             // which is not the default behavior. This can be deleted
             // if the default behavior is desired.
             this.selectors.forEach(selector => {
-                selector.onclick = (e) => {
+                selector.addEventListener('click', (e) => {
                     e.preventDefault();
                     selector.focus();
-                };
-                [...selector.options].forEach(option => {
-                    option.onmousedown = (e) => {
+                }, { signal });
+                Array.from(selector.options).forEach(option => {
+                    option.addEventListener('mousedown', (e) => {
                         e.preventDefault();
                         if (option.value === (e.target as HTMLOptionElement)?.value) {
                             option.selected = !option.selected;
                         }
-                    };
+                    }, { signal });
                 });
             });
         }
 
         if (this.formInputs && this.submitButton) {
             // This will disable the submit button if any required inputs are empty
-            let requiredInputs = [...this.formInputs].filter(input => input.required);
+            let requiredInputs = this.formInputs.values().filter(input => input.required);
             let disableSubmitButton = () => {
                 if (this.submitButton)
                     this.submitButton.disabled = !requiredInputs.every(input => input.value.trim().length > 0);
             };
             setTimeout(disableSubmitButton, 1000);
             requiredInputs.forEach(input => {
-                input.oninput = ((oldOnInput: typeof input.oninput | undefined) => {
-                    return (e) => {
-                        if (oldOnInput) oldOnInput.call(input, e);
-                        disableSubmitButton();
-                    };
-                })(input.oninput?.bind(input));
+                input.addEventListener('input', (e) => {
+                    disableSubmitButton();
+                }, { signal });
             });
 
             // This will disable the submit button and change its text to a spinner when form is submitted
             this.forms.forEach(form => {
-                form.onsubmit = ((oldOnSubmit: typeof form.onsubmit | undefined) => {
+                form.addEventListener('submit', (e) => {
                     form.submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-                    return (e) => {
-                        if (oldOnSubmit) oldOnSubmit.call(form, e);
-                        form.submitButton.disabled = true;
-                        form.submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                        this.submitted = true;
-                    }
-                })(form.onsubmit?.bind(form));
+                    form.submitButton.disabled = true;
+                    form.submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    this.submitted = true;
+                }, { signal });
             });
         }
 
-        window.onbeforeunload = ((oldBeforeUnload: typeof window.onbeforeunload | undefined) => {
+        window.addEventListener('beforeunload', (e) => {
             // this will save form values to local storage before the page is unloaded
-            return (e) => {
-                if (oldBeforeUnload) oldBeforeUnload.call(window, e);
-                if (this.formInputs && this.formInputs.length == 0) return;
-                if (this.submitted) {
-                    StorageBox.clear();
-                    return;
-                }
-
-                let values: {
-                    [index: string]: string
-                } = {};
-                this.formInputs?.forEach(input => {
-                    if (input && input.name && !input.name.startsWith('_') && input.type !== 'file')
-                        values[input.name] = input.value;
-                });
-
-                StorageBox.set('formValues', values);
+            if (this.formInputs && this.formInputs.length == 0) return;
+            if (this.submitted) {
+                StorageBox.clear();
+                return;
             }
-        })(window.onbeforeunload?.bind(window));
-        window.onload = ((oldLoad: typeof window.onload | undefined) => {
+
+            let values: {
+                [index: string]: string
+            } = {};
+            this.formInputs?.forEach(input => {
+                if (input && input.name && !input.name.startsWith('_') && input.type !== 'file')
+                    values[input.name] = input.value;
+            });
+
+            StorageBox.set('formValues', values);
+        }, { signal });
+        window.addEventListener('load', (e) => {
             // this will load form values from local storage when the page is loaded
-            return (e) => {
-                if (oldLoad) oldLoad.call(window, e);
-                if (this.formInputs?.length == 0) return;
+            if (this.formInputs?.length == 0) return;
 
-                let values = StorageBox.get<FormValues>('formValues');
+            let values = StorageBox.get<FormValues>('formValues');
 
-                this.formInputs?.forEach(input => {
-                    if (input && input.name
-                        && !input.name.startsWith('_')
-                        && input.type !== 'file'
-                        && values && values[input.name]
-                    ) input.value = values[input.name];
-                });
+            this.formInputs?.forEach(input => {
+                if (input && input.name
+                    && !input.name.startsWith('_')
+                    && input.type !== 'file'
+                    && values && values[input.name]
+                ) input.value = values[input.name];
+            });
 
-                StorageBox.remove('formValues');
-            }
-        })(window.onload?.bind(window));
+            StorageBox.remove('formValues');
+        }, { signal });
     }
 };
 
@@ -343,8 +345,8 @@ setTimeout(() => {
     });
 
     document.querySelectorAll('[light-box]').forEach(el => {
-        // this will create the lightBox attribute and use it to set the element's onclick event
-        (el as HTMLElement).onclick = () => {
+        // this will create the lightBox attribute and use it to set the element's click event listener
+        (el as HTMLElement).addEventListener('click', () => {
             const srcUrl = el.getAttribute('src') ?? el.getAttribute('light-box');
             let type = el.tagName.toLowerCase() as 'img' | 'video' | 'iframe';
             if (type !== 'img' && type !== 'video' && type !== 'iframe' && el.hasAttribute('light-box-type')) {
@@ -354,7 +356,7 @@ setTimeout(() => {
                 document.querySelector('body')?.appendChild(lightboxTemplate(srcUrl, type));
                 lightbox();
             }
-        };
+        }, { signal });
     });
 
     document.querySelectorAll('[bg]').forEach(el => {
@@ -364,6 +366,6 @@ setTimeout(() => {
 
     document.querySelectorAll<HTMLElement>('[title]').forEach(el => {
         // this will display the title of the element when it is tapped
-        el.addEventListener('touchstart', Helpers.displayTitleOnTap);
+        el.addEventListener('touchstart', Helpers.displayTitleOnTap, { signal });
     });
 }, 1000);

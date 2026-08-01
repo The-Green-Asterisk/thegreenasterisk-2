@@ -44,7 +44,7 @@ export default async function survivors() {
             videoList.appendChild(vid);
             const removeButton = el.checkAdmin(el.buttons.id(`remove-video-${video.id}`));
             if (removeButton && typeof removeButton !== 'boolean')
-                removeButton.onclick = () => {
+                removeButton.addEventListener('click', () => {
                     if (confirm(`Are you sure you want to remove ${video.title}?`)) {
                         delData<void>('/remove-youtube-video', { id: video.id }).then(() => {
                             removeButton.parentElement?.remove();
@@ -53,7 +53,7 @@ export default async function survivors() {
                             alert('Failed to remove video. Please try again.');
                         });
                     }
-                };
+                }, { signal: el.signal });
         }
 
         if (content && el.checkAdmin<boolean>()) {
@@ -76,7 +76,7 @@ export default async function survivors() {
             const addVideoButton = el.buttons.id('add-video');
 
             if (addVideoButton)
-                addVideoButton.onclick = () => {
+                addVideoButton.addEventListener('click', () => {
                     const tags = el.inputs.id('tags')?.value.stripScripts().split(',').map(tag => new Tag(tag.trim(), '', true)) ?? [];
                     const title = el.inputs.id('title')?.value.stripScripts();
                     if (!title) {
@@ -123,7 +123,7 @@ export default async function survivors() {
                         console.error('Error adding video:', error);
                         alert('Failed to add video. Please try again.');
                     });
-                };
+                }, { signal: el.signal });
         }
     }
 }

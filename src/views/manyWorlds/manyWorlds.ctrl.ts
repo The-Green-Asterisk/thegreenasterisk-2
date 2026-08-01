@@ -25,7 +25,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
     const tabsContainer = el.divs.id('tabs-container')!;
     worlds.forEach(world => {
         const tab = html`<button class="tab">${world.name}</button>`;
-        tab.onclick = () => {
+        tab.addEventListener('click', () => {
             tabsContainer.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -34,7 +34,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
             contentSection.replaceChild(worldTemplate(world), el.divs.id('world-content')!);
             worldCtrl(world);
             el.title.textContent = `Many Worlds: ${world.name}`;
-        };
+        }, { signal: el.signal });
         tab.classList.toggle('active', world.id === worldId);
         tabsContainer.appendChild(tab);
     });
@@ -42,14 +42,14 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         tabsContainer.appendChild(html`
             <button id="new-world" class="tab"><i class="fas fa-plus"></i></button>
         `);
-        el.buttons.id('new-world')!.onclick = () => {
+        el.buttons.id('new-world')!.addEventListener('click', () => {
             const worldName = prompt('Enter new world name:')?.trim().stripScripts();
             if (worldName) {
                 const newWorld = new World(worldName, '');
                 postData<World>('/create-world', newWorld).then(response => {
                     worlds.push(response);
                     const newTab = html`<button class="tab">${response.name}</button>`;
-                    newTab.onclick = () => {
+                    newTab.addEventListener('click', () => {
                         tabsContainer.querySelectorAll('.tab').forEach(tab => {
                             tab.classList.remove('active');
                         });
@@ -59,12 +59,12 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
                         worldCtrl(response);
                         tabsContainer.insertBefore(newTab, el.buttons.id('new-world')!);
                         newTab.click();
-                    };
+                    }, { signal: el.signal });
                 }).catch(error => {
                     alert('Error creating world: ' + error.message);
                 });
             }
-        };
+        }, { signal: el.signal });
     })
 
     const defaultContent = html`

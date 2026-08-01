@@ -9,10 +9,10 @@ export default function cookieBanner() {
     };
 
     if (el.cookieBannerButton) {
-        el.cookieBannerButton.onclick = () => {
+        el.cookieBannerButton.addEventListener('click', () => {
             CookieJar.set('cookies-are-cool', true, new Date(new Date().getFullYear() + 999, 0).toUTCString());
             if (el.cookieBanner)
                 el.cookieBanner.remove();
-        };
+        }, { signal: el.signal });
     }
 }

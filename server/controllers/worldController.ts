@@ -109,7 +109,7 @@ export default class WorldController extends BaseController {
                 relations: ['tags']
             });
 
-            
+
             for (const category of categories) {
                 category.worldEntities = await worldEntityRepository
                     .createQueryBuilder('entity')
@@ -159,7 +159,7 @@ export default class WorldController extends BaseController {
             });
             if (existingCategory) {
                 // attach new world to existing category
-                existingCategory.worlds = [...existingCategory.worlds, ...newCategory.worlds];
+                existingCategory.worlds = existingCategory.worlds.concat(newCategory.worlds);
                 const savedCategory = await categoryRepository.save(existingCategory);
                 return {
                     response: JSON.stringify(savedCategory),

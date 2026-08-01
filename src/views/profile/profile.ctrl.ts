@@ -62,7 +62,7 @@ export default function profile(query: { [key: string]: any }) {
                 if (profileName.textContent === '' && editButton) {
                     activateEditMode();
                     editButton.textContent = 'Save Profile';
-                    editButton.onclick = updateProfile;
+                    editButton.addEventListener('click', updateProfile, { signal: el.signal });
                 }
             } else {
                 throw new Error('No user returned');
@@ -108,11 +108,11 @@ export default function profile(query: { [key: string]: any }) {
                         ageInput.value = response.age?.toString() ?? '';
                         deactivateEditMode();
                         editButton.textContent = 'Edit Profile';
-                        editButton.onclick = () => {
+                        editButton.addEventListener('click', () => {
                             activateEditMode();
                             editButton.textContent = 'Save Profile';
-                            editButton.onclick = updateProfile;
-                        }
+                            editButton.addEventListener('click', updateProfile, { signal: el.signal });
+                        }, { signal: el.signal });
                     } else {
                         throw new Error('Failed to update profile');
                     }
@@ -126,9 +126,9 @@ export default function profile(query: { [key: string]: any }) {
     }
 
     if (editButton)
-        editButton.onclick = () => {
+        editButton.addEventListener('click', () => {
             activateEditMode();
             editButton.textContent = 'Save Profile';
-            editButton.onclick = updateProfile;
-        };
+            editButton.addEventListener('click', updateProfile, { signal: el.signal });
+        }, { signal: el.signal });
 }

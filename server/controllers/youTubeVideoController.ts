@@ -38,7 +38,7 @@ export default class YouTubeVideoController extends BaseController {
             const body = await this.readBody<YouTubeVideo>(req);
             if (!body || !body.title || !body.url) {
                 return {
-                    response: JSON.stringify('Title and URL are required' ),
+                    response: JSON.stringify('Title and URL are required'),
                     status: 400
                 };
             }
@@ -48,7 +48,7 @@ export default class YouTubeVideoController extends BaseController {
                 const newTags = body.tags.filter((tag: Tag) => !existingTags.some((existingTag: Tag) => existingTag.name === tag.name));
                 if (newTags.length > 0) {
                     const createdTags = tagRepository.create(newTags);
-                    body.tags = [...existingTags, ...await tagRepository.save(createdTags)];
+                    body.tags = existingTags.concat(await tagRepository.save(createdTags));
                 } else {
                     body.tags = existingTags;
                 }
