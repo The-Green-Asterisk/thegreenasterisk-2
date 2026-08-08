@@ -39,9 +39,9 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         tabsContainer.appendChild(tab);
     });
     el.checkAdmin(() => {
-        tabsContainer.appendChild(html`
-            <button id="new-world" class="tab"><i class="fas fa-plus"></i></button>
-        `);
+        tabsContainer.appendChild(
+            html`<button id="new-world" class="tab"><i class="fas fa-plus"></i></button>`
+        );
         el.buttons.id('new-world')!.addEventListener('click', () => {
             const worldName = prompt('Enter new world name:')?.trim().stripScripts();
             if (worldName) {
