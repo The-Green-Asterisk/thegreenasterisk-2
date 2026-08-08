@@ -1,3 +1,4 @@
+import el from "@elements";
 import textEditorTemplate from "./textEditor.template";
 
 export default function textEditor(identifier: string | null = null) {
@@ -8,7 +9,7 @@ export default function textEditor(identifier: string | null = null) {
     const copyButton = template.querySelector<HTMLButtonElement>('#copy-button')!;
     const pasteButton = template.querySelector<HTMLButtonElement>('#paste-button')!;
     const textEditorContent = template.querySelector<HTMLDivElement>(identifier ? '#text-editor-content-' + identifier : '#text-editor-content')!;
-        
+
     const inputHandler = (event: InputEvent) => {
         switch (event.inputType) {
             case 'formatBold':
@@ -26,10 +27,10 @@ export default function textEditor(identifier: string | null = null) {
                 });
                 break;
             default:
-                // Do nothing for unsupported input types
+            // Do nothing for unsupported input types
         }
     }
-    textEditorContent.addEventListener('beforeinput', inputHandler);
+    textEditorContent.addEventListener('beforeinput', inputHandler, { signal: el.signal });
 
     const onItalicClick = () => {
         textEditorContent.focus();
@@ -71,21 +72,11 @@ export default function textEditor(identifier: string | null = null) {
         }));
     }
 
-    italicButton.addEventListener('click', onItalicClick);
-    boldButton.addEventListener('click', onBoldClick);
-    underlineButton.addEventListener('click', onUnderlineClick);
-    copyButton.addEventListener('click', onCopyClick);
-    pasteButton.addEventListener('click', onPasteClick);
-
-    window.addEventListener('unload', function handler() {
-        italicButton.removeEventListener('click', onItalicClick);
-        boldButton.removeEventListener('click', onBoldClick);
-        underlineButton.removeEventListener('click', onUnderlineClick);
-        copyButton.removeEventListener('click', onCopyClick);
-        pasteButton.removeEventListener('click', onPasteClick);
-        textEditorContent.removeEventListener('beforeinput', inputHandler);
-        window.removeEventListener('unload', handler);
-    });
+    italicButton.addEventListener('click', onItalicClick, { signal: el.signal });
+    boldButton.addEventListener('click', onBoldClick, { signal: el.signal });
+    underlineButton.addEventListener('click', onUnderlineClick, { signal: el.signal });
+    copyButton.addEventListener('click', onCopyClick, { signal: el.signal });
+    pasteButton.addEventListener('click', onPasteClick, { signal: el.signal });
 
     return template;
 }
