@@ -52,7 +52,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 editBtn.style.display = 'inline-block';
                 document.removeEventListener('keydown', handler);
             }
-        });
+        }, { signal: el.signal });
         editBtn.parentElement!.insertBefore(saveBtn, editBtn.nextSibling);
     };
 
@@ -216,7 +216,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                     editEntityDescriptionBtn.style.display = 'inline-block';
                     document.removeEventListener('keydown', handler);
                 }
-            });
+            }, { signal: el.signal });
             descriptionP.parentElement!.appendChild(saveBtn);
         }, { signal: el.signal });
         el.divs.id('entity-description')!.appendChild(editEntityDescriptionBtn);

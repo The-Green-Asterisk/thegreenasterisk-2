@@ -121,5 +121,5 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
         } else {
             contentSection.replaceChild(defaultContent, el.divs.id('world-content')!);
         }
-    });
+    }, { signal: el.signal });
 }

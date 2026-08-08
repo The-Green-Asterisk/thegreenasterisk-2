@@ -27,7 +27,7 @@ export function initLoader() {
             });
         }
     })(window.fetch);
-    window.addEventListener('load', () => el.loader.remove());
+    window.addEventListener('load', () => el.loader.remove(), { signal: el.signal });
 }
 
 export default async function request<T = Response>(
