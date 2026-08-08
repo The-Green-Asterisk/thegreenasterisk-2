@@ -375,7 +375,9 @@ const buildStatItem = (stat: Stat) => {
             if (confirm(`Are you sure you want to delete the stat "${stat.name}"? This action cannot be undone.`)) {
                 delData<void>('/delete-stat', stat).then(() => {
                     statElement.parentElement!.querySelectorAll('li').length === 1 &&
-                        statElement.parentElement!.appendChild(html`<li id="no-stats-msg">This Entity Has No Stats</li>`);
+                        statElement.parentElement!.appendChild(
+                            html`<li id="no-stats-msg">This Entity Has No Stats</li>`
+                        );
                     statElement.remove();
                 }).catch(error => {
                     alert('Error deleting stat: ' + error);
