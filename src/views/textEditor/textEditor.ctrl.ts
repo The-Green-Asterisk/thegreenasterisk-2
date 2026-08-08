@@ -1,6 +1,13 @@
 import el from "@elements";
 import textEditorTemplate from "./textEditor.template";
 
+const inputTypes = {
+    bold: 'formatBold',
+    italic: 'formatItalic',
+    underline: 'formatUnderline',
+    paste: 'insertFromPaste'
+}
+
 export default function textEditor(identifier: string | null = null) {
     const template = textEditorTemplate(identifier);
     const italicButton = template.querySelector<HTMLButtonElement>('#italic-button')!;
@@ -12,16 +19,16 @@ export default function textEditor(identifier: string | null = null) {
 
     const inputHandler = (event: InputEvent) => {
         switch (event.inputType) {
-            case 'formatBold':
+            case inputTypes.bold:
                 document.execCommand('bold');
                 break;
-            case 'formatItalic':
+            case inputTypes.italic:
                 document.execCommand('italic');
                 break;
-            case 'formatUnderline':
+            case inputTypes.underline:
                 document.execCommand('underline');
                 break;
-            case 'insertFromPaste':
+            case inputTypes.paste:
                 navigator.clipboard.readText().then(text => {
                     document.execCommand('insertText', false, text);
                 });
@@ -35,7 +42,7 @@ export default function textEditor(identifier: string | null = null) {
     const onItalicClick = () => {
         textEditorContent.focus();
         textEditorContent.dispatchEvent(new InputEvent('beforeinput', {
-            inputType: 'formatItalic',
+            inputType: inputTypes.italic,
             bubbles: true,
             cancelable: true
         }));
@@ -43,7 +50,7 @@ export default function textEditor(identifier: string | null = null) {
 
     const onBoldClick = () => {
         textEditorContent.dispatchEvent(new InputEvent('beforeinput', {
-            inputType: 'formatBold',
+            inputType: inputTypes.bold,
             bubbles: true,
             cancelable: true
         }));
@@ -53,7 +60,7 @@ export default function textEditor(identifier: string | null = null) {
     const onUnderlineClick = () => {
         textEditorContent.focus();
         textEditorContent.dispatchEvent(new InputEvent('beforeinput', {
-            inputType: 'formatUnderline',
+            inputType: inputTypes.underline,
             bubbles: true,
             cancelable: true
         }));
@@ -66,7 +73,7 @@ export default function textEditor(identifier: string | null = null) {
     const onPasteClick = () => {
         textEditorContent.focus();
         textEditorContent.dispatchEvent(new InputEvent('beforeinput', {
-            inputType: 'insertFromPaste',
+            inputType: inputTypes.paste,
             bubbles: true,
             cancelable: true
         }));
