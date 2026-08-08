@@ -391,7 +391,7 @@ const buildStatItem = (stat: Stat) => {
 
 const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => {
     const fileInput = html`<input type="file" accept="image/*" style="display: none;" />` as HTMLInputElement;
-    document.body.appendChild(fileInput);
+    el.body.appendChild(fileInput);
     fileInput.addEventListener('change', () => {
         const file = fileInput.files ? fileInput.files[0] : null;
         if (file) {
@@ -410,7 +410,7 @@ const uploadImage = (entity: WorldEntity, entityThumbnail: HTMLImageElement) => 
         } else {
             alert('No file selected.');
         }
-        document.body.removeChild(fileInput);
+        el.body.removeChild(fileInput);
     }, { signal: el.signal });
     fileInput.click();
 };
