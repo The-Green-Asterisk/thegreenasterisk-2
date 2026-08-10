@@ -67,7 +67,15 @@ export default async function commentSection(commentableType: string, commentabl
         submitSection.appendChild(newCommentButton);
         section.appendChild(submitSection);
     } else {
-        const loginPrompt = html`<p>Log in to post comments.</p>`;
+        const loginPrompt = html`<p><a id="login-link" href="#">Log in</a> to post comments.</p>`;
+        const loginLink = loginPrompt.querySelector('#login-link') as HTMLAnchorElement;
+        loginLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            const discordLoginButton = el.buttons?.id('discord_login');
+            if (discordLoginButton) {
+                discordLoginButton.click();
+            }
+        }, { signal: el.signal });
         section.appendChild(loginPrompt);
     }
 
