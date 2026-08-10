@@ -29,9 +29,7 @@ export default async function commentSection(commentableType: string, commentabl
 
     const comments = await getData<Comment[]>('/get-comments', { commentableType, commentableId });
     if (comments?.length > 0) {
-        comments.forEach(comment => {
-            section.appendChild(buildComment(comment));
-        });
+        comments.forEach(comment => section.appendChild(buildComment(comment)));
     } else {
         section.appendChild(noCommentsMsg);
     };
@@ -40,7 +38,11 @@ export default async function commentSection(commentableType: string, commentabl
         section.appendChild(textEditor('new-comment'));
         const submitSection = html`
             <div id="submit-comment-section">
-                <img src="${el.currentUser.profilePicture}" title="Commenting as ${el.currentUser.username}" class="comment-author-avatar"/>
+                <img
+                    src="${el.currentUser.profilePicture}"
+                    title="Commenting as ${el.currentUser.username}"
+                    class="comment-author-avatar"
+                />
             </div>
         `;
         section.appendChild(submitSection);
