@@ -8,7 +8,7 @@ const html = Helpers.html;
 
 export default async function world(world: World) {
     el.title.textContent = `Many Worlds: ${world.name}`;
-    const commentSect = commentSection('world', world.id);
+    commentSection('world', world.id);
 
     el.checkAdmin(() => {
         const editDescriptionBtn = html`<i class="fas fa-pencil edit-world-description" title="Edit Description"></i>`;

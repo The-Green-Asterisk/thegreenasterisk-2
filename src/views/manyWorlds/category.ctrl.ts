@@ -8,7 +8,7 @@ const html = Helpers.html;
 
 export default async function categoryCtrl(category: Category, world: World) {
     el.title.textContent = `Many Worlds: ${world.name} -- ${category.name}`;
-    const commentSect = await commentSection('category', category.id);
+    commentSection('category', category.id);
 
     const entities = await getData<WorldEntity[][]>('/get-entities', { categoryId: category.id }).catch(() => []);
     const entitiesContainer = el.divs.id('category-entities')!;
