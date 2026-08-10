@@ -40,47 +40,18 @@ export default async function categoryCtrl(category: Category, world: World) {
     }
 
     el.checkAdmin(() => {
-        const newEntityBtn = html`<button id="new-entity-btn">Add New ${singularize(category.name)}</button>`;
+        const newEntityBtn = html`<button id="new-entity-btn">Add New ${Helpers.singularize(category.name)}</button>`;
         newEntityBtn.addEventListener('click', () => {
-            const entityName = prompt(`Enter new ${singularize(category.name)} name:`)?.trim().stripScripts();
+            const entityName = prompt(`Enter new ${Helpers.singularize(category.name)} name:`)?.trim().stripScripts();
             if (entityName) {
                 const newEntity = new WorldEntity(entityName, '', '', '', [world], [category]);
                 postData<WorldEntity>('/create-entity', newEntity).then(response => {
                     location.href = `/many-worlds/world/${world.id}/category/${category.id}/entity/${response.id}`;
                 }).catch(error => {
-                    alert(`Error creating new ${singularize(category.name)}: ` + error.message);
+                    alert(`Error creating new ${Helpers.singularize(category.name)}: ` + error.message);
                 });
             }
         }, { signal: el.signal });
         entitiesContainer.appendChild(newEntityBtn);
     })
 }
-
-const singularize = (word: string) => {
-    const endings: { [string: string]: string } = {
-        ves: 'f',
-        ivies: 'ivy', // handles exceptions like 'ivies' -> 'ivy'
-        ies: 'y',
-        i: 'us', // Latin plurals like 'cacti' -> 'cactus'
-        ea: 'eum', // Latin plurals like 'data' -> 'datum' (often treated as uncountable in modern English)
-        zes: 'ze',
-        ses: 's',
-        es: 'e',
-        s: ''
-    };
-
-    // Sort endings by length in descending order to match the longest suffix first
-    const sortedEndings = Object.keys(endings).sort((a, b) => b.length - a.length);
-
-    for (const ending of sortedEndings) {
-        const regex = new RegExp(`${ending}$`);
-        if (regex.test(word)) {
-            // Handle 'lives' -> 'life' exception correctly with 'f'
-            if (ending === 'ves' && word !== 'lives') {
-                return word.replace(regex, endings[ending] + 'e'); // e.g., 'knives' -> 'knife'
-            }
-            return word.replace(regex, endings[ending]);
-        }
-    }
-    return word; // return original word if no rule matches
-};
