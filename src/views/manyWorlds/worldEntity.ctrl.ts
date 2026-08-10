@@ -8,7 +8,7 @@ import commentSection from "@views/commentSection/commentSection.ctrl";
 const html = Helpers.html;
 
 export default async function worldEntityCtrl(entity: WorldEntity, category: Category, world: World) {
-    el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name} (${category.name})`;
+    el.title.textContent = `Many Worlds: ${world.name} -- ${entity.name} (${Helpers.singularize(category.name)})`;
     commentSection('worldEntity', entity.id);
 
     const segmentDiv = el.divs.id('entity-segments')!;
