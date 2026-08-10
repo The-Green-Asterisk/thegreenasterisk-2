@@ -66,6 +66,7 @@ export default async function commentSection(commentableType: string, commentabl
             commentContentDiv.innerHTML = '';
             el.textEditor?.insertAdjacentElement('beforebegin', buildComment(savedCommment));
         }, { signal: el.signal });
+
         submitSection.appendChild(newCommentButton);
         section.appendChild(submitSection);
     } else {
