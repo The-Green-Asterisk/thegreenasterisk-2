@@ -155,188 +155,204 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
 
     const entityStatsDiv = el.divs.id('entity-stats')!;
     const statsList = entityStatsDiv.querySelector('ul')!;
-    entityStatsDiv.appendChild(statsList);
 
-    if (entity.stats.length > 0) {
-        statsList.innerHTML = ''
-        entity.stats.forEach(stat => {
-            const statItem = buildStatItem(stat);
-            statsList.appendChild(statItem);
-        });
-    } else {
-        const noStatsMsg = html`<li id="no-stats-msg">This Entity Has No Stats</li>`;
-        statsList.appendChild(noStatsMsg);
-    }
+    // --- Organization / Helper Functions ---
 
-    sortSegments(entity.segments);
-    entity.segments.forEach(createSegmentElement);
+    const renderStats = () => {
+        entityStatsDiv.appendChild(statsList);
+        if (entity.stats.length > 0) {
+            statsList.innerHTML = ''
+            entity.stats.forEach(stat => {
+                const statItem = buildStatItem(stat);
+                statsList.appendChild(statItem);
+            });
+        } else {
+            const noStatsMsg = html`<li id="no-stats-msg">This Entity Has No Stats</li>`;
+            statsList.appendChild(noStatsMsg);
+        }
+    };
 
-    if (entity.entityImgUrl) {
-        el.imgs.id('entity-thumbnail')!.title = 'Click to enlarge image';
-        el.imgs.id('entity-thumbnail')!.style.cursor = 'pointer';
-    }
+    const renderSegments = () => {
+        sortSegments(entity.segments);
+        entity.segments.forEach(createSegmentElement);
+    };
 
-    if (el.checkAdmin<boolean>() || entity.editors.find(e => e.id === el.currentUser?.id)) {
-        const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
-        editEntityDescriptionBtn.addEventListener('click', () => {
-            editEntityDescriptionBtn.style.display = 'none';
-            const descriptionP = el.divs.id('entity-description')!.querySelector('p')!;
-            descriptionP.contentEditable = 'true';
-            descriptionP.innerHTML = entity.description
-                ? entity.description
-                : 'No description available for this entity.';
-            descriptionP.focus();
-            const saveBtn = html`<button id="save-entity-description-btn">Save Description</button>`;
-            saveBtn.addEventListener('click', () => {
-                const newDescription = descriptionP.innerHTML.doubleBreakDivs().stripScripts().trim();
-                if (newDescription && newDescription !== entity.description) {
-                    entity.description = newDescription;
-                    putData<WorldEntity>('/edit-entity', entity).then((res) => {
-                        entity = res;
-                    }).catch(error => {
-                        alert('Error updating entity description: ' + error);
-                    });
-                }
-                descriptionP.innerHTML = entity.description || 'No description available for this entity.';
-                descriptionP.contentEditable = 'false';
-                saveBtn.remove();
-                editEntityDescriptionBtn.style.display = 'inline-block';
-            }, { signal: el.signal });
-            document.addEventListener('keydown', function handler(e) {
-                if (e.key === 'Escape') {
-                    descriptionP.innerHTML = entity.description;
+    const setupImageDisplay = () => {
+        if (entity.entityImgUrl) {
+            el.imgs.id('entity-thumbnail')!.title = 'Click to enlarge image';
+            el.imgs.id('entity-thumbnail')!.style.cursor = 'pointer';
+        }
+    };
+
+    const setupEditorControls = () => {
+        if (el.checkAdmin<boolean>() || entity.editors.find(e => e.id === el.currentUser?.id)) {
+            const editEntityDescriptionBtn = html`<i class="fas fa-pencil edit-entity-description" title="Edit Description"></i>`;
+            editEntityDescriptionBtn.addEventListener('click', () => {
+                editEntityDescriptionBtn.style.display = 'none';
+                const descriptionP = el.divs.id('entity-description')!.querySelector('p')!;
+                descriptionP.contentEditable = 'true';
+                descriptionP.innerHTML = entity.description
+                    ? entity.description
+                    : 'No description available for this entity.';
+                descriptionP.focus();
+                const saveBtn = html`<button id="save-entity-description-btn">Save Description</button>`;
+                saveBtn.addEventListener('click', () => {
+                    const newDescription = descriptionP.innerHTML.doubleBreakDivs().stripScripts().trim();
+                    if (newDescription && newDescription !== entity.description) {
+                        entity.description = newDescription;
+                        putData<WorldEntity>('/edit-entity', entity).then((res) => {
+                            entity = res;
+                        }).catch(error => {
+                            alert('Error updating entity description: ' + error);
+                        });
+                    }
+                    descriptionP.innerHTML = entity.description || 'No description available for this entity.';
                     descriptionP.contentEditable = 'false';
                     saveBtn.remove();
                     editEntityDescriptionBtn.style.display = 'inline-block';
-                    document.removeEventListener('keydown', handler);
-                }
-                if (e.key === 'Enter' && e.shiftKey) {
-                    e.preventDefault();
-                    saveBtn.click();
-                    editEntityDescriptionBtn.style.display = 'inline-block';
-                    document.removeEventListener('keydown', handler);
-                }
-            }, { signal: el.signal });
-            descriptionP.parentElement!.appendChild(saveBtn);
-        }, { signal: el.signal });
-        el.divs.id('entity-description')!.appendChild(editEntityDescriptionBtn);
-
-        const editShortDescBtn = html`<button id="edit-short-description-btn" title="The short description is for display on the list of entities on the World and Category pages, and will not show on the Entity page.">Edit Short Description</button>`;
-        editShortDescBtn.addEventListener('click', () => {
-            const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
-            if (newShortDesc && newShortDesc !== entity.shortDescription) {
-                entity.shortDescription = newShortDesc.stripScripts();
-                putData<WorldEntity>('/edit-entity', entity).then((res) => {
-                    entity = res;
-                }).catch(error => {
-                    alert('Error updating short description: ' + error);
-                });
-            }
-        }, { signal: el.signal });
-        el.divs.id('entity-description')!.insertAdjacentElement('afterend', editShortDescBtn);
-
-        const addSegmentBtn = html`<button id="add-segment-btn">Add Segment</button>`;
-        addSegmentBtn.addEventListener('click', () => {
-            const segmentName = prompt('Enter segment name:')?.trim();
-            if (segmentName) {
-                const newSegment = new Segment(segmentName.stripScripts(), '', entity.segments.length + 1);
-                entity.segments.push(newSegment);
-                putData<WorldEntity>('/edit-entity', entity).then((res) => {
-                    entity = res;
-                    newSegment.id = res.segments[res.segments.length - 1].id;
-                    createSegmentElement(newSegment);
-                }).catch(error => {
-                    alert('Error adding new segment: ' + error);
-                    console.error(error);
-                });
-            }
-        }, { signal: el.signal });
-        segmentDiv.appendChild(addSegmentBtn);
-
-        const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
-        addStatBtn.addEventListener('click', () => {
-            const statName = prompt('Enter stat name:')?.trim().stripScripts();
-            const statValue = prompt('Enter stat value:')?.trim().stripScripts();
-            if (statName && statValue) {
-                postData<Stat>('/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
-                    const noStatsMessage = statsList.querySelector('#no-stats-msg');
-                    if (noStatsMessage) noStatsMessage.remove();
-                    entity.stats.push(response);
-                    const statItem = buildStatItem(response);
-                    statsList.appendChild(statItem);
-                }).catch(error => {
-                    alert('Error creating stat: ' + error);
-                });
-            } else {
-                alert('Stat name and value are required to add a new stat.');
-            }
-        }, { signal: el.signal });
-        entityStatsDiv.appendChild(addStatBtn);
-
-        const entityThumbnail = el.imgs.id('entity-thumbnail')!;
-        entityThumbnail.style.cursor = 'pointer';
-        if (!entity.entityImgUrl) {
-            entityThumbnail.title = 'Click to change entity image';
-            entityThumbnail.addEventListener('click', () => uploadImage(entity, entityThumbnail), { signal: el.signal });
-        }
-
-        const removeImageBtn = html`<button id="remove-entity-image-btn">Remove Image</button>`;
-        removeImageBtn.addEventListener('click', () => {
-            if (!entity.entityImgUrl) {
-                alert('No entity image to remove.');
-                return;
-            }
-            if (confirm('Are you sure you want to remove the entity image?')) {
-                entity.entityImgUrl = '';
-                putData<WorldEntity>('/edit-entity', entity).then((res) => {
-                    entity = res;
-                    entityThumbnail.src = '/storage/images/default-thumbnail.jpg';
-                    entityThumbnail.style.cursor = 'pointer';
-                    entityThumbnail.title = 'Click to change entity image';
-                    entityThumbnail.addEventListener('click', () => uploadImage(entity, entityThumbnail), { signal: el.signal });
-                }).catch(error => {
-                    alert('Error removing entity image: ' + error);
-                });
-            }
-        }, { signal: el.signal });
-        entityThumbnail.insertAdjacentElement('afterend', removeImageBtn);
-
-        el.checkAdmin(() => {
-            // add multiple selection for editors
-            let allUsers: User[] = [];
-            const editEditors = html`<select multiple id="edit-entity-editors"></select>` as HTMLSelectElement;
-            getData<User[]>('/get-all-users').then(allUsersRes => {
-                allUsers = allUsersRes;
-                allUsers.forEach(user => {
-                    const option = html`<option value="${user.id}">${user.firstName} ${user.lastName} (${user.username})</option>` as HTMLOptionElement;
-                    if (entity.editors.find(e => e.id === user.id)) {
-                        option.selected = true;
+                }, { signal: el.signal });
+                document.addEventListener('keydown', function handler(e) {
+                    if (e.key === 'Escape') {
+                        descriptionP.innerHTML = entity.description;
+                        descriptionP.contentEditable = 'false';
+                        saveBtn.remove();
+                        editEntityDescriptionBtn.style.display = 'inline-block';
+                        document.removeEventListener('keydown', handler);
                     }
-                    editEditors.appendChild(option);
-                });
-            }).catch(error => {
-                alert('Error fetching users for editors list: ' + error);
-            });
-            editEditors.addEventListener('change', () => {
-                const selectedOptions = Array.from(editEditors.selectedOptions).map(option => Number(option.value));
-                const selectedUsers = selectedOptions.map(id => {
-                    return allUsers.find(user => user.id === id);
-                }).filter(user => user !== undefined) as User[];
-                entity.editors = selectedUsers;
-                putData<WorldEntity>('/edit-entity', entity).then((res) => {
-                    entity = res;
-                }).catch(error => {
-                    alert('Error updating entity editors: ' + error);
-                });
+                    if (e.key === 'Enter' && e.shiftKey) {
+                        e.preventDefault();
+                        saveBtn.click();
+                        editEntityDescriptionBtn.style.display = 'inline-block';
+                        document.removeEventListener('keydown', handler);
+                    }
+                }, { signal: el.signal });
+                descriptionP.parentElement!.appendChild(saveBtn);
             }, { signal: el.signal });
+            el.divs.id('entity-description')!.appendChild(editEntityDescriptionBtn);
 
-            entityStatsDiv.appendChild(
-                html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`
-            );
+            const editShortDescBtn = html`<button id="edit-short-description-btn" title="The short description is for display on the list of entities on the World and Category pages, and will not show on the Entity page.">Edit Short Description</button>`;
+            editShortDescBtn.addEventListener('click', () => {
+                const newShortDesc = prompt('Enter new short description:', entity.shortDescription) || entity.shortDescription;
+                if (newShortDesc && newShortDesc !== entity.shortDescription) {
+                    entity.shortDescription = newShortDesc.stripScripts();
+                    putData<WorldEntity>('/edit-entity', entity).then((res) => {
+                        entity = res;
+                    }).catch(error => {
+                        alert('Error updating short description: ' + error);
+                    });
+                }
+            }, { signal: el.signal });
+            el.divs.id('entity-description')!.insertAdjacentElement('afterend', editShortDescBtn);
 
-            entityStatsDiv.appendChild(editEditors);
-        });
-    }
+            const addSegmentBtn = html`<button id="add-segment-btn">Add Segment</button>`;
+            addSegmentBtn.addEventListener('click', () => {
+                const segmentName = prompt('Enter segment name:')?.trim();
+                if (segmentName) {
+                    const newSegment = new Segment(segmentName.stripScripts(), '', entity.segments.length + 1);
+                    entity.segments.push(newSegment);
+                    putData<WorldEntity>('/edit-entity', entity).then((res) => {
+                        entity = res;
+                        newSegment.id = res.segments[res.segments.length - 1].id;
+                        createSegmentElement(newSegment);
+                    }).catch(error => {
+                        alert('Error adding new segment: ' + error);
+                        console.error(error);
+                    });
+                }
+            }, { signal: el.signal });
+            segmentDiv.appendChild(addSegmentBtn);
+
+            const addStatBtn = html`<button id="add-stat-btn">Add Stat</button>`;
+            addStatBtn.addEventListener('click', () => {
+                const statName = prompt('Enter stat name:')?.trim().stripScripts();
+                const statValue = prompt('Enter stat value:')?.trim().stripScripts();
+                if (statName && statValue) {
+                    postData<Stat>('/add-stat', new Stat(statName, statValue, true, entity)).then(response => {
+                        const noStatsMessage = statsList.querySelector('#no-stats-msg');
+                        if (noStatsMessage) noStatsMessage.remove();
+                        entity.stats.push(response);
+                        const statItem = buildStatItem(response);
+                        statsList.appendChild(statItem);
+                    }).catch(error => {
+                        alert('Error creating stat: ' + error);
+                    });
+                } else {
+                    alert('Stat name and value are required to add a new stat.');
+                }
+            }, { signal: el.signal });
+            entityStatsDiv.appendChild(addStatBtn);
+
+            const entityThumbnail = el.imgs.id('entity-thumbnail')!;
+            entityThumbnail.style.cursor = 'pointer';
+            if (!entity.entityImgUrl) {
+                entityThumbnail.title = 'Click to change entity image';
+                entityThumbnail.addEventListener('click', () => uploadImage(entity, entityThumbnail), { signal: el.signal });
+            }
+
+            const removeImageBtn = html`<button id="remove-entity-image-btn">Remove Image</button>`;
+            removeImageBtn.addEventListener('click', () => {
+                if (!entity.entityImgUrl) {
+                    alert('No entity image to remove.');
+                    return;
+                }
+                if (confirm('Are you sure you want to remove the entity image?')) {
+                    entity.entityImgUrl = '';
+                    putData<WorldEntity>('/edit-entity', entity).then((res) => {
+                        entity = res;
+                        entityThumbnail.src = '/storage/images/default-thumbnail.jpg';
+                        entityThumbnail.style.cursor = 'pointer';
+                        entityThumbnail.title = 'Click to change entity image';
+                        entityThumbnail.addEventListener('click', () => uploadImage(entity, entityThumbnail), { signal: el.signal });
+                    }).catch(error => {
+                        alert('Error removing entity image: ' + error);
+                    });
+                }
+            }, { signal: el.signal });
+            entityThumbnail.insertAdjacentElement('afterend', removeImageBtn);
+
+            el.checkAdmin(() => {
+                // add multiple selection for editors
+                let allUsers: User[] = [];
+                const editEditors = html`<select multiple id="edit-entity-editors"></select>` as HTMLSelectElement;
+                getData<User[]>('/get-all-users').then(allUsersRes => {
+                    allUsers = allUsersRes;
+                    allUsers.forEach(user => {
+                        const option = html`<option value="${user.id}">${user.firstName} ${user.lastName} (${user.username})</option>` as HTMLOptionElement;
+                        if (entity.editors.find(e => e.id === user.id)) {
+                            option.selected = true;
+                        }
+                        editEditors.appendChild(option);
+                    });
+                }).catch(error => {
+                    alert('Error fetching users for editors list: ' + error);
+                });
+                editEditors.addEventListener('change', () => {
+                    const selectedOptions = Array.from(editEditors.selectedOptions).map(option => Number(option.value));
+                    const selectedUsers = selectedOptions.map(id => {
+                        return allUsers.find(user => user.id === id);
+                    }).filter(user => user !== undefined) as User[];
+                    entity.editors = selectedUsers;
+                    putData<WorldEntity>('/edit-entity', entity).then((res) => {
+                        entity = res;
+                    }).catch(error => {
+                        alert('Error updating entity editors: ' + error);
+                    });
+                }, { signal: el.signal });
+
+                entityStatsDiv.appendChild(
+                    html`<label for="edit-entity-editors" style="display:block;width:100%">Entity Editors:</label>`
+                );
+
+                entityStatsDiv.appendChild(editEditors);
+            });
+        }
+    };
+
+    // --- Execution ---
+    renderStats();
+    renderSegments();
+    setupImageDisplay();
+    setupEditorControls();
 }
 
 const buildStatItem = (stat: Stat) => {
