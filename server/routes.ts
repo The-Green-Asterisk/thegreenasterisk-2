@@ -1,4 +1,5 @@
 import CommentController from 'controllers/commentController';
+import LinkController from 'controllers/linkController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import StorageController from 'controllers/storageController';
@@ -75,6 +76,31 @@ export default class Routes {
     @Method('DELETE')
     private ['/remove-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return YouTubeVideoController.removeVideo(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-links'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.getLinks(req, res);
+    }
+
+    @Method('POST')
+    private ['/save-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.saveLink(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.editLink(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.deleteLink(req, res);
+    }
+
+    @Method('GET')
+    private ['/create-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.createLink(req, res);
     }
 
     @Method('POST')
