@@ -10,7 +10,7 @@ import http from 'http';
 export default class Routes {
     private url: string;
     constructor(
-        public req: http.IncomingMessage, 
+        public req: http.IncomingMessage,
         public res: http.ServerResponse
     ) {
         this.url = req.url?.replace(/\/data\//, '/') ?? '';
@@ -206,9 +206,9 @@ type ResponsePromise = Promise<{
 }>;
 
 function Method(method: Method) {
-    return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod: RouteFunction = descriptor.value;
-        descriptor.value = function(req: http.IncomingMessage, res: http.ServerResponse) {
+        descriptor.value = function (req: http.IncomingMessage, res: http.ServerResponse) {
             if (typeof originalMethod !== 'function') {
                 return {
                     response: '404 Not Found',
