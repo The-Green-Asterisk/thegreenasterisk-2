@@ -88,6 +88,11 @@ export default class Routes {
         return LinkController.saveLink(req, res);
     }
 
+    @Method('POST')
+    private ['/save-links'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.saveLinks(req, res);
+    }
+
     @Method('PUT')
     private ['/edit-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return LinkController.editLink(req, res);

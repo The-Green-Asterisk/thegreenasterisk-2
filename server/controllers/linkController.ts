@@ -1,15 +1,16 @@
+import * as fs from "fs";
 import http from "http";
+import path from "path/win32";
 import AppDataSource from "services/database";
 import { Link } from "services/database/entity/Link";
 import BaseController from "./baseController";
-import path from "path/win32";
-import * as fs from "fs";
 
 export default class LinkController extends BaseController {
 
     public static async getLinks(req: http.IncomingMessage, res: http.ServerResponse) {
         try {
-            const links = await AppDataSource.getRepository(Link).find();
+            const links = (await AppDataSource.getRepository(Link).find())
+                .toSorted((a, b) => a.sortOrder - b.sortOrder);
             return {
                 response: JSON.stringify(links),
                 status: 200
@@ -46,6 +47,32 @@ export default class LinkController extends BaseController {
                 response: JSON.stringify('Internal Server Error'),
                 status: 500
             };
+        }
+    }
+
+    public static async saveLinks(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const body = await this.readBody<Link[]>(req);
+            if (!body || !body.length) {
+                return {
+                    response: JSON.stringify('no links to save'),
+                    status: 400
+                }
+            }
+
+            const linkRepository = AppDataSource.getRepository(Link);
+            const links = linkRepository.create(body);
+            const savedLinks = await linkRepository.save(links);
+
+            return {
+                response: JSON.stringify(savedLinks),
+                status: 200
+            }
+        } catch (error) {
+            return {
+                response: JSON.stringify('Internal Server Error'),
+                status: 500
+            }
         }
     }
 
