@@ -71,6 +71,10 @@ el-links section .link .link-image span {
     color: white;
 }
 
+el-links section .link .link-image.primary span {
+    color: var(--ui-color);
+}
+
 el-links section .link .link-image img {
     width: 20px;
 }
@@ -79,4 +83,19 @@ el-links section .link .link-text {
     flex: 1;
     display: flex;
     align-items: center;
+}
+
+el-modal form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+el-modal form div {
+    display: flex;
+}
+el-modal form div label {
+    flex-grow: 1;
+    text-align: right;
+    margin-right: 10px;
+    font-weight: bold;
 }
