@@ -19,4 +19,7 @@ export class Link {
 
     @Column()
     primaryType!: boolean
+
+    @Column()
+    sortOrder!: number
 }

@@ -7,7 +7,8 @@ export default class Link {
         public iconClass: string,
         public imageUrl: string,
         public text: string,
-        public primaryType: boolean
+        public primaryType: boolean,
+        public sortOrder: number
     ) { }
 
 }
