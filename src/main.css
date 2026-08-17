@@ -98,21 +98,6 @@ select[multiple] {
     outline: none;
 }
 
-el-modal {
-    position: fixed;
-    width: 100vw;
-    height: 100vh;
-    backdrop-filter: blur(10px);
-}
-el-modal div {
-    border: 1px solid rgba(0, 0, 0, 0.279);
-    background: white;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
 /* MOBILE FIRST! */
 @media screen and (min-width: 768px) {
     .content-slate {

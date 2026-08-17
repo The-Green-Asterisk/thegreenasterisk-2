@@ -1,0 +1,41 @@
+el-modal {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    backdrop-filter: blur(10px);
+    background-color: rgba(0, 0, 0, 0.25);
+}
+el-modal > div {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    background: white;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+el-modal div header {
+    display: flex;
+    border-radius: 10px 10px 0 0;
+    background: var(--ui-color);
+    color: white;
+    padding: .5rem 1rem;
+}
+el-modal div header span {
+    flex-grow: 1;
+}
+el-modal div header button span {
+    color: white;
+}
+el-modal div modal-body {
+    padding: 1rem;
+}
+el-modal button:not(.close-button) {
+    border-radius: 10px;
+    padding: 0.5rem 1rem;
+    background-color: var(--ui-color);
+    color: white;
+    border: 1px solid rgba(0, 0, 0, 0.8);
+}
