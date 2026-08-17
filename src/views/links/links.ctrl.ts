@@ -1,6 +1,6 @@
 import el from '@elements';
 import Helpers from '@services/helpers';
-import { getData, postData } from '@services/request';
+import { delData, getData, postData } from '@services/request';
 import { buildModalFromUrl } from '@views/modal/modal.ctrl';
 import nav from '@views/nav/nav.ctrl';
 import Link from '../../entities/Link';
@@ -40,6 +40,36 @@ export default async function links() {
     linkList.forEach(link => linksSection?.appendChild(link.element));
 
     el.checkAdmin(() => {
+        const ctrlBtns = (link: Link, element: HTMLElement) => {
+            const buttons = html`
+                <div class="ctrlBtns">
+                    <button class="delete">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                    <button class="edit">
+                        <i class="fa fa-pencil"></i>
+                    </button>
+                </div>
+            `
+            buttons.getElementsByClassName('delete').item(0)?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (confirm('Are you sure you want to delete this link?')) {
+                    delData('/delete-link', link).then(() => {
+                        element.remove();
+                    })
+                }
+            });
+
+            buttons.getElementsByClassName('edit').item(0)?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log("I'll get there, just wait.");
+            })
+            return buttons
+        }
+        linkList.forEach(l => l.element.appendChild(ctrlBtns(l.link, l.element)))
+
         const addLinkModel: Link = {
             url: "#",
             primaryType: true,

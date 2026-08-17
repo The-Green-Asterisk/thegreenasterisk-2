@@ -85,6 +85,29 @@ el-links section .link .link-text {
     align-items: center;
 }
 
+el-links .ctrlBtns {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+}
+
+el-links .ctrlBtns .delete,
+el-links .ctrlBtns .edit {
+    width: 50px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid black;
+    color: white;
+}
+el-links .ctrlBtns .delete {
+    background-color: rgb(215, 0, 0);
+}
+el-links .ctrlBtns .edit {
+    background-color: green;
+}
+
 el-modal form {
     display: flex;
     flex-direction: column;
