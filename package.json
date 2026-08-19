@@ -35,7 +35,7 @@
   "scripts": {
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
     "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
-    "server-html": "cd server && find . -name '*.html' -not -path './comp/*' -exec cp --parents -t comp/ {} +",
+    "server-html": "copyfiles -u 1 -e \"server/comp/**/*\" \"server/**/*.html\" server/comp/",
     "build": "tsc --project ./server/tsconfig.json && npm run server-html && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
     "build:watch:server": "tsc --project ./server/tsconfig.json -w",
     "build:watch:client": "concurrently \"tsc --project ./src/tsconfig.json --noEmit -w\" \"esbuild src/main.ts --bundle --outfile=www/main.js --watch\"",
@@ -56,6 +56,7 @@
     "@types/mysql": "^2.15.26",
     "@types/node": "^22.9.0",
     "concurrently": "^8.2.2",
+    "copyfiles": "^2.4.1",
     "dotenv": "^16.4.5",
     "esbuild-plugin-tsc": "^0.4.0",
     "npm-watch": "^0.13.0",
