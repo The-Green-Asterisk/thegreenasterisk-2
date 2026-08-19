@@ -1,37 +1,16 @@
 import el from '@elements';
 import Helpers from '@services/helpers';
-import { delData, getData, postData } from '@services/request';
+import { delData, getData, postData, putData } from '@services/request';
 import { buildModalFromUrl } from '@views/modal/modal.ctrl';
 import nav from '@views/nav/nav.ctrl';
 import Link from '../../entities/Link';
 const html = Helpers.html;
+let linksSection: HTMLElement | null | undefined = null;
 
 export default async function links() {
     if (el.title) el.title.innerText = "Lord Steve's Links";
     nav(false); //take away nav
-    const linksSection = el.links?.querySelector('section');
-
-    const iconOrImg = (linkModel: Link) =>
-        linkModel.imageUrl
-            ? `<img src="${linkModel.imageUrl}" alt="${linkModel.text}">`
-            : `<span class="${linkModel.iconClass}"></span>`;
-
-    const buildLink = (linkModel: Link, draggable: boolean = true, stay: boolean = false) => html`
-        <a 
-            id="link${linkModel.id}"
-            class="link"
-            target="${stay ? '_self' : '_blank'}"
-            href="${linkModel.url}"
-            data-draggable="${draggable ? 'true' : 'false'}"
-        >
-            <div class="link-image ${linkModel.primaryType ? 'primary' : ''}">
-                ${iconOrImg(linkModel)}
-            </div>
-            <div class="link-text">
-                ${linkModel.text}
-            </div>
-        </a>
-    `;
+    linksSection = el.links?.querySelector('section');
 
     const linkList: { link: Link, element: HTMLElement }[] = [];
 
@@ -83,60 +62,7 @@ export default async function links() {
         }
 
         const newLinkButton = buildLink(addLinkModel, false, true);
-        newLinkButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            buildModalFromUrl('create-link').then(modal => {
-                const linkForm = modal?.querySelector('form');
-                const imageUrlInput = linkForm?.querySelector('input[name="imageUrl"]') as HTMLInputElement;
-                const iconClassInput = linkForm?.querySelector('input[name="iconClass"]') as HTMLInputElement;
-
-                if (imageUrlInput && iconClassInput) {
-                    imageUrlInput.addEventListener('input', () => {
-                        if (!imageUrlInput.value && !iconClassInput.value) {
-                            imageUrlInput.required = true;
-                            iconClassInput.required = true;
-                        } else if (imageUrlInput.value) {
-                            iconClassInput.value = '';
-                            iconClassInput.disabled = true;
-                            imageUrlInput.required = true;
-                        } else {
-                            iconClassInput.disabled = false;
-                            imageUrlInput.required = false;
-                        }
-                    }, { signal: el.signal });
-                    iconClassInput.addEventListener('input', () => {
-                        if (!imageUrlInput.value && !iconClassInput.value) {
-                            imageUrlInput.required = true;
-                            iconClassInput.required = true;
-                        } else if (iconClassInput.value) {
-                            imageUrlInput.value = '';
-                            imageUrlInput.disabled = true;
-                            imageUrlInput.required = false;
-                        } else {
-                            imageUrlInput.disabled = false;
-                            imageUrlInput.required = false;
-                        }
-                    }, { signal: el.signal });
-                }
-
-                linkForm?.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(linkForm);
-                    const link = new Link(
-                        String(formData.get('url') ?? ''),
-                        String(formData.get('iconClass') ?? ''),
-                        String(formData.get('imageUrl') ?? ''),
-                        String(formData.get('text') ?? ''),
-                        formData.get('primaryType') === 'on',
-                        Number(formData.get('sortOrder') ?? 0)
-                    );
-                    postData<Link>('/save-link', link).then((savedLink) => {
-                        const savedLinkButton = buildLink(savedLink);
-                        linksSection?.appendChild(savedLinkButton);
-                    });
-                });
-            });
-        }, { signal: el.signal });
+        newLinkButton.addEventListener('click', createEditModal(), { signal: el.signal });
 
         if (linksSection) linksSection.appendChild(newLinkButton);
         const linksToSave = linkList.map(m => m.link);
@@ -161,4 +87,103 @@ export default async function links() {
             });
         }
     })
+}
+
+const iconOrImg = (linkModel: Link) =>
+    linkModel.imageUrl
+        ? `<img src="${linkModel.imageUrl}" alt="${linkModel.text}">`
+        : `<span class="${linkModel.iconClass}"></span>`;
+
+const buildLink = (linkModel: Link, draggable: boolean = true, stay: boolean = false) => html`
+    <a 
+        id="link${linkModel.id}"
+        class="link"
+        target="${stay ? '_self' : '_blank'}"
+        href="${linkModel.url}"
+        data-draggable="${draggable ? 'true' : 'false'}"
+    >
+        <div class="link-image ${linkModel.primaryType ? 'primary' : ''}">
+            ${iconOrImg(linkModel)}
+        </div>
+        <div class="link-text">
+            ${linkModel.text}
+        </div>
+    </a>
+`;
+
+const createEditModal = (editLink?: Link) => (e: Event) => {
+    e.preventDefault();
+    buildModalFromUrl('create-link').then(modal => {
+        const linkForm = modal?.querySelector('form');
+        const urlInput = linkForm?.querySelector('input[name="url"]') as HTMLInputElement;
+        const textInput = linkForm?.querySelector('input[name="text"]') as HTMLInputElement;
+        const imageUrlInput = linkForm?.querySelector('input[name="imageUrl"]') as HTMLInputElement;
+        const iconClassInput = linkForm?.querySelector('input[name="iconClass"]') as HTMLInputElement;
+        const primaryCheckbox = linkForm?.querySelector('input[name="primaryType"]') as HTMLInputElement;
+
+        if (editLink) {
+            urlInput.value = editLink.url;
+            textInput.value = editLink.text;
+            imageUrlInput.value = editLink.imageUrl;
+            iconClassInput.value = editLink.iconClass;
+            primaryCheckbox.checked = editLink.primaryType;
+        }
+
+        if (imageUrlInput && iconClassInput) {
+            imageUrlInput.addEventListener('input', () => {
+                if (!imageUrlInput.value && !iconClassInput.value) {
+                    imageUrlInput.required = true;
+                    iconClassInput.required = true;
+                } else if (imageUrlInput.value) {
+                    iconClassInput.value = '';
+                    iconClassInput.disabled = true;
+                    imageUrlInput.required = true;
+                } else {
+                    iconClassInput.disabled = false;
+                    imageUrlInput.required = false;
+                }
+            }, { signal: el.signal });
+            iconClassInput.addEventListener('input', () => {
+                if (!imageUrlInput.value && !iconClassInput.value) {
+                    imageUrlInput.required = true;
+                    iconClassInput.required = true;
+                } else if (iconClassInput.value) {
+                    imageUrlInput.value = '';
+                    imageUrlInput.disabled = true;
+                    imageUrlInput.required = false;
+                } else {
+                    imageUrlInput.disabled = false;
+                    imageUrlInput.required = false;
+                }
+            }, { signal: el.signal });
+        }
+
+        linkForm?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(linkForm);
+            const link = new Link(
+                String(formData.get('url') ?? ''),
+                String(formData.get('iconClass') ?? ''),
+                String(formData.get('imageUrl') ?? ''),
+                String(formData.get('text') ?? ''),
+                formData.get('primaryType') === 'on',
+                Number(formData.get('sortOrder') ?? 0)
+            );
+            if (editLink) {
+                link.id = editLink.id;
+                putData<Link>('/edit-link', link).then(savedLink => {
+                    const existingLinkButton = linksSection?.querySelector(`#link${savedLink.id}`);
+                    if (existingLinkButton) {
+                        const newLinkButton = buildLink(savedLink);
+                        linksSection?.replaceChild(newLinkButton, existingLinkButton);
+                    }
+                });
+            } else {
+                postData<Link>('/save-link', link).then((savedLink) => {
+                    const savedLinkButton = buildLink(savedLink);
+                    linksSection?.appendChild(savedLinkButton);
+                });
+            }
+        });
+    });
 }
