@@ -68,6 +68,9 @@ export default async function links() {
             })
             return buttons
         }
+        linkList.forEach(l => l.element.appendChild(
+            html`<i class="fa fa-grip-lines" style="cursor: grab;margin-right: 5px;"></i>`
+        ));
         linkList.forEach(l => l.element.appendChild(ctrlBtns(l.link, l.element)))
 
         const addLinkModel: Link = {
