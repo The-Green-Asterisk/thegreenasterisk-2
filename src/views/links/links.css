@@ -41,6 +41,20 @@ el-links section .link {
     font-size: 1.2em;
 }
 
+el-links section .link.dragging {
+    opacity: 0.4;
+    transform: scale(0.96);
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+el-links section .link[draggable="true"]:active {
+    cursor: grabbing;
+}
+body.is-dragging,
+body.is-dragging * {
+    cursor: grabbing !important;
+}
+
 el-links section .link:hover {
     transform: scale(1.02);
     background-color: #e0f7fa;
