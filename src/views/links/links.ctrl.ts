@@ -16,13 +16,13 @@ export default async function links() {
             ? `<img src="${linkModel.imageUrl}" alt="${linkModel.text}">`
             : `<span class="${linkModel.iconClass}"></span>`;
 
-    const buildLink = (linkModel: Link, stay: boolean = false) => html`
+    const buildLink = (linkModel: Link, draggable: boolean = true, stay: boolean = false) => html`
         <a 
             id="link${linkModel.id}"
             class="link"
             target="${stay ? '_self' : '_blank'}"
             href="${linkModel.url}"
-            draggable="true"
+            data-draggable="${draggable ? 'true' : 'false'}"
         >
             <div class="link-image ${linkModel.primaryType ? 'primary' : ''}">
                 ${iconOrImg(linkModel)}
@@ -82,7 +82,7 @@ export default async function links() {
             sortOrder: 0
         }
 
-        const newLinkButton = buildLink(addLinkModel, true);
+        const newLinkButton = buildLink(addLinkModel, false, true);
         newLinkButton.addEventListener('click', (e) => {
             e.preventDefault();
             buildModalFromUrl('create-link').then(modal => {
@@ -141,31 +141,24 @@ export default async function links() {
         if (linksSection) linksSection.appendChild(newLinkButton);
         const linksToSave = linkList.map(m => m.link);
 
-        linkList.forEach(({ element }) => {
-            element.addEventListener('dragstart', (e) => {
-                e.dataTransfer?.setData('text/plain', element.id);
-            });
-
-            element.addEventListener('dragover', (e) => {
-                e.preventDefault(); // Required to allow drop
-            });
-
-            element.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                const draggedId = e.dataTransfer?.getData('text/plain');
-                const draggedEl = document.getElementById(draggedId!);
-                if (draggedEl && draggedEl !== element) {
-                    linksSection?.insertBefore(draggedEl, element);
+        if (linksSection) {
+            Helpers.enableDragReorder({
+                items: linkList.map(l => l.element),
+                container: linksSection,
+                itemSelector: '.link[data-draggable="true"]',
+                pinnedElement: newLinkButton,
+                onReorder: async () => {
+                    const linkElements = document.getElementsByClassName('link');
+                    Array.from(linkElements).forEach((el, i) => {
+                        const linkIdAttr = el.id.slice(4);
+                        const linkToSave = linksToSave.find(l => l.id === Number(linkIdAttr));
+                        if (linkToSave) {
+                            linkToSave.sortOrder = i + 1;
+                        }
+                    });
+                    await postData('/save-links', linksToSave);
                 }
-                const linkElements = document.getElementsByClassName('link');
-                Array.from(linkElements).forEach((element, i) => {
-                    const linkToSave = linksToSave.find(l => l.id === Number(element.id.slice(4)));
-                    if (linkToSave) {
-                        linkToSave.sortOrder = i + 1;
-                    }
-                })
-                await postData('/save-links', linksToSave);
             });
-        });
+        }
     })
 }
