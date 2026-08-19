@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import http from "http";
-import path from "path/win32";
+import path from "path";
 import AppDataSource from "services/database";
 import { Link } from "services/database/entity/Link";
 import BaseController from "./baseController";
