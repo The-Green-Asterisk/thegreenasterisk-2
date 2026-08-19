@@ -186,7 +186,7 @@ const createEditModal = (editLink?: Link) => (e: Event) => {
 
             // Re-render links and close out the modal on submit
             await renderLinks();
-            if (modal) document.body.removeChild(modal);
+            if (el.modal) document.body.removeChild(el.modal);
         });
     });
 }

@@ -165,8 +165,8 @@ export default class BaseEl {
     }
     public static csrfToken: string = '';
     public static get modal() {
-        return this.getElement<HTMLDivElement>('#modal');
-    } set modal(modal: HTMLDivElement) {
+        return this.getElement<HTMLElement>('el-modal');
+    } set modal(modal: HTMLElement) {
         this.modal = modal;
     }
     public static get loader() {
