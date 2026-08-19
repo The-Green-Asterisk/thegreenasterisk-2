@@ -43,7 +43,7 @@ export default async function links() {
             buttons.getElementsByClassName('edit').item(0)?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                console.log("I'll get there, just wait.");
+                createEditModal(link)(e);
             })
             return buttons
         }
