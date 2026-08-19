@@ -6,16 +6,24 @@ import nav from '@views/nav/nav.ctrl';
 import Link from '../../entities/Link';
 const html = Helpers.html;
 let linksSection: HTMLElement | null | undefined = null;
+let linkList: { link: Link, element: HTMLElement }[] = [];
 
 export default async function links() {
     if (el.title) el.title.innerText = "Lord Steve's Links";
     nav(false); //take away nav
     linksSection = el.links?.querySelector('section');
+    await renderLinks();
+}
 
-    const linkList: { link: Link, element: HTMLElement }[] = [];
+async function renderLinks() {
+    if (!linksSection) return;
 
-    const links = await getData<Link[]>('/get-links');
-    links.forEach(link => linkList.push({ link, element: buildLink(link) }));
+    // Clear out the existing DOM elements and the active list array
+    linksSection.innerHTML = '';
+    linkList = [];
+
+    const fetchedLinks = await getData<Link[]>('/get-links');
+    fetchedLinks.forEach(link => linkList.push({ link, element: buildLink(link) }));
     linkList.forEach(link => linksSection?.appendChild(link.element));
 
     el.checkAdmin(() => {
@@ -29,14 +37,13 @@ export default async function links() {
                         <i class="fa fa-pencil"></i>
                     </button>
                 </div>
-            `
-            buttons.getElementsByClassName('delete').item(0)?.addEventListener('click', (e) => {
+            `;
+            buttons.getElementsByClassName('delete').item(0)?.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 if (confirm('Are you sure you want to delete this link?')) {
-                    delData('/delete-link', link).then(() => {
-                        element.remove();
-                    })
+                    await delData('/delete-link', link);
+                    await renderLinks(); // Re-render after deletion
                 }
             });
 
@@ -44,13 +51,14 @@ export default async function links() {
                 e.stopPropagation();
                 e.preventDefault();
                 createEditModal(link)(e);
-            })
-            return buttons
-        }
+            });
+            return buttons;
+        };
+
         linkList.forEach(l => l.element.appendChild(
             html`<i class="fa fa-grip-lines" style="cursor: grab;margin-right: 5px;"></i>`
         ));
-        linkList.forEach(l => l.element.appendChild(ctrlBtns(l.link, l.element)))
+        linkList.forEach(l => l.element.appendChild(ctrlBtns(l.link, l.element)));
 
         const addLinkModel: Link = {
             url: "#",
@@ -59,34 +67,32 @@ export default async function links() {
             iconClass: "fa-solid fa-link",
             text: "Create New Link",
             sortOrder: 0
-        }
+        };
 
         const newLinkButton = buildLink(addLinkModel, false, true);
         newLinkButton.addEventListener('click', createEditModal(), { signal: el.signal });
 
-        if (linksSection) linksSection.appendChild(newLinkButton);
+        linksSection?.appendChild(newLinkButton);
         const linksToSave = linkList.map(m => m.link);
 
-        if (linksSection) {
-            Helpers.enableDragReorder({
-                items: linkList.map(l => l.element),
-                container: linksSection,
-                itemSelector: '.link[data-draggable="true"]',
-                pinnedElement: newLinkButton,
-                onReorder: async () => {
-                    const linkElements = document.getElementsByClassName('link');
-                    Array.from(linkElements).forEach((el, i) => {
-                        const linkIdAttr = el.id.slice(4);
-                        const linkToSave = linksToSave.find(l => l.id === Number(linkIdAttr));
-                        if (linkToSave) {
-                            linkToSave.sortOrder = i + 1;
-                        }
-                    });
-                    await postData('/save-links', linksToSave);
-                }
-            });
-        }
-    })
+        Helpers.enableDragReorder({
+            items: linkList.map(l => l.element),
+            container: linksSection!,
+            itemSelector: '.link[data-draggable="true"]',
+            pinnedElement: newLinkButton,
+            onReorder: async () => {
+                const linkElements = document.getElementsByClassName('link');
+                Array.from(linkElements).forEach((el, i) => {
+                    const linkIdAttr = el.id.slice(4);
+                    const linkToSave = linksToSave.find(l => l.id === Number(linkIdAttr));
+                    if (linkToSave) {
+                        linkToSave.sortOrder = i + 1;
+                    }
+                });
+                await postData('/save-links', linksToSave);
+            }
+        });
+    });
 }
 
 const iconOrImg = (linkModel: Link) =>
@@ -158,32 +164,29 @@ const createEditModal = (editLink?: Link) => (e: Event) => {
             }, { signal: el.signal });
         }
 
-        linkForm?.addEventListener('submit', (e) => {
+        linkForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(linkForm);
+            const sortOrder = editLink ? editLink.sortOrder : linkList.length + 1;
             const link = new Link(
                 String(formData.get('url') ?? ''),
                 String(formData.get('iconClass') ?? ''),
                 String(formData.get('imageUrl') ?? ''),
                 String(formData.get('text') ?? ''),
                 formData.get('primaryType') === 'on',
-                Number(formData.get('sortOrder') ?? 0)
+                sortOrder
             );
+
             if (editLink) {
                 link.id = editLink.id;
-                putData<Link>('/edit-link', link).then(savedLink => {
-                    const existingLinkButton = linksSection?.querySelector(`#link${savedLink.id}`);
-                    if (existingLinkButton) {
-                        const newLinkButton = buildLink(savedLink);
-                        linksSection?.replaceChild(newLinkButton, existingLinkButton);
-                    }
-                });
+                await putData<Link>('/edit-link', link);
             } else {
-                postData<Link>('/save-link', link).then((savedLink) => {
-                    const savedLinkButton = buildLink(savedLink);
-                    linksSection?.appendChild(savedLinkButton);
-                });
+                await postData<Link>('/save-link', link);
             }
+
+            // Re-render links and close out the modal on submit
+            await renderLinks();
+            if (modal) document.body.removeChild(modal);
         });
     });
 }
