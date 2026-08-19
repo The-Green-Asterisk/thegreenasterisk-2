@@ -1,0 +1,35 @@
+<el-modal id="create-link-modal">
+    <div>
+        <header>
+            <span>Create Link</span>
+            <button class="close-button" aria-label="Close">
+                <span class="fa fa-times"></span>
+            </button>
+        </header>
+        <modal-body>
+            <form>
+                <div>
+                    <label for="url">URL:</label>
+                    <input type="text" id="url" name="url" required>
+                </div>
+                <div>
+                    <label for="text">Text:</label>
+                    <input type="text" id="text" name="text" required>
+                </div>
+                <div>
+                    <label for="imageUrl">Image URL:</label>
+                    <input type="text" id="imageUrl" name="imageUrl">
+                </div>
+                <div>
+                    <label for="iconClass">Icon Class:</label>
+                    <input type="text" id="iconClass" name="iconClass">
+                </div>
+                <div>
+                    <label for="primaryType">Primary Type:</label>
+                    <input type="checkbox" id="primaryType" name="primaryType">
+                </div>
+                <button type="submit">Save Link</button>
+            </form>
+        </modal-body>
+    </div>
+</el-modal>

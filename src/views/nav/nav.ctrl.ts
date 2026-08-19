@@ -1,7 +1,12 @@
 import el from "@elements";
 import { getData } from "@services/request";
 
-export default function nav() {
+export default function nav(showNav: boolean = true) {
+    if (!showNav && el.nav) {
+        el.nav.style.display = "none";
+        el.body.style.paddingTop = `0px`;
+        return;
+    }
     const discordLoginButton = el.buttons?.id('discord_login');
     if (discordLoginButton)
         discordLoginButton.addEventListener('click', async () => {

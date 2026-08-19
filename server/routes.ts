@@ -1,4 +1,5 @@
 import CommentController from 'controllers/commentController';
+import LinkController from 'controllers/linkController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import StorageController from 'controllers/storageController';
@@ -10,7 +11,7 @@ import http from 'http';
 export default class Routes {
     private url: string;
     constructor(
-        public req: http.IncomingMessage, 
+        public req: http.IncomingMessage,
         public res: http.ServerResponse
     ) {
         this.url = req.url?.replace(/\/data\//, '/') ?? '';
@@ -75,6 +76,36 @@ export default class Routes {
     @Method('DELETE')
     private ['/remove-youtube-video'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return YouTubeVideoController.removeVideo(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-links'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.getLinks(req, res);
+    }
+
+    @Method('POST')
+    private ['/save-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.saveLink(req, res);
+    }
+
+    @Method('POST')
+    private ['/save-links'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.saveLinks(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.editLink(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.deleteLink(req, res);
+    }
+
+    @Method('GET')
+    private ['/create-link'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return LinkController.createLink(req, res);
     }
 
     @Method('POST')
@@ -206,9 +237,9 @@ type ResponsePromise = Promise<{
 }>;
 
 function Method(method: Method) {
-    return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod: RouteFunction = descriptor.value;
-        descriptor.value = function(req: http.IncomingMessage, res: http.ServerResponse) {
+        descriptor.value = function (req: http.IncomingMessage, res: http.ServerResponse) {
             if (typeof originalMethod !== 'function') {
                 return {
                     response: '404 Not Found',

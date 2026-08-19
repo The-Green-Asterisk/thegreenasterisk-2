@@ -36,4 +36,9 @@ export default class el extends BaseEl {
     } set manyWorlds(manyWorlds: HTMLElement) {
         this.manyWorlds = manyWorlds;
     }
+    public static get links() {
+        return this.getElement<HTMLElement>('el-links');
+    } set links(links: HTMLElement) {
+        this.links = links;
+    }
 };

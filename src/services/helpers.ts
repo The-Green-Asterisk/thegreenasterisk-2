@@ -75,4 +75,134 @@ export default class Helpers {
         }
         return word; // return original word if no rule matches
     };
+
+    public static enableDragReorder({
+        items,
+        container,
+        itemSelector = '[data-draggable="true"]',
+        onReorder,
+        pinnedElement
+    }: {
+        items: HTMLElement[],
+        container: HTMLElement,
+        itemSelector: string,
+        onReorder: () => void | Promise<void>,
+        pinnedElement?: HTMLElement | null
+    }) {
+        const getDragAfterElement = (y: number, x: number) => {
+            const draggableElements = [
+                ...container.querySelectorAll<HTMLElement>(`${itemSelector}:not(.dragging)`)
+            ];
+
+            return draggableElements.reduce<{ offset: number; element: HTMLElement | null }>(
+                (closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = (y - (box.top + box.height / 2));
+
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                },
+                { offset: Number.NEGATIVE_INFINITY, element: null }
+            ).element;
+        };
+
+        let isDragging = false;
+        let draggingElement: HTMLElement | null = null;
+        let placeholder: HTMLElement | null = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        items.forEach((element) => {
+            element.addEventListener('dragstart', (e) => e.preventDefault());
+
+            element.addEventListener('pointerdown', (e) => {
+                if (element.dataset.draggable === 'false') return;
+                if ((e.target as HTMLElement).closest('button')) return;
+
+                e.preventDefault();
+
+                element.setPointerCapture(e.pointerId);
+                isDragging = true;
+                draggingElement = element;
+
+                const rect = element.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+
+                placeholder = element.cloneNode(true) as HTMLElement;
+                placeholder.style.visibility = 'hidden';
+                placeholder.classList.add('placeholder');
+                element.parentElement?.insertBefore(placeholder, element);
+
+                element.style.position = 'fixed';
+                element.style.zIndex = '1000';
+                element.style.width = `${rect.width}px`;
+                element.style.height = `${rect.height}px`;
+                element.style.margin = '0';
+                element.style.left = `${e.clientX - offsetX}px`;
+                element.style.top = `${e.clientY - offsetY}px`;
+                element.style.pointerEvents = 'none';
+
+                element.classList.add('dragging');
+                document.body.classList.add('is-dragging');
+            });
+
+            element.addEventListener('pointermove', (e) => {
+                if (!isDragging || !draggingElement || draggingElement !== element) return;
+
+                draggingElement.style.left = `${e.clientX - offsetX}px`;
+                draggingElement.style.top = `${e.clientY - offsetY}px`;
+
+                if (placeholder) {
+                    const afterElement = getDragAfterElement(e.clientY, e.clientX);
+                    if (afterElement) {
+                        container.insertBefore(placeholder, afterElement);
+                    } else {
+                        if (pinnedElement && pinnedElement.parentElement === container) {
+                            container.insertBefore(placeholder, pinnedElement);
+                        } else {
+                            container.appendChild(placeholder);
+                        }
+                    }
+                }
+            });
+
+            const endDrag = async (e: PointerEvent) => {
+                if (!isDragging || !draggingElement || draggingElement !== element) return;
+
+                try {
+                    element.releasePointerCapture(e.pointerId);
+                } catch (err) { }
+
+                isDragging = false;
+
+                element.style.position = '';
+                element.style.zIndex = '';
+                element.style.width = '';
+                element.style.height = '';
+                element.style.margin = '';
+                element.style.left = '';
+                element.style.top = '';
+                element.style.pointerEvents = '';
+
+                if (placeholder && placeholder.parentElement) {
+                    placeholder.parentElement.insertBefore(element, placeholder);
+                    placeholder.remove();
+                }
+
+                element.classList.remove('dragging');
+                document.body.classList.remove('is-dragging');
+                draggingElement = null;
+                placeholder = null;
+
+                await onReorder();
+            };
+
+            element.addEventListener('pointerup', endDrag);
+            element.addEventListener('pointercancel', endDrag);
+        });
+    }
 }

@@ -10,6 +10,13 @@
       ],
       "extensions": "html,css",
       "runOnChangeOnly": true
+    },
+    "server-html": {
+      "patterns": [
+        "server/**/*.html"
+      ],
+      "extensions": "html",
+      "runOnChangeOnly": true
     }
   },
   "engines": {
@@ -28,14 +35,16 @@
   "scripts": {
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
     "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
-    "build": "tsc --project ./server/tsconfig.json && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
+    "server-html": "cd server && find . -name '*.html' -not -path './comp/*' -exec cp --parents -t comp/ {} +",
+    "build": "tsc --project ./server/tsconfig.json && npm run server-html && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
     "build:watch:server": "tsc --project ./server/tsconfig.json -w",
     "build:watch:client": "concurrently \"tsc --project ./src/tsconfig.json --noEmit -w\" \"esbuild src/main.ts --bundle --outfile=www/main.js --watch\"",
     "build:watch": "concurrently \"npm run build:watch:server\" \"npm run build:watch:client\"",
     "watch:html": "npm-watch html",
+    "watch:server-html": "npm-watch server-html",
     "prod": "npm run build && npm run start",
     "start": "node ./server/comp/main.js",
-    "dev": "tsc --project ./server/tsconfig.json && concurrently \"npm run build:watch\" \"npm run watch:html\" \"node ./server/comp/main.js\"",
+    "dev": "tsc --project ./server/tsconfig.json && npm run server-html && concurrently \"npm run build:watch\" \"npm run watch:html\" \"npm run watch:server-html\" \"node ./server/comp/main.js\"",
     "migration:generate": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:generate -d ./server/services/database/data-source.ts",
     "migration:run": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:run -d ./server/services/database/data-source.ts",
     "migration:revert": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:revert -d ./server/services/database/data-source.ts",
