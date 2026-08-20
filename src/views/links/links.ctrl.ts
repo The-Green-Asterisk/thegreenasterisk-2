@@ -21,11 +21,12 @@ async function renderLinks() {
     // Clear out the existing DOM elements and the active list array
     linksSection.innerHTML = '';
     linksSection.appendChild(
-        html`
-            <h1>Lord Steve's Links</h1>
-            <p>You succeeded in your investigation roll. You now know where to find Lord Steve. Use this knowledge cautiously.</p>
-        `
-    )
+        html`<h1>Lord Steve's Links</h1>`
+    );
+    linksSection.appendChild(
+        html`<p>You succeeded in your investigation roll. You now know where to find Lord Steve. Use this knowledge cautiously.</p>`
+    );
+
     linkList = [];
 
     const fetchedLinks = await getData<Link[]>('/get-links');
