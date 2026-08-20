@@ -140,6 +140,16 @@ const createEditModal = (editLink?: Link) => (e: Event) => {
             imageUrlInput.value = editLink.imageUrl;
             iconClassInput.value = editLink.iconClass;
             primaryCheckbox.checked = editLink.primaryType;
+
+            if (imageUrlInput.value) {
+                iconClassInput.disabled = true;
+                iconClassInput.value = '';
+                imageUrlInput.required = true;
+            } else if (iconClassInput.value) {
+                imageUrlInput.disabled = true;
+                imageUrlInput.value = '';
+                iconClassInput.required = true;
+            }
         }
 
         if (imageUrlInput && iconClassInput) {
