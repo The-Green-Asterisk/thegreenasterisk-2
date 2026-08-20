@@ -15,6 +15,7 @@ el-modal > div {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    box-shadow: var(--lg-shadow);
 }
 el-modal div header {
     display: flex;

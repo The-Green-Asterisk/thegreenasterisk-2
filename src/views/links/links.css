@@ -122,17 +122,29 @@ el-links .ctrlBtns .edit {
     background-color: green;
 }
 
-el-modal form {
+el-modal#create-link-modal form {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
-el-modal form div {
+el-modal#create-link-modal form input {
+    padding: .25rem;
+    border-radius: 5px;
+    width: 20rem;
+}
+el-modal#create-link-modal form div {
     display: flex;
 }
-el-modal form div label {
+el-modal#create-link-modal form div label {
     flex-grow: 1;
     text-align: right;
     margin-right: 10px;
     font-weight: bold;
+}
+el-modal#create-link-modal form div .checkbox-wrapper {
+    display: flex;
+    align-items: start;
+}
+el-modal#create-link-modal form input[type="checkbox"] {
+    width: auto;
 }

@@ -1,7 +1,7 @@
 <el-modal id="create-link-modal">
     <div>
         <header>
-            <span>Create Link</span>
+            <span>Create/Edit Link</span>
             <button class="close-button" aria-label="Close">
                 <span class="fa fa-times"></span>
             </button>
@@ -26,7 +26,9 @@
                 </div>
                 <div>
                     <label for="primaryType">Primary Type:</label>
-                    <input type="checkbox" id="primaryType" name="primaryType">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="primaryType" name="primaryType">
+                    </div>
                 </div>
                 <button type="submit">Save Link</button>
             </form>
