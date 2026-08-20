@@ -140,6 +140,8 @@ const createEditModal = (editLink?: Link) => (e: Event) => {
                 if (!imageUrlInput.value && !iconClassInput.value) {
                     imageUrlInput.required = true;
                     iconClassInput.required = true;
+                    imageUrlInput.disabled = false;
+                    iconClassInput.disabled = false;
                 } else if (imageUrlInput.value) {
                     iconClassInput.value = '';
                     iconClassInput.disabled = true;
