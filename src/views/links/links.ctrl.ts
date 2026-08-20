@@ -20,6 +20,12 @@ async function renderLinks() {
 
     // Clear out the existing DOM elements and the active list array
     linksSection.innerHTML = '';
+    linksSection.appendChild(
+        html`
+            <h1>Lord Steve's Links</h1>
+            <p>You succeeded in your investigation roll. You now know where to find Lord Steve. Use this knowledge cautiously.</p>
+        `
+    )
     linkList = [];
 
     const fetchedLinks = await getData<Link[]>('/get-links');
@@ -27,7 +33,7 @@ async function renderLinks() {
     linkList.forEach(link => linksSection?.appendChild(link.element));
 
     el.checkAdmin(() => {
-        const ctrlBtns = (link: Link, element: HTMLElement) => {
+        const ctrlBtns = (link: Link) => {
             const buttons = html`
                 <div class="ctrlBtns">
                     <button class="delete">
@@ -58,7 +64,7 @@ async function renderLinks() {
         linkList.forEach(l => l.element.appendChild(
             html`<i class="fa fa-grip-lines" style="cursor: grab;margin-right: 5px;"></i>`
         ));
-        linkList.forEach(l => l.element.appendChild(ctrlBtns(l.link, l.element)));
+        linkList.forEach(l => l.element.appendChild(ctrlBtns(l.link)));
 
         const addLinkModel: Link = {
             url: "#",
