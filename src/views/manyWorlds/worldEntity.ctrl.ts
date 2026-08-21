@@ -83,11 +83,16 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         const editDeleteSegment = `
             <button class="edit-segment-btn">Edit Segment</button>
             <button class="delete-segment-btn">Delete Segment</button>
-            <i class="fa fa-grip-lines"></i>
         `;
+        const gripLines = `
+            <i class="fa fa-grip-lines"></i>
+        `
         const segmentContent = html`
             <div class="entity-segment" data-draggable="true" data-id="${segment.id}">
-                <h3>${segment.name}</h3>
+                <div class="header">
+                    <h3>${segment.name}</h3>
+                    ${el.checkAdmin(gripLines, true)}
+                </div>
                 <p>${segment.description}</p>
                 ${el.checkAdmin(editDeleteSegment, true)}
             </div>

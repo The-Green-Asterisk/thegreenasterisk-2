@@ -278,6 +278,16 @@ el-many-worlds #remove-entity-image-btn {
     background-color: rgb(250, 150, 150);
 }
 
+el-many-worlds .entity-segment .header {
+    margin-top: 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+el-many-worlds .entity-segment .header h3 {
+    margin: 0;
+}
+
 el-many-worlds .fa-grip-lines {
     cursor: grab;
 }
