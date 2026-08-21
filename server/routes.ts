@@ -162,6 +162,10 @@ export default class Routes {
     private ['/edit-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return WorldController.editSegment(req, res);
     }
+    @Method('PUT')
+    private ['/edit-segments'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return WorldController.editSegments(req, res);
+    }
 
     @Method('DELETE')
     private ['/delete-segment'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {

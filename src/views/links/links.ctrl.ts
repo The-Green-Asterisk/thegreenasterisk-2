@@ -86,6 +86,7 @@ async function renderLinks() {
             items: linkList.map(l => l.element),
             container: linksSection!,
             itemSelector: '.link[data-draggable="true"]',
+            dragHandleSelector: '.fa-grip-lines',
             pinnedElement: newLinkButton,
             onReorder: async () => {
                 const linkElements = document.getElementsByClassName('link');

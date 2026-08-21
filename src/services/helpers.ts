@@ -80,13 +80,15 @@ export default class Helpers {
         items,
         container,
         itemSelector = '[data-draggable="true"]',
+        dragHandleSelector,
         onReorder,
         pinnedElement
     }: {
         items: HTMLElement[],
         container: HTMLElement,
-        itemSelector: string,
         onReorder: () => void | Promise<void>,
+        itemSelector?: string,
+        dragHandleSelector?: string,
         pinnedElement?: HTMLElement | null
     }) {
         const getDragAfterElement = (y: number, x: number) => {
@@ -119,8 +121,13 @@ export default class Helpers {
             element.addEventListener('dragstart', (e) => e.preventDefault());
 
             element.addEventListener('pointerdown', (e) => {
+                const target = e.target as HTMLElement;
                 if (element.dataset.draggable === 'false') return;
-                if ((e.target as HTMLElement).closest('button')) return;
+                if (target.closest('button')) return;
+
+                if (dragHandleSelector && !target.closest(dragHandleSelector)) {
+                    return;
+                }
 
                 e.preventDefault();
 

@@ -416,6 +416,42 @@ export default class WorldController extends BaseController {
         }
     }
 
+    public static async editSegments(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const updatedSegments = await this.readBody<Segment[]>(req);
+            if (!updatedSegments || !Array.isArray(updatedSegments)) {
+                return {
+                    response: JSON.stringify('Invalid segments data'),
+                    status: 400
+                };
+            }
+            const segmentRepository = AppDataSource.getRepository(Segment);
+            const savedSegments = [];
+            for (const updatedSegment of updatedSegments) {
+                if (!updatedSegment.id) {
+                    continue;
+                }
+                const existingSegment = await segmentRepository.findOneBy({ id: updatedSegment.id });
+                if (!existingSegment) {
+                    continue;
+                }
+                const mergedSegment = segmentRepository.merge(existingSegment, updatedSegment);
+                const savedSegment = await segmentRepository.save(mergedSegment);
+                savedSegments.push(savedSegment);
+            }
+            return {
+                response: JSON.stringify(savedSegments),
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error editing segments:", error);
+            return {
+                response: JSON.stringify('Internal Server Error'),
+                status: 500
+            };
+        }
+    }
+
     public static async deleteSegment(req: http.IncomingMessage, res: http.ServerResponse) {
         try {
             const segment = await this.readBody<Segment>(req);

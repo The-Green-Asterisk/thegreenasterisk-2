@@ -80,65 +80,18 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
     };
 
     const createSegmentElement = (segment: Segment) => {
-        const displayOrder = `
-            <div class="segment-order">
-                <label for="display-order-${segment.id}">Order:</label>
-                <input type="number" id="display-order-${segment.id}" value="${segment.displayOrder}" min="1" />
-            </div>
-        `;
         const editDeleteSegment = `
             <button class="edit-segment-btn">Edit Segment</button>
             <button class="delete-segment-btn">Delete Segment</button>
+            <i class="fa fa-grip-lines"></i>
         `;
         const segmentContent = html`
-            <div class="entity-segment">
-                ${el.checkAdmin(displayOrder, true)}
+            <div class="entity-segment" data-draggable="true" data-id="${segment.id}">
                 <h3>${segment.name}</h3>
                 <p>${segment.description}</p>
                 ${el.checkAdmin(editDeleteSegment, true)}
             </div>
         `;
-
-        const displayOrderInput = segmentContent.querySelector(`#display-order-${segment.id}`) as HTMLInputElement | undefined;
-        if (displayOrderInput) {
-            displayOrderInput.addEventListener('change', () => {
-                let newOrder = parseInt(displayOrderInput.value, 10);
-                if (!isNaN(newOrder) && newOrder !== segment.displayOrder) {
-                    if (newOrder < 1) newOrder = 1;
-                    if (newOrder > entity.segments.length) newOrder = entity.segments.length;
-                    if (newOrder === segment.displayOrder) {
-                        displayOrderInput.value = segment.displayOrder.toString();
-                        return;
-                    };
-                    if (newOrder < segment.displayOrder) {
-                        entity.segments.forEach(s => {
-                            if (s.id !== segment.id && s.displayOrder >= newOrder && s.displayOrder < segment.displayOrder) {
-                                s.displayOrder += 1;
-                            }
-                        });
-                    } else {
-                        entity.segments.forEach(s => {
-                            if (s.id !== segment.id && s.displayOrder <= newOrder && s.displayOrder > segment.displayOrder) {
-                                s.displayOrder -= 1;
-                            }
-                        });
-                    }
-                    segment.displayOrder = newOrder;
-                    putData<Segment>('/edit-segment', segment).then(() => {
-                        sortSegments(entity.segments);
-                        segmentDiv.innerHTML = '';
-                        entity.segments.forEach(createSegmentElement);
-
-                        putData<WorldEntity>('/edit-entity', entity).catch(error => {
-                            alert('Error updating entity with new segment order: ' + error);
-                        });
-                    }).catch(error => {
-                        alert('Error updating segment order: ' + error);
-                    });
-
-                }
-            }, { signal: el.signal });
-        }
 
         const editSegmentBtn = segmentContent.querySelector('.edit-segment-btn') as HTMLButtonElement | undefined;
         if (editSegmentBtn) editSegmentBtn.addEventListener('click', editSegment(segment), { signal: el.signal });
@@ -344,6 +297,32 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 );
 
                 entityStatsDiv.appendChild(editEditors);
+            });
+
+            // Re-order segments for admins/editors
+            Helpers.enableDragReorder({
+                container: segmentDiv,
+                items: Array.from(segmentDiv.querySelectorAll('.entity-segment')),
+                itemSelector: '.entity-segment[data-draggable="true"]',
+                dragHandleSelector: '.fa-grip-lines',
+                pinnedElement: segmentDiv.querySelector('#add-segment-btn') as HTMLElement | null,
+                onReorder: async () => {
+                    const segmentElements = segmentDiv.querySelectorAll('.entity-segment');
+                    const updates: Segment[] = [];
+                    Array.from(segmentElements).forEach((segmentEl, index) => {
+                        const segmentId = Number(segmentEl.getAttribute('data-id'));
+                        const segmentToSave = entity.segments.find(s => s.id === segmentId);
+                        if (segmentToSave) {
+                            segmentToSave.displayOrder = index + 1;
+                            updates.push(segmentToSave);
+                        }
+                    });
+                    try {
+                        await putData<Segment[]>('/edit-segments', updates);
+                    } catch (error) {
+                        alert('Error saving new segment order: ' + error);
+                    }
+                }
             });
         }
     };
