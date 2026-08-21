@@ -278,6 +278,10 @@ el-many-worlds #remove-entity-image-btn {
     background-color: rgb(250, 150, 150);
 }
 
+el-many-worlds .fa-grip-lines {
+    cursor: grab;
+}
+
 @media screen and (min-width: 768px) {
     el-many-worlds .category-container {
         width: calc(50% - 22px);
