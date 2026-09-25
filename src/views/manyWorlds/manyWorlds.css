@@ -195,6 +195,10 @@ el-many-worlds #entity-segments {
     padding: 0 20px;
 }
 
+el-many-worlds .entity-segment {
+    background-color: white;
+}
+
 el-many-worlds #entity-segments .segment-order {
     display: inline-block;
 }
