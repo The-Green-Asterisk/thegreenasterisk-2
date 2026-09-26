@@ -32,7 +32,7 @@ This file tells coding assistants how this repository is structured, how to buil
   - Direct DOM manipulation: The front end manipulates DOM directly in TypeScript (no React/Angular). Reusable DOM/API helpers live in `src/services/*` (e.g. `request.ts`, `storageBox.ts`, `helpers.ts`).
   - Registering new views (e.g. `src/views/myView/`):
     1. Template: wrap view markup in a custom container element (e.g. `<el-my-view>`) rendered with `Helpers.html` (e.g. [src/views/home/home.template.ts](../src/views/home/home.template.ts)).
-    2. Elements service: add static getter/setter accessors to `el` in [src/services/elements.ts](../src/services/elements.ts) (`public static get myView() { return this.getElement<HTMLElement>('el-my-view'); }`).
+    2. Elements service: add static getter accessors to `el` in [src/services/elements.ts](../src/services/elements.ts) (`public static get myView() { return this.getElement<HTMLElement>('el-my-view'); }`).
     3. Views index: export the controller and template in [src/views/index.ts](../src/views/index.ts) and register them in the default `views` object.
     4. Stylesheet: import the view's CSS in [src/views/index.css](../src/views/index.css).
 

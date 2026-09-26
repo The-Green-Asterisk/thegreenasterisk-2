@@ -127,8 +127,6 @@ export default class BaseEl {
             throw new Error('Root element not found!');
         }
         return el;
-    } set root(root: HTMLElement) {
-        this.root = root;
     }
     public static get body() {
         const el = this.getElement<HTMLBodyElement>('body');
@@ -136,8 +134,6 @@ export default class BaseEl {
             throw new Error('Body element not found!');
         }
         return el;
-    } set body(body: HTMLBodyElement) {
-        this.body = body;
     }
     public static get title() {
         const el = this.getElement<HTMLTitleElement>('title');
@@ -145,29 +141,19 @@ export default class BaseEl {
             throw new Error('Title element not found!');
         }
         return el;
-    } set title(title: HTMLTitleElement) {
-        this.title = title;
     }
     public static get inputs() {
         return this.getElements<HTMLInputElement>('input') ?? ([] as unknown as NodeListOf<HTMLInputElement>);
-    } set inputs(inputs: NodeListOf<HTMLInputElement>) {
-        this.inputs = inputs;
     }
     public static get textareas() {
         return this.getElements<HTMLTextAreaElement>('textarea') ?? ([] as unknown as NodeListOf<HTMLTextAreaElement>);
-    } set textareas(textareas: NodeListOf<HTMLTextAreaElement>) {
-        this.textareas = textareas;
     }
     public static get nav() {
         return this.getElement<HTMLElement>('nav');
-    } set nav(nav: HTMLElement) {
-        this.nav = nav;
     }
     public static csrfToken: string = '';
     public static get modal() {
         return this.getElement<HTMLElement>('el-modal');
-    } set modal(modal: HTMLElement) {
-        this.modal = modal;
     }
     public static get loader() {
         // The loader is a special element that will be created if it is not found
@@ -188,75 +174,54 @@ export default class BaseEl {
         }
         this.loaderCount++
         return loader;
-    } set loader(loader: HTMLElement) {
-        this.loader = loader;
     }
     public static loaderCount = 0;
     public static get selectors() {
         return this.getElements<HTMLSelectElement>('select') ?? ([] as unknown as NodeListOf<HTMLSelectElement>);
-    } set selectors(selectors: NodeListOf<HTMLSelectElement>) {
-        this.selectors = selectors;
     }
     public static get buttons() {
         return this.getElements<HTMLButtonElement>('button') ?? ([] as unknown as NodeListOf<HTMLButtonElement>);
-    } set buttons(buttons: NodeListOf<HTMLButtonElement>) {
-        this.buttons = buttons;
     }
     public static get divs() {
         return this.getElements<HTMLDivElement>('div') ?? ([] as unknown as NodeListOf<HTMLDivElement>);
-    } set divs(divs: NodeListOf<HTMLDivElement>) {
-        this.divs = divs;
     }
     public static get paragraphs() {
         return this.getElements<HTMLParagraphElement>('p') ?? ([] as unknown as NodeListOf<HTMLParagraphElement>);
-    } set paragraphs(paragraphs: NodeListOf<HTMLParagraphElement>) {
-        this.paragraphs = paragraphs;
     }
     public static get forms() {
         return this.getElements<HTMLFormElement>('form') ?? ([] as unknown as NodeListOf<HTMLFormElement>);
-    } set forms(forms: NodeListOf<HTMLFormElement>) {
-        this.forms = forms;
     }
     public static get imgs() {
         return this.getElements<HTMLImageElement>('img') ?? ([] as unknown as NodeListOf<HTMLImageElement>);
-    } set imgs(imgs: NodeListOf<HTMLImageElement>) {
-        this.imgs = imgs;
     }
     public static get sections() {
         return this.getElements<HTMLElement>('section') ?? ([] as unknown as NodeListOf<HTMLElement>);
-    } set sections(sections: NodeListOf<HTMLElement>) {
-        this.sections = sections;
     }
     public static get formInputs() {
         return this.getElements<HTMLInputElement | HTMLTextAreaElement>('form input, form textarea') ?? ([] as unknown as NodeListOf<HTMLInputElement | HTMLTextAreaElement>);
-    } set formInputs(formInputs: NodeListOf<HTMLInputElement | HTMLTextAreaElement>) {
-        this.formInputs = formInputs;
     }
     public static get submitButton() {
         return this.getElement<HTMLButtonElement>('button[type="submit"]');
-    } set submitButton(submitButton: HTMLButtonElement) {
-        this.submitButton = submitButton;
     }
     public static get cookieBanner() {
         return this.getElement<HTMLElement>('el-cookie-banner');
-    } set cookieBanner(cookieBanner: HTMLElement) {
-        this.cookieBanner = cookieBanner;
     }
     public static get textEditor() {
         return this.getElement<HTMLElement>('el-text-editor');
     }
 
     constructor(private submitted = false) {
-        if (this.selectors && this.selectors.length > 0) {
+        const selectors = BaseEl.selectors;
+        if (selectors && selectors.length > 0) {
             // this will make selector options toggle on mousedown
             // which is not the default behavior. This can be deleted
             // if the default behavior is desired.
-            this.selectors.forEach(selector => {
+            selectors.forEach(selector => {
                 selector.addEventListener('click', (e) => {
                     e.preventDefault();
                     selector.focus();
                 }, { signal });
-                Array.from(selector.options).forEach(option => {
+                Array.from(selector.options).forEach((option: HTMLOptionElement) => {
                     option.addEventListener('mousedown', (e) => {
                         e.preventDefault();
                         if (option.value === (e.target as HTMLOptionElement)?.value) {
@@ -267,34 +232,40 @@ export default class BaseEl {
             });
         }
 
-        if (this.formInputs && this.submitButton) {
+        const formInputs = BaseEl.formInputs;
+        const submitButton = BaseEl.submitButton;
+        if (formInputs && submitButton) {
             // This will disable the submit button if any required inputs are empty
-            let requiredInputs = this.formInputs.values().filter(input => input.required);
-            let disableSubmitButton = () => {
-                if (this.submitButton)
-                    this.submitButton.disabled = !requiredInputs.every(input => input.value.trim().length > 0);
+            const requiredInputs = Array.from(formInputs).filter(input => input.required);
+            const disableSubmitButton = () => {
+                const btn = BaseEl.submitButton;
+                if (btn)
+                    btn.disabled = !requiredInputs.every(input => input.value.trim().length > 0);
             };
             setTimeout(disableSubmitButton, 1000);
             requiredInputs.forEach(input => {
-                input.addEventListener('input', (e) => {
+                input.addEventListener('input', () => {
                     disableSubmitButton();
                 }, { signal });
             });
 
             // This will disable the submit button and change its text to a spinner when form is submitted
-            this.forms.forEach(form => {
-                form.addEventListener('submit', (e) => {
-                    form.submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-                    form.submitButton.disabled = true;
-                    form.submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            BaseEl.forms?.forEach(form => {
+                form.addEventListener('submit', () => {
+                    const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    }
                     this.submitted = true;
                 }, { signal });
             });
         }
 
-        window.addEventListener('beforeunload', (e) => {
+        window.addEventListener('beforeunload', () => {
             // this will save form values to local storage before the page is unloaded
-            if (this.formInputs && this.formInputs.length == 0) return;
+            const inputs = BaseEl.formInputs;
+            if (inputs && inputs.length == 0) return;
             if (this.submitted) {
                 StorageBox.clear();
                 return;
@@ -303,20 +274,21 @@ export default class BaseEl {
             let values: {
                 [index: string]: string
             } = {};
-            this.formInputs?.forEach(input => {
+            inputs?.forEach(input => {
                 if (input && input.name && !input.name.startsWith('_') && input.type !== 'file')
                     values[input.name] = input.value;
             });
 
             StorageBox.set('formValues', values);
         }, { signal });
-        window.addEventListener('load', (e) => {
+        window.addEventListener('load', () => {
             // this will load form values from local storage when the page is loaded
-            if (this.formInputs?.length == 0) return;
+            const inputs = BaseEl.formInputs;
+            if (inputs?.length == 0) return;
 
             let values = StorageBox.get<FormValues>('formValues');
 
-            this.formInputs?.forEach(input => {
+            inputs?.forEach(input => {
                 if (input && input.name
                     && !input.name.startsWith('_')
                     && input.type !== 'file'
