@@ -4,6 +4,7 @@ import { Tag } from "services/database/entity/Tag";
 import { YouTubeVideo } from "services/database/entity/YouTubeVideo";
 import { In } from "typeorm";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 export default class YouTubeVideoController extends BaseController {
     constructor() {
@@ -34,6 +35,13 @@ export default class YouTubeVideoController extends BaseController {
     }
 
     public static async saveVideo(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const body = await this.readBody<YouTubeVideo>(req);
             if (!body || !body.title || !body.url) {
@@ -70,6 +78,13 @@ export default class YouTubeVideoController extends BaseController {
     }
 
     public static async removeVideo(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const body = await this.readBody(req);
             const videoId = Number(body.id);

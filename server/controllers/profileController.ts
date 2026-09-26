@@ -2,6 +2,7 @@ import http from "http";
 import AppDataSource from "services/database";
 import { User } from "services/database/entity/User";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 export default class ProfileController extends BaseController {
     constructor() {
@@ -45,15 +46,34 @@ export default class ProfileController extends BaseController {
     }
 
     public static async updateUserProfile(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            }
+        }
         try {
             const body = await this.readBody(req);
+            const targetId = Number(body?.id);
+            if (!targetId || (targetId !== currentUser.id && !currentUser.isAdmin)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
+                }
+            }
             const userRepository = AppDataSource.getRepository(User);
-            const user = await userRepository.findOneBy({ id: body.id });
+            const user = await userRepository.findOneBy({ id: targetId });
             if (!user) {
                 return {
                     response: JSON.stringify('User not found'),
                     status: 404
                 }
+            }
+            delete body.password;
+            delete body.discord_id;
+            if (!currentUser.isAdmin) {
+                delete body.isAdmin;
             }
             Object.assign(user, body);
             await userRepository.save(user);

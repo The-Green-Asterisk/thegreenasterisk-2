@@ -4,25 +4,27 @@ import { Comment, CommentModel } from "services/database/entity/Comment";
 import { User } from "services/database/entity/User";
 import EmailService from "services/email";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 export default class CommentController extends BaseController {
     constructor() {
         super();
     }
-    
+
     public static async addComment(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
+
         const comment = await this.readBody<CommentModel>(req);
 
         if (!comment.content) {
             return {
                 response: JSON.stringify('Comment content is required'),
-                status: 400
-            }
-        }
-
-        if (!comment.authorId) {
-            return {
-                response: JSON.stringify('Author ID is required'),
                 status: 400
             }
         }
@@ -33,14 +35,14 @@ export default class CommentController extends BaseController {
                 status: 400
             }
         }
-        
+
         try {
             comment.content = comment.content.replace(/\n/g, '<br/>');
             const commentRepository = AppDataSource.getRepository(Comment);
             const newComment = commentRepository.create(comment);
 
             const userRepository = AppDataSource.getRepository(User);
-            const author = await userRepository.findOneBy({ id: comment.authorId });
+            const author = await userRepository.findOneBy({ id: currentUser.id });
 
             if (!author) {
                 return {
@@ -99,6 +101,14 @@ export default class CommentController extends BaseController {
     }
 
     public static async editComment(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
+
         const commentModel = await this.readBody<CommentModel>(req);
         if (!commentModel.id) {
             return {
@@ -109,13 +119,23 @@ export default class CommentController extends BaseController {
 
         try {
             const commentRepository = AppDataSource.getRepository(Comment);
-            const comment = await commentRepository.findOneBy({ id: commentModel.id });
+            const comment = await commentRepository.findOne({
+                where: { id: commentModel.id },
+                relations: ['author']
+            });
 
             if (!comment) {
                 return {
                     response: JSON.stringify('Comment not found'),
                     status: 404
                 }
+            }
+
+            if (!currentUser.isAdmin && comment.author?.id !== currentUser.id) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
+                };
             }
 
             comment.content = commentModel.content || comment.content;
@@ -135,6 +155,14 @@ export default class CommentController extends BaseController {
     }
 
     public static async deleteComment(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
+
         const { commentId } = await this.readBody(req);
         if (!commentId) {
             return {
@@ -144,13 +172,24 @@ export default class CommentController extends BaseController {
         }
         try {
             const commentRepository = AppDataSource.getRepository(Comment);
-            const comment = await commentRepository.findOneBy({ id: parseInt(commentId as string) });
+            const comment = await commentRepository.findOne({
+                where: { id: parseInt(commentId as string) },
+                relations: ['author']
+            });
             if (!comment) {
                 return {
                     response: JSON.stringify('Comment not found'),
                     status: 404
                 }
             }
+
+            if (!currentUser.isAdmin && comment.author?.id !== currentUser.id) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
+                };
+            }
+
             await commentRepository.remove(comment);
             return {
                 response: JSON.stringify('Comment deleted successfully'),

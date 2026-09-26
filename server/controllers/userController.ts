@@ -10,7 +10,8 @@ export default class UserController extends BaseController {
     }
 
     public static async getAllUsers(req: http.IncomingMessage, res: http.ServerResponse) {
-        if (!SessionController.currentUser?.isAdmin) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
             return {
                 response: JSON.stringify('Unauthorized'),
                 status: 401

@@ -7,13 +7,26 @@ import { World } from "services/database/entity/World";
 import { WorldEntity } from "services/database/entity/WorldEntity";
 import StorageService from "services/storage";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 export default class WorldController extends BaseController {
     constructor() {
         super();
     }
 
+    private static canEditEntity(userId: number, isAdmin: boolean, entity: WorldEntity): boolean {
+        if (isAdmin) return true;
+        return !!entity.editors?.some(editor => editor.id === userId);
+    }
+
     public static async createWorld(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const newWorld = await this.readBody<World>(req);
             if (!newWorld || !newWorld.name) {
@@ -61,6 +74,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async editWorld(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const updatedWorld = await this.readBody<World>(req);
             if (!updatedWorld || !updatedWorld.id) {
@@ -138,6 +158,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async createCategory(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const newCategory = await this.readBody<Category>(req);
             if (!newCategory || !newCategory.name) {
@@ -271,6 +298,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async createEntity(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const newEntity = await this.readBody<WorldEntity>(req);
             if (!newEntity || !newEntity.name) {
@@ -341,6 +375,14 @@ export default class WorldController extends BaseController {
     }
 
     public static async editEntity(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
+
         const updatedEntity = await this.readBody<WorldEntity>(req);
         if (!updatedEntity || !updatedEntity.id) {
             return {
@@ -350,11 +392,21 @@ export default class WorldController extends BaseController {
         }
         try {
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
-            const existingEntity = await worldEntityRepository.findOneBy({ id: updatedEntity.id });
+            const existingEntity = await worldEntityRepository.findOne({
+                where: { id: updatedEntity.id },
+                relations: ['editors']
+            });
             if (!existingEntity) {
                 return {
                     response: JSON.stringify('Entity not found'),
                     status: 404
+                };
+            }
+
+            if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, existingEntity)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
                 };
             }
 
@@ -382,6 +434,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async editSegment(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const updatedSegment = await this.readBody<Segment>(req);
             if (!updatedSegment || !updatedSegment.id) {
@@ -391,11 +450,21 @@ export default class WorldController extends BaseController {
                 };
             }
             const segmentRepository = AppDataSource.getRepository(Segment);
-            const existingSegment = await segmentRepository.findOneBy({ id: updatedSegment.id });
+            const existingSegment = await segmentRepository.findOne({
+                where: { id: updatedSegment.id },
+                relations: ['worldEntity', 'worldEntity.editors']
+            });
             if (!existingSegment) {
                 return {
                     response: JSON.stringify('Segment not found'),
                     status: 404
+                };
+            }
+
+            if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, existingSegment.worldEntity)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
                 };
             }
 
@@ -417,6 +486,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async editSegments(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const updatedSegments = await this.readBody<Segment[]>(req);
             if (!updatedSegments || !Array.isArray(updatedSegments)) {
@@ -431,8 +507,14 @@ export default class WorldController extends BaseController {
                 if (!updatedSegment.id) {
                     continue;
                 }
-                const existingSegment = await segmentRepository.findOneBy({ id: updatedSegment.id });
+                const existingSegment = await segmentRepository.findOne({
+                    where: { id: updatedSegment.id },
+                    relations: ['worldEntity', 'worldEntity.editors']
+                });
                 if (!existingSegment) {
+                    continue;
+                }
+                if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, existingSegment.worldEntity)) {
                     continue;
                 }
                 const mergedSegment = segmentRepository.merge(existingSegment, updatedSegment);
@@ -453,6 +535,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async deleteSegment(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const segment = await this.readBody<Segment>(req);
 
@@ -463,11 +552,20 @@ export default class WorldController extends BaseController {
                 };
             }
             const segmentRepository = AppDataSource.getRepository(Segment);
-            const existingSegment = await segmentRepository.findOneBy({ id: segment.id });
+            const existingSegment = await segmentRepository.findOne({
+                where: { id: segment.id },
+                relations: ['worldEntity', 'worldEntity.editors']
+            });
             if (!existingSegment) {
                 return {
                     response: JSON.stringify('Segment not found'),
                     status: 404
+                };
+            }
+            if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, existingSegment.worldEntity)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
                 };
             }
             existingSegment.isActive = false;
@@ -486,6 +584,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async addStat(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const stat = await this.readBody<Stat>(req);
             if (!stat || !stat.name || !stat.value || !stat.worldEntity || !stat.worldEntity.id) {
@@ -496,11 +601,21 @@ export default class WorldController extends BaseController {
             }
 
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
-            const associatedEntity = await worldEntityRepository.findOneBy({ id: stat.worldEntity.id });
+            const associatedEntity = await worldEntityRepository.findOne({
+                where: { id: stat.worldEntity.id },
+                relations: ['editors']
+            });
             if (!associatedEntity) {
                 return {
                     response: JSON.stringify('Associated WorldEntity not found'),
                     status: 404
+                };
+            }
+
+            if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, associatedEntity)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
                 };
             }
 
@@ -523,6 +638,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async editStat(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const updatedStat = await this.readBody<Stat>(req);
             if (!updatedStat || !updatedStat.id) {
@@ -533,11 +655,21 @@ export default class WorldController extends BaseController {
             }
 
             const statRepository = AppDataSource.getRepository(Stat);
-            const existingStat = await statRepository.findOneBy({ id: updatedStat.id });
+            const existingStat = await statRepository.findOne({
+                where: { id: updatedStat.id },
+                relations: ['worldEntity', 'worldEntity.editors']
+            });
             if (!existingStat) {
                 return {
                     response: JSON.stringify('Stat not found'),
                     status: 404
+                };
+            }
+
+            if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, existingStat.worldEntity)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
                 };
             }
 
@@ -558,6 +690,13 @@ export default class WorldController extends BaseController {
     }
 
     public static async deleteStat(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const stat = await this.readBody<Stat>(req);
             if (!stat?.id) {
@@ -567,13 +706,24 @@ export default class WorldController extends BaseController {
                 };
             }
             const statRepository = AppDataSource.getRepository(Stat);
-            const existingStat = await statRepository.findOneBy({ id: stat.id });
+            const existingStat = await statRepository.findOne({
+                where: { id: stat.id },
+                relations: ['worldEntity', 'worldEntity.editors']
+            });
             if (!existingStat) {
                 return {
                     response: JSON.stringify('Stat not found'),
                     status: 404
                 };
             }
+
+            if (!this.canEditEntity(currentUser.id, currentUser.isAdmin, existingStat.worldEntity)) {
+                return {
+                    response: JSON.stringify('Forbidden'),
+                    status: 403
+                };
+            }
+
             await statRepository.remove(existingStat);
             return {
                 response: JSON.stringify('Stat deleted successfully'),

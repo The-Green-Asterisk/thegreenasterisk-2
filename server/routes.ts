@@ -30,7 +30,7 @@ export default class Routes {
 
     @Method('GET')
     private ['/check-auth'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
-        const isAuth = SessionController.checkAuth();
+        const isAuth = SessionController.checkAuth(req);
         return Promise.resolve({
             response: isAuth.toString(),
             header: 'application/json',
@@ -45,7 +45,7 @@ export default class Routes {
 
     @Method('GET')
     private ['/logout'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
-        SessionController.logout();
+        SessionController.logout(req);
         return Promise.resolve({
             response: JSON.stringify('Logged out'),
             header: 'text/plain',

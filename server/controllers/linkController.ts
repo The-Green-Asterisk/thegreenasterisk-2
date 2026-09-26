@@ -4,6 +4,7 @@ import path from "path";
 import AppDataSource from "services/database";
 import { Link } from "services/database/entity/Link";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 export default class LinkController extends BaseController {
 
@@ -25,6 +26,13 @@ export default class LinkController extends BaseController {
     }
 
     public static async saveLink(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const body = await this.readBody<Link>(req);
             if (!body || !body.url || !body.text) {
@@ -51,6 +59,13 @@ export default class LinkController extends BaseController {
     }
 
     public static async saveLinks(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const body = await this.readBody<Link[]>(req);
             if (!body || !body.length) {
@@ -77,6 +92,13 @@ export default class LinkController extends BaseController {
     }
 
     public static async editLink(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const body = await this.readBody<Link>(req);
             if (!body || !body.id) {
@@ -113,6 +135,13 @@ export default class LinkController extends BaseController {
     }
 
     public static async deleteLink(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const body = await this.readBody(req);
             const linkId = Number(body.id);
@@ -144,6 +173,13 @@ export default class LinkController extends BaseController {
     }
 
     public static async createLink(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
         try {
             const modalView = await fs.promises.readFile(path.join(__dirname, '../modalViews/createLink.html'), 'utf-8');
 
