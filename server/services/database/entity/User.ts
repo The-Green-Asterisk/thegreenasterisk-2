@@ -29,8 +29,8 @@ export class User {
     @Column()
     public email!: string
 
-    @Column()
-    public password!: string
+    @Column({ select: false, default: '' })
+    public password?: string
 
     @Column()
     public isAdmin!: boolean

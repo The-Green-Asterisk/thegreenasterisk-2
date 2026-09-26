@@ -1,40 +1,60 @@
 import 'module-alias/register';
 import 'reflect-metadata';
 
+import crypto from 'crypto';
 import fs from 'fs';
 import http from 'http';
 import path from 'path';
 
-import { User } from 'services/database/entity/User';
 import cache from './cache';
-import SessionController from './controllers/sessionController';
 import Routes from './routes';
 import BrowserSync from './services/browserSyncService';
+import { initDatabase } from './services/database';
 
 if (!process.env.PORT) require('dotenv').config();
+
+function parseCookies(cookieHeader?: string): Record<string, string> {
+    const list: Record<string, string> = {};
+    if (!cookieHeader) return list;
+    cookieHeader.split(';').forEach(cookie => {
+        const parts = cookie.split('=');
+        const name = parts[0]?.trim();
+        if (name) {
+            list[name] = decodeURIComponent(parts.slice(1).join('=').trim());
+        }
+    });
+    return list;
+}
+
+function generateCsrfToken(): string {
+    return 'csrf_' + crypto.randomBytes(24).toString('hex');
+}
 
 const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const { method, headers } = req;
     let { url } = req;
-    const sessionId = (headers['user-agent'] ?? '') + (headers['x-forwarded-for'] ?? '');
-    const sessionKey = headers['authorization'];
-    const userCookie = (headers['cookie'] as string | undefined)
-        ?.split(';').find(f => f.startsWith(' currentUser='));
-    const currentUser = userCookie
-        ? JSON.parse(userCookie.slice(' currentUser='.length) || '{}') as User
-            : undefined;
-    if (sessionKey && !Array.isArray(sessionKey)) new SessionController(sessionKey, currentUser);
-    
+
+    const cookies = parseCookies(headers['cookie']);
+    let csrfToken = cookies['csrf-token'];
+
+    if (!csrfToken) {
+        csrfToken = generateCsrfToken();
+        cache.set('csrf-token-' + csrfToken, true, 86400);
+        res.setHeader('Set-Cookie', `csrf-token=${csrfToken}; Path=/; SameSite=Lax`);
+    }
+
     if (method !== 'GET') {
-        let valid = cache.get('csrf-token-' + sessionId) === headers['x-csrf-token'];
+        const headerToken = headers['x-csrf-token'] as string | undefined;
+        const valid = !!headerToken && (
+            (!!csrfToken && headerToken === csrfToken) ||
+            cache.get('csrf-token-' + headerToken) === true
+        );
         if (!valid) {
             console.error(`Invalid CSRF token for ${method} ${url}`);
             res.statusCode = 403;
             res.setHeader('Content-Type', 'text/plain');
             res.end('403 Forbidden');
             return;
-        } else {
-            cache.del('csrf-token-' + sessionId);
         }
     }
 
@@ -51,7 +71,7 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                 res.statusCode = 200;
                 res.setHeader('Content-Type', 'image/png');
                 res.end(favicon);
-            } catch(error) {
+            } catch (error) {
                 console.error(`Error serving favicon: ${error}`);
                 res.statusCode = 404;
                 res.setHeader('Content-Type', 'text/plain');
@@ -65,11 +85,14 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                 res.end('405 Method Not Allowed');
                 break;
             }
-            const token = Math.random().toString(36).substring(2);
-            cache.set('csrf-token-' + sessionId, token);
+            if (!csrfToken) {
+                csrfToken = generateCsrfToken();
+            }
+            cache.set('csrf-token-' + csrfToken, true, 86400);
+            res.setHeader('Set-Cookie', `csrf-token=${csrfToken}; Path=/; SameSite=Lax`);
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/plain');
-            res.end(token);
+            res.end(csrfToken);
             break;
         default:
             if (url?.startsWith('/views/') && headers['x-requested-with'] !== 'Elemental') {
@@ -83,7 +106,7 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                     res.statusCode = 200;
                     res.setHeader('Content-Type', findContentType(findExtension(url)));
                     res.end(file);
-                } catch(error) {
+                } catch (error) {
                     console.error(`Error serving storage file: ${error}`);
                     res.statusCode = 404;
                     res.setHeader('Content-Type', 'text/plain');
@@ -128,7 +151,7 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                         res.statusCode = 200;
                         res.setHeader('Content-Type', findContentType(findExtension(url)));
                         res.end(file);
-                    } catch(error) {
+                    } catch (error) {
                         console.error(`Error serving main page: ${error}`);
                         res.statusCode = 404;
                         res.setHeader('Content-Type', 'text/plain');
@@ -147,25 +170,36 @@ const reloadPort = parseInt(process.env.RELOAD_PORT || '35729');
 const isDev = process.env.ENV === 'development' && !!reloadPort;
 const isBrowserSyncChild = process.env.BROWSER_SYNC_CHILD === 'true';
 
-if (isDev && !isBrowserSyncChild) {
-    console.log('Starting browser-sync development runtime.');
-    BrowserSync(port, host, reloadPort);
-} else {
-    const server = http.createServer(makeServer);
-    process.on('SIGINT', () => {
-        console.log('Shutting down server...');
-        server.close(() => {
-            console.log('Server stopped.');
-            process.exit(0);
+const startServer = async () => {
+    if (isDev && !isBrowserSyncChild) {
+        console.log('Starting browser-sync development runtime.');
+        BrowserSync(port, host, reloadPort);
+    } else {
+        try {
+            await initDatabase();
+        } catch (error) {
+            console.error('Failed to initialize database before starting server:', error);
+            process.exit(1);
+        }
+
+        const server = http.createServer(makeServer);
+        process.on('SIGINT', () => {
+            console.log('Shutting down server...');
+            server.close(() => {
+                console.log('Server stopped.');
+                process.exit(0);
+            });
         });
-    });
-    server.listen(port, host, () => {
-        console.log(`Static server started on http://${host}:${port}.`);
-    });
-}
+        server.listen(port, host, () => {
+            console.log(`Static server started on http://${host}:${port}.`);
+        });
+    }
+};
+
+startServer();
 
 function findExtension(filename: string): string {
-    return filename.substring(filename.lastIndexOf('.')+1, filename.length) || filename;
+    return filename.substring(filename.lastIndexOf('.') + 1, filename.length) || filename;
 }
 
 function findContentType(extension: string): string {

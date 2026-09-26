@@ -28,9 +28,14 @@ export default class RoutesBase {
     }
 
     ['start']() {
-        const url = this.query.url as string;
-        const uid = this.query.uid;
-        request('GET', '/data/start', { uid }, false)
+        const url = (this.query.url as string) || '/';
+        const ticket = this.query.ticket;
+        if (!ticket) {
+            console.error('No login ticket provided');
+            window.location.href = url;
+            return;
+        }
+        request('GET', '/data/start', { ticket }, false)
             .then((response) => {
                 if (response.ok) {
                     const sessionKey = response.headers.get('Authorization');

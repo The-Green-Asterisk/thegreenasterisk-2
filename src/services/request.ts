@@ -6,11 +6,24 @@ export function initLoader() {
     window.fetch = ((oldFetch: typeof window.fetch, input: RequestInfo | URL = '', init?: RequestInit | undefined) => {
         return async (url: RequestInfo | URL = input, options: RequestInit | undefined = init) => {
             el.loader;
-            if (options && options.method !== 'GET') {
-                el.csrfToken = await oldFetch('/csrf-token').then(response => response.text());
-                options.headers
-                    ? options.headers['X-CSRF-TOKEN' as keyof HeadersInit] = el.csrfToken
-                    : Object.assign(options, { headers: { 'X-CSRF-TOKEN': el.csrfToken } });
+            if (options && options.method && options.method !== 'GET') {
+                if (!el.csrfToken) {
+                    const cookieToken = CookieJar.get<string>('csrfToken');
+                    if (typeof cookieToken === 'string' && cookieToken) {
+                        el.csrfToken = cookieToken;
+                    } else {
+                        el.csrfToken = await oldFetch('/csrf-token').then(response => response.text());
+                    }
+                }
+                if (!options.headers) {
+                    options.headers = { 'X-CSRF-TOKEN': el.csrfToken };
+                } else if (options.headers instanceof Headers) {
+                    options.headers.set('X-CSRF-TOKEN', el.csrfToken);
+                } else if (Array.isArray(options.headers)) {
+                    options.headers.push(['X-CSRF-TOKEN', el.csrfToken]);
+                } else {
+                    (options.headers as Record<string, string>)['X-CSRF-TOKEN'] = el.csrfToken;
+                }
             }
             if (el.sessionKey) {
                 if (options && options.headers) Object.assign(options.headers, { 'Authorization': el.sessionKey });
@@ -22,6 +35,9 @@ export function initLoader() {
             if (!options.headers) options.headers = { 'X-Requested-With': 'Elemental' } as HeadersInit;
             return oldFetch(url, options).then((resp) => {
                 el.loader.remove();
+                if (resp.status === 403) {
+                    el.csrfToken = '';
+                }
                 if (!resp.ok) return resp.json().then(err => { throw err; });
                 return resp;
             });

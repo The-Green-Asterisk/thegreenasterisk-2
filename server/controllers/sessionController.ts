@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import http from 'http';
 import { Key } from 'node-cache';
 import AppDataSource from 'services/database';
@@ -7,21 +8,29 @@ import cache from '../cache';
 import BaseController from "./baseController";
 
 export default class SessionController extends BaseController {
-    public static currentUser: User | undefined = undefined;
-    constructor(sessionKey?: string, currentUserData?: User | undefined) {
-        super();
-        if (sessionKey){
-            SessionController.currentUser = cache.get<User>(sessionKey);
-            if (!SessionController.currentUser && currentUserData) { // the client is still logged in, the server just restarted
-                const userRepository = AppDataSource.getRepository(User);
-                userRepository.findOneBy({ id: currentUserData.id })
-                    .then(user => {
-                        if (!user) return;
-                        SessionController.currentUser = user;
-                        cache.set(sessionKey, user, 7776000); // three months
-                    });
-            }
+    /**
+     * Retrieves the authorization session key from the request header.
+     */
+    public static getSessionKey(req: http.IncomingMessage): string | undefined {
+        const auth = req.headers['authorization'];
+        return typeof auth === 'string' && auth.length > 0 ? auth : undefined;
+    }
+
+    /**
+     * Resolves the authenticated user scoped to the current request.
+     */
+    public static getUser(req: http.IncomingMessage): User | undefined {
+        const reqWithUser = req as http.IncomingMessage & { currentUser?: User };
+        if (reqWithUser.currentUser !== undefined) {
+            return reqWithUser.currentUser;
         }
+
+        const sessionKey = this.getSessionKey(req);
+        if (!sessionKey) return undefined;
+
+        const user = cache.get<User>(sessionKey);
+        reqWithUser.currentUser = user;
+        return user;
     }
 
     public static async getDiscordCreds(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -70,7 +79,7 @@ export default class SessionController extends BaseController {
                     code,
                     redirect_uri: process.env.LOGIN_REDIRECT_URL,
                     grant_type: 'authorization_code'
-                } as Record<string,string>)
+                } as Record<string, string>)
             }).then((response) => response.json()).then((res) => {
                 if (res.error) {
                     throw new Error(res.error_description);
@@ -123,7 +132,7 @@ export default class SessionController extends BaseController {
             } else {
                 const newPfp = userData.avatar
                     ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-                        : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
 
                 let shouldSave = this.checkAndMakeChanges(existingUser, {
                     username: userData.username,
@@ -133,10 +142,13 @@ export default class SessionController extends BaseController {
                 if (shouldSave) await userRepository.save(existingUser);
             }
 
+            const authTicket = 'ticket_' + randomBytes(32).toString('hex');
+            cache.set('auth-ticket-' + authTicket, existingUser.id, 60);
+
             return {
                 response: 'Success',
                 headerName: 'Location',
-                header: `/start?url=${redirectUrl ?? '/'}&uid=${existingUser.id}`,
+                header: `/start?url=${encodeURIComponent(redirectUrl ?? '/')}&ticket=${authTicket}`,
                 status: 301
             }
         } catch (error) {
@@ -148,39 +160,59 @@ export default class SessionController extends BaseController {
         }
     }
 
-    public static logout() {
-        if (this.currentUser) this.endSession(this.currentUser);
+    public static logout(req?: http.IncomingMessage) {
+        if (req) {
+            const sessionKey = this.getSessionKey(req);
+            if (sessionKey) cache.del(sessionKey);
+            delete (req as any).currentUser;
+        }
     }
 
-    public static startSession(user: User) {
-        const sessionKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + '%' + user.id;
+    public static startSession(user: User): string {
+        const sessionKey = randomBytes(32).toString('hex') + '%' + user.id;
 
         cache.set(sessionKey, user, 7776000); // three months
-        this.currentUser = user;
         return sessionKey;
     }
 
-    public static endSession(user: User) {
-        const sessionKey = cache.keys().find(key => cache.get(key) === user);
-        if (sessionKey) cache.del(sessionKey);
-        delete this.currentUser;
+    public static endSession(userOrKey: User | string) {
+        if (typeof userOrKey === 'string') {
+            cache.del(userOrKey);
+        } else {
+            const sessionKey = cache.keys().find(key => cache.get<User>(key)?.id === userOrKey.id);
+            if (sessionKey) cache.del(sessionKey);
+        }
     }
 
-    public static get isAuth() {
-        return !!cache.keys().find(key => cache.get<User>(key)?.id === this.currentUser?.id);
+    public static checkAuth(req?: http.IncomingMessage): boolean {
+        if (!req) return false;
+        const sessionKey = this.getSessionKey(req);
+        return !!sessionKey && cache.has(sessionKey);
     }
 
     public static async startNewSession(req: http.IncomingMessage, res: http.ServerResponse) {
-        const { uid } = this.parseUrlQuery(req.url);
-        if (!uid || isNaN(Number(uid)) || Array.isArray(uid)) {
+        const { ticket } = this.parseUrlQuery(req.url);
+        if (!ticket || typeof ticket !== 'string') {
             return {
                 response: '400 Bad Request',
                 header: 'text/plain',
                 status: 400
             }
         }
+
+        const ticketKey = 'auth-ticket-' + ticket;
+        const userId = cache.get<number>(ticketKey);
+        if (!userId) {
+            return {
+                response: '401 Unauthorized',
+                header: 'text/plain',
+                status: 401
+            }
+        }
+        cache.del(ticketKey);
+
         const userRepository = AppDataSource.getRepository(User);
-        const user = await userRepository.findOne({ where: { id: parseInt(uid) } });
+        const user = await userRepository.findOne({ where: { id: userId } });
         if (!user) {
             return {
                 response: '404 Not Found',
@@ -196,11 +228,6 @@ export default class SessionController extends BaseController {
             response: JSON.stringify(user),
             status: 200
         }
-    }
-
-    public static checkAuth() {
-        const sessionKey = cache.keys().find(key => cache.get(key) === this.currentUser);
-        return sessionKey ? cache.has(sessionKey) : false;
     }
 
     public login() {
