@@ -1,6 +1,7 @@
 import CommentController from 'controllers/commentController';
 import LinkController from 'controllers/linkController';
 import PrDigestController from 'controllers/prDigestController';
+import PushController from 'controllers/pushController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import StorageController from 'controllers/storageController';
@@ -226,6 +227,21 @@ export default class Routes {
     @Method('PUT')
     private ['/save-pr-digest'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return PrDigestController.saveDigest(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-push-key'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return PushController.getPushKey(req, res);
+    }
+
+    @Method('POST')
+    private ['/save-push-subscription'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return PushController.saveSubscription(req, res);
+    }
+
+    @Method('DELETE')
+    private ['/delete-push-subscription'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return PushController.deleteSubscription(req, res);
     }
 
     get response(): ResponsePromise {

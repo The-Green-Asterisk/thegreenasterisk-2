@@ -1,5 +1,5 @@
 import el from '@elements';
-import { getData } from '@services/request';
+import { delData, getData, postData } from '@services/request';
 import errorPage from '@views/errorPage/errorPage.template';
 import PrDigest, { PrDigestPr, PrDigestSection } from '../../entities/PrDigest';
 
@@ -14,12 +14,13 @@ let digestSection: HTMLElement | null | undefined = null;
 
 export default async function prDigest() {
     el.title.textContent = 'PR Digest';
-    digestSection = el.prDigest?.querySelector('section');
+    digestSection = el.prDigest?.querySelector('.digest');
     if (!el.checkAdmin()) {
         notFound();
         return;
     }
 
+    setUpPush();
     await renderDigest();
     setInterval(() => {
         if (document.visibilityState === 'visible') renderDigest();
@@ -31,6 +32,70 @@ export default async function prDigest() {
 
 function notFound() {
     el.prDigest?.replaceWith(errorPage(404));
+}
+
+async function setUpPush() {
+    const box = el.prDigest?.querySelector<HTMLElement>('.push');
+    if (!box) return;
+
+    // iOS only allows push from the site added to the Home Screen
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        box.replaceChildren(make('p', isIos
+            ? 'For notifications on iPhone or iPad, tap Share, then Add to Home Screen. Open The Green Asterisk from there and pick PR Digest from the menu.'
+            : "This browser can't show push notifications."));
+        return;
+    }
+
+    try {
+        await renderPush(box, await navigator.serviceWorker.register('/sw.js'));
+    } catch (error) {
+        console.error('Error setting up notifications:', error);
+        box.replaceChildren(make('p', "Notifications couldn't be set up in this browser."));
+    }
+}
+
+async function renderPush(box: HTMLElement, registration: ServiceWorkerRegistration) {
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription && Notification.permission === 'granted') {
+        // Re-saved on every visit in case the server dropped it
+        postData('/save-push-subscription', subscription.toJSON()).catch(() => { });
+        const button = make('button', 'Turn off');
+        button.addEventListener('click', async () => {
+            await delData('/delete-push-subscription', { endpoint: subscription.endpoint }).catch(() => { });
+            await subscription.unsubscribe();
+            await renderPush(box, registration);
+        }, { signal: el.signal });
+        box.replaceChildren(make('span', 'Notifications are on for Red and Yellow Alerts.'), button);
+    } else if (Notification.permission === 'denied') {
+        box.replaceChildren(make('p', 'Notifications are blocked for this site in your browser settings.'));
+    } else {
+        const button = make('button', 'Turn on notifications');
+        button.addEventListener('click', async () => {
+            try {
+                if (await Notification.requestPermission() === 'granted') {
+                    const key = await getData<string>('/get-push-key');
+                    const newSubscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: base64UrlToBytes(key)
+                    });
+                    await postData('/save-push-subscription', newSubscription.toJSON());
+                }
+                await renderPush(box, registration);
+            } catch (error) {
+                console.error('Error turning on notifications:', error);
+                box.replaceChildren(make('p', "Notifications couldn't be turned on. Try again later."));
+            }
+        }, { signal: el.signal });
+        box.replaceChildren(button);
+    }
+}
+
+function base64UrlToBytes(base64Url: string) {
+    const base64 = (base64Url + '='.repeat((4 - base64Url.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(base64), char => char.charCodeAt(0));
 }
 
 async function renderDigest() {

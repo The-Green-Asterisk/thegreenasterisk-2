@@ -2,11 +2,14 @@ import { createHash, timingSafeEqual } from "crypto";
 import http from "http";
 import AppDataSource from "services/database";
 import { PrDigest } from "services/database/entity/PrDigest";
+import PushService, { PushNotification } from "services/push";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
 
 const SECTIONS = ['red', 'yellow', 'green'];
 const ACTIONS = ['approved', 'requested changes', 'commented', 'pushed', 'updated the branch', 'opened', 'requested review', 'activity'];
+
+type Digest = NonNullable<ReturnType<typeof PrDigestController['cleanDigest']>>;
 
 export default class PrDigestController extends BaseController {
 
@@ -62,7 +65,14 @@ export default class PrDigestController extends BaseController {
             }
 
             const repository = AppDataSource.getRepository(PrDigest);
+            const previous = await repository.findOneBy({ id: 1 });
             await repository.save(repository.create({ id: 1, payload: JSON.stringify(digest) }));
+
+            // Not awaited so the laptop's push isn't held up by slow push services
+            if (previous) {
+                PushService.sendToAdmins(this.newAlerts(JSON.parse(previous.payload), digest))
+                    .catch(error => console.error("Error sending PR digest alerts:", error));
+            }
             return {
                 response: JSON.stringify('Saved'),
                 status: 200
@@ -74,6 +84,34 @@ export default class PrDigestController extends BaseController {
                 status: error === 'Invalid JSON' ? 400 : 500
             };
         }
+    }
+
+    /**
+     * A PR alerts when it moves up to Red, or up to Yellow from Green, or gets
+     * a new event while it's Red or Yellow. Green churn and a PR dropping from
+     * Red to Yellow stay quiet.
+     */
+    private static newAlerts(previous: Digest, digest: Digest): PushNotification[] {
+        const rank = (section?: string) => section === 'red' ? 2 : section === 'yellow' ? 1 : 0;
+        const before = new Map(previous.prs.map(pr => [pr.url, pr]));
+        return digest.prs
+            .filter(pr => {
+                const old = before.get(pr.url);
+                const latest = pr.events[0]?.at ?? '';
+                return rank(pr.section) > rank(old?.section)
+                    || (rank(pr.section) > 0 && latest > (old?.events[0]?.at ?? ''));
+            })
+            .map(pr => {
+                const event = pr.events[0];
+                return {
+                    title: `${pr.repo} #${pr.number}: ${pr.section === 'red' ? 'Red' : 'Yellow'} Alert`,
+                    body: [event ? `${event.actor ? `${event.actor} ` : ''}${event.action}` : '', pr.status]
+                        .filter(Boolean).join(', '),
+                    tag: `${pr.repo}#${pr.number}`,
+                    url: '/pr-digest',
+                    urgency: pr.section === 'red' ? 'high' : 'normal'
+                };
+            });
     }
 
     private static hasValidToken(req: http.IncomingMessage): boolean {

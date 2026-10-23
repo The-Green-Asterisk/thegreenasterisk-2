@@ -81,3 +81,18 @@ el-pr-digest .events {
 el-pr-digest .events time {
     color: gray;
 }
+
+el-pr-digest .push {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid lightgray;
+    color: gray;
+}
+el-pr-digest .push p {
+    margin: 0;
+    text-align: center;
+}
