@@ -15,12 +15,73 @@
     --ui-color: #29701b;
     --stroke: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
     --ui-font: 'Nunito', Geneva, Tahoma, sans-serif;
+
+    /* Colors. --ui-color is the green for backgrounds and borders; --ui-text
+       is the green for text, lightened in dark mode to stay readable. */
+    color-scheme: light;
+    --ui-text: #29701b;
+    --page-bg: rgb(200, 200, 200);
+    --surface: white;
+    --surface-alt: aliceblue;
+    --surface-hover: #e0f7fa;
+    --surface-active: #b2ebf2;
+    --surface-muted: rgb(220, 220, 220);
+    --header-gradient: linear-gradient(135deg, rgb(220, 220, 220), rgb(180, 180, 180));
+    --button-bg: rgb(200, 200, 200);
+    --text: black;
+    --text-muted: gray;
+    --text-on-accent: white;
+    --text-on-yellow: black;
+    --text-shadow: black;
+    --border: rgba(0, 0, 0, 0.279);
+    --border-soft: rgba(0, 0, 0, 0.179);
+    --border-mid: gray;
+    --border-strong: black;
+    --hover-tint: #2222225e;
+    --card-overlay: rgba(255, 255, 255, 0.6);
+    --backdrop: rgba(0, 0, 0, 0.25);
+    --scrim: rgba(0, 0, 0, 0.8);
+    --lightbox-shadow: rgba(0, 0, 0, 0.5);
+    --spinner-track: rgba(255, 255, 255, 0.3);
+    --success-bg: rgb(150, 250, 150);
+    --danger-bg: rgb(250, 150, 150);
+    --danger-text: #b71c1c;
+    --alert-red: #c62828;
+    --alert-yellow: #f9a825;
+    --discord: #7289da;
+    --cookie-accept: #4CAF50;
+}
+
+/* Set on <html> before first paint by the script in index.html */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --ui-text: #6cc35a;
+    --page-bg: #121212;
+    --surface: #1e1e1e;
+    --surface-alt: #263238;
+    --surface-hover: #2f4a52;
+    --surface-active: #37606a;
+    --surface-muted: #2c2c2c;
+    --header-gradient: linear-gradient(135deg, #3a3a3a, #262626);
+    --button-bg: #3a3a3a;
+    --text: #e6e6e6;
+    --text-muted: #a0a0a0;
+    --border: rgba(255, 255, 255, 0.2);
+    --border-soft: rgba(255, 255, 255, 0.12);
+    --border-mid: #666666;
+    --border-strong: #888888;
+    --hover-tint: #ffffff2e;
+    --card-overlay: rgba(30, 30, 30, 0.6);
+    --success-bg: #2e6b2e;
+    --danger-bg: #8a3030;
+    --danger-text: #ef9a9a;
 }
 
 html {
     font-family: var(--ui-font);
     scroll-behavior: smooth;
-    background-color: rgb(200, 200, 200);
+    background-color: var(--page-bg);
+    color: var(--text);
 }
 html:has(el-links) {
     background-color: var(--ui-color);
@@ -52,6 +113,7 @@ button {
     border: none;
     outline: none;
     background: none;
+    color: inherit;
 }
 button:hover {
     filter: brightness(1.1);
@@ -61,7 +123,7 @@ button:active {
 }
 
 h1 {
-    color: var(--ui-color);
+    color: var(--ui-text);
 }
 .content-slate {
     flex-grow: 1;
@@ -75,7 +137,7 @@ h1 {
     padding: 1rem;
     border-radius: 5px;
     box-shadow: var(--md-shadow);
-    background-color: white;
+    background-color: var(--surface);
     max-width: 900px;
 }
 
@@ -87,7 +149,7 @@ pre {
 select[multiple] {
     width: 100%;
     min-height: 100px;
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 10px;
     font-size: 1rem;

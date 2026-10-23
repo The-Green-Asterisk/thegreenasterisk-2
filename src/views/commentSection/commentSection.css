@@ -1,6 +1,6 @@
 section#comment-section .comment {
     width: 100%;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.279);
+    border-bottom: 1px solid var(--border);
     padding: 0.5rem;
     margin-bottom: 1rem;
 }
@@ -8,9 +8,9 @@ section#comment-section .comment {
 section#comment-section #submit-comment-btn {
     padding: 5px 10px;
     border-radius: 5px;
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     box-shadow: var(--md-shadow);
-    background-color: rgb(200, 200, 200);
+    background-color: var(--button-bg);
     font-weight: bold;
 }
 
@@ -29,7 +29,7 @@ section#comment-section img.comment-author-avatar {
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid black;
+    border: 1px solid var(--border-strong);
 }
 
 section#comment-section #submit-comment-section {

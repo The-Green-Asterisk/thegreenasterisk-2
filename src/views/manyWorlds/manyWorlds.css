@@ -10,15 +10,15 @@ el-many-worlds #tabs-container .tab {
     padding: 8px;
     cursor: pointer;
     border-bottom: 2px solid transparent;
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     border-bottom: none;
     border-radius: 10px 10px 0 0;
     box-shadow: var(--lg-shadow);
-    background-color: rgb(212, 212, 212);
+    background-color: var(--surface-muted);
 }
 
 el-many-worlds #tabs-container .tab.active {
-    background-color: white;
+    background-color: var(--surface);
     font-weight: bold;
     z-index: 1;
     position: relative;
@@ -33,18 +33,18 @@ el-many-worlds #tabs-container .tab.active::after {
     left: 0;
     width: 100%;
     height: 19px;
-    background-color: white;
+    background-color: var(--surface);
 }
 
 el-many-worlds #world-content {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     box-shadow: var(--lg-shadow);
     border-radius: 0 10px 10px 10px;
     padding: 20px 0;
-    background-color: white;
+    background-color: var(--surface);
 }
 
 el-many-worlds #world-categories {
@@ -58,25 +58,24 @@ el-many-worlds .category-container {
     border-radius: 10px;
     box-shadow: var(--md-shadow);
     margin: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     overflow: hidden;
 }
 
 el-many-worlds .category-container h2 {
     text-align: center;
-    color: var(--ui-color);
-    background-color: rgb(193, 193, 193);
+    color: var(--ui-text);
     margin: 0;
     padding: 10px;
     box-shadow: var(--lg-shadow);
-    background: linear-gradient(135deg, rgb(220, 220, 220), rgb(180, 180, 180));
-    border-bottom: 1px solid rgba(0, 0, 0, 0.279);
+    background: var(--header-gradient);
+    border-bottom: 1px solid var(--border);
 }
 
 el-many-worlds .category-container p {
     text-align: center;
     font-style: italic;
-    color: gray;
+    color: var(--text-muted);
     padding: 10px;
 }
 
@@ -102,14 +101,14 @@ el-many-worlds #world-description p, el-many-worlds #entity-description p {
 
 el-many-worlds #world-description .edit-world-description, el-many-worlds #entity-description .edit-entity-description {
     cursor: pointer;
-    color: var(--ui-color);
+    color: var(--ui-text);
     margin-right: 20px;
 }
 
 el-many-worlds #no-categories, el-many-worlds #no-entities {
     text-align: center;
     font-style: italic;
-    color: gray;
+    color: var(--text-muted);
     width: 100%;
 }
 
@@ -121,14 +120,14 @@ el-many-worlds #add-category-btn, el-many-worlds #new-entity-btn {
     padding: 10px 20px;
     border-radius: 5px;
     box-shadow: var(--md-shadow);
-    background-color: rgb(200, 200, 200);
+    background-color: var(--button-bg);
     font-weight: bold;
 }
 
 el-many-worlds #category-title {
     width: 100%;
     text-align: center;
-    color: var(--ui-color);
+    color: var(--ui-text);
     margin-top: 0;
 }
 
@@ -140,7 +139,7 @@ el-many-worlds #category-entities {
 }
 
 el-many-worlds .letter-box {
-    border: 1px solid rgba(0, 0, 0, 0.179);
+    border: 1px solid var(--border-soft);
     border-radius: 5px;
     box-shadow: var(--sm-shadow);
     margin: 10px;
@@ -149,9 +148,9 @@ el-many-worlds .letter-box {
 el-many-worlds .letter-box h3 {
     margin: 0;
     padding: 5px 10px;
-    background-color: rgb(220, 220, 220);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
-    color: var(--ui-color);
+    background-color: var(--surface-muted);
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--ui-text);
     text-align: center;
 }
 
@@ -160,13 +159,13 @@ el-many-worlds .letter-box ul {
 }
 
 el-many-worlds .entity-list-item {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    border-bottom: 1px solid var(--border-soft);
     padding: 10px 0;
 }
 
 el-many-worlds .entity-list-item .name {
     font-weight: bold;
-    color: var(--ui-color);
+    color: var(--ui-text);
 }
 
 el-many-worlds .entity-list-item .description {
@@ -174,7 +173,7 @@ el-many-worlds .entity-list-item .description {
     font-style: italic;
     font-size: smaller;
     line-height: 13px;
-    color: gray;
+    color: var(--text-muted);
 }
 
 el-many-worlds #entity-details {
@@ -183,7 +182,7 @@ el-many-worlds #entity-details {
 
 el-many-worlds #entity-details h2 {
     text-align: center;
-    color: var(--ui-color);
+    color: var(--ui-text);
 }
 
 el-many-worlds #entity-segments h3 {
@@ -196,7 +195,7 @@ el-many-worlds #entity-segments {
 }
 
 el-many-worlds .entity-segment {
-    background-color: white;
+    background-color: var(--surface);
 }
 
 el-many-worlds #entity-segments .segment-order {
@@ -224,9 +223,9 @@ el-many-worlds #remove-entity-image-btn {
     margin-top: 5px;
     padding: 5px 10px;
     border-radius: 5px;
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     box-shadow: var(--md-shadow);
-    background-color: rgb(200, 200, 200);
+    background-color: var(--button-bg);
     font-weight: bold;
 }
 
@@ -238,7 +237,7 @@ el-many-worlds #img-and-stats {
     padding: 10px;
     border-radius: 5px;
     box-shadow: var(--md-shadow);
-    border: 1px solid rgba(0, 0, 0, 0.279);
+    border: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -251,7 +250,7 @@ el-many-worlds #img-and-stats img {
     object-fit: cover;
     border-radius: 5px;
     box-shadow: var(--sm-shadow);
-    border: 1px solid rgba(0, 0, 0, 0.179);
+    border: 1px solid var(--border-soft);
 }
 
 el-many-worlds #img-and-stats #entity-stats {
@@ -265,7 +264,7 @@ el-many-worlds #img-and-stats ul {
 }
 
 el-many-worlds #img-and-stats ul li {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.179);
+    border-bottom: 1px solid var(--border-soft);
     padding: 5px 0;
     display: flex;
     justify-content: space-between;
@@ -274,12 +273,12 @@ el-many-worlds #img-and-stats ul li {
 
 el-many-worlds #entity-segments .save-segment-btn,
 el-many-worlds #entity-details #save-entity-description-btn {
-    background-color: rgb(150, 250, 150);
+    background-color: var(--success-bg);
 }
 
 el-many-worlds #entity-segments .delete-segment-btn,
 el-many-worlds #remove-entity-image-btn {
-    background-color: rgb(250, 150, 150);
+    background-color: var(--danger-bg);
 }
 
 el-many-worlds .entity-segment .header {

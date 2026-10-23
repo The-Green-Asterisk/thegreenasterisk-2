@@ -32,8 +32,8 @@ export default class Helpers {
             titleDisplay.style.left = (event.touches[0].clientX - (titleDisplay.offsetWidth / 2)) + 'px';
             titleDisplay.style.top = (rect.bottom + 5) + 'px';
 
-            titleDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            titleDisplay.style.color = 'white';
+            titleDisplay.style.backgroundColor = 'var(--scrim)';
+            titleDisplay.style.color = 'var(--text-on-accent)';
             titleDisplay.style.padding = '5px';
             titleDisplay.style.borderRadius = '3px';
             titleDisplay.style.zIndex = '1000';

@@ -3,8 +3,8 @@ el-cookie-banner {
     bottom: 0;
     left: 0;
     width: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
+    background-color: var(--scrim);
+    color: var(--text-on-accent);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -17,8 +17,8 @@ el-cookie-banner p {
 el-cookie-banner button {
     margin-right: 1rem;
     padding: 0.5rem 1rem;
-    background-color: #4CAF50;
-    color: white;
+    background-color: var(--cookie-accept);
+    color: var(--text-on-accent);
     border-radius: 5px;
     font-size: 1rem;
     white-space: nowrap;

@@ -9,9 +9,9 @@ el-links section {
     flex-direction: column;
     align-items: center;
     border-radius: 10px;
-    border: 1px solid black;
+    border: 1px solid var(--border-strong);
     margin: 0 20px 20px 20px;
-    background-color: white;
+    background-color: var(--surface);
     padding: 10px;
     box-shadow: var(--lg-shadow);
 }
@@ -31,9 +31,9 @@ el-links section .link {
     padding: 0;
     display: flex;
     align-items: center;
-    background-color: aliceblue;
+    background-color: var(--surface-alt);
     border-radius: 5px;
-    border: 1px solid gray;
+    border: 1px solid var(--border-mid);
     align-self: stretch;
     box-shadow: var(--lg-shadow);
     overflow: hidden;
@@ -57,12 +57,12 @@ body.is-dragging * {
 
 el-links section .link:hover {
     transform: scale(1.02);
-    background-color: #e0f7fa;
-    outline: 1px solid black;
+    background-color: var(--surface-hover);
+    outline: 1px solid var(--border-strong);
 }
 
 el-links section .link:active {
-    background-color: #b2ebf2;
+    background-color: var(--surface-active);
     transform: scale(0.98);
 }
 
@@ -82,11 +82,11 @@ el-links section .link .link-image.primary {
 }
 
 el-links section .link .link-image span {
-    color: white;
+    color: var(--text-on-accent);
 }
 
 el-links section .link .link-image.primary span {
-    color: var(--ui-color);
+    color: var(--ui-text);
 }
 
 el-links section .link .link-image img {
@@ -112,14 +112,14 @@ el-links .ctrlBtns .edit {
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 1px solid black;
-    color: white;
+    border: 1px solid var(--border-strong);
+    color: var(--text-on-accent);
 }
 el-links .ctrlBtns .delete {
-    background-color: rgb(215, 0, 0);
+    background-color: var(--alert-red);
 }
 el-links .ctrlBtns .edit {
-    background-color: green;
+    background-color: var(--ui-color);
 }
 
 el-modal#create-link-modal form {
