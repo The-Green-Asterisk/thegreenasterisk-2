@@ -8,7 +8,7 @@ el-cookie-banner {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: var(--z-overlay);
 }
 el-cookie-banner p {
     margin: 1rem;
@@ -19,7 +19,7 @@ el-cookie-banner button {
     padding: 0.5rem 1rem;
     background-color: var(--cookie-accept);
     color: var(--text-on-accent);
-    border-radius: 5px;
+    border-radius: var(--radius);
     font-size: 1rem;
     white-space: nowrap;
 }

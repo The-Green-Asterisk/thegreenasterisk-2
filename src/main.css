@@ -15,6 +15,13 @@
     --ui-color: #29701b;
     --stroke: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
     --ui-font: 'Nunito', Geneva, Tahoma, sans-serif;
+    --radius: 5px;
+    --radius-lg: 10px;
+    /* Stacking order, lowest to highest */
+    --z-raised: 100;
+    --z-overlay: 1000;
+    --z-nav-controls: 2000;
+    --z-loader: 9999;
 
     /* Colors. --ui-color is the green for backgrounds and borders; --ui-text
        is the green for text, lightened in dark mode to stay readable. */
@@ -135,7 +142,7 @@ h1 {
     justify-content: center;
     align-items: center;
     padding: 1rem;
-    border-radius: 5px;
+    border-radius: var(--radius);
     box-shadow: var(--md-shadow);
     background-color: var(--surface);
     max-width: 900px;
@@ -150,7 +157,7 @@ select[multiple] {
     width: 100%;
     min-height: 100px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius);
     padding: 10px;
     font-size: 1rem;
     line-height: 1.5;

@@ -12,7 +12,7 @@ el-many-worlds #tabs-container .tab {
     border-bottom: 2px solid transparent;
     border: 1px solid var(--border);
     border-bottom: none;
-    border-radius: 10px 10px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     box-shadow: var(--lg-shadow);
     background-color: var(--surface-muted);
 }
@@ -42,7 +42,7 @@ el-many-worlds #world-content {
     width: 100%;
     border: 1px solid var(--border);
     box-shadow: var(--lg-shadow);
-    border-radius: 0 10px 10px 10px;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
     padding: 20px 0;
     background-color: var(--surface);
 }
@@ -55,7 +55,7 @@ el-many-worlds #world-categories {
 }
 
 el-many-worlds .category-container {
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--md-shadow);
     margin: 10px;
     border: 1px solid var(--border);
@@ -118,7 +118,7 @@ el-many-worlds #add-category-btn, el-many-worlds #new-entity-btn {
     align-self: center;
     margin: 10px;
     padding: 10px 20px;
-    border-radius: 5px;
+    border-radius: var(--radius);
     box-shadow: var(--md-shadow);
     background-color: var(--button-bg);
     font-weight: bold;
@@ -140,7 +140,7 @@ el-many-worlds #category-entities {
 
 el-many-worlds .letter-box {
     border: 1px solid var(--border-soft);
-    border-radius: 5px;
+    border-radius: var(--radius);
     box-shadow: var(--sm-shadow);
     margin: 10px;
 }
@@ -222,7 +222,7 @@ el-many-worlds #add-stat-btn,
 el-many-worlds #remove-entity-image-btn {
     margin-top: 5px;
     padding: 5px 10px;
-    border-radius: 5px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--md-shadow);
     background-color: var(--button-bg);
@@ -235,7 +235,7 @@ el-many-worlds #entity-details #edit-short-description-btn {
 
 el-many-worlds #img-and-stats {
     padding: 10px;
-    border-radius: 5px;
+    border-radius: var(--radius);
     box-shadow: var(--md-shadow);
     border: 1px solid var(--border);
     display: flex;
@@ -248,7 +248,7 @@ el-many-worlds #img-and-stats img {
     width: 100%;
     aspect-ratio: 3 / 2;
     object-fit: cover;
-    border-radius: 5px;
+    border-radius: var(--radius);
     box-shadow: var(--sm-shadow);
     border: 1px solid var(--border-soft);
 }

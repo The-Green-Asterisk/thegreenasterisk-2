@@ -8,7 +8,7 @@ el-links section {
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-strong);
     margin: 0 20px 20px 20px;
     background-color: var(--surface);
@@ -32,7 +32,7 @@ el-links section .link {
     display: flex;
     align-items: center;
     background-color: var(--surface-alt);
-    border-radius: 5px;
+    border-radius: var(--radius);
     border: 1px solid var(--border-mid);
     align-self: stretch;
     box-shadow: var(--lg-shadow);
@@ -129,7 +129,7 @@ el-modal#create-link-modal form {
 }
 el-modal#create-link-modal form input {
     padding: .25rem;
-    border-radius: 5px;
+    border-radius: var(--radius);
     width: 20rem;
 }
 el-modal#create-link-modal form div {
