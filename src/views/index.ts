@@ -25,6 +25,8 @@ import linksTemplate from './links/links.template';
 import prDigest from './prDigest/prDigest.ctrl';
 import prDigestTemplate from './prDigest/prDigest.template';
 import footerTemplate from './footer/footer.template';
+import contact from './contact/contact.ctrl';
+import contactTemplate from './contact/contact.template';
 
 export { default as about } from '@views/about/about.ctrl';
 export { default as aboutTemplate } from '@views/about/about.template';
@@ -53,6 +55,8 @@ export { default as linksTemplate } from './links/links.template';
 export { default as prDigest } from './prDigest/prDigest.ctrl';
 export { default as prDigestTemplate } from './prDigest/prDigest.template';
 export { default as footerTemplate } from './footer/footer.template';
+export { default as contact } from './contact/contact.ctrl';
+export { default as contactTemplate } from './contact/contact.template';
 
 const views = {
     home,
@@ -81,6 +85,8 @@ const views = {
     linksTemplate,
     prDigest,
     prDigestTemplate,
-    footerTemplate
+    footerTemplate,
+    contact,
+    contactTemplate
 };
 export default views;

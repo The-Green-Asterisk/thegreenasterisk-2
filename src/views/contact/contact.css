@@ -1,0 +1,46 @@
+el-contact form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 600px;
+}
+el-contact label {
+    font-weight: bold;
+}
+el-contact input,
+el-contact textarea {
+    font: inherit;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--surface);
+    color: var(--text);
+}
+el-contact textarea {
+    resize: vertical;
+}
+el-contact button[type="submit"] {
+    align-self: flex-end;
+    padding: 0.5rem 1.5rem;
+    border-radius: var(--radius);
+    background-color: var(--ui-color);
+    color: var(--text-on-accent);
+    font-weight: bold;
+}
+el-contact button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+/* The honeypot: off screen for people, still in the form for bots */
+el-contact .website {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+el-contact .contact-status {
+    margin: 0;
+    min-height: 1.5em;
+}
