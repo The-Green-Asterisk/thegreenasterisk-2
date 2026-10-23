@@ -4,10 +4,12 @@ const html = Helpers.html;
 
 const prDigestTemplate = () => html`
     <el-pr-digest>
-        <section>
-            <div class="digest"></div>
-            <div class="push"></div>
-        </section>
+        <div class="content-slate">
+            <section>
+                <div class="digest"></div>
+                <div class="push"></div>
+            </section>
+        </div>
     </el-pr-digest>
 `;
 

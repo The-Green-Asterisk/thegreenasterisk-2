@@ -1,17 +1,10 @@
 el-pr-digest {
-    width: 100%;
-    max-width: 700px;
-    margin: 0 auto;
+    flex-grow: 1;
 }
-el-pr-digest section {
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-strong);
-    margin: 0 20px 20px 20px;
-    background-color: var(--surface);
-    padding: 10px 15px;
-    box-shadow: var(--lg-shadow);
+/* The shared .content-slate section centers its children; the digest fills it */
+el-pr-digest .digest,
+el-pr-digest .push {
+    align-self: stretch;
 }
 
 el-pr-digest h1 {
