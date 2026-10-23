@@ -13,6 +13,7 @@ export type PrDigestPr = {
     url: string,
     tickets: string[],
     owners?: string[],
+    draft?: boolean,
     status: string,
     events: PrDigestEvent[]
 }
