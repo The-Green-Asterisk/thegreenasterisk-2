@@ -80,6 +80,13 @@ el-pr-digest .owners {
     border-radius: 10px;
     padding: 1px 8px;
 }
+el-pr-digest .alert.red .owners {
+    background-color: #c62828;
+}
+el-pr-digest .alert.yellow .owners {
+    background-color: #f9a825;
+    color: black;
+}
 el-pr-digest .tickets {
     color: gray;
 }
