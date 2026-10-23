@@ -1,0 +1,83 @@
+el-pr-digest {
+    padding-top: 70px;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+}
+el-pr-digest section {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    border: 1px solid black;
+    margin: 0 20px 20px 20px;
+    background-color: white;
+    padding: 10px 15px;
+    box-shadow: var(--lg-shadow);
+}
+
+el-pr-digest h1 {
+    text-align: center;
+    margin-bottom: 0;
+}
+el-pr-digest .checked {
+    text-align: center;
+    margin-top: 5px;
+    color: gray;
+}
+el-pr-digest .checked.stale {
+    color: #b71c1c;
+}
+el-pr-digest .checked span {
+    display: block;
+}
+
+el-pr-digest .alert {
+    border-left: 6px solid;
+    padding-left: 10px;
+    margin-bottom: 15px;
+}
+el-pr-digest .alert.red {
+    border-color: #c62828;
+}
+el-pr-digest .alert.yellow {
+    border-color: #f9a825;
+}
+el-pr-digest .alert.green {
+    border-color: var(--ui-color);
+}
+el-pr-digest .alert h2 {
+    margin: 5px 0;
+}
+
+el-pr-digest .pr {
+    background-color: aliceblue;
+    border: 1px solid gray;
+    border-radius: 5px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow);
+}
+el-pr-digest .pr-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 5px;
+}
+el-pr-digest .pr-heading a {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+el-pr-digest .tickets {
+    color: gray;
+}
+el-pr-digest .status {
+    font-weight: bold;
+    margin: 5px 0;
+}
+el-pr-digest .events {
+    margin: 0;
+    padding-left: 20px;
+}
+el-pr-digest .events time {
+    color: gray;
+}

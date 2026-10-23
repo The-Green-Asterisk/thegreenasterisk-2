@@ -54,4 +54,9 @@ export default class Routes extends RoutesBase {
         views.links();
     }
 
+    ['pr-digest']() {
+        el.body.appendChild(views.prDigestTemplate());
+        views.prDigest();
+    }
+
 }

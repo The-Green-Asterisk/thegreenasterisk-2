@@ -1,5 +1,6 @@
 import CommentController from 'controllers/commentController';
 import LinkController from 'controllers/linkController';
+import PrDigestController from 'controllers/prDigestController';
 import ProfileController from 'controllers/profileController';
 import SessionController from 'controllers/sessionController';
 import StorageController from 'controllers/storageController';
@@ -215,6 +216,16 @@ export default class Routes {
     @Method('GET')
     private ['/get-all-users'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return UserController.getAllUsers(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-pr-digest'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return PrDigestController.getDigest(req, res);
+    }
+
+    @Method('PUT')
+    private ['/save-pr-digest'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return PrDigestController.saveDigest(req, res);
     }
 
     get response(): ResponsePromise {
