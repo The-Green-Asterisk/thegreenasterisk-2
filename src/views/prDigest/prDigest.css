@@ -63,7 +63,7 @@ el-pr-digest .pr-heading {
     justify-content: space-between;
     gap: 5px;
 }
-el-pr-digest .pr-heading a {
+el-pr-digest .pr-title a {
     font-weight: bold;
     font-size: 1.1em;
 }
