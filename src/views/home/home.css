@@ -18,15 +18,15 @@ el-home .hero-slate {
 }
 
 el-home .hero-slate h1 {
-    color: white;
+    color: var(--text-on-accent);
     font-size: 3rem;
     text-align: center;
     margin: 1rem;
-    text-shadow: 0 0 5px black;
+    text-shadow: 0 0 5px var(--text-shadow);
 }
 
 el-home .hero-slate i {
-    color: white;
+    color: var(--text-on-accent);
     font-size: 4rem;
     text-align: center;
     margin: 0 1rem;

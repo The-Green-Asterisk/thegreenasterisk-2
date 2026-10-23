@@ -18,6 +18,17 @@
         <script src="https://kit.fontawesome.com/46bf25baab.js" crossorigin="anonymous"></script>
         <link rel="manifest" href="/manifest.webmanifest">
         <link rel="apple-touch-icon" href="/storage/images/favicon.png">
+        <script>
+        // Runs before the stylesheet so dark mode never flashes light first.
+        // A saved choice from the nav toggle wins over the device setting.
+        (function () {
+            var theme;
+            try { theme = localStorage.getItem('theme'); } catch (e) { }
+            if (theme !== 'light' && theme !== 'dark')
+                theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.dataset.theme = theme;
+        })();
+        </script>
         <link rel="stylesheet" href="/main.css">
     </head>
     <body>

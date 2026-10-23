@@ -8,9 +8,9 @@ el-pr-digest section {
     display: flex;
     flex-direction: column;
     border-radius: 10px;
-    border: 1px solid black;
+    border: 1px solid var(--border-strong);
     margin: 0 20px 20px 20px;
-    background-color: white;
+    background-color: var(--surface);
     padding: 10px 15px;
     box-shadow: var(--lg-shadow);
 }
@@ -22,10 +22,10 @@ el-pr-digest h1 {
 el-pr-digest .checked {
     text-align: center;
     margin-top: 5px;
-    color: gray;
+    color: var(--text-muted);
 }
 el-pr-digest .checked.stale {
-    color: #b71c1c;
+    color: var(--danger-text);
 }
 el-pr-digest .checked span {
     display: block;
@@ -37,10 +37,10 @@ el-pr-digest .alert {
     margin-bottom: 15px;
 }
 el-pr-digest .alert.red {
-    border-color: #c62828;
+    border-color: var(--alert-red);
 }
 el-pr-digest .alert.yellow {
-    border-color: #f9a825;
+    border-color: var(--alert-yellow);
 }
 el-pr-digest .alert.green {
     border-color: var(--ui-color);
@@ -50,8 +50,8 @@ el-pr-digest .alert h2 {
 }
 
 el-pr-digest .pr {
-    background-color: aliceblue;
-    border: 1px solid gray;
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border-mid);
     border-radius: 5px;
     padding: 8px 10px;
     margin-bottom: 8px;
@@ -75,20 +75,20 @@ el-pr-digest .pr-title {
 el-pr-digest .owners {
     font-size: 0.8em;
     font-weight: bold;
-    color: white;
+    color: var(--text-on-accent);
     background-color: var(--ui-color);
     border-radius: 10px;
     padding: 1px 8px;
 }
 el-pr-digest .alert.red .owners {
-    background-color: #c62828;
+    background-color: var(--alert-red);
 }
 el-pr-digest .alert.yellow .owners {
-    background-color: #f9a825;
-    color: black;
+    background-color: var(--alert-yellow);
+    color: var(--text-on-yellow);
 }
 el-pr-digest .tickets {
-    color: gray;
+    color: var(--text-muted);
 }
 el-pr-digest .tickets a {
     font-weight: normal;
@@ -102,7 +102,7 @@ el-pr-digest .events {
     padding-left: 20px;
 }
 el-pr-digest .events time {
-    color: gray;
+    color: var(--text-muted);
 }
 
 el-pr-digest .push {
@@ -112,8 +112,11 @@ el-pr-digest .push {
     align-items: center;
     gap: 10px;
     padding-top: 10px;
-    border-top: 1px solid lightgray;
-    color: gray;
+    border-top: 1px solid var(--border-soft);
+    color: var(--text-muted);
+}
+el-pr-digest .push button {
+    color: var(--text);
 }
 el-pr-digest .push p {
     margin: 0;

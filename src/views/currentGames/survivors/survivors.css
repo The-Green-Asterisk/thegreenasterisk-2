@@ -24,7 +24,7 @@ el-survivors .player-card.zeebo {
     background: url('/storage/images/ZeeBo.png') no-repeat left bottom/contain;
 }
 el-survivors .player-card div {
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: var(--card-overlay);
 }
 el-survivors .player-img {
     width: 250px;
@@ -32,7 +32,7 @@ el-survivors .player-img {
     aspect-ratio: 1/1;
     object-fit: cover;
     object-position: center;
-    border: 2px solid black;
+    border: 2px solid var(--border-strong);
     border-radius: 50%;
     box-shadow: var(--lg-shadow);
     margin: 1rem 0;
@@ -66,7 +66,7 @@ el-survivors .video-controls {
     gap: 10px;
 }
 el-survivors button.remove-video, el-survivors button.full-screen-button {
-    color: white;
+    color: var(--text-on-accent);
     padding: 7px;
 }
 el-survivors .seasons {
@@ -84,7 +84,7 @@ el-survivors details.season summary {
 }
 el-survivors .coming-soon {
     font-style: italic;
-    color: gray;
+    color: var(--text-muted);
 }
 el-survivors .video-title {
     width: 100%;

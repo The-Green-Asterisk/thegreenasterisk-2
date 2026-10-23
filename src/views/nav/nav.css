@@ -2,8 +2,8 @@ nav {
     width: 100%;
     box-shadow: var(--lg-shadow);
     display: flex;
-    color: var(--ui-color);
-    background-color: white;
+    color: var(--ui-text);
+    background-color: var(--surface);
     align-items: center;
     justify-content: end;
     z-index: 1000;
@@ -23,7 +23,7 @@ nav ul {
     flex-direction: column;
     justify-content: space-evenly;
     font-size: 1rem;
-    background-color: white;
+    background-color: var(--surface);
     position: absolute;
     top: 0;
     left: 0;
@@ -57,16 +57,24 @@ nav li a {
 }
 
 nav li a:hover {
-    background-color: #2222225e;
+    background-color: var(--hover-tint);
 }
 
 nav #discord_login {
-    background-color: #7289da;
+    background-color: var(--discord);
     border-radius: 5px;
     width: 70px;
     padding: 10px 5px;
-    color: white;
+    color: var(--text-on-accent);
     text-decoration: none;
+    margin: 2px;
+    z-index: 2000;
+}
+
+nav #theme-toggle {
+    color: var(--ui-text);
+    font-size: 1.25rem;
+    padding: 10px;
     margin: 2px;
     z-index: 2000;
 }
@@ -87,8 +95,8 @@ nav #nav-profile-picture {
 }
 
 nav #nav-profile-picture img {
-    background-color: aliceblue;
-    border: 3px solid rgb(31, 31, 31);
+    background-color: var(--surface-alt);
+    border: 3px solid var(--border-strong);
     box-shadow: var(--md-shadow);
     aspect-ratio: 1/1;
     border-radius: 50%;
@@ -128,6 +136,10 @@ nav #nav-profile-picture img {
     }
 
     nav #nav-profile-picture {
+        z-index: auto;
+    }
+
+    nav #theme-toggle {
         z-index: auto;
     }
 }

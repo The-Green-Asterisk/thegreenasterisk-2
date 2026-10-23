@@ -1,5 +1,6 @@
 import el from "@elements";
 import Helpers from "@services/helpers";
+import { currentTheme } from "@services/theme";
 
 const navTemplate = () => Helpers.html`
     <nav>
@@ -18,6 +19,9 @@ const navTemplate = () => Helpers.html`
                 ${el.checkAdmin() ? `<li><a href="/pr-digest">PR Digest</a></li>` : ''}
             </ul>
         </div>
+        <button id="theme-toggle" title="${currentTheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}">
+            <i class="fa-solid ${currentTheme() === 'dark' ? 'fa-sun' : 'fa-moon'}"></i>
+        </button>
         <button id="discord_login">${el.isAuth ? 'Log Out' : 'Login with Discord'}</button>
         ${
             el.isAuth

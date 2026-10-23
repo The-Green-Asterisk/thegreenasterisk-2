@@ -7,13 +7,13 @@ el-lightbox {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: var(--scrim);
     z-index: 1000;
 }
 el-lightbox img, el-lightbox video, el-lightbox iframe {
     max-width: 90%;
     max-height: 90%;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 10px var(--lightbox-shadow);
     border-radius: 8px;
 }
 el-lightbox iframe, el-lightbox video {
@@ -26,7 +26,7 @@ el-lightbox button {
     right: 20px;
     background-color: transparent;
     border: none;
-    color: white;
+    color: var(--text-on-accent);
     font-size: 24px;
     cursor: pointer;
 }
