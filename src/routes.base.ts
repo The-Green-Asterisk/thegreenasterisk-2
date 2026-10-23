@@ -17,7 +17,7 @@ export default class RoutesBase {
         }
 
         if (!!this.query.sessionKey) {
-            sessionStorage.setItem('sessionKey', this.query.sessionKey as string);
+            localStorage.setItem('sessionKey', this.query.sessionKey as string);
             getData('/check-auth');
         }
     }
@@ -40,7 +40,7 @@ export default class RoutesBase {
                 if (response.ok) {
                     const sessionKey = response.headers.get('Authorization');
                     if (!sessionKey) throw new Error('No session key returned');
-                    sessionStorage.setItem('sessionKey', sessionKey);
+                    localStorage.setItem('sessionKey', sessionKey);
                     el.sessionKey = sessionKey;
                     return response.json();
                 } else {
@@ -53,7 +53,7 @@ export default class RoutesBase {
                 delete user.email;
                 delete user.discord_id;
                 delete user.age;
-                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                localStorage.setItem('currentUser', JSON.stringify(user));
                 el.currentUser = user;
                 window.location.href = url;
             })
@@ -64,8 +64,8 @@ export default class RoutesBase {
     }
 
     ['logout']() {
-        sessionStorage.removeItem('sessionKey');
-        sessionStorage.removeItem('currentUser');
+        localStorage.removeItem('sessionKey');
+        localStorage.removeItem('currentUser');
         request('GET', '/data/logout').then(() => {
             window.history.back();
         });

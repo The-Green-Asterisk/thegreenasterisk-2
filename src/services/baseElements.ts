@@ -106,16 +106,16 @@ export default class BaseEl {
     public static sessionKey: string = '';
 
     public static establishAuth() {
-        this.currentUser = sessionStorage.getItem('currentUser')
-            ? JSON.parse(sessionStorage.getItem('currentUser')!)
+        this.currentUser = localStorage.getItem('currentUser')
+            ? JSON.parse(localStorage.getItem('currentUser')!)
             : undefined;
-        this.sessionKey = sessionStorage.getItem('sessionKey') ?? '';
+        this.sessionKey = localStorage.getItem('sessionKey') ?? '';
     }
 
     public static logout() {
         if (this.currentUser) {
-            sessionStorage.removeItem('currentUser');
-            sessionStorage.removeItem('sessionKey');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('sessionKey');
             delete this.currentUser;
             this.sessionKey = '';
         }

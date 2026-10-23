@@ -1,8 +1,10 @@
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import http from 'http';
 import { Key } from 'node-cache';
 import AppDataSource from 'services/database';
 import { User } from 'services/database/entity/User';
+import { UserSession } from 'services/database/entity/UserSession';
+import { LessThan } from 'typeorm';
 import EmailService from 'services/email';
 import cache from '../cache';
 import BaseController from "./baseController";
@@ -28,9 +30,36 @@ export default class SessionController extends BaseController {
         const sessionKey = this.getSessionKey(req);
         if (!sessionKey) return undefined;
 
-        const user = cache.get<User>(sessionKey);
+        const user = cache.get<User>(this.cacheKey(this.hashKey(sessionKey)));
         reqWithUser.currentUser = user;
         return user;
+    }
+
+    private static hashKey(sessionKey: string): string {
+        return createHash('sha256').update(sessionKey).digest('hex');
+    }
+
+    /**
+     * Sessions are cached by hash rather than by key, so loadSessions can
+     * rebuild the cache from the database, which never sees the keys.
+     */
+    private static cacheKey(tokenHash: string): string {
+        return 'session-' + tokenHash;
+    }
+
+    /**
+     * Fills the cache from the database at boot, so sessions outlive dyno
+     * restarts and deploys. getUser stays synchronous for every controller.
+     */
+    public static async loadSessions() {
+        const sessionRepository = AppDataSource.getRepository(UserSession);
+        await sessionRepository.delete({ expiresAt: LessThan(new Date()) });
+        const sessions = await sessionRepository.find({ relations: { user: true } });
+        sessions.forEach(session => {
+            const ttl = Math.floor((session.expiresAt.getTime() - Date.now()) / 1000);
+            if (session.user && ttl > 0) cache.set(this.cacheKey(session.tokenHash), session.user, ttl);
+        });
+        console.log(`Loaded ${sessions.length} sessions.`);
     }
 
     public static async getDiscordCreds(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -163,31 +192,45 @@ export default class SessionController extends BaseController {
     public static logout(req?: http.IncomingMessage) {
         if (req) {
             const sessionKey = this.getSessionKey(req);
-            if (sessionKey) cache.del(sessionKey);
+            if (sessionKey) this.endSession(sessionKey);
             delete (req as any).currentUser;
         }
     }
 
-    public static startSession(user: User): string {
+    public static async startSession(user: User): Promise<string> {
         const sessionKey = randomBytes(32).toString('hex') + '%' + user.id;
+        const tokenHash = this.hashKey(sessionKey);
+        const ttl = 7776000; // three months
 
-        cache.set(sessionKey, user, 7776000); // three months
+        const sessionRepository = AppDataSource.getRepository(UserSession);
+        await sessionRepository.save(sessionRepository.create({
+            tokenHash,
+            user,
+            expiresAt: new Date(Date.now() + ttl * 1000)
+        }));
+        cache.set(this.cacheKey(tokenHash), user, ttl);
         return sessionKey;
     }
 
     public static endSession(userOrKey: User | string) {
+        const sessionRepository = AppDataSource.getRepository(UserSession);
         if (typeof userOrKey === 'string') {
-            cache.del(userOrKey);
+            const tokenHash = this.hashKey(userOrKey);
+            cache.del(this.cacheKey(tokenHash));
+            sessionRepository.delete({ tokenHash })
+                .catch(error => console.error('Error deleting session:', error));
         } else {
-            const sessionKey = cache.keys().find(key => cache.get<User>(key)?.id === userOrKey.id);
-            if (sessionKey) cache.del(sessionKey);
+            const sessionKeys = cache.keys().filter(key => key.startsWith('session-') && cache.get<User>(key)?.id === userOrKey.id);
+            cache.del(sessionKeys);
+            sessionRepository.delete({ user: { id: userOrKey.id } })
+                .catch(error => console.error('Error deleting sessions:', error));
         }
     }
 
     public static checkAuth(req?: http.IncomingMessage): boolean {
         if (!req) return false;
         const sessionKey = this.getSessionKey(req);
-        return !!sessionKey && cache.has(sessionKey);
+        return !!sessionKey && cache.has(this.cacheKey(this.hashKey(sessionKey)));
     }
 
     public static async startNewSession(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -221,7 +264,7 @@ export default class SessionController extends BaseController {
             }
         }
 
-        const sessionKey = this.startSession(user);
+        const sessionKey = await this.startSession(user);
 
         res.setHeader('Authorization', sessionKey);
         return {
