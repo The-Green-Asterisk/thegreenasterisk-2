@@ -30,6 +30,7 @@
     --page-bg: rgb(200, 200, 200);
     --surface: white;
     --surface-alt: aliceblue;
+    --avatar-border: black;
     --surface-hover: #e0f7fa;
     --surface-active: #b2ebf2;
     --surface-muted: rgb(220, 220, 220);
