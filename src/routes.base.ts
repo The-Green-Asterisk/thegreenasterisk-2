@@ -11,7 +11,7 @@ export default class RoutesBase {
         for (const [key, value] of new URLSearchParams(location.search).entries()) {
             this.query[key] = isNaN(Number(value))
                 ? value.toLowerCase() == 'true' || value.toLowerCase() == 'false'
-                    ? Boolean(value.toLowerCase())
+                    ? value.toLowerCase() == 'true'
                     : value
                 : Number(value);
         }

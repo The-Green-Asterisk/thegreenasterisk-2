@@ -20,6 +20,7 @@ if (el.sessionKey) {
 const path = location.pathname.split('/');
 path.shift();
 
+el.body.prepend(views.footerTemplate());
 el.body.appendChild(views.navTemplate());
 views.nav();
 if (!CookieJar.get<boolean>('cookies-are-cool')) {

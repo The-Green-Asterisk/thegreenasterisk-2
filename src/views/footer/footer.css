@@ -1,0 +1,13 @@
+/* main.ts puts the footer before the nav so the router's empty-page check
+   still works; order moves it to the bottom of the flex body */
+el-footer {
+    order: 1;
+    margin-top: auto;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85em;
+    padding: 0.5rem 1rem 1rem;
+}
+el-footer p {
+    margin: 0;
+}
