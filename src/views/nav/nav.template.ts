@@ -2,7 +2,15 @@ import el from "@elements";
 import Helpers from "@services/helpers";
 import { currentTheme } from "@services/theme";
 
-const navTemplate = () => Helpers.html`
+const navTemplate = () => {
+    const isDark = currentTheme() === 'dark';
+    const themeTitle = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+    const themeIcon = isDark ? 'fa-sun' : 'fa-moon';
+    const profileImg = el.isAuth ? `<a id="nav-profile-picture" href="/profile">
+                                        <img src="${el.currentUser?.profilePicture}" alt="Profile Picture" />
+                                    </a>` : '';
+
+    return Helpers.html`
     <nav>
         <a href="/">
             <img id="logo" src="/storage/images/BIG-AS.png" alt="The Green Asterisk" />
@@ -20,18 +28,13 @@ const navTemplate = () => Helpers.html`
                 ${el.checkAdmin() ? `<li><a href="/pr-digest">PR Digest</a></li>` : ''}
             </ul>
         </div>
-        <button id="theme-toggle" title="${currentTheme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}">
-            <i class="fa-solid ${currentTheme() === 'dark' ? 'fa-sun' : 'fa-moon'}"></i>
+        <button id="theme-toggle" title="${themeTitle}">
+            <i class="fa-solid ${themeIcon}"></i>
         </button>
         <button id="discord_login">${el.isAuth ? 'Log Out' : 'Login with Discord'}</button>
-        ${
-            el.isAuth
-                ?  `<a id="nav-profile-picture" href="/profile">
-                        <img src="${el.currentUser?.profilePicture}" alt="Profile Picture" />
-                    </a>`
-                : ''
-        }
+        ${profileImg}
     </nav>
 `;
+};
 
 export default navTemplate;
