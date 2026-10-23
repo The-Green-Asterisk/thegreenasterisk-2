@@ -90,6 +90,9 @@ el-pr-digest .alert.yellow .owners {
 el-pr-digest .tickets {
     color: gray;
 }
+el-pr-digest .tickets a {
+    font-weight: normal;
+}
 el-pr-digest .status {
     font-weight: bold;
     margin: 5px 0;
