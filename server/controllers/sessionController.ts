@@ -9,6 +9,8 @@ import EmailService from 'services/email';
 import cache from '../cache';
 import BaseController from "./baseController";
 
+export type ReqAndUser = http.IncomingMessage & { currentUser?: User };
+
 export default class SessionController extends BaseController {
     /**
      * Retrieves the authorization session key from the request header.
@@ -21,17 +23,16 @@ export default class SessionController extends BaseController {
     /**
      * Resolves the authenticated user scoped to the current request.
      */
-    public static getUser(req: http.IncomingMessage): User | undefined {
-        const reqWithUser = req as http.IncomingMessage & { currentUser?: User };
-        if (reqWithUser.currentUser !== undefined) {
-            return reqWithUser.currentUser;
+    public static getUser(req: ReqAndUser): User | undefined {
+        if (req.currentUser !== undefined) {
+            return req.currentUser;
         }
 
         const sessionKey = this.getSessionKey(req);
         if (!sessionKey) return undefined;
 
         const user = cache.get<User>(this.cacheKey(this.hashKey(sessionKey)));
-        reqWithUser.currentUser = user;
+        req.currentUser = user;
         return user;
     }
 
@@ -189,11 +190,11 @@ export default class SessionController extends BaseController {
         }
     }
 
-    public static logout(req?: http.IncomingMessage) {
+    public static logout(req?: ReqAndUser) {
         if (req) {
             const sessionKey = this.getSessionKey(req);
             if (sessionKey) this.endSession(sessionKey);
-            delete (req as any).currentUser;
+            delete req.currentUser;
         }
     }
 
