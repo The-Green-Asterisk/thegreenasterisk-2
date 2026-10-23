@@ -6,9 +6,11 @@
         "src/**/*.html",
         "src/main.css",
         "src/**/*.css",
-        "src/storage/**/*"
+        "src/storage/**/*",
+        "src/sw.js",
+        "src/manifest.webmanifest"
       ],
-      "extensions": "html,css",
+      "extensions": "html,css,js,webmanifest",
       "runOnChangeOnly": true
     },
     "server-html": {
@@ -34,7 +36,7 @@
   ],
   "scripts": {
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
-    "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
+    "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp ./src/sw.js ./src/manifest.webmanifest www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
     "server-html": "copyfiles -u 1 -e \"server/comp/**/*\" \"server/**/*.html\" server/comp/",
     "build": "tsc --project ./server/tsconfig.json && npm run server-html && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
     "build:watch:server": "tsc --project ./server/tsconfig.json -w",
@@ -55,6 +57,7 @@
     "@types/dotenv": "^6.1.1",
     "@types/mysql": "^2.15.26",
     "@types/node": "^22.9.0",
+    "@types/web-push": "^3.6.4",
     "concurrently": "^8.2.2",
     "copyfiles": "^2.4.1",
     "dotenv": "^16.4.5",
@@ -77,7 +80,8 @@
     "nodemon": "^3.1.4",
     "pg": "^8.4.0",
     "reflect-metadata": "^0.1.14",
-    "typeorm": "0.3.20"
+    "typeorm": "0.3.20",
+    "web-push": "^3.6.7"
   },
   "_moduleAliases": {
     "@server": "./server",

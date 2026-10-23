@@ -79,6 +79,29 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                 res.end('404 Not Found');
             }
             break;
+        // Served from the root rather than mapped to main.js like other .js
+        // URLs: a service worker can only control pages under its own path
+        case '/sw.js':
+        case '/manifest.webmanifest':
+            if (method !== 'GET') {
+                res.statusCode = 405;
+                res.setHeader('Content-Type', 'text/plain');
+                res.end('405 Method Not Allowed');
+                break;
+            }
+            try {
+                const file = fs.readFileSync(path.join(__dirname, '..', '..', 'www', url));
+                res.statusCode = 200;
+                res.setHeader('Content-Type', url === '/sw.js' ? 'text/javascript' : 'application/manifest+json');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.end(file);
+            } catch (error) {
+                console.error(`Error serving ${url}: ${error}`);
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'text/plain');
+                res.end('404 Not Found');
+            }
+            break;
         case '/csrf-token':
             if (method !== 'GET') {
                 res.statusCode = 405;

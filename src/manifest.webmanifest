@@ -1,0 +1,17 @@
+{
+    "name": "The Green Asterisk",
+    "short_name": "Green Asterisk",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#29701b",
+    "theme_color": "#29701b",
+    "icons": [
+        {
+            "src": "/storage/images/favicon.png",
+            "sizes": "400x400",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}
