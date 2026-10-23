@@ -7,6 +7,7 @@ import http from 'http';
 import path from 'path';
 
 import cache from './cache';
+import SessionController from './controllers/sessionController';
 import Routes from './routes';
 import BrowserSync from './services/browserSyncService';
 import { initDatabase } from './services/database';
@@ -180,6 +181,11 @@ const startServer = async () => {
         } catch (error) {
             console.error('Failed to initialize database before starting server:', error);
             process.exit(1);
+        }
+        try {
+            await SessionController.loadSessions();
+        } catch (error) {
+            console.error('Failed to load sessions, starting with none:', error);
         }
 
         const server = http.createServer(makeServer);
