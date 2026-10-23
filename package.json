@@ -46,7 +46,7 @@
     "watch:server-html": "npm-watch server-html",
     "prod": "npm run build && npm run start",
     "start": "node ./server/comp/main.js",
-    "dev": "tsc --project ./server/tsconfig.json && npm run server-html && concurrently \"npm run build:watch\" \"npm run watch:html\" \"npm run watch:server-html\" \"node ./server/comp/main.js\"",
+    "dev": "tsc --project ./server/tsconfig.json && npm run server-html && npm run html && concurrently \"npm run build:watch\" \"npm run watch:html\" \"npm run watch:server-html\" \"node ./server/comp/main.js\"",
     "migration:generate": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:generate -d ./server/services/database/data-source.ts",
     "migration:run": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:run -d ./server/services/database/data-source.ts",
     "migration:revert": "ts-node --project ./server/services/database/tsconfig.json ./node_modules/typeorm/cli.js migration:revert -d ./server/services/database/data-source.ts",
