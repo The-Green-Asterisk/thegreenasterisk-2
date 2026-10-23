@@ -123,7 +123,8 @@ export default class PrDigestController extends BaseController {
     }
 
     private static cleanDigest(body: any) {
-        if (!body || !this.isDate(body.checkedAt) || !Array.isArray(body.prs)) return null;
+        if (!body || !this.isDate(body.checkedAt) || !Array.isArray(body.prs)
+            || !(body.jiraUrl === undefined || /^https:\/\/[\w.-]+$/.test(body.jiraUrl))) return null;
         const prs = [];
         for (const pr of body.prs) {
             if (!SECTIONS.includes(pr?.section)
@@ -153,7 +154,7 @@ export default class PrDigestController extends BaseController {
                 events
             });
         }
-        return { checkedAt: body.checkedAt, prs };
+        return { checkedAt: body.checkedAt, jiraUrl: body.jiraUrl as string | undefined, prs };
     }
 
     private static isDate(value: any): boolean {
