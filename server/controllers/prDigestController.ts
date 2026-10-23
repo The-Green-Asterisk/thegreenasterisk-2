@@ -134,6 +134,7 @@ export default class PrDigestController extends BaseController {
                 || !Array.isArray(pr.tickets) || !pr.tickets.every((t: any) => /^[A-Z]+-\d+$/.test(t))
                 // optional so a digest from before owners were sent still saves
                 || !(pr.owners === undefined || (Array.isArray(pr.owners) && pr.owners.every((o: any) => /^[A-Za-z]{1,4}$/.test(o))))
+                || !(pr.draft === undefined || typeof pr.draft === 'boolean')
                 || typeof pr.status !== 'string' || !/^[\w ,()#'-]{0,200}$/.test(pr.status)
                 || !Array.isArray(pr.events)) return null;
             const events = [];
@@ -150,6 +151,7 @@ export default class PrDigestController extends BaseController {
                 url: pr.url,
                 tickets: pr.tickets,
                 owners: (pr.owners ?? []) as string[],
+                draft: pr.draft === true,
                 status: pr.status,
                 events
             });

@@ -148,6 +148,7 @@ function buildPr(pr: PrDigestPr, jiraUrl?: string) {
         owners.title = 'Owner';
         title.append(owners);
     }
+    if (pr.draft) title.append(make('span', 'draft', 'draft'));
     const heading = make('div', '', 'pr-heading');
     heading.append(title);
     if (pr.tickets.length) {
@@ -175,7 +176,9 @@ function buildPr(pr: PrDigestPr, jiraUrl?: string) {
         return item;
     }));
 
-    card.append(heading, make('p', pr.status, 'status'), events);
+    // The draft badge says it, so the status doesn't need to
+    const status = pr.draft ? pr.status.replace(/, draft$/, '') : pr.status;
+    card.append(heading, make('p', status, 'status'), events);
     return card;
 }
 

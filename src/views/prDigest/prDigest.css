@@ -72,6 +72,14 @@ el-pr-digest .owners {
     border-radius: var(--radius-lg);
     padding: 1px 8px;
 }
+el-pr-digest .draft {
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--text-muted);
+    border: 1px solid var(--text-muted);
+    border-radius: var(--radius-lg);
+    padding: 0 7px;
+}
 el-pr-digest .alert.red .owners {
     background-color: var(--alert-red);
 }
