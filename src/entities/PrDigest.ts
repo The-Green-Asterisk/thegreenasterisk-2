@@ -21,7 +21,8 @@ export default class PrDigest {
 
     constructor(
         public checkedAt: string,
-        public prs: PrDigestPr[]
+        public prs: PrDigestPr[],
+        public jiraUrl?: string
     ) { }
 
 }

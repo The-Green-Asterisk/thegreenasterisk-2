@@ -127,13 +127,13 @@ async function renderDigest() {
         const prs = digest.prs.filter(pr => pr.section === key);
         if (!prs.length) continue;
         const group = make('div', '', `alert ${key}`);
-        group.append(make('h2', heading), ...prs.map(buildPr));
+        group.append(make('h2', heading), ...prs.map(pr => buildPr(pr, digest.jiraUrl)));
         digestSection.append(group);
     }
     if (!digest.prs.length) digestSection.append(make('p', 'No open PRs.'));
 }
 
-function buildPr(pr: PrDigestPr) {
+function buildPr(pr: PrDigestPr, jiraUrl?: string) {
     const card = make('article', '', 'pr');
 
     const link = make('a', `${pr.repo} #${pr.number}`) as HTMLAnchorElement;
@@ -150,7 +150,23 @@ function buildPr(pr: PrDigestPr) {
     }
     const heading = make('div', '', 'pr-heading');
     heading.append(title);
-    if (pr.tickets.length) heading.append(make('span', pr.tickets.join(', '), 'tickets'));
+    if (pr.tickets.length) {
+        // Jira's URL comes with the digest, since this code is public
+        const tickets = make('span', '', 'tickets');
+        pr.tickets.forEach((ticket, i) => {
+            if (i > 0) tickets.append(', ');
+            if (jiraUrl && /^PROV-\d+$/.test(ticket)) {
+                const ticketLink = make('a', ticket) as HTMLAnchorElement;
+                ticketLink.href = `${jiraUrl}/browse/${ticket}`;
+                ticketLink.target = '_blank';
+                ticketLink.rel = 'noopener noreferrer';
+                tickets.append(ticketLink);
+            } else {
+                tickets.append(ticket);
+            }
+        });
+        heading.append(tickets);
+    }
 
     const events = make('ul', '', 'events');
     events.append(...pr.events.map(event => {
