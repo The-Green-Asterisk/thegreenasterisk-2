@@ -96,7 +96,7 @@ nav #nav-profile-picture {
 
 nav #nav-profile-picture img {
     background-color: var(--surface-alt);
-    border: 3px solid var(--border-strong);
+    border: 3px solid var(--avatar-border);
     box-shadow: var(--md-shadow);
     aspect-ratio: 1/1;
     border-radius: 50%;
