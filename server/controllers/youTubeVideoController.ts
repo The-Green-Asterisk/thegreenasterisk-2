@@ -1,10 +1,14 @@
 import http from "http";
 import AppDataSource from "services/database";
+import { Setting } from "services/database/entity/Setting";
 import { Tag } from "services/database/entity/Tag";
 import { YouTubeVideo } from "services/database/entity/YouTubeVideo";
 import { In } from "typeorm";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
+
+// The Survivors season new videos go into, and the one shown open
+const CURRENT_SEASON = 'survivors.currentSeason';
 
 export default class YouTubeVideoController extends BaseController {
     constructor() {
@@ -27,6 +31,52 @@ export default class YouTubeVideoController extends BaseController {
             };
         } catch (error) {
             console.error("Error fetching YouTube videos:", error);
+            return {
+                response: JSON.stringify('Internal Server Error'),
+                status: 500
+            };
+        }
+    }
+
+    public static async getCurrentSeason(req: http.IncomingMessage, res: http.ServerResponse) {
+        try {
+            const setting = await AppDataSource.getRepository(Setting).findOneBy({ name: CURRENT_SEASON });
+            return {
+                response: JSON.stringify(Number(setting?.value ?? 1)),
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error fetching current season:", error);
+            return {
+                response: JSON.stringify('Internal Server Error'),
+                status: 500
+            };
+        }
+    }
+
+    public static async setCurrentSeason(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser?.isAdmin) {
+            return {
+                response: JSON.stringify('Unauthorized'),
+                status: 401
+            };
+        }
+        try {
+            const { season } = await this.readBody<{ season: number }>(req);
+            if (!Number.isInteger(season) || season < 1) {
+                return {
+                    response: JSON.stringify('Season must be a whole number of at least 1'),
+                    status: 400
+                };
+            }
+            await AppDataSource.getRepository(Setting).save({ name: CURRENT_SEASON, value: String(season) });
+            return {
+                response: JSON.stringify(season),
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error saving current season:", error);
             return {
                 response: JSON.stringify('Internal Server Error'),
                 status: 500

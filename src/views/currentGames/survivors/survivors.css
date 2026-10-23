@@ -69,6 +69,23 @@ el-survivors button.remove-video, el-survivors button.full-screen-button {
     color: white;
     padding: 7px;
 }
+el-survivors .seasons {
+    width: 100%;
+}
+el-survivors details.season {
+    margin-top: 1rem;
+}
+el-survivors details.season summary {
+    font-size: 1.5em;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid var(--ui-color);
+}
+el-survivors .coming-soon {
+    font-style: italic;
+    color: gray;
+}
 el-survivors .video-title {
     width: 100%;
     overflow: hidden;

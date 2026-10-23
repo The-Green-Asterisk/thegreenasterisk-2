@@ -59,6 +59,7 @@ const survivorsTemplate = () => html`
                 </div>
                 <p>Join us every other Sunday at 5pm on <a href="https://www.youtube.com/@TheGreenAsterisk">YouTube</a> or <a href="https://discord.gg/PwYVb5R7BF">Discord</a> to watch the live stream, or catch up with the recordings below.</p>
                 <div class="survivor-list" id="video-list"></div>
+                <div class="seasons" id="seasons"></div>
             </section>
         </div>
     </el-survivors>
