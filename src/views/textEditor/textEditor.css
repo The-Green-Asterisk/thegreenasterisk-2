@@ -5,7 +5,7 @@ el-text-editor {
 el-text-editor .text-editor-content {
     min-height: 100px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius);
     padding: 10px;
     font-size: 1rem;
     line-height: 1.5;

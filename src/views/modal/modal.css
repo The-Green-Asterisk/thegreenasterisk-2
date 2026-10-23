@@ -9,7 +9,7 @@ el-modal > div {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border-strong);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     background: var(--surface);
     position: absolute;
     top: 50%;
@@ -19,7 +19,7 @@ el-modal > div {
 }
 el-modal div header {
     display: flex;
-    border-radius: 10px 10px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     background: var(--ui-color);
     color: var(--text-on-accent);
     padding: .5rem 1rem;
@@ -34,7 +34,7 @@ el-modal div modal-body {
     padding: 1rem;
 }
 el-modal button:not(.close-button) {
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 0.5rem 1rem;
     background-color: var(--ui-color);
     color: var(--text-on-accent);

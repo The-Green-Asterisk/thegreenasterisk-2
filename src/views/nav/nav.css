@@ -6,7 +6,7 @@ nav {
     background-color: var(--surface);
     align-items: center;
     justify-content: end;
-    z-index: 1000;
+    z-index: var(--z-overlay);
     position: fixed;
     top: 0;
     left: 0;
@@ -53,7 +53,7 @@ nav li a {
     text-align: center;
     padding: 14px 16px;
     text-decoration: none;
-    border-radius: 5px;
+    border-radius: var(--radius);
 }
 
 nav li a:hover {
@@ -62,13 +62,13 @@ nav li a:hover {
 
 nav #discord_login {
     background-color: var(--discord);
-    border-radius: 5px;
+    border-radius: var(--radius);
     width: 70px;
     padding: 10px 5px;
     color: var(--text-on-accent);
     text-decoration: none;
     margin: 2px;
-    z-index: 2000;
+    z-index: var(--z-nav-controls);
 }
 
 nav #theme-toggle {
@@ -76,7 +76,7 @@ nav #theme-toggle {
     font-size: 1.25rem;
     padding: 10px;
     margin: 2px;
-    z-index: 2000;
+    z-index: var(--z-nav-controls);
 }
 
 nav #logo {
@@ -91,7 +91,7 @@ nav .show {
 }
 
 nav #nav-profile-picture {
-    z-index: 2000;
+    z-index: var(--z-nav-controls);
 }
 
 nav #nav-profile-picture img {

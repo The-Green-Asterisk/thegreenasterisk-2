@@ -7,7 +7,7 @@ section#comment-section .comment {
 
 section#comment-section #submit-comment-btn {
     padding: 5px 10px;
-    border-radius: 5px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--md-shadow);
     background-color: var(--button-bg);
