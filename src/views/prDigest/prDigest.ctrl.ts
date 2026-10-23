@@ -140,8 +140,16 @@ function buildPr(pr: PrDigestPr) {
     if (pr.url.startsWith('https://github.com/')) link.href = pr.url;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
+    const title = make('span', '', 'pr-title');
+    title.append(link);
+    // Digests saved before owners were sent have none
+    if (pr.owners?.length) {
+        const owners = make('span', pr.owners.join(', '), 'owners');
+        owners.title = 'Owner';
+        title.append(owners);
+    }
     const heading = make('div', '', 'pr-heading');
-    heading.append(link);
+    heading.append(title);
     if (pr.tickets.length) heading.append(make('span', pr.tickets.join(', '), 'tickets'));
 
     const events = make('ul', '', 'events');
