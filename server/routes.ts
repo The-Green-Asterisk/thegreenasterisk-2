@@ -1,4 +1,5 @@
 import CommentController from 'controllers/commentController';
+import ContactController from 'controllers/contactController';
 import LinkController from 'controllers/linkController';
 import PrDigestController from 'controllers/prDigestController';
 import PushController from 'controllers/pushController';
@@ -252,6 +253,11 @@ export default class Routes {
     @Method('DELETE')
     private ['/delete-push-subscription'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return PushController.deleteSubscription(req, res);
+    }
+
+    @Method('POST')
+    private ['/send-contact'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ContactController.sendContact(req, res);
     }
 
     get response(): ResponsePromise {

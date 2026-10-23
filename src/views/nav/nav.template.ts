@@ -16,6 +16,7 @@ const navTemplate = () => Helpers.html`
                 <li><a href="/many-worlds">Many Worlds</a></li>
                 <li><a href="/current-games">Current Games</a></li>
                 <li><a href="/store">Store</a></li>
+                <li><a href="/contact">Contact</a></li>
                 ${el.checkAdmin() ? `<li><a href="/pr-digest">PR Digest</a></li>` : ''}
             </ul>
         </div>
