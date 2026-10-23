@@ -16,6 +16,10 @@ export class YouTubeVideo {
     @Column()
     public episodeNum!: number
 
+    // 0 for videos outside any season, like Episode Zero
+    @Column({ default: 1 })
+    public season!: number
+
     @Column()
     public videoId!: string
 

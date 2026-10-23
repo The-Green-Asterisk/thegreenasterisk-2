@@ -81,6 +81,16 @@ export default class Routes {
     }
 
     @Method('GET')
+    private ['/get-current-season'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return YouTubeVideoController.getCurrentSeason(req, res);
+    }
+
+    @Method('PUT')
+    private ['/set-current-season'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return YouTubeVideoController.setCurrentSeason(req, res);
+    }
+
+    @Method('GET')
     private ['/get-links'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return LinkController.getLinks(req, res);
     }

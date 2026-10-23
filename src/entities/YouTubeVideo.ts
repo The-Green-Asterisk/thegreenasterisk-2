@@ -5,6 +5,7 @@ export default class YouTubeVideo {
         public title: string,
         public description: string,
         public episodeNum: number,
+        public season: number,
         public videoId: string,
         public embedUrl: string,
         public url: string,

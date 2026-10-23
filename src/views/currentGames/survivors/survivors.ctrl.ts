@@ -1,7 +1,7 @@
 import el from '@elements';
 import { Tag, YouTubeVideo } from '@entities';
 import Helpers from '@services/helpers';
-import { delData, getData, postData } from '@services/request';
+import { delData, getData, postData, putData } from '@services/request';
 
 const html = Helpers.html;
 
@@ -9,12 +9,63 @@ export default async function survivors() {
     if (el.survivors) {
         el.title.textContent = 'Survivors of the Emergence';
         const videoList = el.divs.id('video-list')!;
+        const seasons = el.divs.id('seasons')!;
         const content = el.divs.id('content');
+        const seasonLists = new Map<number, HTMLElement>();
 
-        const youtubeVideos = await getData<YouTubeVideo[]>('/get-youtube-videos')
-            .catch(error => console.error('Error fetching YouTube videos:', error));
+        const [youtubeVideos, savedSeason] = await Promise.all([
+            getData<YouTubeVideo[]>('/get-youtube-videos')
+                .catch(error => console.error('Error fetching YouTube videos:', error)),
+            getData<number>('/get-current-season')
+                .catch(error => console.error('Error fetching current season:', error))
+        ]);
+        const videoSeasons = (youtubeVideos || []).map(video => video.season);
+        // The season shown open and new videos default to; set in Admin Controls
+        let currentSeason = savedSeason || Math.max(1, ...videoSeasons);
+
+        const lastSeason = Math.max(currentSeason, ...videoSeasons);
+        for (let season = 1; season <= lastSeason; season++) seasonList(season);
 
         if (videoList && youtubeVideos) youtubeVideos.forEach(printVideo);
+        applyCurrentSeason();
+
+        // Opens the current season and closes the rest. Seasons up to the
+        // current one always show, as Coming Soon until they have videos.
+        function applyCurrentSeason() {
+            for (let season = 1; season <= currentSeason; season++) seasonList(season);
+            seasonLists.forEach((list, season) => {
+                const details = list.parentElement as HTMLDetailsElement;
+                if (season > currentSeason && list.querySelector('.coming-soon')) {
+                    details.remove();
+                    seasonLists.delete(season);
+                } else {
+                    details.open = season === currentSeason;
+                }
+            });
+            // Only admins have the form; el.inputs has no id() when there are no inputs
+            const seasonInput = el.getElement<HTMLInputElement>('#season');
+            if (seasonInput) seasonInput.value = String(currentSeason);
+        }
+
+        // Videos outside any season (season 0, like Episode Zero) go above the seasons
+        function seasonList(season: number) {
+            if (season < 1) return videoList;
+            let list = seasonLists.get(season);
+            if (!list) {
+                const details = html`
+                    <details class="season">
+                        <summary>Season ${season}</summary>
+                        <div class="survivor-list">
+                            <p class="coming-soon">Coming Soon</p>
+                        </div>
+                    </details>
+                `;
+                seasons.appendChild(details);
+                list = details.querySelector<HTMLElement>('.survivor-list')!;
+                seasonLists.set(season, list);
+            }
+            return list;
+        }
 
         function printVideo(video: YouTubeVideo) {
             const removeVid = `
@@ -41,7 +92,9 @@ export default async function survivors() {
                     </div>
                 </div>
             `;
-            videoList.appendChild(vid);
+            const list = seasonList(video.season);
+            list.querySelector('.coming-soon')?.remove();
+            list.appendChild(vid);
             const removeButton = el.checkAdmin(el.buttons.id(`remove-video-${video.id}`));
             if (removeButton && typeof removeButton !== 'boolean')
                 removeButton.addEventListener('click', () => {
@@ -61,10 +114,14 @@ export default async function survivors() {
                 <section>
                     <div class="admin-controls">
                         <h2>Admin Controls</h2>
+                        <p>Current season (shown open, and where new videos go):</p>
+                        <input type="number" id="current-season" name="current-season" min="1" value="${currentSeason}" />
+                        <button id="save-current-season">Save Current Season</button>
                         <p>Add a new video:</p>
                         <input type="text" id="title" name="title" placeholder="Video Title" />
                         <input type="text" id="description" name="description" placeholder="Video Description" />
                         <input type="number" id="episode-num" name="episode-num" placeholder="Episode Number" />
+                        <input type="number" id="season" name="season" placeholder="Season (0 for none)" value="${currentSeason}" />
                         <input type="text" id="embedUrl" name="embedUrl" placeholder="YouTube Embed URL" />
                         <input type="text" id="tags" name="tags" placeholder="Tags (comma separated)" />
                         <button id="add-video">Add Video</button>
@@ -72,6 +129,23 @@ export default async function survivors() {
                 </section>
             `;
             content.appendChild(adminSection);
+
+            const saveSeasonButton = el.buttons.id('save-current-season');
+            if (saveSeasonButton)
+                saveSeasonButton.addEventListener('click', () => {
+                    const season = Number(el.inputs.id('current-season')?.value);
+                    if (!Number.isInteger(season) || season < 1) {
+                        alert('Current season must be a whole number of at least 1.');
+                        return;
+                    }
+                    putData('/set-current-season', { season }).then(() => {
+                        currentSeason = season;
+                        applyCurrentSeason();
+                    }).catch(error => {
+                        console.error('Error saving current season:', error);
+                        alert('Failed to save the current season. Please try again.');
+                    });
+                }, { signal: el.signal });
 
             const addVideoButton = el.buttons.id('add-video');
 
@@ -93,6 +167,11 @@ export default async function survivors() {
                         alert('Episode number is required and must be a number.');
                         return;
                     }
+                    const season = el.inputs.id('season')?.value.stripScripts();
+                    if (!season || !Number.isInteger(Number(season)) || Number(season) < 0) {
+                        alert('Season is required and must be a whole number (0 for none).');
+                        return;
+                    }
                     const embedUrl = el.inputs.id('embedUrl')?.value.stripScripts();
                     if (!embedUrl) {
                         alert('YouTube Embed URL is required.');
@@ -110,6 +189,7 @@ export default async function survivors() {
                         title,
                         description,
                         Number(episodeNum),
+                        Number(season),
                         videoId,
                         embedUrl,
                         url,
@@ -119,6 +199,8 @@ export default async function survivors() {
                     postData<YouTubeVideo>('/save-youtube-video', newVideo).then(video => {
                         printVideo(video);
                         el.inputs.forEach(input => input.value = '');
+                        el.inputs.id('season')!.value = String(currentSeason);
+                        el.inputs.id('current-season')!.value = String(currentSeason);
                     }).catch(error => {
                         console.error('Error adding video:', error);
                         alert('Failed to add video. Please try again.');
