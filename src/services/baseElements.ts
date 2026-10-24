@@ -57,7 +57,6 @@ export default class BaseEl {
     public static getElements = <T extends HTMLElement = HTMLElement>(selector: string): NodeListOf<T> | null => {
         let els = document.querySelectorAll<T>(selector);
         if (!els || els.length == 0) {
-            console.error(`Nodes with selector "${selector}" not found!`);
             return null;
         } else {
             els.id = (id: string): T | undefined => {
