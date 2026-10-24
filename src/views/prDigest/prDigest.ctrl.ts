@@ -57,7 +57,14 @@ async function setUpPush() {
 }
 
 async function renderPush(box: HTMLElement, registration: ServiceWorkerRegistration) {
-    const subscription = await registration.pushManager.getSubscription();
+    let subscription: PushSubscription | null = null;
+    try {
+        subscription = await registration.pushManager.getSubscription();
+    } catch (error) {
+        console.warn('PushManager storage access restricted:', error);
+        box.replaceChildren(make('p', "Notifications are not supported in this browsing context."));
+        return;
+    }
 
     if (subscription && Notification.permission === 'granted') {
         // Re-saved on every visit in case the server dropped it
