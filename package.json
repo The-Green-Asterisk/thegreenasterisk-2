@@ -35,6 +35,7 @@
     "migrations generate to server/services/database/migration/ (must manually input this path)"
   ],
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
     "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp ./src/sw.js ./src/manifest.webmanifest www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
     "server-html": "copyfiles -u 1 -e \"server/comp/**/*\" \"server/**/*.html\" server/comp/",
@@ -62,9 +63,11 @@
     "copyfiles": "^2.4.1",
     "dotenv": "^16.4.5",
     "esbuild-plugin-tsc": "^0.4.0",
+    "happy-dom": "^15.11.7",
     "npm-watch": "^0.13.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "@types/formidable": "^3.4.6",
