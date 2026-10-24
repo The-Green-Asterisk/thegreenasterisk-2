@@ -15,7 +15,10 @@ export class PushSubscriber {
     @Column()
     public auth!: string;
 
-    @ManyToOne(() => User, { onDelete: 'CASCADE' })
+    @Column({ length: 50, default: 'pr-digest' })
+    public type!: string;
+
+    @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
     @JoinColumn({ name: 'userId', foreignKeyConstraintName: 'FK_push_subscriber_user' })
-    public user!: User;
+    public user?: User | null;
 }
