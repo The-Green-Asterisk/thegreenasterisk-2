@@ -71,10 +71,10 @@ async function renderPush(box: HTMLElement, registration: ServiceWorkerRegistrat
 
     if (subscription && Notification.permission === 'granted') {
         // Re-saved on every visit in case the server dropped it
-        postData('/save-push-subscription', subscription.toJSON()).catch(() => { });
+        postData('/save-push-subscription', { ...subscription.toJSON(), type: 'pr-digest' }).catch(() => { });
         const button = make('button', 'Turn off');
         button.addEventListener('click', async () => {
-            await delData('/delete-push-subscription', { endpoint: subscription.endpoint }).catch(() => { });
+            await delData('/delete-push-subscription', { endpoint: subscription.endpoint, type: 'pr-digest' }).catch(() => { });
             await subscription.unsubscribe();
             await renderPush(box, registration);
         }, { signal: el.signal });
@@ -91,7 +91,7 @@ async function renderPush(box: HTMLElement, registration: ServiceWorkerRegistrat
                         userVisibleOnly: true,
                         applicationServerKey: base64UrlToBytes(key)
                     });
-                    await postData('/save-push-subscription', newSubscription.toJSON());
+                    await postData('/save-push-subscription', { ...newSubscription.toJSON(), type: 'pr-digest' });
                 }
                 await renderPush(box, registration);
             } catch (error) {
