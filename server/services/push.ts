@@ -1,6 +1,6 @@
-import webPush from 'web-push';
 import AppDataSource from 'services/database';
 import { PushSubscriber } from 'services/database/entity/PushSubscriber';
+import webPush from 'web-push';
 
 export type PushNotification = {
     title: string,
@@ -16,10 +16,15 @@ export default class PushService {
     }
 
     /**
-     * Sends each notification to every admin's subscribed browsers. A
-     * subscription the push service reports as gone (404/410) is deleted.
+     * Sends each notification to every subscriber of the given type.
+     * If options.adminOnly is true, only sends to subscribers who are admins.
+     * A subscription the push service reports as gone (404/410) is deleted.
      */
-    static async sendToAdmins(notifications: PushNotification[]) {
+    static async sendToSubscribers(
+        type: string,
+        notifications: PushNotification[],
+        options: { adminOnly?: boolean } = {}
+    ) {
         if (!notifications.length) return;
         if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY || !process.env.VAPID_SUBJECT) {
             console.error('Push not sent: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT must be set');
@@ -28,8 +33,13 @@ export default class PushService {
         webPush.setVapidDetails(process.env.VAPID_SUBJECT, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
 
         const repository = AppDataSource.getRepository(PushSubscriber);
-        const subscribers = (await repository.find({ relations: { user: true } }))
-            .filter(subscriber => subscriber.user?.isAdmin);
+        const allSubscribers = await repository.find({
+            where: { type },
+            relations: { user: true }
+        });
+        const subscribers = options.adminOnly
+            ? allSubscribers.filter(subscriber => subscriber.user?.isAdmin)
+            : allSubscribers;
 
         for (const subscriber of subscribers) {
             for (const { urgency, ...notification } of notifications) {
@@ -53,5 +63,21 @@ export default class PushService {
                 }
             }
         }
+    }
+
+    /**
+     * Sends each notification to all subscribers of the given type.
+     */
+    static async sendToType(type: string, notifications: PushNotification[]) {
+        return this.sendToSubscribers(type, notifications);
+    }
+
+    /**
+     * Sends each notification to every admin's subscribed browsers for the given type
+     * (defaults to 'pr-digest'). A subscription the push service reports as gone
+     * (404/410) is deleted.
+     */
+    static async sendToAdmins(notifications: PushNotification[], type: string = 'pr-digest') {
+        return this.sendToSubscribers(type, notifications, { adminOnly: true });
     }
 }
