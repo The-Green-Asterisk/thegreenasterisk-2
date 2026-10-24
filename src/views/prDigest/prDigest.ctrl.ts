@@ -20,7 +20,9 @@ export default async function prDigest() {
         return;
     }
 
-    setUpPush();
+    setUpPush().catch(error => {
+        console.warn('Could not initialize push notifications:', error);
+    });
     await renderDigest();
     setInterval(() => {
         if (document.visibilityState === 'visible') renderDigest();
@@ -49,9 +51,10 @@ async function setUpPush() {
     }
 
     try {
-        await renderPush(box, await navigator.serviceWorker.register('/sw.js'));
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await renderPush(box, registration);
     } catch (error) {
-        console.error('Error setting up notifications:', error);
+        console.warn('Error setting up notifications:', error);
         box.replaceChildren(make('p', "Notifications couldn't be set up in this browser."));
     }
 }
