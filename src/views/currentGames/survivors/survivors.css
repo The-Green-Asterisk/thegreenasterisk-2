@@ -32,7 +32,7 @@ el-survivors .player-img {
     aspect-ratio: 1/1;
     object-fit: cover;
     object-position: center;
-    border: 2px solid var(--border-strong);
+    border: 2px solid black;
     border-radius: 50%;
     box-shadow: var(--lg-shadow);
     margin: 1rem 0;
