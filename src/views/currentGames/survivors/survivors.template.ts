@@ -6,6 +6,9 @@ const survivorsTemplate = () => html`
     <el-survivors>
         <div class="content-slate" id="content">
             <section class="current-games-survivors">
+                <button id="notification-button" title="Subscribe to notifications of new episodes">
+                    <i class="fa-regular fa-bell"></i>
+                </button>
                 <h1>Survivors of the Emergence</h1>
                 <p>100 years after Orcus emerged from the Abyss and wreaked havoc on the land of Cronus, a troup of unlikely heroes discovers a plot to revive the undead</p>
                 <div class="player-card steeb">

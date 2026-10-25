@@ -1,6 +1,7 @@
 import el from '@elements';
 import { Tag, YouTubeVideo } from '@entities';
 import Helpers from '@services/helpers';
+import PushService from '@services/pushService';
 import { delData, getData, postData, putData } from '@services/request';
 
 const html = Helpers.html;
@@ -12,6 +13,9 @@ export default async function survivors() {
         const seasons = el.divs.id('seasons')!;
         const content = el.divs.id('content');
         const seasonLists = new Map<number, HTMLElement>();
+        const subscribeButton = el.buttons.id('notification-button');
+
+        setUpNotificationButton(subscribeButton ?? null);
 
         const [youtubeVideos, savedSeason] = await Promise.all([
             getData<YouTubeVideo[]>('/get-youtube-videos')
@@ -207,5 +211,69 @@ export default async function survivors() {
                     });
                 }, { signal: el.signal });
         }
+    }
+}
+
+async function setUpNotificationButton(button: HTMLButtonElement | null) {
+    if (!button) return;
+
+    if (!PushService.isSupported()) {
+        button.title = PushService.isIos()
+            ? 'To get notifications on iPhone or iPad, add The Green Asterisk to your Home Screen.'
+            : 'Push notifications are not supported in this browser.';
+        button.disabled = true;
+        return;
+    }
+
+    try {
+        const registration = await PushService.registerServiceWorker('/sw.js');
+        let subscription = await PushService.getSubscription(registration);
+
+        const updateButtonState = () => {
+            const icon = button.querySelector('i');
+            if (subscription && Notification.permission === 'granted') {
+                button.classList.add('active');
+                button.title = 'Unsubscribe from new episode notifications';
+                if (icon) {
+                    icon.className = 'fa-solid fa-bell';
+                }
+            } else {
+                button.classList.remove('active');
+                button.title = 'Subscribe to notifications of new episodes';
+                if (icon) {
+                    icon.className = 'fa-regular fa-bell';
+                }
+            }
+        };
+
+        if (subscription && Notification.permission === 'granted') {
+            PushService.saveSubscription(subscription, 'videos').catch(() => { });
+        }
+        updateButtonState();
+
+        button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                if (subscription && Notification.permission === 'granted') {
+                    await PushService.unsubscribe(subscription, 'videos').catch(() => { });
+                    subscription = null;
+                } else {
+                    const permission = await PushService.requestPermission();
+                    if (permission === 'granted') {
+                        subscription = await PushService.subscribe(registration, 'videos');
+                    } else if (permission === 'denied') {
+                        alert('Notifications are blocked in your browser settings. Please enable them to subscribe.');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating notification subscription:', error);
+                alert('Could not update notification subscription. Please try again.');
+            } finally {
+                button.disabled = false;
+                updateButtonState();
+            }
+        }, { signal: el.signal });
+    } catch (error) {
+        console.warn('Could not initialize push notifications on Survivors page:', error);
     }
 }
