@@ -3,6 +3,7 @@ import AppDataSource from "services/database";
 import { Setting } from "services/database/entity/Setting";
 import { Tag } from "services/database/entity/Tag";
 import { YouTubeVideo } from "services/database/entity/YouTubeVideo";
+import PushService from "services/push";
 import { In } from "typeorm";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
@@ -114,6 +115,15 @@ export default class YouTubeVideoController extends BaseController {
             const videoRepository = AppDataSource.getRepository(YouTubeVideo);
             const video = videoRepository.create(body);
             const savedVideo = await videoRepository.save(video);
+
+            PushService.sendToType('videos', [{
+                title: 'A new video has been uploaded to The Green Asterisk',
+                body: savedVideo.title,
+                url: 'https://thegreenasterisk.com',
+                tag: savedVideo.tags.map((tag: Tag) => tag.name).join(', '),
+                urgency: 'normal'
+            }]);
+
             return {
                 response: JSON.stringify(savedVideo),
                 status: 201
