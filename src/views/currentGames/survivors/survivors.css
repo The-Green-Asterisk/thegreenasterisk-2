@@ -99,26 +99,26 @@ el-survivors .video-title {
         align-items: stretch;
         background-position: center;
     }
-    el-survivors .player-card:nth-child(odd) {
+    el-survivors .player-card:nth-of-type(odd) {
         flex-direction: row;
         border-top-right-radius: 20px;
         border-bottom-right-radius: 20px;
     }
-    el-survivors .player-card:nth-child(even) {
+    el-survivors .player-card:nth-of-type(even) {
         flex-direction: row-reverse;
         border-top-left-radius: 20px;
         border-bottom-left-radius: 20px;
     }
-    el-survivors .player-card:nth-child(odd) .player-img {
+    el-survivors .player-card:nth-of-type(odd) .player-img {
         margin: 1rem 1rem 1rem 0;
     }
-    el-survivors .player-card:nth-child(even) .player-img {
+    el-survivors .player-card:nth-of-type(even) .player-img {
         margin: 1rem 0 1rem 1rem;
     }
-    el-survivors .player-card:nth-child(odd) div {
+    el-survivors .player-card:nth-of-type(odd) div {
         padding-right: 1rem;
     }
-    el-survivors .player-card:nth-child(even) div {
+    el-survivors .player-card:nth-of-type(even) div {
         padding-left: 1rem;
     }
 }
