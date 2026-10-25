@@ -118,6 +118,68 @@ describe('PushService', () => {
         expect(mockWebPush.sendNotification).toHaveBeenCalledTimes(2);
     });
 
+    it('sendToUser sends to all devices belonging to the specified user', async () => {
+        mockRepository.find.mockResolvedValueOnce([
+            {
+                id: 1,
+                endpoint: 'https://phone',
+                p256dh: 'k1',
+                auth: 'a1',
+                type: 'videos',
+                user: { id: 42, isAdmin: false }
+            },
+            {
+                id: 2,
+                endpoint: 'https://laptop',
+                p256dh: 'k2',
+                auth: 'a2',
+                type: 'videos',
+                user: { id: 42, isAdmin: false }
+            }
+        ]);
+        mockWebPush.sendNotification.mockResolvedValue(undefined);
+
+        await PushService.sendToUser(42, [sampleNotification], 'videos');
+
+        expect(mockRepository.find).toHaveBeenCalledWith({
+            where: { user: { id: 42 }, type: 'videos' },
+            relations: { user: true }
+        });
+        expect(mockWebPush.sendNotification).toHaveBeenCalledTimes(2);
+        expect(mockWebPush.sendNotification).toHaveBeenCalledWith(
+            { endpoint: 'https://phone', keys: { p256dh: 'k1', auth: 'a1' } },
+            expect.any(String),
+            expect.anything()
+        );
+        expect(mockWebPush.sendNotification).toHaveBeenCalledWith(
+            { endpoint: 'https://laptop', keys: { p256dh: 'k2', auth: 'a2' } },
+            expect.any(String),
+            expect.anything()
+        );
+    });
+
+    it('sendToUser without type sends to all devices for that user across all types', async () => {
+        mockRepository.find.mockResolvedValueOnce([
+            {
+                id: 1,
+                endpoint: 'https://phone',
+                p256dh: 'k1',
+                auth: 'a1',
+                type: 'videos',
+                user: { id: 42, isAdmin: false }
+            }
+        ]);
+        mockWebPush.sendNotification.mockResolvedValue(undefined);
+
+        await PushService.sendToUser(42, [sampleNotification]);
+
+        expect(mockRepository.find).toHaveBeenCalledWith({
+            where: { user: { id: 42 } },
+            relations: { user: true }
+        });
+        expect(mockWebPush.sendNotification).toHaveBeenCalledTimes(1);
+    });
+
     it('deletes subscriber if webPush returns 404 or 410', async () => {
         mockRepository.find.mockResolvedValueOnce([
             {

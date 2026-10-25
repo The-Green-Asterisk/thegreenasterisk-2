@@ -73,6 +73,56 @@ export default class PushService {
     }
 
     /**
+     * Sends each notification to all subscribed devices belonging to a specific user.
+     * Optionally filtered by subscription type (e.g. 'videos', 'pr-digest').
+     */
+    static async sendToUser(
+        userId: number,
+        notifications: PushNotification[],
+        type?: string
+    ) {
+        if (!notifications.length) return;
+        if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY || !process.env.VAPID_SUBJECT) {
+            console.error('Push not sent: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT must be set');
+            return;
+        }
+        webPush.setVapidDetails(process.env.VAPID_SUBJECT, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+
+        const repository = AppDataSource.getRepository(PushSubscriber);
+        const whereClause: any = { user: { id: userId } };
+        if (type) {
+            whereClause.type = type;
+        }
+
+        const subscribers = await repository.find({
+            where: whereClause,
+            relations: { user: true }
+        });
+
+        for (const subscriber of subscribers) {
+            for (const { urgency, ...notification } of notifications) {
+                try {
+                    await webPush.sendNotification(
+                        { endpoint: subscriber.endpoint, keys: { p256dh: subscriber.p256dh, auth: subscriber.auth } },
+                        JSON.stringify(notification),
+                        {
+                            TTL: 6 * 60 * 60,
+                            urgency,
+                            topic: notification.tag.replace(/[^\w-]/g, '-').slice(0, 32)
+                        }
+                    );
+                } catch (error: any) {
+                    if (error?.statusCode === 404 || error?.statusCode === 410) {
+                        await repository.delete(subscriber.id);
+                        break;
+                    }
+                    console.error('Error sending push notification:', error?.statusCode ?? error);
+                }
+            }
+        }
+    }
+
+    /**
      * Sends each notification to every admin's subscribed browsers for the given type
      * (defaults to 'pr-digest'). A subscription the push service reports as gone
      * (404/410) is deleted.
