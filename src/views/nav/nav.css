@@ -51,7 +51,7 @@ nav li.fa-solid {
 nav li a {
     display: block;
     text-align: center;
-    padding: 14px 16px;
+    padding: 14px 0;
     text-decoration: none;
     border-radius: var(--radius);
 }
@@ -105,7 +105,7 @@ nav #nav-profile-picture img {
     width: 30px;
 }
 
-@media screen and (min-width: 768px) {
+@media screen and (min-width: 1024px) {
     nav li.fa-solid {
         display: none;
     }
