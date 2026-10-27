@@ -143,3 +143,52 @@ nav #nav-profile-picture img {
         z-index: auto;
     }
 }
+
+.nav-reveal-asterisk {
+    position: fixed;
+    top: 6px;
+    left: 6px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    line-height: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--md-shadow);
+    z-index: calc(var(--z-overlay) + 1);
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.92);
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+
+.nav-reveal-asterisk:hover,
+.nav-reveal-asterisk:focus-visible {
+    background: transparent;
+    transform: scale(1);
+}
+
+.nav-reveal-asterisk img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    display: block;
+    pointer-events: none;
+}
+
+.nav-reveal-asterisk.is-visible {
+    display: inline-flex;
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .nav-reveal-asterisk.is-visible {
+        display: inline-flex;
+    }
+}

@@ -7,6 +7,13 @@ let lastTouchTapTs = 0;
 let lastTouchX = 0;
 let lastTouchY = 0;
 
+function isTouchPrimaryInput(): boolean {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(hover: none) and (pointer: coarse)').matches
+        || navigator.maxTouchPoints > 0
+        || 'ontouchstart' in window;
+}
+
 function hasOpenOverlayModal(): boolean {
     return !!document.querySelector('.spell-modal-backdrop.visible:not(.hidden)');
 }
@@ -19,12 +26,39 @@ function getNavBarHeight(nav: HTMLElement): number {
     return Math.ceil(nav.getBoundingClientRect().height || nav.offsetHeight || 0);
 }
 
+function ensureNavRevealAsteriskButton(): HTMLButtonElement | null {
+    if (typeof document === 'undefined') return null;
+
+    let revealBtn = document.getElementById('nav-reveal-asterisk') as HTMLButtonElement | null;
+    if (!revealBtn) {
+        revealBtn = document.createElement('button');
+        revealBtn.id = 'nav-reveal-asterisk';
+        revealBtn.className = 'nav-reveal-asterisk';
+        revealBtn.setAttribute('aria-label', 'Show navigation');
+        revealBtn.title = 'Show navigation';
+        revealBtn.innerHTML = '<img src="/storage/images/BIG-AS.png" alt="" aria-hidden="true" />';
+        document.body.appendChild(revealBtn);
+    }
+
+    return revealBtn;
+}
+
+function syncNavRevealAsterisk() {
+    const revealBtn = ensureNavRevealAsteriskButton();
+    const nav = el.nav;
+    if (!revealBtn || !nav) return;
+
+    const navHidden = nav.style.display === 'none' || window.getComputedStyle(nav).display === 'none';
+    revealBtn.classList.toggle('is-visible', navHidden && isTouchPrimaryInput());
+}
+
 function toggleNavVisibilityGlobal() {
     const nav = el.nav;
     if (!nav) return;
     const isHidden = nav.style.display === 'none' || window.getComputedStyle(nav).display === 'none';
     nav.style.display = isHidden ? '' : 'none';
     el.body.style.paddingTop = isHidden ? `${getNavBarHeight(nav)}px` : '0px';
+    syncNavRevealAsterisk();
 }
 
 function bindGlobalNavToggleListeners() {
@@ -57,6 +91,10 @@ function bindGlobalNavToggleListeners() {
         lastTouchX = touch.clientX;
         lastTouchY = touch.clientY;
     }, { passive: true, signal: el.signal });
+
+    window.addEventListener('resize', () => {
+        syncNavRevealAsterisk();
+    }, { signal: el.signal });
 }
 
 export default function nav(showNav: boolean = true) {
@@ -65,6 +103,7 @@ export default function nav(showNav: boolean = true) {
     if (!showNav && el.nav) {
         el.nav.style.display = "none";
         el.body.style.paddingTop = `0px`;
+        syncNavRevealAsterisk();
         return;
     }
     const discordLoginButton = el.buttons?.id('discord_login');
@@ -114,4 +153,17 @@ export default function nav(showNav: boolean = true) {
 
     const navHeight = el.nav ? getNavBarHeight(el.nav) : 0;
     el.body.style.paddingTop = `${navHeight}px`;
+
+    const revealBtn = ensureNavRevealAsteriskButton();
+    revealBtn?.addEventListener('click', () => {
+        const nav = el.nav;
+        if (!nav) return;
+        const isHidden = nav.style.display === 'none' || window.getComputedStyle(nav).display === 'none';
+        if (!isHidden) return;
+        nav.style.display = '';
+        el.body.style.paddingTop = `${getNavBarHeight(nav)}px`;
+        syncNavRevealAsterisk();
+    }, { signal: el.signal });
+
+    syncNavRevealAsterisk();
 }

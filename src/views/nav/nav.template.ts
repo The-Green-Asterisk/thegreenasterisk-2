@@ -12,9 +12,7 @@ const navTemplate = () => {
 
     return Helpers.html`
     <nav>
-        <a href="/">
-            <img id="logo" src="/storage/images/BIG-AS.png" alt="The Green Asterisk" />
-        </a>
+        <img id="logo" src="/storage/images/BIG-AS.png" alt="The Green Asterisk" />
         <div style="width: 100px;"></div>
         <div class="fa-solid fa-bars" id="menu">
             <ul>
