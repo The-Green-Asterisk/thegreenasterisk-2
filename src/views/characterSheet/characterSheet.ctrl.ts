@@ -33,6 +33,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     let isEditMode = false;
     const spellMap = new Map<string, SpellDefinition>();
     let savedCharacters: SavedCharacterSummary[] = [];
+    let statusHideTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Modal elements
     const modalBackdrop = sheet.querySelector<HTMLElement>("#spell-modal-container");
@@ -99,14 +100,23 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     function setLoaderCollapsed(collapsed: boolean) {
         if (!loaderBar || !loaderToggleBtn) return;
         loaderBar.classList.toggle("is-collapsed", collapsed);
+        sheet.classList.toggle("loader-collapsed", collapsed);
         loaderToggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
         loaderToggleBtn.title = collapsed ? "Expand loader" : "Collapse loader";
     }
 
     function showStatus(message: string, isError = false) {
         if (!statusMsg) return;
+        if (statusHideTimer) {
+            clearTimeout(statusHideTimer);
+            statusHideTimer = null;
+        }
         statusMsg.textContent = message;
         statusMsg.className = `status-msg ${isError ? 'error' : 'success'}`;
+        statusHideTimer = setTimeout(() => {
+            if (!statusMsg) return;
+            statusMsg.className = "status-msg hidden";
+        }, 7000);
     }
 
     function showCustomSpellStatus(message: string, isError = false) {

@@ -2,7 +2,66 @@ import el from "@elements";
 import { getData } from "@services/request";
 import { currentTheme, followSystemTheme, setTheme, Theme } from "@services/theme";
 
+let navGlobalListenersBound = false;
+let lastTouchTapTs = 0;
+let lastTouchX = 0;
+let lastTouchY = 0;
+
+function hasOpenOverlayModal(): boolean {
+    return !!document.querySelector('.spell-modal-backdrop.visible:not(.hidden)');
+}
+
+function getNavBarHeight(nav: HTMLElement): number {
+    const menu = nav.querySelector('ul');
+    // If the mobile menu is open, close it before measuring so body padding
+    // matches the fixed top bar height rather than the expanded dropdown.
+    menu?.classList.remove('show');
+    return Math.ceil(nav.getBoundingClientRect().height || nav.offsetHeight || 0);
+}
+
+function toggleNavVisibilityGlobal() {
+    const nav = el.nav;
+    if (!nav) return;
+    const isHidden = nav.style.display === 'none' || window.getComputedStyle(nav).display === 'none';
+    nav.style.display = isHidden ? '' : 'none';
+    el.body.style.paddingTop = isHidden ? `${getNavBarHeight(nav)}px` : '0px';
+}
+
+function bindGlobalNavToggleListeners() {
+    if (navGlobalListenersBound) return;
+    navGlobalListenersBound = true;
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (hasOpenOverlayModal()) return;
+        toggleNavVisibilityGlobal();
+    }, { signal: el.signal });
+
+    document.addEventListener('touchend', (e) => {
+        if (hasOpenOverlayModal()) return;
+        const touch = e.changedTouches?.[0];
+        if (!touch) return;
+
+        const now = Date.now();
+        const delta = now - lastTouchTapTs;
+        const nearTop = touch.clientY <= 120;
+        const nearLastTap = Math.abs(touch.clientX - lastTouchX) <= 40 && Math.abs(touch.clientY - lastTouchY) <= 40;
+
+        if (nearTop && delta > 0 && delta < 320 && nearLastTap) {
+            toggleNavVisibilityGlobal();
+            lastTouchTapTs = 0;
+            return;
+        }
+
+        lastTouchTapTs = now;
+        lastTouchX = touch.clientX;
+        lastTouchY = touch.clientY;
+    }, { passive: true, signal: el.signal });
+}
+
 export default function nav(showNav: boolean = true) {
+    bindGlobalNavToggleListeners();
+
     if (!showNav && el.nav) {
         el.nav.style.display = "none";
         el.body.style.paddingTop = `0px`;
@@ -53,6 +112,6 @@ export default function nav(showNav: boolean = true) {
             }, { signal: el.signal });
         }, { signal: el.signal });
 
-    const navHeight = el.nav?.scrollHeight || 0;
+    const navHeight = el.nav ? getNavBarHeight(el.nav) : 0;
     el.body.style.paddingTop = `${navHeight}px`;
 }

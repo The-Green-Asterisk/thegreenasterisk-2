@@ -3,9 +3,11 @@
    D&D BEYOND CHARACTER LOADER BAR
    ========================================================================== */
 .character-loader-bar {
-    background: #141b24;
-    border: 1px solid rgba(16, 185, 129, 0.35);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--md-shadow);
+    padding: 0.6rem 0.75rem !important;
+    position: relative;
 }
 
 .character-loader-header {
@@ -18,7 +20,7 @@
 .character-loader-title {
     margin: 0;
     font-size: 0.9rem;
-    color: #d1fae5;
+    color: var(--ui-text);
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
@@ -28,18 +30,19 @@
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    border: 1px solid #334155;
-    background: #1f2937;
-    color: #e2e8f0;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-alt);
+    color: var(--text);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
 
 .loader-collapse-btn:hover {
-    background: #334155;
+    background: var(--surface-muted);
+    border-color: var(--ui-color);
 }
 
 .character-loader-content {
@@ -52,6 +55,37 @@
 
 .character-loader-bar.is-collapsed .loader-collapse-btn i {
     transform: rotate(180deg);
+}
+
+.character-loader-bar.is-collapsed {
+    padding: 0 0.6rem 0.2rem 0.6rem !important;
+    margin-top: 0;
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    min-height: 12px;
+}
+
+.character-loader-bar.is-collapsed .character-loader-header {
+    justify-content: center;
+    gap: 0;
+    min-height: 12px;
+}
+
+.character-loader-bar.is-collapsed .character-loader-title {
+    display: none;
+}
+
+.character-loader-bar.is-collapsed .loader-collapse-btn {
+    width: 68px;
+    height: 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-muted);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+.character-loader-bar.is-collapsed .loader-collapse-btn i {
+    font-size: 0;
 }
 
 .load-form {
@@ -71,18 +105,18 @@
 .load-icon {
     position: absolute;
     left: 1rem;
-    color: #10b981;
+    color: var(--ui-color);
     font-size: 1.1rem;
     pointer-events: none;
 }
 
 .load-input-wrap input {
     width: 100%;
-    background: #0d1218;
-    border: 1px solid #2a3b4c;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
     border-radius: 8px;
     padding: 0.75rem 1rem 0.75rem 2.85rem;
-    color: #f1f5f9;
+    color: var(--text);
     font-size: 0.95rem;
     outline: none;
     transition: all 0.2s ease;
@@ -121,14 +155,14 @@
 }
 
 .load-btn.secondary {
-    background: #1f2937;
-    color: #e2e8f0;
+    background: var(--surface-alt);
+    color: var(--text);
     box-shadow: none;
-    border: 1px solid #334155;
+    border: 1px solid var(--border-soft);
 }
 
 .load-btn.secondary:hover:not(:disabled) {
-    background: #334155;
+    background: var(--surface-muted);
 }
 
 .load-btn.hidden {
@@ -354,6 +388,10 @@ el-character-sheet .content-slate {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+}
+
+el-character-sheet.loader-collapsed .content-slate {
+    padding-top: 0;
 }
 
 el-character-sheet .content-slate section {
