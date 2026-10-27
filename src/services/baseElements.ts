@@ -234,18 +234,21 @@ export default class BaseEl {
         const formInputs = BaseEl.formInputs;
         const submitButton = BaseEl.submitButton;
         if (formInputs && submitButton) {
-            // This will disable the submit button if any required inputs are empty
-            const requiredInputs = Array.from(formInputs).filter(input => input.required);
-            const disableSubmitButton = () => {
-                const btn = BaseEl.submitButton;
-                if (btn)
-                    btn.disabled = !requiredInputs.every(input => input.value.trim().length > 0);
-            };
-            setTimeout(disableSubmitButton, 1000);
-            requiredInputs.forEach(input => {
-                input.addEventListener('input', () => {
-                    disableSubmitButton();
-                }, { signal });
+            // This will disable the submit button for forms that have required inputs if any required inputs are empty
+            BaseEl.forms?.forEach(form => {
+                const requiredInputs = Array.from(form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input[required], textarea[required]'));
+                const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+                if (requiredInputs.length > 0 && btn) {
+                    const disableSubmitButton = () => {
+                        btn.disabled = !requiredInputs.every(input => input.value.trim().length > 0);
+                    };
+                    setTimeout(disableSubmitButton, 1000);
+                    requiredInputs.forEach(input => {
+                        input.addEventListener('input', () => {
+                            disableSubmitButton();
+                        }, { signal });
+                    });
+                }
             });
 
             // This will disable the submit button and change its text to a spinner when form is submitted

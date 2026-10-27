@@ -1,10 +1,13 @@
+import CharacterController from 'controllers/characterController';
 import CommentController from 'controllers/commentController';
 import ContactController from 'controllers/contactController';
+import ItemController from 'controllers/itemController';
 import LinkController from 'controllers/linkController';
 import PrDigestController from 'controllers/prDigestController';
-import PushController from 'controllers/pushController';
 import ProfileController from 'controllers/profileController';
+import PushController from 'controllers/pushController';
 import SessionController from 'controllers/sessionController';
+import SpellController from 'controllers/spellController';
 import StorageController from 'controllers/storageController';
 import UserController from 'controllers/userController';
 import WorldController from 'controllers/worldController';
@@ -258,6 +261,56 @@ export default class Routes {
     @Method('POST')
     private ['/send-contact'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ContactController.sendContact(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-dndbeyond-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.getDndBeyondCharacter(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-character-equip-states'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.getCharacterEquipStates(req, res);
+    }
+
+    @Method('PUT')
+    private ['/set-character-equip-state'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.setCharacterEquipState(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-saved-characters'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.getSavedCharacters(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-saved-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.getSavedCharacter(req, res);
+    }
+
+    @Method('PUT')
+    private ['/save-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.saveCharacter(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-spell'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return SpellController.getSpell(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-custom-spell'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return SpellController.createCustomSpell(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ItemController.getItem(req, res);
+    }
+
+    @Method('POST')
+    private ['/create-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ItemController.createCustomItem(req, res);
     }
 
     get response(): ResponsePromise {

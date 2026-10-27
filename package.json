@@ -39,7 +39,7 @@
     "typecheck": "tsc --project ./src/tsconfig.json --noEmit",
     "html": "cp -r ./src/storage/ ./www/ && cp ./src/index.html www && cp ./src/sw.js ./src/manifest.webmanifest www && cp -r ./src/views/ ./www/ && esbuild ./src/main.css --external:/storage/* --bundle --outfile=www/main.css",
     "server-html": "copyfiles -u 1 -e \"server/comp/**/*\" \"server/**/*.html\" server/comp/",
-    "build": "tsc --project ./server/tsconfig.json && npm run server-html && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
+    "build": "npm run migration:run && tsc --project ./server/tsconfig.json && npm run server-html && tsc --project ./src/tsconfig.json --noEmit && esbuild src/main.ts --bundle --outfile=www/main.js && npm run html",
     "build:watch:server": "tsc --project ./server/tsconfig.json -w",
     "build:watch:client": "concurrently \"tsc --project ./src/tsconfig.json --noEmit -w\" \"esbuild src/main.ts --bundle --outfile=www/main.js --watch\"",
     "build:watch": "concurrently \"npm run build:watch:server\" \"npm run build:watch:client\"",

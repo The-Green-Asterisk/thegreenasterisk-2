@@ -64,4 +64,21 @@ export default class Routes extends RoutesBase {
         views.prDigest();
     }
 
+    ['character-sheet']() {
+        el.body.appendChild(views.characterSheetTemplate());
+        const id = this.path[1] || (this.query.id as string) || (this.query.characterId as string);
+        views.characterSheet(id || this.query);
+    }
+
+    ['character']() {
+        el.body.appendChild(views.characterSheetTemplate());
+        const id = this.path[1] || (this.query.id as string) || (this.query.characterId as string);
+        views.characterSheet(id || this.query);
+    }
+
+    ['darvell']() {
+        el.body.appendChild(views.characterSheetTemplate());
+        views.characterSheet(this.query);
+    }
+
 }

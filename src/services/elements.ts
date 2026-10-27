@@ -31,4 +31,7 @@ export default class el extends BaseEl {
     public static get prDigest() {
         return this.getElement<HTMLElement>('el-pr-digest');
     }
+    public static get characterSheet() {
+        return this.getElement<HTMLElement>('el-character-sheet');
+    }
 };
