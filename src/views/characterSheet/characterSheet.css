@@ -169,6 +169,27 @@
     display: none;
 }
 
+.rules-preference-toggle {
+    margin-top: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-soft);
+    font-size: 0.86rem;
+    user-select: none;
+}
+
+.rules-preference-toggle input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #10b981;
+    cursor: pointer;
+}
+
+.rules-preference-toggle span {
+    cursor: pointer;
+}
+
 el-character-sheet.is-edit-mode .card-inline-editor {
     width: 100%;
     max-width: 100%;

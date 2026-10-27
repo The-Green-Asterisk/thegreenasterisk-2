@@ -16,12 +16,24 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
+function isTruthyQuery(value: unknown): boolean {
+    if (typeof value !== "string") return false;
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+function isLegacySrdSource(source?: string): boolean {
+    const normalized = (source || "").toLowerCase();
+    return normalized.includes("open 5e") || normalized.includes("open5e") || normalized.includes("srd") || normalized.includes("5e api");
+}
+
 export default class ItemController extends BaseController {
     public static async getItem(req: http.IncomingMessage, res: http.ServerResponse) {
         const query = this.parseUrlQuery(req.url);
         const nameQuery = typeof query.name === "string" ? query.name.trim() : "";
         const idQuery = typeof query.id === "string" ? query.id.trim() : "";
         const typeQuery = typeof query.type === "string" ? query.type.trim() : "";
+        const preferRules2024 = isTruthyQuery(query.preferRules2024);
         const dndBeyondId = idQuery && /^\d+$/.test(idQuery) ? parseInt(idQuery) : undefined;
 
         if (!nameQuery && !dndBeyondId) {
@@ -32,7 +44,7 @@ export default class ItemController extends BaseController {
         }
 
         const slug = slugify(nameQuery || `item-${dndBeyondId}`);
-        const cacheKey = `item_detail_${slug}`;
+        const cacheKey = `item_detail_${slug}_${preferRules2024 ? "pref2024" : "mixed"}`;
         const cached = cache.get<string>(cacheKey);
         if (cached) {
             return {
@@ -41,6 +53,8 @@ export default class ItemController extends BaseController {
                 status: 200
             };
         }
+
+        let legacyDbItemFallback: Item | null = null;
 
         // STEP 1: Check Local Database
         try {
@@ -55,13 +69,17 @@ export default class ItemController extends BaseController {
                 }
 
                 if (dbItem) {
-                    const jsonRes = JSON.stringify({ sourceTier: "Database", item: dbItem });
-                    cache.set(cacheKey, jsonRes, 3600);
-                    return {
-                        response: jsonRes,
-                        header: "application/json",
-                        status: 200
-                    };
+                    if (preferRules2024 && isLegacySrdSource(dbItem.source)) {
+                        legacyDbItemFallback = dbItem;
+                    } else {
+                        const jsonRes = JSON.stringify({ sourceTier: "Database", item: dbItem });
+                        cache.set(cacheKey, jsonRes, 3600);
+                        return {
+                            response: jsonRes,
+                            header: "application/json",
+                            status: 200
+                        };
+                    }
                 }
             }
         } catch (dbError) {
@@ -72,6 +90,16 @@ export default class ItemController extends BaseController {
         let foundItem: Partial<Item> | null = null;
         if (nameQuery || dndBeyondId) {
             foundItem = await this.fetchFromDndBeyond(nameQuery, dndBeyondId, typeQuery);
+        }
+
+        if (!foundItem && legacyDbItemFallback) {
+            const jsonRes = JSON.stringify({ sourceTier: "Database Legacy Fallback", item: legacyDbItemFallback });
+            cache.set(cacheKey, jsonRes, 3600);
+            return {
+                response: jsonRes,
+                header: "application/json",
+                status: 200
+            };
         }
 
         // STEP 3: Fallback to Open5e & D&D 5e API
@@ -117,7 +145,14 @@ export default class ItemController extends BaseController {
             console.warn("Could not persist external item to database:", saveError);
         }
 
-        const jsonOut = JSON.stringify({ sourceTier: foundItem.source || "External", item: savedItem });
+        const itemSource = (foundItem.source || "").toLowerCase();
+        const sourceTier = itemSource.includes("d&d beyond")
+            ? "D&D Beyond"
+            : itemSource.includes("open 5e") || itemSource.includes("open5e") || itemSource.includes("srd") || itemSource.includes("5e api")
+                ? (preferRules2024 ? "Legacy SRD Fallback" : "SRD")
+                : (foundItem.source || "External");
+
+        const jsonOut = JSON.stringify({ sourceTier, item: savedItem });
         cache.set(cacheKey, jsonOut, 3600);
         return {
             response: jsonOut,

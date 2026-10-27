@@ -16,11 +16,23 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
+function isTruthyQuery(value: unknown): boolean {
+    if (typeof value !== "string") return false;
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+function isLegacySrdSource(source?: string): boolean {
+    const normalized = (source || "").toLowerCase();
+    return normalized.includes("open 5e") || normalized.includes("open5e") || normalized.includes("srd") || normalized.includes("5e api");
+}
+
 export default class SpellController extends BaseController {
     public static async getSpell(req: http.IncomingMessage, res: http.ServerResponse) {
         const query = this.parseUrlQuery(req.url);
         const nameQuery = typeof query.name === "string" ? query.name.trim() : "";
         const idQuery = typeof query.id === "string" ? query.id.trim() : "";
+        const preferRules2024 = isTruthyQuery(query.preferRules2024);
         const dndBeyondId = idQuery && /^\d+$/.test(idQuery) ? parseInt(idQuery) : undefined;
 
         if (!nameQuery && !dndBeyondId) {
@@ -31,7 +43,7 @@ export default class SpellController extends BaseController {
         }
 
         const slug = slugify(nameQuery || `spell-${dndBeyondId}`);
-        const cacheKey = `spell_detail_${slug}`;
+        const cacheKey = `spell_detail_${slug}_${preferRules2024 ? "pref2024" : "mixed"}`;
         const cached = cache.get<string>(cacheKey);
         if (cached) {
             return {
@@ -40,6 +52,8 @@ export default class SpellController extends BaseController {
                 status: 200
             };
         }
+
+        let legacyDbSpellFallback: Spell | null = null;
 
         // STEP 1: Check Local Database
         try {
@@ -54,13 +68,17 @@ export default class SpellController extends BaseController {
                 }
 
                 if (dbSpell) {
-                    const jsonRes = JSON.stringify({ sourceTier: "database", spell: dbSpell });
-                    cache.set(cacheKey, jsonRes, 3600);
-                    return {
-                        response: jsonRes,
-                        header: "application/json",
-                        status: 200
-                    };
+                    if (preferRules2024 && isLegacySrdSource(dbSpell.source)) {
+                        legacyDbSpellFallback = dbSpell;
+                    } else {
+                        const jsonRes = JSON.stringify({ sourceTier: "database", spell: dbSpell });
+                        cache.set(cacheKey, jsonRes, 3600);
+                        return {
+                            response: jsonRes,
+                            header: "application/json",
+                            status: 200
+                        };
+                    }
                 }
             }
         } catch (dbError) {
@@ -71,6 +89,16 @@ export default class SpellController extends BaseController {
         let foundSpell: Partial<Spell> | null = null;
         if (nameQuery || dndBeyondId) {
             foundSpell = await this.fetchFromDndBeyond(nameQuery, dndBeyondId);
+        }
+
+        if (!foundSpell && legacyDbSpellFallback) {
+            const jsonRes = JSON.stringify({ sourceTier: "database-legacy-fallback", spell: legacyDbSpellFallback });
+            cache.set(cacheKey, jsonRes, 3600);
+            return {
+                response: jsonRes,
+                header: "application/json",
+                status: 200
+            };
         }
 
         // STEP 3: Fallback to Open5e / D&D 5e API
@@ -113,7 +141,14 @@ export default class SpellController extends BaseController {
             console.warn("Could not persist external spell to database:", saveError);
         }
 
-        const jsonOut = JSON.stringify({ sourceTier: foundSpell.source || "external", spell: savedSpell });
+        const spellSource = (foundSpell.source || "").toLowerCase();
+        const sourceTier = spellSource.includes("d&d beyond")
+            ? "dndbeyond"
+            : spellSource.includes("open 5e") || spellSource.includes("open5e") || spellSource.includes("srd") || spellSource.includes("5e api")
+                ? (preferRules2024 ? "legacy-srd-fallback" : "srd")
+                : (foundSpell.source || "external");
+
+        const jsonOut = JSON.stringify({ sourceTier, spell: savedSpell });
         cache.set(cacheKey, jsonOut, 3600);
         return {
             response: jsonOut,

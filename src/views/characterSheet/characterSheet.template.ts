@@ -847,6 +847,10 @@ const characterSheetTemplate = () => html`
                             <i class="fa-solid fa-floppy-disk"></i> Save Character
                         </button>
                     </form>
+                    <label class="rules-preference-toggle" title="Prefer 2024-aligned sources where possible (D&D Beyond and local data before SRD fallbacks)">
+                        <input type="checkbox" id="prefer-2024-rules-toggle" checked />
+                        <span>Prefer 2024 rules sources</span>
+                    </label>
                     <div id="character-status-message" class="status-msg hidden" role="alert"></div>
                     </div>
             </section>

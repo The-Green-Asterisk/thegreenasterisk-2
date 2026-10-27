@@ -67,6 +67,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const createBtn = sheet.querySelector<HTMLButtonElement>("#create-character-btn");
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
     const editFieldsBtn = sheet.querySelector<HTMLButtonElement>("#edit-character-fields-btn");
+    const prefer2024RulesToggle = sheet.querySelector<HTMLInputElement>("#prefer-2024-rules-toggle");
     const statusMsg = sheet.querySelector<HTMLElement>("#character-status-message");
     const dynamicContainer = sheet.querySelector<HTMLElement>("#character-sheet-dynamic-content");
 
@@ -96,6 +97,11 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const modalActionHitDc = sheet.querySelector<HTMLElement>("#modal-action-hit-dc");
     const modalActionDamage = sheet.querySelector<HTMLElement>("#modal-action-damage");
     const modalActionNotes = sheet.querySelector<HTMLElement>("#modal-action-notes");
+
+    const rulesPreferenceStorageKey = "character-sheet-prefer-2024-rules";
+    const prefer2024Rules = {
+        value: true
+    };
 
     function setLoaderCollapsed(collapsed: boolean) {
         if (!loaderBar || !loaderToggleBtn) return;
@@ -532,7 +538,14 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
         // Independent lookup cascade: Database -> D&D Beyond -> Open5e
         try {
-            const queryParam = spellId ? `name=${encodeURIComponent(decodedName)}&id=${encodeURIComponent(spellId)}` : `name=${encodeURIComponent(decodedName)}`;
+            const spellQuery = new URLSearchParams();
+            spellQuery.set("name", decodedName);
+            if (spellId !== undefined && spellId !== null && String(spellId).trim() !== "") {
+                spellQuery.set("id", String(spellId));
+            }
+            spellQuery.set("preferRules2024", prefer2024Rules.value ? "1" : "0");
+
+            const queryParam = spellQuery.toString();
             const independentResponse = await getData<any>(`/get-spell?${queryParam}`);
             const independentSpell = independentResponse?.spell || independentResponse;
             const spellSourceTier = independentResponse?.sourceTier || independentSpell?.sourceTier || "Database";
@@ -893,6 +906,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             queryParams.set("name", decodedName);
             if (itemId) queryParams.set("id", String(itemId));
             if (itemType) queryParams.set("type", itemType);
+            queryParams.set("preferRules2024", prefer2024Rules.value ? "1" : "0");
 
             const independentRes = await getData<any>(`/get-item?${queryParams.toString()}`);
             const itemObj = independentRes?.item || independentRes;
@@ -1099,6 +1113,14 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         : false;
     setLoaderCollapsed(initialLoaderCollapsed);
 
+    const initialPrefer2024Rules = typeof window !== "undefined" && window.localStorage
+        ? window.localStorage.getItem(rulesPreferenceStorageKey) !== "false"
+        : true;
+    prefer2024Rules.value = initialPrefer2024Rules;
+    if (prefer2024RulesToggle) {
+        prefer2024RulesToggle.checked = initialPrefer2024Rules;
+    }
+
     loaderToggleBtn?.addEventListener("click", () => {
         const isCollapsed = loaderBar?.classList.contains("is-collapsed") ?? false;
         const next = !isCollapsed;
@@ -1106,6 +1128,16 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (typeof window !== "undefined" && window.localStorage) {
             window.localStorage.setItem(loaderStorageKey, String(next));
         }
+    });
+
+    prefer2024RulesToggle?.addEventListener("change", () => {
+        prefer2024Rules.value = !!prefer2024RulesToggle.checked;
+        if (typeof window !== "undefined" && window.localStorage) {
+            window.localStorage.setItem(rulesPreferenceStorageKey, prefer2024Rules.value ? "true" : "false");
+        }
+        showStatus(prefer2024Rules.value
+            ? "Now preferring 2024-aligned sources for spell/item detail lookups."
+            : "Using mixed source lookups (including SRD fallbacks) for spell/item details.");
     });
 
     editFieldsBtn?.addEventListener("click", () => {
