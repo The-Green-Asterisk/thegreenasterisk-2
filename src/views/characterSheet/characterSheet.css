@@ -934,7 +934,7 @@ el-character-sheet .content-slate section {
 }
 
 .vital-card.vital-hp .vital-card-inner {
-    padding: 0.85rem 0.85rem;
+    padding: 1.25rem 2rem;
     align-items: stretch;
     justify-content: flex-start;
 }
