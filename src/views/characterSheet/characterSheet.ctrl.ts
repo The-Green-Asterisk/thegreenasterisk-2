@@ -70,6 +70,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const loadBtn = sheet.querySelector<HTMLButtonElement>("#load-character-btn");
     const createBtn = sheet.querySelector<HTMLButtonElement>("#create-character-btn");
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
+    const refreshDndBeyondBtn = sheet.querySelector<HTMLButtonElement>("#refresh-dndbeyond-btn");
     const editFieldsBtn = sheet.querySelector<HTMLButtonElement>("#edit-character-fields-btn");
     const prefer2024RulesToggle = sheet.querySelector<HTMLInputElement>("#prefer-2024-rules-toggle");
     const statusMsg = sheet.querySelector<HTMLElement>("#character-status-message");
@@ -139,6 +140,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     function setCharacterActionsVisibility() {
         const hasCharacter = !!activeCharacter;
         const canSave = hasCharacter && el.isAuth;
+        const canRefreshFromDndBeyond = hasCharacter && activeCharacter?.source === "dndbeyond";
 
         if (editFieldsBtn) {
             editFieldsBtn.classList.toggle("hidden", !hasCharacter);
@@ -157,6 +159,42 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             createBtn.classList.toggle("hidden", !el.isAuth);
             createBtn.disabled = !el.isAuth;
         }
+        if (refreshDndBeyondBtn) {
+            refreshDndBeyondBtn.classList.toggle("hidden", !canRefreshFromDndBeyond);
+            refreshDndBeyondBtn.disabled = !el.isAuth;
+            refreshDndBeyondBtn.title = el.isAuth
+                ? "Re-pull this character from D&D Beyond and overwrite saved data"
+                : "Log in to overwrite saved data from D&D Beyond";
+        }
+    }
+
+    function resolveActiveDndBeyondId(): string | undefined {
+        const candidates = [
+            String(activeCharacter?.id || "").trim(),
+            String(activeCharacterId || "").trim(),
+            String(idInput?.value || "").trim()
+        ];
+
+        for (const candidate of candidates) {
+            const match = candidate.match(/\d{3,}/);
+            if (match) return match[0];
+        }
+        return undefined;
+    }
+
+    async function refreshFromDndBeyondAndOverride() {
+        if (!activeCharacter || activeCharacter.source !== "dndbeyond") {
+            showStatus("Load a D&D Beyond character first.", true);
+            return;
+        }
+
+        const dndId = resolveActiveDndBeyondId();
+        if (!dndId) {
+            showStatus("Could not determine D&D Beyond character ID for refresh.", true);
+            return;
+        }
+
+        await loadCharacter(dndId, { forceOverwrite: true, refreshed: true });
     }
 
     function renderSavedCharacterList() {
@@ -1445,6 +1483,68 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             }
         });
 
+        // Skills training dropdowns
+        const proficiencyToMultiplier = (value: string): number => {
+            if (value === "expertise") return 2;
+            if (value === "proficient") return 1;
+            return 0;
+        };
+
+        const getAbilityModForSkill = (stat: string): number => {
+            const normalized = (stat || "").trim().toUpperCase();
+            const ability = currentCharacter.abilities.find(a => {
+                const abbr = (a.abbr || "").trim().toUpperCase();
+                const namePrefix = (a.name || "").trim().slice(0, 3).toUpperCase();
+                return normalized === abbr || normalized === namePrefix;
+            });
+            return ability?.modifier ?? 0;
+        };
+
+        const formatBonus = (bonus: number): string => bonus >= 0 ? `+${bonus}` : `${bonus}`;
+
+        const applySkillRowClass = (row: HTMLElement, proficiency: string) => {
+            row.classList.remove("prof-none", "prof-proficient", "prof-expertise");
+            if (proficiency === "expertise") row.classList.add("prof-expertise");
+            else if (proficiency === "proficient") row.classList.add("prof-proficient");
+            else row.classList.add("prof-none");
+        };
+
+        sheet.querySelectorAll<HTMLSelectElement>(".skill-training-select[data-skill-index]").forEach(select => {
+            select.addEventListener("click", (event) => {
+                event.stopPropagation();
+            });
+
+            select.addEventListener("change", () => {
+                const skillIndex = Number(select.getAttribute("data-skill-index"));
+                if (Number.isNaN(skillIndex)) return;
+                const skill = currentCharacter.skills?.[skillIndex];
+                if (!skill) return;
+
+                const previous = skill.proficiency || "none";
+                const next = (select.value as "none" | "proficient" | "expertise") || "none";
+
+                const profBonus = Number(currentCharacter.vitals?.proficiencyBonus) || 0;
+                const abilityMod = getAbilityModForSkill(skill.stat);
+                const oldBaseline = abilityMod + (profBonus * proficiencyToMultiplier(previous));
+                const customOffset = (Number(skill.bonus) || 0) - oldBaseline;
+                const recomputedBonus = abilityMod + (profBonus * proficiencyToMultiplier(next)) + customOffset;
+
+                skill.proficiency = next;
+                skill.bonus = recomputedBonus;
+
+                const row = select.closest<HTMLElement>(".skill-row");
+                if (row) {
+                    applySkillRowClass(row, next);
+                    const bonusCell = row.querySelector<HTMLElement>(".skill-bonus");
+                    if (bonusCell) {
+                        bonusCell.textContent = formatBonus(recomputedBonus);
+                    }
+                }
+
+                scheduleDebouncedAutoSave();
+            });
+        });
+
         // Spell filter & search
         const searchInput = sheet.querySelector<HTMLInputElement>("#spell-search");
         const searchClearBtn = sheet.querySelector<HTMLButtonElement>("#spell-search-clear");
@@ -1797,7 +1897,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         persistTrackerSnapshot();
     }
 
-    async function loadCharacter(idOrUrl: string) {
+    async function loadCharacter(idOrUrl: string, options?: { forceOverwrite?: boolean; refreshed?: boolean }) {
         const trimmed = idOrUrl.trim();
         if (/^tga-[a-z0-9]{8,20}$/i.test(trimmed)) {
             if (!el.isAuth) {
@@ -1816,21 +1916,25 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         const existingSaved = await findSavedCharacterByDndId(extractedId);
         let shouldOverwriteSaved = false;
         if (existingSaved && el.isAuth) {
-            const agreed = window.confirm(
-                `This D&D Beyond character is already saved as \"${existingSaved.name}\" on The Green Asterisk.\n\n` +
-                `Press OK to overwrite your saved version with fresh D&D Beyond data, or Cancel to keep existing saved data.`
-            );
+            if (options?.forceOverwrite) {
+                shouldOverwriteSaved = true;
+            } else {
+                const agreed = window.confirm(
+                    `This D&D Beyond character is already saved as \"${existingSaved.name}\" on The Green Asterisk.\n\n` +
+                    `Press OK to overwrite your saved version with fresh D&D Beyond data, or Cancel to keep existing saved data.`
+                );
 
-            if (!agreed) {
-                if (existingSaved.siteCharacterId) {
-                    await loadSavedCharacterBySiteId(existingSaved.siteCharacterId);
-                } else {
-                    await loadSavedCharacter(existingSaved.id);
+                if (!agreed) {
+                    if (existingSaved.siteCharacterId) {
+                        await loadSavedCharacterBySiteId(existingSaved.siteCharacterId);
+                    } else {
+                        await loadSavedCharacter(existingSaved.id);
+                    }
+                    showStatus(`Kept existing saved data for \"${existingSaved.name}\".`);
+                    return;
                 }
-                showStatus(`Kept existing saved data for \"${existingSaved.name}\".`);
-                return;
+                shouldOverwriteSaved = true;
             }
-            shouldOverwriteSaved = true;
         }
 
         if (loadBtn) {
@@ -1898,7 +2002,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             renderActiveCharacterView();
             showStatus(
                 shouldOverwriteSaved
-                    ? `Loaded and overwrote saved data for "${activeCharacter.name}" from D&D Beyond.`
+                    ? (options?.refreshed
+                        ? `Refreshed and overwrote saved data for "${activeCharacter.name}" from D&D Beyond.`
+                        : `Loaded and overwrote saved data for "${activeCharacter.name}" from D&D Beyond.`)
                     : `Loaded "${activeCharacter.name}" (Level ${activeCharacter.level} ${activeCharacter.classes.map(c => c.name).join('/')}) successfully!`
             );
 
@@ -1928,6 +2034,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
     loadForm?.addEventListener("submit", handleLoadSubmit);
     loadBtn?.addEventListener("click", handleLoadSubmit);
+    refreshDndBeyondBtn?.addEventListener("click", () => {
+        void refreshFromDndBeyondAndOverride();
+    });
 
     // Custom spell form submission
     customSpellForm?.addEventListener("submit", async (e) => {

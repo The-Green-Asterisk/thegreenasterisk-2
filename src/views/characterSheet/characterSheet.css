@@ -1326,13 +1326,19 @@ el-character-sheet .content-slate section {
 .spells-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .spells-level-section {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.25rem;
+}
+
+.spells-level-section .level-spells-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .spells-level-header {
@@ -1415,23 +1421,27 @@ el-character-sheet .content-slate section {
 
 /* Individual Spell Card */
 .spell-card {
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.75rem 0.85rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+    padding: 0.5rem 0.3rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.3rem;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-    box-shadow: var(--sm-shadow);
+    transition: background 0.15s ease, border-color 0.15s ease;
+    box-shadow: none;
+}
+
+.level-spells-grid .spell-card:last-child {
+    border-bottom: none;
 }
 
 .spell-card:hover,
 .spell-card:focus-visible {
-    transform: translateY(-2px);
+    background: var(--surface-alt);
     border-color: var(--ui-color);
-    box-shadow: var(--md-shadow);
     outline: none;
 }
 
@@ -1449,9 +1459,9 @@ el-character-sheet .content-slate section {
 
 .spell-title {
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: var(--ui-text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
 }
 
 .spell-school-level {
@@ -1494,19 +1504,21 @@ el-character-sheet .content-slate section {
 }
 
 .spell-card-meta {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--border-soft);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.9rem;
+    font-size: 0.74rem;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    border: none;
 }
 
 .meta-item {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.25rem;
     min-width: 0;
 }
 
@@ -1519,14 +1531,12 @@ el-character-sheet .content-slate section {
 .meta-value {
     color: var(--text);
     font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .spell-card-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 
 .view-details-hint {
@@ -1554,32 +1564,36 @@ el-character-sheet .content-slate section {
 .actions-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0;
 }
 
 .action-card {
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.75rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+    padding: 0.6rem 0.25rem;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.actions-grid .action-card:last-child {
+    border-bottom: none;
 }
 
 .action-card.has-spell,
 .action-card.clickable-action-card {
-    border-color: var(--border-mid);
+    border-color: var(--border-soft);
 }
 
 .action-card.has-spell:hover,
 .action-card.clickable-action-card:hover,
 .action-card.clickable-action-card:focus-visible {
-    transform: translateY(-1px);
+    background: var(--surface-alt);
     border-color: var(--ui-color);
-    box-shadow: var(--sm-shadow);
     outline: none;
 }
 
@@ -1591,8 +1605,8 @@ el-character-sheet .content-slate section {
 
 .action-name {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 800;
+    font-size: 0.95rem;
+    font-weight: 700;
     color: var(--text);
 }
 
@@ -1639,11 +1653,11 @@ el-character-sheet .content-slate section {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    background: var(--surface);
-    padding: 0.4rem 0.6rem;
-    border-radius: var(--radius);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
     font-size: 0.8rem;
-    border: 1px solid var(--border-soft);
+    border: none;
 }
 
 .action-stat .stat-lbl {
@@ -1750,13 +1764,42 @@ el-character-sheet .content-slate section {
     color: var(--ui-text);
 }
 
-.skill-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.4rem 0.5rem;
+.skills-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface-alt);
+}
+
+.skills-table th,
+.skills-table td {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.84rem;
+    vertical-align: middle;
+}
+
+.skills-table tbody tr {
     border-bottom: 1px solid var(--border-soft);
-    font-size: 0.85rem;
+}
+
+.skills-table thead th {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    text-align: left;
+}
+
+.skills-table .skill-bonus-col {
+    text-align: right;
+}
+
+.skills-table tbody tr:last-child {
+    border-bottom: none;
 }
 
 .skill-row:hover {
@@ -1764,7 +1807,7 @@ el-character-sheet .content-slate section {
 }
 
 .skill-stat-name {
-    display: flex;
+    display: inline-flex;
     gap: 0.3rem;
     align-items: center;
 }
@@ -1782,6 +1825,33 @@ el-character-sheet .content-slate section {
 .skill-status {
     font-size: 0.75rem;
     font-weight: 700;
+    white-space: nowrap;
+}
+
+.skill-training-select {
+    width: 100%;
+    min-width: 150px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.skill-training-select:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 25%, transparent);
+}
+
+.prof-proficient .skill-training-select {
+    color: var(--ui-text);
+}
+
+.prof-expertise .skill-training-select {
+    color: #e65100;
 }
 
 .skill-indicator.expertise {
@@ -1799,7 +1869,7 @@ el-character-sheet .content-slate section {
 .skill-bonus {
     font-weight: 800;
     font-size: 0.95rem;
-    min-width: 32px;
+    min-width: 42px;
     text-align: right;
     color: var(--ui-text);
 }
