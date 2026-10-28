@@ -28,12 +28,16 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     let activeCharacter: CharacterData | null = null;
     let currentHp = 0;
     let maxHp = 0;
+    let tempHp = 0;
     let currentFilter = "all";
     let searchQuery = "";
     let isEditMode = false;
     const spellMap = new Map<string, SpellDefinition>();
     let savedCharacters: SavedCharacterSummary[] = [];
     let statusHideTimer: ReturnType<typeof setTimeout> | null = null;
+    let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+    let autoSaveInFlight = false;
+    let autoSaveQueued = false;
 
     // Modal elements
     const modalBackdrop = sheet.querySelector<HTMLElement>("#spell-modal-container");
@@ -304,6 +308,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeCharacterId = response.savedCharacter?.siteCharacterId || response.savedCharacter?.externalCharacterId || String(activeCharacter.id || "");
             currentHp = activeCharacter.vitals.currentHp;
             maxHp = activeCharacter.vitals.maxHp;
+            tempHp = Number(activeCharacter.vitals.tempHp) || 0;
 
             if (idInput && activeCharacterId) {
                 idInput.value = activeCharacterId;
@@ -415,23 +420,27 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         activeCharacterId = "";
         currentHp = activeCharacter.vitals.currentHp;
         maxHp = activeCharacter.vitals.maxHp;
+        tempHp = Number(activeCharacter.vitals.tempHp) || 0;
         isEditMode = true;
         if (idInput) idInput.value = "";
         renderActiveCharacterView();
         showStatus("Started a new site character. Edit fields and click Save Character.");
     }
 
-    async function saveActiveCharacter() {
+    async function saveActiveCharacter(options?: { silent?: boolean; background?: boolean }) {
+        const silent = !!options?.silent;
+        const background = !!options?.background;
+
         if (!el.isAuth) {
-            showStatus("You must be logged in to save a character.", true);
+            if (!silent) showStatus("You must be logged in to save a character.", true);
             return;
         }
         if (!activeCharacter) {
-            showStatus("Load or create a character before saving.", true);
+            if (!silent) showStatus("Load or create a character before saving.", true);
             return;
         }
 
-        if (saveBtn) {
+        if (saveBtn && !background) {
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         }
@@ -465,7 +474,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             }
 
             await fetchSavedCharacters();
-            showStatus(`Saved \"${activeCharacter.name}\" to your account.`);
+            if (!silent) showStatus(`Saved \"${activeCharacter.name}\" to your account.`);
             if (typeof window !== "undefined" && window.history?.replaceState && activeCharacterId) {
                 const currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set("id", String(activeCharacterId));
@@ -473,14 +482,42 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             }
         } catch (error) {
             console.error("Failed to save character:", error);
-            showStatus("Could not save character. Make sure you are logged in.", true);
+            if (!silent) showStatus("Could not save character. Make sure you are logged in.", true);
         } finally {
-            if (saveBtn) {
+            if (saveBtn && !background) {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Character';
             }
             setCharacterActionsVisibility();
         }
+    }
+
+    function scheduleDebouncedAutoSave(delayMs = 700) {
+        if (!el.isAuth || !activeCharacter) return;
+        if (autoSaveTimer) {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = null;
+        }
+
+        autoSaveTimer = setTimeout(async () => {
+            if (!el.isAuth || !activeCharacter) return;
+
+            if (autoSaveInFlight) {
+                autoSaveQueued = true;
+                return;
+            }
+
+            autoSaveInFlight = true;
+            try {
+                await saveActiveCharacter({ silent: true, background: true });
+            } finally {
+                autoSaveInFlight = false;
+                if (autoSaveQueued) {
+                    autoSaveQueued = false;
+                    scheduleDebouncedAutoSave(150);
+                }
+            }
+        }, delayMs);
     }
 
     // Modal controls
@@ -690,6 +727,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (path === "vitals.maxHp") {
                 maxHp = Number(nextValue) || 0;
             }
+            if (path === "vitals.tempHp") {
+                tempHp = Math.max(0, Number(nextValue) || 0);
+            }
         });
         return input;
     }
@@ -723,7 +763,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         swapTextWithInputKeepingIcon(dynamicContainer.querySelectorAll(".character-tags .tag")[1], "background");
         swapTextWithInputKeepingIcon(dynamicContainer.querySelectorAll(".character-tags .tag")[2], "alignment");
 
-        swapElementWithInput(dynamicContainer.querySelector("#hp-display"), "vitals.currentHp", true);
         swapElementWithInput(dynamicContainer.querySelector(".vital-ac .vital-val"), "vitals.armorClass", true);
         swapElementWithInput(dynamicContainer.querySelector(".vital-init .vital-val"), "vitals.initiative", true);
         swapElementWithInput(dynamicContainer.querySelector(".vital-speed .vital-val"), "vitals.speed");
@@ -821,6 +860,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (!isEditMode) {
             currentHp = activeCharacter.vitals.currentHp;
             maxHp = activeCharacter.vitals.maxHp;
+            tempHp = Number(activeCharacter.vitals.tempHp) || 0;
             showStatus(`Applied edits for \"${activeCharacter.name}\". Save to persist.`);
         }
     }
@@ -1499,7 +1539,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         });
 
         // HP adjustments
-        const hpDisplay = sheet.querySelector<HTMLElement>("#hp-display");
+        const hpDisplay = sheet.querySelector<HTMLInputElement>("#hp-display");
+        const tempHpDisplay = sheet.querySelector<HTMLInputElement>("#temp-hp-display");
         const hpRatio = sheet.querySelector<HTMLElement>("#hp-ratio");
         const hpBarFill = sheet.querySelector<HTMLElement>("#hp-bar-fill");
         const inspirationToggle = sheet.querySelector<HTMLElement>("#inspiration-toggle");
@@ -1551,6 +1592,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             currentCharacter.trackingState.heroicInspiration = inspirationToggle?.classList.contains("active") ?? currentCharacter.vitals.heroicInspiration;
             currentCharacter.vitals.heroicInspiration = !!currentCharacter.trackingState.heroicInspiration;
             currentCharacter.vitals.currentHp = currentHp;
+            currentCharacter.vitals.tempHp = tempHp;
         };
 
         const applyTrackerSnapshot = () => {
@@ -1580,10 +1622,15 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
             currentHp = Number(currentCharacter.vitals.currentHp) || 0;
             maxHp = Number(currentCharacter.vitals.maxHp) || 0;
+            tempHp = Number(currentCharacter.vitals.tempHp) || 0;
         };
 
         function updateHpDisplay() {
-            if (hpDisplay) hpDisplay.textContent = currentHp.toString();
+            if (hpDisplay) {
+                hpDisplay.value = currentHp.toString();
+                hpDisplay.max = String(maxHp);
+            }
+            if (tempHpDisplay) tempHpDisplay.value = tempHp.toString();
             if (hpRatio) hpRatio.textContent = `${currentHp} / ${maxHp} Max`;
             if (hpBarFill) {
                 const percentage = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));
@@ -1597,15 +1644,49 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 }
             }
             currentCharacter.vitals.currentHp = currentHp;
+            currentCharacter.vitals.tempHp = tempHp;
         }
+
+        function applyHpDelta(delta: number) {
+            if (delta < 0) {
+                let incoming = Math.abs(delta);
+                if (tempHp > 0) {
+                    const absorbed = Math.min(tempHp, incoming);
+                    tempHp -= absorbed;
+                    incoming -= absorbed;
+                }
+                if (incoming > 0) {
+                    currentHp = Math.max(0, currentHp - incoming);
+                }
+            } else if (delta > 0) {
+                currentHp = Math.min(maxHp, currentHp + delta);
+            }
+        }
+
+        hpDisplay?.addEventListener("input", () => {
+            const next = Number(hpDisplay.value);
+            currentHp = Number.isFinite(next) ? Math.max(0, Math.min(maxHp, Math.round(next))) : 0;
+            updateHpDisplay();
+            persistTrackerSnapshot();
+            scheduleDebouncedAutoSave();
+        });
+
+        tempHpDisplay?.addEventListener("input", () => {
+            const next = Number(tempHpDisplay.value);
+            tempHp = Number.isFinite(next) ? Math.max(0, Math.round(next)) : 0;
+            updateHpDisplay();
+            persistTrackerSnapshot();
+            scheduleDebouncedAutoSave();
+        });
 
         sheet.querySelectorAll<HTMLButtonElement>("[data-hp-delta]").forEach(btn => {
             btn.addEventListener("click", () => {
                 const delta = Number(btn.getAttribute("data-hp-delta"));
                 if (isNaN(delta)) return;
-                currentHp = Math.max(0, Math.min(maxHp, currentHp + delta));
+                applyHpDelta(delta);
                 updateHpDisplay();
                 persistTrackerSnapshot();
+                scheduleDebouncedAutoSave();
             });
         });
 
@@ -1701,11 +1782,13 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             allPips.forEach(p => p.classList.add("active"));
             sheet.querySelectorAll<HTMLButtonElement>(".class-resource-tracker .pip").forEach(p => p.classList.add("active"));
             currentHp = maxHp;
+            tempHp = 0;
             updateHpDisplay();
             updateSlotCounters();
             inspirationToggle?.classList.add("active");
             currentCharacter.vitals.heroicInspiration = true;
             persistTrackerSnapshot();
+            scheduleDebouncedAutoSave();
         });
 
         applyTrackerSnapshot();
@@ -1810,6 +1893,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
             currentHp = activeCharacter.vitals.currentHp;
             maxHp = activeCharacter.vitals.maxHp;
+            tempHp = Number(activeCharacter.vitals.tempHp) || 0;
 
             renderActiveCharacterView();
             showStatus(

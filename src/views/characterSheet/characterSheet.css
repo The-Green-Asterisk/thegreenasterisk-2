@@ -652,6 +652,7 @@ el-character-sheet .content-slate section {
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
+    flex-wrap: wrap;
 }
 
 .hp-btn {
@@ -672,12 +673,51 @@ el-character-sheet .content-slate section {
     color: var(--text-on-accent);
 }
 
-.hp-current-display {
-    font-size: 1.75rem;
-    font-weight: 900;
+.hp-input-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.hp-input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.hp-input-label {
+    font-size: 0.66rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+}
+
+.hp-value-input {
+    width: 58px;
+    max-width: 58px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
     color: var(--ui-text);
-    min-width: 55px;
+    border-radius: 6px;
+    font-size: 1.05rem;
+    font-weight: 900;
     text-align: center;
+    padding: 0.2rem 0.25rem;
+    line-height: 1.15;
+}
+
+.hp-value-input:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 35%, transparent);
+}
+
+.temp-hp-input {
+    color: #7dd3fc;
 }
 
 .vital-footer-note {

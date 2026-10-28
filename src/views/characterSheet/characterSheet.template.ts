@@ -566,7 +566,16 @@ export function renderSheetContent(data: CharacterData): string {
                     <div class="hp-controls">
                         <button class="hp-btn" data-hp-delta="-5">-5</button>
                         <button class="hp-btn" data-hp-delta="-1">-1</button>
-                        <span class="hp-current-display" id="hp-display">${data.vitals.currentHp}</span>
+                        <div class="hp-input-cluster">
+                            <label class="hp-input-wrap" title="Current hit points">
+                                <span class="hp-input-label">HP</span>
+                                <input id="hp-display" class="hp-value-input hp-current-input" type="number" min="0" max="${data.vitals.maxHp}" step="1" value="${data.vitals.currentHp}" aria-label="Current hit points" />
+                            </label>
+                            <label class="hp-input-wrap" title="Temporary hit points">
+                                <span class="hp-input-label">Temp</span>
+                                <input id="temp-hp-display" class="hp-value-input temp-hp-input" type="number" min="0" step="1" value="${data.vitals.tempHp ?? 0}" aria-label="Temporary hit points" />
+                            </label>
+                        </div>
                         <button class="hp-btn" data-hp-delta="1">+1</button>
                         <button class="hp-btn" data-hp-delta="5">+5</button>
                     </div>
