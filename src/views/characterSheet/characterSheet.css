@@ -599,13 +599,15 @@ el-character-sheet .content-slate section {
     text-align: center;
     position: relative;
     box-shadow: var(--sm-shadow);
+    min-width: 0;
 }
 
 .vital-card.vital-hp {
     grid-column: span 2;
     background: var(--surface);
     border: 2px solid var(--ui-color);
-    padding: 0.85rem 1rem;
+    padding: 0.85rem 0.75rem;
+    min-width: 0;
 }
 
 .vital-hp .vital-header {
@@ -648,24 +650,36 @@ el-character-sheet .content-slate section {
 
 .hp-controls {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    gap: 0.5rem;
+    gap: clamp(0.2rem, 1.2vw, 0.35rem);
     width: 100%;
-    flex-wrap: wrap;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
 }
 
 .hp-btn {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
     background: var(--surface-muted);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.35rem 0.65rem;
+    padding: 0 clamp(0.2rem, 0.8vw, 0.45rem);
     font-weight: 800;
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 1.8vw, 0.85rem);
     color: var(--text);
-    min-width: 36px;
+    min-width: 26px;
+    max-width: 38px;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
     cursor: pointer;
     transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
 .hp-btn:hover {
@@ -675,10 +689,11 @@ el-character-sheet .content-slate section {
 
 .hp-input-cluster {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    gap: 0.45rem;
+    gap: clamp(0.2rem, 1vw, 0.35rem);
     min-width: 0;
+    flex-shrink: 0;
 }
 
 .hp-input-wrap {
@@ -686,6 +701,8 @@ el-character-sheet .content-slate section {
     flex-direction: column;
     align-items: center;
     gap: 0.15rem;
+    margin: 0;
+    min-width: 0;
 }
 
 .hp-input-label {
@@ -694,26 +711,42 @@ el-character-sheet .content-slate section {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.35px;
+    line-height: 1;
 }
 
 .hp-value-input {
-    width: 58px;
-    max-width: 58px;
+    box-sizing: border-box;
+    height: 32px;
+    width: clamp(40px, 11vw, 50px);
+    max-width: 52px;
+    min-width: 36px;
+    margin: 0;
     border: 1px solid var(--border);
     background: var(--surface-alt);
     color: var(--ui-text);
     border-radius: 6px;
-    font-size: 1.05rem;
+    font-size: clamp(0.9rem, 2.5vw, 1.05rem);
     font-weight: 900;
     text-align: center;
-    padding: 0.2rem 0.25rem;
-    line-height: 1.15;
+    padding: 0 0.2rem;
+    line-height: 30px;
 }
 
 .hp-value-input:focus {
     outline: none;
     border-color: var(--ui-color);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 35%, transparent);
+}
+
+.hp-value-input::-webkit-outer-spin-button,
+.hp-value-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.hp-value-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .temp-hp-input {
