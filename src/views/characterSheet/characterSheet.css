@@ -587,27 +587,356 @@ el-character-sheet .content-slate section {
     gap: 0.75rem;
 }
 
+/* --- Vital Badge Variables (Dual Theme: Light / Dark) --- */
+:root {
+    /* Light Mode Badge Gradients & Outlines */
+    --badge-ac-fill-0: #e0f2fe;
+    --badge-ac-fill-1: #f0f9ff;
+    --badge-ac-fill-2: #ffffff;
+    --badge-ac-stroke-0: #0284c7;
+    --badge-ac-stroke-1: #0369a1;
+    --badge-ac-stroke-2: #075985;
+    --badge-ac-inner-stroke: rgba(2, 132, 199, 0.45);
+    --badge-ac-text: #0369a1;
+    --badge-ac-icon: #0284c7;
+    --badge-ac-icon-bg: rgba(2, 132, 199, 0.12);
+    --badge-ac-glow: rgba(2, 132, 199, 0.3);
+
+    --badge-init-fill-0: #fef3c7;
+    --badge-init-fill-1: #fffbeb;
+    --badge-init-fill-2: #ffffff;
+    --badge-init-stroke-0: #d97706;
+    --badge-init-stroke-1: #b45309;
+    --badge-init-stroke-2: #92400e;
+    --badge-init-inner-stroke: rgba(217, 119, 6, 0.45);
+    --badge-init-text: #92400e;
+    --badge-init-icon: #b45309;
+    --badge-init-icon-bg: rgba(217, 119, 6, 0.12);
+    --badge-init-glow: rgba(217, 119, 6, 0.3);
+
+    --badge-speed-fill-0: #d1fae5;
+    --badge-speed-fill-1: #ecfdf5;
+    --badge-speed-fill-2: #ffffff;
+    --badge-speed-stroke-0: #059669;
+    --badge-speed-stroke-1: #047857;
+    --badge-speed-stroke-2: #065f46;
+    --badge-speed-inner-stroke: rgba(5, 150, 105, 0.45);
+    --badge-speed-text: #065f46;
+    --badge-speed-icon: #047857;
+    --badge-speed-icon-bg: rgba(5, 150, 105, 0.12);
+    --badge-speed-glow: rgba(5, 150, 105, 0.3);
+
+    --badge-dc-fill-0: #f3e8ff;
+    --badge-dc-fill-1: #faf5ff;
+    --badge-dc-fill-2: #ffffff;
+    --badge-dc-stroke-0: #9333ea;
+    --badge-dc-stroke-1: #7e22ce;
+    --badge-dc-stroke-2: #6b21a8;
+    --badge-dc-inner-stroke: rgba(147, 51, 234, 0.45);
+    --badge-dc-text: #6b21a8;
+    --badge-dc-icon: #7e22ce;
+    --badge-dc-icon-bg: rgba(147, 51, 234, 0.12);
+    --badge-dc-glow: rgba(147, 51, 234, 0.3);
+
+    --badge-attack-fill-0: #ede9fe;
+    --badge-attack-fill-1: #f5f3ff;
+    --badge-attack-fill-2: #ffffff;
+    --badge-attack-stroke-0: #8b5cf6;
+    --badge-attack-stroke-1: #6d28d9;
+    --badge-attack-stroke-2: #5b21b6;
+    --badge-attack-inner-stroke: rgba(139, 92, 246, 0.45);
+    --badge-attack-text: #5b21b6;
+    --badge-attack-icon: #6d28d9;
+    --badge-attack-icon-bg: rgba(139, 92, 246, 0.12);
+    --badge-attack-glow: rgba(139, 92, 246, 0.3);
+
+    --badge-prof-fill-0: #fef9c3;
+    --badge-prof-fill-1: #fefce8;
+    --badge-prof-fill-2: #ffffff;
+    --badge-prof-stroke-0: #ca8a04;
+    --badge-prof-stroke-1: #a16207;
+    --badge-prof-stroke-2: #854d0e;
+    --badge-prof-inner-stroke: rgba(202, 138, 4, 0.45);
+    --badge-prof-text: #854d0e;
+    --badge-prof-icon: #a16207;
+    --badge-prof-icon-bg: rgba(202, 138, 4, 0.12);
+    --badge-prof-glow: rgba(202, 138, 4, 0.3);
+
+    --badge-perc-fill-0: #cffafe;
+    --badge-perc-fill-1: #ecfeff;
+    --badge-perc-fill-2: #ffffff;
+    --badge-perc-stroke-0: #0891b2;
+    --badge-perc-stroke-1: #0e7490;
+    --badge-perc-stroke-2: #155e75;
+    --badge-perc-inner-stroke: rgba(8, 145, 178, 0.45);
+    --badge-perc-text: #0e7490;
+    --badge-perc-icon: #0891b2;
+    --badge-perc-icon-bg: rgba(8, 145, 178, 0.12);
+    --badge-perc-glow: rgba(8, 145, 178, 0.3);
+
+    --badge-inv-fill-0: #cffafe;
+    --badge-inv-fill-1: #ecfeff;
+    --badge-inv-fill-2: #ffffff;
+    --badge-inv-stroke-0: #0891b2;
+    --badge-inv-stroke-1: #0e7490;
+    --badge-inv-stroke-2: #155e75;
+    --badge-inv-inner-stroke: rgba(8, 145, 178, 0.45);
+    --badge-inv-text: #0e7490;
+    --badge-inv-icon: #0891b2;
+    --badge-inv-icon-bg: rgba(8, 145, 178, 0.12);
+    --badge-inv-glow: rgba(8, 145, 178, 0.3);
+
+    --badge-ins-fill-0: #cffafe;
+    --badge-ins-fill-1: #ecfeff;
+    --badge-ins-fill-2: #ffffff;
+    --badge-ins-stroke-0: #0891b2;
+    --badge-ins-stroke-1: #0e7490;
+    --badge-ins-stroke-2: #155e75;
+    --badge-ins-inner-stroke: rgba(8, 145, 178, 0.45);
+    --badge-ins-text: #0e7490;
+    --badge-ins-icon: #0891b2;
+    --badge-ins-icon-bg: rgba(8, 145, 178, 0.12);
+    --badge-ins-glow: rgba(8, 145, 178, 0.3);
+
+    --badge-senses-fill-0: #e0e7ff;
+    --badge-senses-fill-1: #eef2ff;
+    --badge-senses-fill-2: #ffffff;
+    --badge-senses-stroke-0: #6366f1;
+    --badge-senses-stroke-1: #4f46e5;
+    --badge-senses-stroke-2: #3730a3;
+    --badge-senses-inner-stroke: rgba(99, 102, 241, 0.45);
+    --badge-senses-text: #3730a3;
+    --badge-senses-icon: #4f46e5;
+    --badge-senses-icon-bg: rgba(99, 102, 241, 0.12);
+    --badge-senses-glow: rgba(99, 102, 241, 0.3);
+
+    --badge-hp-fill-0: #dcfce7;
+    --badge-hp-fill-1: #f0fdf4;
+    --badge-hp-fill-2: #ffffff;
+    --badge-hp-stroke-0: #16a34a;
+    --badge-hp-stroke-1: #15803d;
+    --badge-hp-stroke-2: #166534;
+    --badge-hp-inner-stroke: rgba(22, 163, 74, 0.45);
+    --badge-hp-text: #14532d;
+    --badge-hp-icon: #15803d;
+    --badge-hp-icon-bg: rgba(22, 163, 74, 0.12);
+    --badge-hp-glow: rgba(22, 163, 74, 0.3);
+
+    --badge-svg-shadow: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.12));
+    --badge-val-shadow: none;
+    --badge-label-color: #334155;
+    --badge-subnote-color: #64748b;
+    --badge-pill-bg: #f3e8ff;
+    --badge-pill-border: #d8b4fe;
+    --badge-pill-color: #6b21a8;
+    --badge-senses-box-bg: rgba(255, 255, 255, 0.85);
+    --badge-senses-box-border: #c7d2fe;
+    --badge-senses-row-strong: #1e1b4b;
+    --badge-senses-row-text: #4338ca;
+}
+
+:root[data-theme="dark"] {
+    /* Dark Mode Badge Gradients & Outlines */
+    --badge-ac-fill-0: rgba(56, 189, 248, 0.22);
+    --badge-ac-fill-1: rgba(15, 23, 42, 0.90);
+    --badge-ac-fill-2: rgba(15, 23, 42, 0.98);
+    --badge-ac-stroke-0: #bae6fd;
+    --badge-ac-stroke-1: #38bdf8;
+    --badge-ac-stroke-2: #0284c7;
+    --badge-ac-inner-stroke: rgba(56, 189, 248, 0.38);
+    --badge-ac-text: #e0f2fe;
+    --badge-ac-icon: #38bdf8;
+    --badge-ac-icon-bg: rgba(56, 189, 248, 0.16);
+    --badge-ac-glow: rgba(56, 189, 248, 0.5);
+
+    --badge-init-fill-0: rgba(245, 158, 11, 0.22);
+    --badge-init-fill-1: rgba(24, 18, 12, 0.90);
+    --badge-init-fill-2: rgba(20, 14, 8, 0.98);
+    --badge-init-stroke-0: #fef08a;
+    --badge-init-stroke-1: #f59e0b;
+    --badge-init-stroke-2: #b45309;
+    --badge-init-inner-stroke: rgba(245, 158, 11, 0.38);
+    --badge-init-text: #fef3c7;
+    --badge-init-icon: #f59e0b;
+    --badge-init-icon-bg: rgba(245, 158, 11, 0.16);
+    --badge-init-glow: rgba(245, 158, 11, 0.5);
+
+    --badge-speed-fill-0: rgba(16, 185, 129, 0.22);
+    --badge-speed-fill-1: rgba(10, 24, 18, 0.90);
+    --badge-speed-fill-2: rgba(8, 20, 15, 0.98);
+    --badge-speed-stroke-0: #a7f3d0;
+    --badge-speed-stroke-1: #10b981;
+    --badge-speed-stroke-2: #047857;
+    --badge-speed-inner-stroke: rgba(16, 185, 129, 0.38);
+    --badge-speed-text: #a7f3d0;
+    --badge-speed-icon: #10b981;
+    --badge-speed-icon-bg: rgba(16, 185, 129, 0.16);
+    --badge-speed-glow: rgba(16, 185, 129, 0.5);
+
+    --badge-dc-fill-0: rgba(168, 85, 247, 0.25);
+    --badge-dc-fill-1: rgba(26, 14, 38, 0.90);
+    --badge-dc-fill-2: rgba(18, 9, 28, 0.98);
+    --badge-dc-stroke-0: #f5d0fe;
+    --badge-dc-stroke-1: #c084fc;
+    --badge-dc-stroke-2: #7e22ce;
+    --badge-dc-inner-stroke: rgba(192, 132, 252, 0.40);
+    --badge-dc-text: #f3e8ff;
+    --badge-dc-icon: #c084fc;
+    --badge-dc-icon-bg: rgba(168, 85, 247, 0.18);
+    --badge-dc-glow: rgba(192, 132, 252, 0.5);
+
+    --badge-attack-fill-0: rgba(168, 85, 247, 0.22);
+    --badge-attack-fill-1: rgba(26, 14, 38, 0.90);
+    --badge-attack-fill-2: rgba(18, 9, 28, 0.98);
+    --badge-attack-stroke-0: #e9d5ff;
+    --badge-attack-stroke-1: #a855f7;
+    --badge-attack-stroke-2: #6b21a8;
+    --badge-attack-inner-stroke: rgba(168, 85, 247, 0.38);
+    --badge-attack-text: #e9d5ff;
+    --badge-attack-icon: #a855f7;
+    --badge-attack-icon-bg: rgba(168, 85, 247, 0.18);
+    --badge-attack-glow: rgba(168, 85, 247, 0.5);
+
+    --badge-prof-fill-0: rgba(234, 179, 8, 0.24);
+    --badge-prof-fill-1: rgba(28, 22, 10, 0.90);
+    --badge-prof-fill-2: rgba(22, 17, 8, 0.98);
+    --badge-prof-stroke-0: #fef9c3;
+    --badge-prof-stroke-1: #eab308;
+    --badge-prof-stroke-2: #854d0e;
+    --badge-prof-inner-stroke: rgba(234, 179, 8, 0.40);
+    --badge-prof-text: #fef08a;
+    --badge-prof-icon: #facc15;
+    --badge-prof-icon-bg: rgba(234, 179, 8, 0.18);
+    --badge-prof-glow: rgba(234, 179, 8, 0.5);
+
+    --badge-perc-fill-0: rgba(6, 182, 212, 0.22);
+    --badge-perc-fill-1: rgba(10, 24, 30, 0.90);
+    --badge-perc-fill-2: rgba(8, 18, 24, 0.98);
+    --badge-perc-stroke-0: #cffafe;
+    --badge-perc-stroke-1: #06b6d4;
+    --badge-perc-stroke-2: #0e7490;
+    --badge-perc-inner-stroke: rgba(6, 182, 212, 0.38);
+    --badge-perc-text: #cffafe;
+    --badge-perc-icon: #22d3ee;
+    --badge-perc-icon-bg: rgba(6, 182, 212, 0.18);
+    --badge-perc-glow: rgba(6, 182, 212, 0.5);
+
+    --badge-inv-fill-0: rgba(6, 182, 212, 0.22);
+    --badge-inv-fill-1: rgba(10, 24, 30, 0.90);
+    --badge-inv-fill-2: rgba(8, 18, 24, 0.98);
+    --badge-inv-stroke-0: #cffafe;
+    --badge-inv-stroke-1: #06b6d4;
+    --badge-inv-stroke-2: #0e7490;
+    --badge-inv-inner-stroke: rgba(6, 182, 212, 0.38);
+    --badge-inv-text: #cffafe;
+    --badge-inv-icon: #22d3ee;
+    --badge-inv-icon-bg: rgba(6, 182, 212, 0.18);
+    --badge-inv-glow: rgba(6, 182, 212, 0.5);
+
+    --badge-ins-fill-0: rgba(6, 182, 212, 0.22);
+    --badge-ins-fill-1: rgba(10, 24, 30, 0.90);
+    --badge-ins-fill-2: rgba(8, 18, 24, 0.98);
+    --badge-ins-stroke-0: #cffafe;
+    --badge-ins-stroke-1: #06b6d4;
+    --badge-ins-stroke-2: #0e7490;
+    --badge-ins-inner-stroke: rgba(6, 182, 212, 0.38);
+    --badge-ins-text: #cffafe;
+    --badge-ins-icon: #22d3ee;
+    --badge-ins-icon-bg: rgba(6, 182, 212, 0.18);
+    --badge-ins-glow: rgba(6, 182, 212, 0.5);
+
+    --badge-senses-fill-0: rgba(99, 102, 241, 0.20);
+    --badge-senses-fill-1: rgba(16, 18, 36, 0.90);
+    --badge-senses-fill-2: rgba(12, 14, 28, 0.98);
+    --badge-senses-stroke-0: #e0e7ff;
+    --badge-senses-stroke-1: #6366f1;
+    --badge-senses-stroke-2: #3730a3;
+    --badge-senses-inner-stroke: rgba(99, 102, 241, 0.38);
+    --badge-senses-text: #a5b4fc;
+    --badge-senses-icon: #818cf8;
+    --badge-senses-icon-bg: rgba(99, 102, 241, 0.18);
+    --badge-senses-glow: rgba(99, 102, 241, 0.5);
+
+    --badge-hp-fill-0: rgba(34, 197, 94, 0.14);
+    --badge-hp-fill-1: rgba(14, 24, 18, 0.92);
+    --badge-hp-fill-2: rgba(10, 18, 14, 0.98);
+    --badge-hp-stroke-0: #86efac;
+    --badge-hp-stroke-1: #22c55e;
+    --badge-hp-stroke-2: #15803d;
+    --badge-hp-inner-stroke: rgba(34, 197, 94, 0.30);
+    --badge-hp-text: #86efac;
+    --badge-hp-icon: #22c55e;
+    --badge-hp-icon-bg: rgba(34, 197, 94, 0.18);
+    --badge-hp-glow: rgba(34, 197, 94, 0.4);
+
+    --badge-svg-shadow: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+    --badge-val-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --badge-label-color: #94a3b8;
+    --badge-subnote-color: #64748b;
+    --badge-pill-bg: rgba(168, 85, 247, 0.25);
+    --badge-pill-border: rgba(168, 85, 247, 0.5);
+    --badge-pill-color: #f3e8ff;
+    --badge-senses-box-bg: rgba(0, 0, 0, 0.28);
+    --badge-senses-box-border: rgba(99, 102, 241, 0.35);
+    --badge-senses-row-strong: var(--text);
+    --badge-senses-row-text: var(--text-muted);
+}
+
 .vital-card {
-    background: var(--surface-alt);
-    border: 1px solid var(--border-soft);
-    border-radius: var(--radius);
-    padding: 0.75rem;
+    position: relative;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.vital-card:hover {
+    transform: translateY(-3px);
+}
+
+.vital-badge-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    overflow: visible;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+    transition: filter 0.25s ease;
+}
+
+.vital-card:hover .vital-badge-svg {
+    filter: drop-shadow(0 8px 20px var(--card-glow, rgba(0, 0, 0, 0.5)));
+}
+
+.vital-card-inner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    position: relative;
-    box-shadow: var(--sm-shadow);
-    min-width: 0;
+    padding: 0.85rem 0.65rem;
+    box-sizing: border-box;
 }
 
 .vital-card.vital-hp {
     grid-column: span 2;
-    background: var(--surface);
-    border: 2px solid var(--ui-color);
-    padding: 0.85rem 0.75rem;
     min-width: 0;
+}
+
+.vital-card.vital-hp .vital-card-inner {
+    padding: 0.85rem 0.85rem;
+    align-items: stretch;
+    justify-content: flex-start;
 }
 
 .vital-hp .vital-header {
@@ -760,39 +1089,248 @@ el-character-sheet .content-slate section {
 }
 
 .vital-icon {
-    font-size: 1.1rem;
+    font-size: 1.35rem;
     color: var(--ui-text);
     margin-bottom: 0.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease;
+}
+
+.vital-card:hover .vital-icon {
+    transform: scale(1.15);
 }
 
 .vital-val {
-    font-size: 1.5rem;
+    font-size: 1.55rem;
     font-weight: 900;
     color: var(--text);
     line-height: 1.1;
+    text-shadow: var(--badge-val-shadow);
 }
 
 .vital-label {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 800;
-    color: var(--text-muted);
+    color: var(--badge-label-color);
     letter-spacing: 0.5px;
-    margin-top: 0.2rem;
+    margin-top: 0.25rem;
     text-transform: uppercase;
 }
 
 .vital-subnote {
-    font-size: 0.68rem;
-    color: var(--text-muted);
+    font-size: 0.66rem;
+    color: var(--badge-subnote-color);
     margin-top: 0.15rem;
 }
 
-.vital-special-senses {
+/* ==========================================================================
+   Unique Thematic Vitals Styling (Authentic Vector SVG Badges)
+   ========================================================================== */
+
+/* 1. Hit Points: Armored Bastion Plaque */
+.vital-card.vital-hp {
+    --card-glow: var(--badge-hp-glow);
+}
+
+/* 2. Armor Class: True Heraldic Knight's Shield */
+.vital-card.vital-ac {
+    --card-glow: var(--badge-ac-glow);
+}
+
+.vital-card.vital-ac .vital-card-inner {
+    padding: 0.75rem 0.55rem 1.15rem 0.55rem;
+}
+
+.vital-card.vital-ac .vital-icon {
+    color: var(--badge-ac-icon);
+    background: var(--badge-ac-icon-bg);
+    box-shadow: 0 0 10px var(--badge-ac-glow);
+}
+
+.vital-card.vital-ac .vital-val {
+    color: var(--badge-ac-text);
+}
+
+/* 3. Initiative: Kinetic Swift Crest */
+.vital-card.vital-init {
+    --card-glow: var(--badge-init-glow);
+}
+
+.vital-card.vital-init .vital-card-inner {
+    padding: 0.85rem 0.65rem;
+}
+
+.vital-card.vital-init .vital-icon {
+    color: var(--badge-init-icon);
+    background: var(--badge-init-icon-bg);
+    box-shadow: 0 0 10px var(--badge-init-glow);
+}
+
+.vital-card.vital-init .vital-val {
+    color: var(--badge-init-text);
+}
+
+/* 4. Walking Speed: Aerodynamic Winged Banner */
+.vital-card.vital-speed {
+    --card-glow: var(--badge-speed-glow);
+}
+
+.vital-card.vital-speed .vital-card-inner {
+    padding: 0.85rem 0.65rem 1.1rem 0.65rem;
+}
+
+.vital-card.vital-speed .vital-icon {
+    color: var(--badge-speed-icon);
+    background: var(--badge-speed-icon-bg);
+    box-shadow: 0 0 10px var(--badge-speed-glow);
+}
+
+.vital-card.vital-speed .vital-val {
+    color: var(--badge-speed-text);
+}
+
+/* 5. Spell Save DC: Arcane Gothic Cathedral Arch */
+.vital-card.vital-dc {
+    --card-glow: var(--badge-dc-glow);
+}
+
+.vital-card.vital-dc .vital-card-inner {
+    padding: 1rem 0.55rem 0.75rem 0.55rem;
+}
+
+.vital-card.vital-dc .vital-icon {
+    color: var(--badge-dc-icon);
+    background: var(--badge-dc-icon-bg);
+    box-shadow: 0 0 10px var(--badge-dc-glow);
+}
+
+.vital-card.vital-dc .vital-val {
+    color: var(--badge-dc-text);
+}
+
+.vital-ability-pill {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: var(--badge-pill-bg);
+    border: 1px solid var(--badge-pill-border);
+    color: var(--badge-pill-color);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* 6. Spell Attack: Faceted Mystic Focus Gem */
+.vital-card.vital-attack {
+    --card-glow: var(--badge-attack-glow);
+}
+
+.vital-card.vital-attack .vital-card-inner {
+    padding: 0.85rem 0.65rem;
+}
+
+.vital-card.vital-attack .vital-icon {
+    color: var(--badge-attack-icon);
+    background: var(--badge-attack-icon-bg);
+    box-shadow: 0 0 10px var(--badge-attack-glow);
+}
+
+.vital-card.vital-attack .vital-val {
+    color: var(--badge-attack-text);
+}
+
+/* 7. Proficiency Bonus: Royal Medallion / Guild Honor Banner */
+.vital-card.vital-prof {
+    --card-glow: var(--badge-prof-glow);
+}
+
+.vital-card.vital-prof .vital-card-inner {
+    padding: 0.85rem 0.65rem 1.15rem 0.65rem;
+}
+
+.vital-card.vital-prof .vital-icon {
+    color: var(--badge-prof-icon);
+    background: var(--badge-prof-icon-bg);
+    box-shadow: 0 0 10px var(--badge-prof-glow);
+}
+
+.vital-card.vital-prof .vital-val {
+    color: var(--badge-prof-text);
+}
+
+/* 8. Passive Senses: The Sensory Eye Lens */
+.vital-card.vital-passive-perception,
+.vital-card.vital-passive-investigation,
+.vital-card.vital-passive-insight {
+    --card-glow: var(--badge-perc-glow);
+}
+
+.vital-card.vital-passive-perception .vital-card-inner,
+.vital-card.vital-passive-investigation .vital-card-inner,
+.vital-card.vital-passive-insight .vital-card-inner {
+    padding: 0.85rem 0.85rem;
+}
+
+.vital-card.vital-passive-perception .vital-icon {
+    color: var(--badge-perc-icon);
+    background: var(--badge-perc-icon-bg);
+    box-shadow: 0 0 10px var(--badge-perc-glow);
+}
+
+.vital-card.vital-passive-investigation .vital-icon {
+    color: var(--badge-inv-icon);
+    background: var(--badge-inv-icon-bg);
+    box-shadow: 0 0 10px var(--badge-inv-glow);
+}
+
+.vital-card.vital-passive-insight .vital-icon {
+    color: var(--badge-ins-icon);
+    background: var(--badge-ins-icon-bg);
+    box-shadow: 0 0 10px var(--badge-ins-glow);
+}
+
+.vital-card.vital-passive-perception .vital-val {
+    color: var(--badge-perc-text);
+}
+
+.vital-card.vital-passive-investigation .vital-val {
+    color: var(--badge-inv-text);
+}
+
+.vital-card.vital-passive-insight .vital-val {
+    color: var(--badge-ins-text);
+}
+
+/* 9. Special Senses: Tactical Chamfered Datapad */
+.vital-card.vital-special-senses {
+    --card-glow: var(--badge-senses-glow);
+}
+
+.vital-card.vital-special-senses .vital-card-inner {
     align-items: stretch;
+    justify-content: flex-start;
+    padding: 0.75rem 0.75rem;
+}
+
+.vital-card.vital-special-senses .vital-icon {
+    align-self: center;
+    color: var(--badge-senses-icon);
+    background: var(--badge-senses-icon-bg);
+    box-shadow: 0 0 10px var(--badge-senses-glow);
 }
 
 .vital-special-senses .vital-label {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.35rem;
+    text-align: center;
+    color: var(--badge-senses-text);
 }
 
 .special-senses-list {
@@ -800,19 +1338,34 @@ el-character-sheet .content-slate section {
     flex-direction: column;
     gap: 0.2rem;
     width: 100%;
+    background: var(--badge-senses-box-bg);
+    border: 1px solid var(--badge-senses-box-border);
+    border-radius: 8px;
+    padding: 0.35rem 0.55rem;
+    box-sizing: border-box;
 }
 
 .special-sense-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 0.5rem;
     font-size: 0.72rem;
-    color: var(--text-muted);
+    color: var(--badge-senses-row-text);
+    line-height: 1.25;
 }
 
 .special-sense-row strong {
-    color: var(--text);
+    color: var(--badge-senses-row-strong);
     font-size: 0.74rem;
+}
+
+.special-sense-row.dev-sight-row {
+    color: var(--badge-senses-text);
+}
+
+.special-sense-row.dev-sight-row strong {
+    color: var(--badge-senses-icon);
 }
 
 /* Ability Scores */

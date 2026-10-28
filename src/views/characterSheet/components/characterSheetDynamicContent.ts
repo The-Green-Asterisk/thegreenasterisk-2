@@ -157,8 +157,9 @@ export function renderSheetContent(data: CharacterData): string {
                                     <li><strong>Passive Perception:</strong> ${data.vitals.passivePerception}</li>
                                     <li><strong>Passive Investigation:</strong> ${data.vitals.passiveInvestigation}</li>
                                     <li><strong>Passive Insight:</strong> ${data.vitals.passiveInsight}</li>
-                                    <li><strong>Blindsight:</strong> ${data.vitals.blindsight || '—'}</li>
                                     <li><strong>Darkvision:</strong> ${data.vitals.darkvision}</li>
+                                    ${data.vitals.devilsSight && data.vitals.devilsSight !== 'None' ? `<li><strong>Devil's Sight:</strong> ${data.vitals.devilsSight}</li>` : ''}
+                                    <li><strong>Blindsight:</strong> ${data.vitals.blindsight || '—'}</li>
                                     <li><strong>Tremorsense:</strong> ${data.vitals.tremorsense || '—'}</li>
                                     <li><strong>Truesight:</strong> ${data.vitals.truesight || '—'}</li>
                                 </ul>

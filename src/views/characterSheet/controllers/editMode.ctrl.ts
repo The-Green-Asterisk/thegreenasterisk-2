@@ -126,6 +126,7 @@ export function initEditModeController(ctx: CharacterSheetContext) {
         );
         swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-blindsight-val"), "vitals.blindsight");
         swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-darkvision-val"), "vitals.darkvision");
+        swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-devils-sight-val"), "vitals.devilsSight");
         swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-tremorsense-val"), "vitals.tremorsense");
         swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-truesight-val"), "vitals.truesight");
 

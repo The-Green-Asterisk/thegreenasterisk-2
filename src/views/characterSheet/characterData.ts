@@ -138,6 +138,7 @@ export interface CharacterData {
         darkvision: string;
         tremorsense?: string;
         truesight?: string;
+        devilsSight?: string;
         hitDice: string;
         heroicInspiration: boolean;
         spellSaveDc: number;
@@ -199,7 +200,8 @@ export const darvellData: CharacterData = {
         passiveInvestigation: 12,
         passiveInsight: 13,
         blindsight: "None",
-        darkvision: "60 ft.",
+        darkvision: "120 ft.",
+        devilsSight: "120 ft.",
         tremorsense: "None",
         truesight: "None",
         hitDice: "12d8 (6d8 Bard + 6d8 Warlock)",
@@ -395,6 +397,12 @@ export const darvellData: CharacterData = {
             source: "Eldritch Invocations",
             type: "Invocation",
             description: "A grimoire containing three cantrips of your choice from any class list, plus ritual spellcasting."
+        },
+        {
+            name: "Devil’s Sight",
+            source: "Eldritch Invocations",
+            type: "Invocation",
+            description: "You can see normally in darkness, both magical and nonmagical, to a distance of 120 feet."
         },
         {
             name: "War Caster",

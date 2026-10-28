@@ -847,10 +847,17 @@ function resolveInitialCharacterId(
 ): string | undefined {
     const siteIdPattern = /tga-[a-z0-9]{8,20}/i;
     if (typeof params === "string" || typeof params === "number") {
+        if (params.toString().toLowerCase() === "darvell") return "138310322";
         return params.toString();
     }
-    if (params?.id) return params.id.toString();
-    if (params?.characterId) return params.characterId.toString();
+    if (params?.id) {
+        if (params.id.toString().toLowerCase() === "darvell") return "138310322";
+        return params.id.toString();
+    }
+    if (params?.characterId) {
+        if (params.characterId.toString().toLowerCase() === "darvell") return "138310322";
+        return params.characterId.toString();
+    }
     if (params?.url) {
         const siteMatch = params.url.match(siteIdPattern);
         if (siteMatch) return siteMatch[0].toLowerCase();
@@ -865,11 +872,12 @@ function resolveInitialCharacterId(
         if (qId) {
             const siteMatch = qId.match(siteIdPattern);
             if (siteMatch) return siteMatch[0].toLowerCase();
+            if (qId.toLowerCase() === "darvell") return "138310322";
             return qId;
         }
     }
 
-    // Check pathname (e.g. /character/138310322 or /character-sheet/138310322)
+    // Check pathname (e.g. /character/138310322 or /character-sheet/138310322 or /darvell)
     if (typeof window !== "undefined" && window.location?.pathname) {
         const parts = window.location.pathname.split("/").filter(Boolean);
         const last = parts[parts.length - 1];
@@ -878,6 +886,9 @@ function resolveInitialCharacterId(
         }
         if (last && /^\d{6,}$/.test(last)) {
             return last;
+        }
+        if (parts.some(p => p.toLowerCase() === "darvell")) {
+            return "138310322";
         }
     }
 

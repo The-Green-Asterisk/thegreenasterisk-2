@@ -262,4 +262,80 @@ describe('Frontend View Templates', () => {
 
         document.body.removeChild(sheet);
     });
+
+    it('correctly extracts and renders Darkvision and Devil\'s Sight in special senses', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
+
+        const warlockPayload = {
+            id: 138310322,
+            name: 'Darvell (2024)',
+            classes: [
+                {
+                    level: 6,
+                    definition: { name: 'Bard', hitDice: 8, canCastSpells: true, spellCastingAbilityId: 6 },
+                    subclassDefinition: { name: 'College of Glamour' }
+                },
+                {
+                    level: 6,
+                    definition: { name: 'Warlock', hitDice: 8, canCastSpells: true, spellCastingAbilityId: 6 },
+                    subclassDefinition: { name: 'The Great Old One' }
+                }
+            ],
+            race: {
+                fullName: 'Tiefling',
+                racialTraits: [
+                    { definition: { name: 'Darkvision', snippet: 'You can see in dim light within 60 feet...' } }
+                ]
+            },
+            baseHitPoints: 75,
+            stats: [
+                { id: 1, value: 8 },
+                { id: 2, value: 15 },
+                { id: 3, value: 12 },
+                { id: 4, value: 10 },
+                { id: 5, value: 13 },
+                { id: 6, value: 19 }
+            ],
+            modifiers: {
+                race: [
+                    {
+                        type: 'set-base',
+                        subType: 'darkvision',
+                        friendlySubtypeName: 'Darkvision',
+                        value: 60,
+                        fixedValue: 60,
+                        restriction: ''
+                    }
+                ],
+                class: [
+                    {
+                        type: 'set-base',
+                        subType: 'darkvision',
+                        friendlySubtypeName: 'Darkvision',
+                        value: 120,
+                        fixedValue: 120,
+                        restriction: 'You can see normally in darkness, both magical and nonmagical'
+                    }
+                ]
+            },
+            options: {
+                class: [
+                    { definition: { name: 'Devil’s Sight', snippet: 'You can see normally in darkness...' } }
+                ]
+            },
+            inventory: [],
+            spells: {}
+        };
+
+        const char = parseDndBeyondCharacter(warlockPayload);
+        expect(char.vitals.darkvision).toBe('120 ft.');
+        expect(char.vitals.devilsSight).toBe('120 ft.');
+
+        const html = renderSheetContent(char);
+        expect(html).toContain('Darkvision');
+        expect(html).toContain('120 ft.');
+        expect(html).toContain('Devil\'s Sight');
+        expect(html).toContain('120 ft.');
+    });
 });

@@ -212,10 +212,70 @@ export function parseDndBeyondCharacter(payload: any, originalUrlOrId?: string):
 
     // 6. Speed & Senses
     const walkSpeed = raw.race?.weightSpeeds?.normal?.walk || 30;
+
+    // Detect Devil's Sight (Eldritch Invocation / magical darkness sight)
+    const devilsSightMod = allMods.find(m =>
+        (m.type === "sense" || m.type === "set-base") &&
+        String(m.subType || "").toLowerCase().includes("darkvision") &&
+        String(m.restriction || "").toLowerCase().includes("magical")
+    );
+    const hasDevilsSightFeature =
+        !!devilsSightMod ||
+        (raw.options?.class || []).some((o: any) => /devil[’']s sight/i.test(o.definition?.name || "")) ||
+        allMods.some(m => /devil[’']s sight/i.test(m.friendlySubtypeName || ""));
+    const devilsSightSense = hasDevilsSightFeature
+        ? (Number(devilsSightMod?.value ?? devilsSightMod?.fixedValue) > 0
+            ? `${Number(devilsSightMod?.value ?? devilsSightMod?.fixedValue)} ft.`
+            : "120 ft.")
+        : undefined;
+
+    // Senses parser supporting "sense" and "set-base" modifiers, custom senses, and racial traits
     const getSenseRange = (senseName: string, fallback = "None") => {
-        const sense = allMods.find(m => m.type === "sense" && String(m.subType || "").toLowerCase().includes(senseName));
-        const numeric = Number(sense?.value);
-        if (Number.isFinite(numeric) && numeric > 0) return `${numeric} ft.`;
+        // 1. Check custom senses from character sheet overrides
+        const customMap: Record<string, number> = { blindsight: 1, darkvision: 2, tremorsense: 3, truesight: 4 };
+        const customId = customMap[senseName];
+        if (customId && Array.isArray(raw.customSenses)) {
+            const cs = raw.customSenses.find((s: any) => s.senseId === customId && Number(s.distance) > 0);
+            if (cs) return `${cs.distance} ft.`;
+        }
+
+        // 2. Modifiers: filter matches by subType or friendlySubtypeName
+        const senseMatches = allMods.filter(m =>
+            (m.type === "sense" || m.type === "set-base") &&
+            (String(m.subType || "").toLowerCase().includes(senseName) || String(m.friendlySubtypeName || "").toLowerCase().includes(senseName))
+        );
+
+        if (senseMatches.length > 0) {
+            // Check all matching modifiers and take the maximum range (e.g. 120 ft overrides 60 ft)
+            let maxRange = 0;
+            for (const match of senseMatches) {
+                const num = Number(match.value ?? match.fixedValue);
+                if (Number.isFinite(num) && num > maxRange) {
+                    maxRange = num;
+                } else {
+                    const text = `${match.snippet || ""} ${match.description || ""}`;
+                    const textMatch = text.match(/(\d+)\s*(?:ft|feet)/i);
+                    if (textMatch && Number(textMatch[1]) > maxRange) {
+                        maxRange = Number(textMatch[1]);
+                    }
+                }
+            }
+            if (maxRange > 0) return `${maxRange} ft.`;
+            if (senseName === "darkvision") return "60 ft.";
+        }
+
+        // 3. Racial traits fallback (e.g. Tiefling, Elf, Dwarf, etc.)
+        if (senseName === "darkvision" && raw.race?.racialTraits) {
+            const darkvisionTrait = raw.race.racialTraits.find((rt: any) =>
+                /darkvision/i.test(rt.definition?.name || "")
+            );
+            if (darkvisionTrait) {
+                const text = `${darkvisionTrait.definition?.snippet || ""} ${darkvisionTrait.definition?.description || ""}`;
+                if (text.includes("120")) return "120 ft.";
+                return "60 ft.";
+            }
+        }
+
         return fallback;
     };
     const darkvisionSense = getSenseRange("darkvision");
@@ -846,6 +906,7 @@ export function parseDndBeyondCharacter(payload: any, originalUrlOrId?: string):
             darkvision: darkvisionSense,
             tremorsense: tremorsenseSense,
             truesight: truesightSense,
+            devilsSight: devilsSightSense,
             hitDice: hitDiceStr,
             heroicInspiration: !!raw.inspiration,
             spellSaveDc,
