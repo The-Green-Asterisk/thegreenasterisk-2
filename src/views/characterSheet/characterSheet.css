@@ -1182,7 +1182,7 @@ el-character-sheet .content-slate section {
 }
 
 .vital-card.vital-speed .vital-card-inner {
-    padding: 0.85rem 0.65rem 1.1rem 0.65rem;
+    padding: 0.85rem 0.65rem 1.8rem 0.65rem;
 }
 
 .vital-card.vital-speed .vital-icon {
@@ -1253,7 +1253,7 @@ el-character-sheet .content-slate section {
 }
 
 .vital-card.vital-prof .vital-card-inner {
-    padding: 0.85rem 0.65rem 1.15rem 0.65rem;
+    padding: 0.85rem 0.65rem 2rem 0.65rem;
 }
 
 .vital-card.vital-prof .vital-icon {
@@ -1317,7 +1317,7 @@ el-character-sheet .content-slate section {
 .vital-card.vital-special-senses .vital-card-inner {
     align-items: stretch;
     justify-content: flex-start;
-    padding: 0.75rem 0.75rem;
+    padding: 1.75rem 1.5rem;
 }
 
 .vital-card.vital-special-senses .vital-icon {
