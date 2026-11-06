@@ -82,6 +82,7 @@ export interface CharacterSheetContext {
     setTempHp: (hp: number) => void;
     updateHpDisplay: () => void;
     applyHpDelta: (delta: number) => void;
+    syncDeathSavesDisplay?: () => void;
 
     // Trackers & Resources
     persistTrackerSnapshot: () => void;

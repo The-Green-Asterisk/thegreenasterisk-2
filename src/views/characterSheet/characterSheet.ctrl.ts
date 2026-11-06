@@ -94,11 +94,78 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }, 7000);
     }
 
+    function syncDeathSavesDisplay() {
+        const hpDeathSavesMode = sheet.querySelector<HTMLElement>("#hp-death-saves-mode");
+        if (!hpDeathSavesMode || !activeCharacter) return;
+
+        if (!activeCharacter.vitals.deathSaves) {
+            activeCharacter.vitals.deathSaves = { successes: 0, failures: 0, isStable: false };
+        }
+        const ds = activeCharacter.vitals.deathSaves;
+        const succ = ds.successes || 0;
+        const fail = ds.failures || 0;
+        const isDead = fail >= 3;
+        const isStable = !isDead && (!!ds.isStable || succ >= 3);
+
+        const statusBadge = sheet.querySelector<HTMLElement>("#death-status-badge");
+        if (statusBadge) {
+            if (isDead) {
+                statusBadge.className = "death-status-badge dead";
+                statusBadge.textContent = "DEAD";
+            } else if (isStable) {
+                statusBadge.className = "death-status-badge stable";
+                statusBadge.textContent = "STABILIZED";
+            } else {
+                statusBadge.className = "death-status-badge dying";
+                statusBadge.textContent = "DYING (0 HP)";
+            }
+        }
+
+        const succPips = sheet.querySelectorAll<HTMLButtonElement>("#death-success-pips .death-pip");
+        succPips.forEach((pip, idx) => {
+            pip.classList.toggle("active", idx < succ);
+        });
+
+        const failPips = sheet.querySelectorAll<HTMLButtonElement>("#death-failure-pips .death-pip");
+        failPips.forEach((pip, idx) => {
+            pip.classList.toggle("active", idx < fail);
+        });
+
+        const rollBtn = sheet.querySelector<HTMLButtonElement>("#death-save-roll-btn");
+        if (rollBtn) {
+            rollBtn.disabled = isDead || isStable;
+        }
+
+        const log = sheet.querySelector<HTMLElement>("#death-save-log");
+        if (log && !log.dataset.customMessage) {
+            if (isDead) {
+                log.textContent = "Character has suffered 3 failures and is dead.";
+            } else if (isStable) {
+                log.textContent = "Character is stabilized at 0 HP.";
+            } else {
+                log.textContent = `Successes: ${succ}/3 • Failures: ${fail}/3. Roll d20 on your turn.`;
+            }
+        }
+    }
+
     function updateHpDisplay() {
         const hpDisplay = sheet.querySelector<HTMLInputElement>("#hp-display");
         const tempHpDisplay = sheet.querySelector<HTMLInputElement>("#temp-hp-display");
         const hpRatio = sheet.querySelector<HTMLElement>("#hp-ratio");
         const hpBarFill = sheet.querySelector<HTMLElement>("#hp-bar-fill");
+        const hpNormalMode = sheet.querySelector<HTMLElement>("#hp-normal-mode");
+        const hpDeathSavesMode = sheet.querySelector<HTMLElement>("#hp-death-saves-mode");
+        const hpCard = sheet.querySelector<HTMLElement>(".vital-card.vital-hp");
+
+        const isDying = currentHp === 0;
+
+        if (hpNormalMode && hpDeathSavesMode) {
+            hpNormalMode.classList.toggle("hidden", isDying);
+            hpDeathSavesMode.classList.toggle("hidden", !isDying);
+        }
+        if (hpCard) {
+            hpCard.classList.toggle("is-dying", isDying);
+        }
 
         if (hpDisplay) {
             hpDisplay.value = currentHp.toString();
@@ -120,7 +187,13 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (activeCharacter) {
             activeCharacter.vitals.currentHp = currentHp;
             activeCharacter.vitals.tempHp = tempHp;
+            if (currentHp > 0 && activeCharacter.vitals.deathSaves) {
+                activeCharacter.vitals.deathSaves.successes = 0;
+                activeCharacter.vitals.deathSaves.failures = 0;
+                activeCharacter.vitals.deathSaves.isStable = false;
+            }
         }
+        syncDeathSavesDisplay();
     }
 
     function applyHpDelta(delta: number) {
@@ -132,7 +205,26 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 incoming -= absorbed;
             }
             if (incoming > 0) {
-                currentHp = Math.max(0, currentHp - incoming);
+                if (currentHp === 0) {
+                    if (!activeCharacter) return;
+                    if (!activeCharacter.vitals.deathSaves) {
+                        activeCharacter.vitals.deathSaves = { successes: 0, failures: 0, isStable: false };
+                    }
+                    const ds = activeCharacter.vitals.deathSaves;
+                    ds.failures = Math.min(3, (ds.failures || 0) + 1);
+                    ds.isStable = false;
+                    if (ds.failures >= 3) {
+                        showStatus("Took damage at 0 HP: 3rd Death Save Failure — Character has died!", true);
+                    } else {
+                        showStatus(`Took damage at 0 HP: Suffered a Death Save Failure (${ds.failures}/3)!`, true);
+                    }
+                    syncDeathSavesDisplay();
+                } else {
+                    currentHp = Math.max(0, currentHp - incoming);
+                    if (currentHp === 0) {
+                        showStatus("HP reduced to 0! You are unconscious and dying — Make Death Saving Throws!", true);
+                    }
+                }
             }
         } else if (delta > 0) {
             currentHp = Math.min(maxHp, currentHp + delta);
@@ -198,10 +290,16 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (activeCharacter.featureChoices) {
             activeCharacter.trackingState.featureChoices = { ...activeCharacter.featureChoices };
         }
+        if (activeCharacter.vitals.deathSaves) {
+            activeCharacter.trackingState.deathSaves = { ...activeCharacter.vitals.deathSaves };
+        }
     }
 
     function applyTrackerSnapshot() {
         if (!activeCharacter) return;
+        if (activeCharacter.trackingState?.deathSaves) {
+            activeCharacter.vitals.deathSaves = { ...activeCharacter.trackingState.deathSaves };
+        }
         if (Array.isArray(activeCharacter.trackingState?.activeConditions)) {
             activeCharacter.activeConditions = [...activeCharacter.trackingState.activeConditions];
         }
@@ -1080,6 +1178,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         },
         updateHpDisplay,
         applyHpDelta,
+        syncDeathSavesDisplay,
         persistTrackerSnapshot,
         applyTrackerSnapshot,
         updateSlotCounters,

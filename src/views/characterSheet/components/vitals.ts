@@ -110,35 +110,107 @@ export function renderVitalsSection(data: CharacterData): string {
         innerPath: "M 7,16 L 16,7 L 184,7 L 193,16 L 193,84 L 184,93 L 16,93 L 7,84 Z"
     });
 
+    const currentHp = Number(data.vitals.currentHp) || 0;
+    const isDying = currentHp === 0;
+    const deathSaves = data.vitals.deathSaves || data.trackingState?.deathSaves || { successes: 0, failures: 0, isStable: false };
+    const succ = deathSaves.successes || 0;
+    const fail = deathSaves.failures || 0;
+    const isStable = !!deathSaves.isStable || succ >= 3;
+    const isDead = fail >= 3;
+
+    let statusBadgeClass = "dying";
+    let statusBadgeLabel = "DYING (0 HP)";
+    if (isDead) {
+        statusBadgeClass = "dead";
+        statusBadgeLabel = "DEAD";
+    } else if (isStable) {
+        statusBadgeClass = "stable";
+        statusBadgeLabel = "STABILIZED";
+    }
+
     return `
         <div class="vitals-grid">
-            <div class="vital-card vital-hp">
+            <div class="vital-card vital-hp ${isDying ? 'is-dying' : ''}">
                 ${hpSvg}
                 <div class="vital-card-inner">
-                    <div class="vital-header">
-                        <span class="vital-title"><i class="fa-solid fa-heart-pulse"></i> HIT POINTS</span>
-                        <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
-                    </div>
-                    <div class="hp-gauge">
-                        <div class="hp-bar-fill" id="hp-bar-fill" style="width: ${Math.round((data.vitals.currentHp / data.vitals.maxHp) * 100)}%;"></div>
-                    </div>
-                    <div class="hp-controls">
-                        <button class="hp-btn" data-hp-delta="-5">-5</button>
-                        <button class="hp-btn" data-hp-delta="-1">-1</button>
-                        <div class="hp-input-cluster">
-                            <label class="hp-input-wrap" title="Current hit points">
-                                <span class="hp-input-label">HP</span>
-                                <input id="hp-display" class="hp-value-input hp-current-input" type="number" min="0" max="${data.vitals.maxHp}" step="1" value="${data.vitals.currentHp}" aria-label="Current hit points" />
-                            </label>
-                            <label class="hp-input-wrap" title="Temporary hit points">
-                                <span class="hp-input-label">Temp</span>
-                                <input id="temp-hp-display" class="hp-value-input temp-hp-input" type="number" min="0" step="1" value="${data.vitals.tempHp ?? 0}" aria-label="Temporary hit points" />
-                            </label>
+                    <!-- NORMAL HP MODE -->
+                    <div id="hp-normal-mode" class="hp-mode-container ${isDying ? 'hidden' : ''}">
+                        <div class="vital-header">
+                            <span class="vital-title"><i class="fa-solid fa-heart-pulse"></i> HIT POINTS</span>
+                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
                         </div>
-                        <button class="hp-btn" data-hp-delta="1">+1</button>
-                        <button class="hp-btn" data-hp-delta="5">+5</button>
+                        <div class="hp-gauge">
+                            <div class="hp-bar-fill" id="hp-bar-fill" style="width: ${Math.round((data.vitals.currentHp / data.vitals.maxHp) * 100)}%;"></div>
+                        </div>
+                        <div class="hp-controls">
+                            <button class="hp-btn" data-hp-delta="-5">-5</button>
+                            <button class="hp-btn" data-hp-delta="-1">-1</button>
+                            <div class="hp-input-cluster">
+                                <label class="hp-input-wrap" title="Current hit points">
+                                    <span class="hp-input-label">HP</span>
+                                    <input id="hp-display" class="hp-value-input hp-current-input" type="number" min="0" max="${data.vitals.maxHp}" step="1" value="${data.vitals.currentHp}" aria-label="Current hit points" />
+                                </label>
+                                <label class="hp-input-wrap" title="Temporary hit points">
+                                    <span class="hp-input-label">Temp</span>
+                                    <input id="temp-hp-display" class="hp-value-input temp-hp-input" type="number" min="0" step="1" value="${data.vitals.tempHp ?? 0}" aria-label="Temporary hit points" />
+                                </label>
+                            </div>
+                            <button class="hp-btn" data-hp-delta="1">+1</button>
+                            <button class="hp-btn" data-hp-delta="5">+5</button>
+                        </div>
+                        <div class="vital-footer-note">Hit Dice: ${data.vitals.hitDice}</div>
                     </div>
-                    <div class="vital-footer-note">Hit Dice: ${data.vitals.hitDice}</div>
+
+                    <!-- DEATH SAVING THROW MECHANISM (Active when HP == 0) -->
+                    <div id="hp-death-saves-mode" class="hp-mode-container death-saves-container ${isDying ? '' : 'hidden'}">
+                        <div class="vital-header death-header">
+                            <span class="vital-title death-title">
+                                <i class="fa-solid fa-skull"></i> DEATH SAVES
+                            </span>
+                            <span class="death-status-badge ${statusBadgeClass}" id="death-status-badge">${statusBadgeLabel}</span>
+                        </div>
+
+                        <div class="death-trackers-row">
+                            <div class="death-track-group">
+                                <span class="death-track-lbl success" title="Successes (DC 10+)"><i class="fa-solid fa-check"></i></span>
+                                <div class="death-pips-group" id="death-success-pips">
+                                    <button type="button" class="death-pip success-pip ${succ >= 1 ? 'active' : ''}" data-type="success" data-index="0" title="Success 1"></button>
+                                    <button type="button" class="death-pip success-pip ${succ >= 2 ? 'active' : ''}" data-type="success" data-index="1" title="Success 2"></button>
+                                    <button type="button" class="death-pip success-pip ${succ >= 3 ? 'active' : ''}" data-type="success" data-index="2" title="Success 3"></button>
+                                </div>
+                            </div>
+                            <div class="death-track-group">
+                                <span class="death-track-lbl failure" title="Failures (&lt; 10)"><i class="fa-solid fa-xmark"></i></span>
+                                <div class="death-pips-group" id="death-failure-pips">
+                                    <button type="button" class="death-pip failure-pip ${fail >= 1 ? 'active' : ''}" data-type="failure" data-index="0" title="Failure 1"></button>
+                                    <button type="button" class="death-pip failure-pip ${fail >= 2 ? 'active' : ''}" data-type="failure" data-index="1" title="Failure 2"></button>
+                                    <button type="button" class="death-pip failure-pip ${fail >= 3 ? 'active' : ''}" data-type="failure" data-index="2" title="Failure 3"></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="death-controls-row">
+                            <button type="button" id="death-save-roll-btn" class="death-ctrl-btn roll-btn" ${isDead || isStable ? 'disabled' : ''} title="Roll a d20 Death Save (DC 10)">
+                                <i class="fa-solid fa-dice-d20"></i> Roll Save
+                            </button>
+                            <div class="death-heal-group">
+                                <button type="button" class="death-heal-btn" data-death-heal="1" title="Heal 1 HP (revives)">+1</button>
+                                <button type="button" class="death-heal-btn" data-death-heal="5" title="Heal 5 HP (revives)">+5</button>
+                                <label class="hp-input-wrap death-heal-input-wrap" title="Enter HP to heal and revive">
+                                    <span class="hp-input-label">Heal</span>
+                                    <input id="death-revive-hp-input" class="hp-value-input death-heal-input" type="number" min="1" max="${data.vitals.maxHp}" placeholder="HP" aria-label="Heal hit points" />
+                                </label>
+                            </div>
+                            <div class="death-aux-btns">
+                                <button type="button" id="death-save-stabilize-btn" class="death-icon-btn" title="Stabilize character (3 successes)"><i class="fa-solid fa-heart-pulse"></i></button>
+                                <button type="button" id="death-save-reset-btn" class="death-icon-btn" title="Reset death saves"><i class="fa-solid fa-rotate-left"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="death-save-log" id="death-save-log">
+                            ${isDead ? 'Character has 3 failures and is dead.' : isStable ? 'Character is stabilized at 0 HP.' : 'Roll d20 each turn (10+ succeeds, 1 adds 2 fails, 20 heals 1 HP).'}
+                        </div>
+                    </div>
                 </div>
             </div>
 

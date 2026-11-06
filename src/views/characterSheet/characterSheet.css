@@ -1167,6 +1167,278 @@ el-character-sheet .content-slate section {
     --card-glow: var(--badge-hp-glow);
 }
 
+.hp-mode-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.hp-mode-container.hidden {
+    display: none !important;
+}
+
+.vital-card.vital-hp.is-dying {
+    --card-glow: rgba(239, 68, 68, 0.65);
+    animation: pulse-dying 2.5s infinite ease-in-out;
+}
+
+@keyframes pulse-dying {
+    0%, 100% {
+        filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.35));
+    }
+    50% {
+        filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.8));
+    }
+}
+
+.death-saves-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+}
+
+.death-header {
+    margin-bottom: 0.35rem;
+}
+
+.death-title {
+    color: #ef4444;
+}
+
+.death-status-badge {
+    font-size: 0.66rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+}
+
+.death-status-badge.dying {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
+}
+
+.death-status-badge.stable {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid #10b981;
+}
+
+.death-status-badge.dead {
+    background: #0f172a;
+    color: #f87171;
+    border: 1px solid #dc2626;
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+}
+
+.death-trackers-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.6rem;
+    margin: 0.25rem 0 0.4rem 0;
+    width: 100%;
+}
+
+.death-track-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.death-track-lbl {
+    font-size: 0.82rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.death-track-lbl.success {
+    color: #10b981;
+}
+
+.death-track-lbl.failure {
+    color: #ef4444;
+}
+
+.death-pips-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.death-pip {
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin: 0;
+    padding: 0;
+}
+
+.death-pip:hover {
+    border-color: var(--text);
+    transform: scale(1.15);
+}
+
+.death-pip.success-pip.active {
+    background: #10b981;
+    border-color: #059669;
+    box-shadow: 0 0 7px rgba(16, 185, 129, 0.7);
+}
+
+.death-pip.failure-pip.active {
+    background: #ef4444;
+    border-color: #dc2626;
+    box-shadow: 0 0 7px rgba(239, 68, 68, 0.7);
+}
+
+.death-controls-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(0.2rem, 1vw, 0.35rem);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.death-ctrl-btn.roll-btn {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
+    background: #dc2626;
+    border: 1px solid #b91c1c;
+    border-radius: var(--radius);
+    padding: 0 clamp(0.4rem, 1vw, 0.65rem);
+    font-weight: 800;
+    font-size: clamp(0.72rem, 1.8vw, 0.8rem);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+}
+
+.death-ctrl-btn.roll-btn:hover:not(:disabled) {
+    background: #ef4444;
+    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.5);
+    transform: translateY(-1px);
+}
+
+.death-ctrl-btn.roll-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+.death-heal-group {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(0.15rem, 0.8vw, 0.25rem);
+}
+
+.death-heal-btn {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 clamp(0.25rem, 0.8vw, 0.45rem);
+    font-weight: 800;
+    font-size: clamp(0.72rem, 1.8vw, 0.8rem);
+    color: #10b981;
+    min-width: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.death-heal-btn:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #059669;
+}
+
+.death-heal-input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0;
+}
+
+.death-heal-input {
+    width: clamp(36px, 10vw, 44px) !important;
+    max-width: 46px !important;
+    height: 32px !important;
+    font-size: clamp(0.8rem, 2vw, 0.92rem) !important;
+    color: #10b981 !important;
+}
+
+.death-aux-btns {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.2rem;
+}
+
+.death-icon-btn {
+    box-sizing: border-box;
+    height: 32px;
+    width: 28px;
+    margin: 0;
+    padding: 0;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+}
+
+.death-icon-btn:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+    border-color: var(--border-strong, #94a3b8);
+}
+
+.death-save-log {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0.35rem;
+    min-height: 1.1rem;
+    line-height: 1.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* 2. Armor Class: True Heraldic Knight's Shield */
 .vital-card.vital-ac {
     --card-glow: var(--badge-ac-glow);

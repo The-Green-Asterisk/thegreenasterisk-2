@@ -1610,4 +1610,42 @@ describe('Frontend View Templates', () => {
         expect(confirmBtn).not.toBeNull();
         expect(cancelBtn).not.toBeNull();
     });
+
+    it('switches between normal HP mode and death saving throw mechanism when HP is 0', async () => {
+        const { renderVitalsSection } = await import('../../../src/views/characterSheet/components/vitals');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        // Test normal HP (> 0)
+        const livingChar = {
+            ...darvellData,
+            vitals: {
+                ...darvellData.vitals,
+                currentHp: 45,
+                maxHp: 80
+            }
+        };
+        const livingHtml = renderVitalsSection(livingChar);
+        expect(livingHtml).toContain('id="hp-normal-mode"');
+        expect(livingHtml).toContain('id="hp-death-saves-mode"');
+        expect(livingHtml).toContain('id="hp-death-saves-mode" class="hp-mode-container death-saves-container hidden"');
+
+        // Test HP at 0 (Dying)
+        const dyingChar = {
+            ...darvellData,
+            vitals: {
+                ...darvellData.vitals,
+                currentHp: 0,
+                maxHp: 80,
+                deathSaves: { successes: 1, failures: 2, isStable: false }
+            }
+        };
+        const dyingHtml = renderVitalsSection(dyingChar);
+        expect(dyingHtml).toContain('vital-card vital-hp is-dying');
+        expect(dyingHtml).toContain('id="hp-normal-mode" class="hp-mode-container hidden"');
+        expect(dyingHtml).toContain('id="hp-death-saves-mode" class="hp-mode-container death-saves-container "');
+        expect(dyingHtml).toContain('DEATH SAVES');
+        expect(dyingHtml).toContain('id="death-save-roll-btn"');
+        expect(dyingHtml).toContain('id="death-status-badge"');
+        expect(dyingHtml).toContain('DYING (0 HP)');
+    });
 });

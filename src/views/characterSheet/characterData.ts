@@ -149,6 +149,11 @@ export interface CharacterData {
         exhaustionLevel?: number;
         allowedSpellsByLevel?: Record<number, number>;
         featureChoices?: Record<string, string>;
+        deathSaves?: {
+            successes: number;
+            failures: number;
+            isStable?: boolean;
+        };
     };
     id?: string | number;
     name: string;
@@ -181,6 +186,11 @@ export interface CharacterData {
         spellSaveDc: number;
         spellAttackBonus: number;
         spellcastingAbility: string;
+        deathSaves?: {
+            successes: number;
+            failures: number;
+            isStable?: boolean;
+        };
     };
     abilities: AbilityScore[];
     skills: SkillItem[];
