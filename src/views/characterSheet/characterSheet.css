@@ -26,6 +26,12 @@
     gap: 0.45rem;
 }
 
+.loader-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .loader-collapse-btn {
     width: 30px;
     height: 30px;
@@ -37,12 +43,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .loader-collapse-btn:hover {
     background: var(--surface-muted);
     border-color: var(--ui-color);
+    color: var(--ui-text);
 }
 
 .character-loader-content {
@@ -75,7 +82,15 @@
     display: none;
 }
 
-.character-loader-bar.is-collapsed .loader-collapse-btn {
+.character-loader-bar.is-collapsed .loader-header-actions {
+    justify-content: center;
+}
+
+.character-loader-bar.is-collapsed .sheet-fullscreen-btn {
+    display: none !important;
+}
+
+.character-loader-bar.is-collapsed #character-loader-toggle-btn {
     width: 68px;
     height: 10px;
     border-radius: 999px;
@@ -84,7 +99,7 @@
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 
-.character-loader-bar.is-collapsed .loader-collapse-btn i {
+.character-loader-bar.is-collapsed #character-loader-toggle-btn i {
     font-size: 0;
 }
 
@@ -4818,3 +4833,85 @@ el-character-sheet .content-slate section.sheet-hero,
     border-color: var(--accent-green, #10b981);
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.22);
 }
+
+/* ==========================================================================
+   Non-intrusive Full-Screen Controls
+   ========================================================================== */
+.sheet-fullscreen-floating-btn {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft, rgba(0, 0, 0, 0.15));
+    background: var(--surface-alt, #ffffff);
+    color: var(--text-muted, #64748b);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.88rem;
+    z-index: 1000;
+    opacity: 0.65;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.sheet-fullscreen-floating-btn:hover,
+.sheet-fullscreen-floating-btn:focus-visible {
+    opacity: 1;
+    transform: scale(1.08);
+    background: var(--surface, #ffffff);
+    border-color: var(--ui-color, #10b981);
+    color: var(--ui-text, #0f172a);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    outline: none;
+}
+
+.sheet-fullscreen-floating-btn:active {
+    transform: scale(0.96);
+}
+
+/* Dark mode subtle styling */
+@media (prefers-color-scheme: dark) {
+    .sheet-fullscreen-floating-btn {
+        border-color: rgba(255, 255, 255, 0.15);
+        background: rgba(30, 41, 59, 0.85);
+        color: #94a3b8;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(4px);
+    }
+    .sheet-fullscreen-floating-btn:hover,
+    .sheet-fullscreen-floating-btn:focus-visible {
+        background: rgba(15, 23, 42, 0.95);
+        border-color: var(--ui-color, #10b981);
+        color: #f8fafc;
+    }
+}
+
+body.dark-mode .sheet-fullscreen-floating-btn,
+[data-theme="dark"] .sheet-fullscreen-floating-btn {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(30, 41, 59, 0.85);
+    color: #94a3b8;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px);
+}
+
+body.dark-mode .sheet-fullscreen-floating-btn:hover,
+body.dark-mode .sheet-fullscreen-floating-btn:focus-visible,
+[data-theme="dark"] .sheet-fullscreen-floating-btn:hover,
+[data-theme="dark"] .sheet-fullscreen-floating-btn:focus-visible {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: var(--ui-color, #10b981);
+    color: #f8fafc;
+}
+
+:fullscreen el-character-sheet,
+:-webkit-full-screen el-character-sheet,
+el-character-sheet.is-fullscreen {
+    min-height: 100vh;
+    background-color: var(--surface);
+}
+

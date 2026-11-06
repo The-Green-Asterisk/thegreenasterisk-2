@@ -12,6 +12,7 @@ import {
     initEditModeController,
     initEquipmentController,
     initFeaturesController,
+    initFullscreenController,
     initHeroController,
     initLoaderBarController,
     initModalsController,
@@ -970,9 +971,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         syncHeaderSlotMarkers
     };
 
-    // Initialize root controllers (Modals, Loader Bar, Edit Mode)
+    // Initialize root controllers (Modals, Loader Bar, Fullscreen, Edit Mode)
     initModalsController(ctx);
     initLoaderBarController(ctx);
+    initFullscreenController(sheet);
     const editModeCtrl = initEditModeController(ctx);
 
     function renderActiveCharacterView() {

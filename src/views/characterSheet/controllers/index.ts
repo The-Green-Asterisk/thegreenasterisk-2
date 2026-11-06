@@ -4,6 +4,7 @@ export * from "./context";
 export * from "./editMode.ctrl";
 export * from "./equipment.ctrl";
 export * from "./features.ctrl";
+export * from "./fullscreen.ctrl";
 export * from "./hero.ctrl";
 export * from "./loaderBar.ctrl";
 export * from "./modals.ctrl";

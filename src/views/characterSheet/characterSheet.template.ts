@@ -33,6 +33,9 @@ const characterSheetTemplate = () => html`
 
         ${renderModals()}
 
+        <button type="button" id="sheet-fullscreen-floating-btn" class="sheet-fullscreen-floating-btn sheet-fullscreen-btn" aria-label="Enter full screen" title="Enter full screen">
+            <i class="fa-solid fa-expand"></i>
+        </button>
     </el-character-sheet>
 `;
 

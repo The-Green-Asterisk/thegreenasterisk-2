@@ -3,9 +3,14 @@ export function renderLoaderBar(): string {
         <section class="character-loader-bar" aria-label="Load D&D Beyond Character">
             <div class="character-loader-header">
                 <h3 class="character-loader-title"><i class="fa-solid fa-dragon"></i> Character Loader</h3>
-                <button type="button" id="character-loader-toggle-btn" class="loader-collapse-btn" aria-expanded="true" aria-controls="character-loader-content" title="Collapse loader">
-                    <i class="fa-solid fa-chevron-up"></i>
-                </button>
+                <div class="loader-header-actions">
+                    <button type="button" id="character-loader-fullscreen-btn" class="loader-collapse-btn sheet-fullscreen-btn" aria-label="Enter full screen" title="Enter full screen">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button type="button" id="character-loader-toggle-btn" class="loader-collapse-btn" aria-expanded="true" aria-controls="character-loader-content" title="Collapse loader">
+                        <i class="fa-solid fa-chevron-up"></i>
+                    </button>
+                </div>
             </div>
             <div id="character-loader-content" class="character-loader-content">
                 <form id="dndbeyond-load-form" class="load-form">

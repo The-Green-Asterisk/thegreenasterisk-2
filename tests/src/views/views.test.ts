@@ -978,4 +978,64 @@ describe('Frontend View Templates', () => {
         });
         expect(resolved).toContain('Roll 1d8 up to 4 times (DC 16, bonus +4).');
     });
+
+    it('renders non-intrusive full-screen toggle buttons and handles fullscreen events', async () => {
+        const sheet = characterSheetTemplate();
+        expect(sheet.tagName.toLowerCase()).toBe('el-character-sheet');
+
+        const headerBtn = sheet.querySelector<HTMLButtonElement>('#character-loader-fullscreen-btn');
+        const floatingBtn = sheet.querySelector<HTMLButtonElement>('#sheet-fullscreen-floating-btn');
+
+        expect(headerBtn).not.toBeNull();
+        expect(floatingBtn).not.toBeNull();
+
+        expect(headerBtn?.getAttribute('aria-label')).toBe('Enter full screen');
+        expect(headerBtn?.title).toBe('Enter full screen');
+        expect(headerBtn?.querySelector('i')?.className).toContain('fa-expand');
+
+        expect(floatingBtn?.getAttribute('aria-label')).toBe('Enter full screen');
+        expect(floatingBtn?.title).toBe('Enter full screen');
+        expect(floatingBtn?.querySelector('i')?.className).toContain('fa-expand');
+
+        const { initFullscreenController, syncFullscreenButtons } = await import('../../../src/views/characterSheet/controllers/fullscreen.ctrl');
+        const ctrl = initFullscreenController(sheet);
+
+        // Before fullscreen
+        expect(sheet.classList.contains('is-fullscreen')).toBe(false);
+        expect(headerBtn?.getAttribute('aria-pressed')).toBe('false');
+
+        // Simulate document entering fullscreen
+        Object.defineProperty(document, 'fullscreenElement', {
+            configurable: true,
+            writable: true,
+            value: sheet
+        });
+
+        document.dispatchEvent(new Event('fullscreenchange'));
+
+        expect(sheet.classList.contains('is-fullscreen')).toBe(true);
+        expect(headerBtn?.getAttribute('aria-pressed')).toBe('true');
+        expect(headerBtn?.getAttribute('aria-label')).toBe('Exit full screen');
+        expect(headerBtn?.querySelector('i')?.className).toContain('fa-compress');
+
+        expect(floatingBtn?.getAttribute('aria-pressed')).toBe('true');
+        expect(floatingBtn?.getAttribute('aria-label')).toBe('Exit full screen');
+        expect(floatingBtn?.querySelector('i')?.className).toContain('fa-compress');
+
+        // Simulate document exiting fullscreen
+        Object.defineProperty(document, 'fullscreenElement', {
+            configurable: true,
+            writable: true,
+            value: null
+        });
+
+        document.dispatchEvent(new Event('fullscreenchange'));
+
+        expect(sheet.classList.contains('is-fullscreen')).toBe(false);
+        expect(headerBtn?.getAttribute('aria-pressed')).toBe('false');
+        expect(headerBtn?.getAttribute('aria-label')).toBe('Enter full screen');
+        expect(headerBtn?.querySelector('i')?.className).toContain('fa-expand');
+
+        ctrl.destroy();
+    });
 });
