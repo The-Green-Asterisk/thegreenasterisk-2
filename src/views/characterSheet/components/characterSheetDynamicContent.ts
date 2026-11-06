@@ -98,17 +98,22 @@ export function renderSheetContent(data: CharacterData): string {
                         <button class="filter-chip" data-filter="conc">Concentration</button>
                         <button class="filter-chip" data-filter="ritual">Rituals</button>
                     </div>
-                    <button class="add-custom-spell-btn" id="open-custom-spell-btn" title="Add a custom spell to this character and database">
-                        <i class="fa-solid fa-plus"></i> Add Custom Spell
-                    </button>
+                    <div class="spell-header-actions">
+                        <button class="manage-spells-btn" id="open-manage-spells-btn" title="Search database spells and manage character spell list by level">
+                            <i class="fa-solid fa-book-bookmark"></i> Manage Spells
+                        </button>
+                        <button class="add-custom-spell-btn" id="open-custom-spell-btn" title="Add a custom spell to this character and database">
+                            <i class="fa-solid fa-plus"></i> Add Custom Spell
+                        </button>
+                    </div>
                 </div>
 
                 <div class="spells-click-prompt">
-                    <i class="fa-solid fa-circle-info"></i> <em>Click any spell below to load its full description independently (Database &rarr; D&D Beyond &rarr; Open5e).</em>
+                    <i class="fa-solid fa-circle-info"></i> <em>Click any spell below to view its full description (prefers Character Pull definition &rarr; Database &rarr; D&amp;D Beyond &rarr; Open5e).</em>
                 </div>
 
                 <div id="spells-grid">
-                    ${renderSpellsByLevel(data.spells, data.spellSlots)}
+                    ${renderSpellsByLevel(data.spells, data.spellSlots, data)}
                 </div>
                 <div id="no-spells-found" class="no-results" style="display: none;">
                     <i class="fa-solid fa-ghost"></i>

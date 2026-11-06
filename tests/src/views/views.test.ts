@@ -61,6 +61,12 @@ describe('Frontend View Templates', () => {
         expect(modal?.classList.contains('hidden')).toBe(true);
         expect(sheet.querySelector('#modal-spell-name')).not.toBeNull();
         expect(sheet.querySelector('#modal-spell-description')).not.toBeNull();
+
+        // Conditions modal elements exist
+        const conditionsModal = sheet.querySelector('#conditions-modal-container');
+        expect(conditionsModal).not.toBeNull();
+        expect(conditionsModal?.classList.contains('hidden')).toBe(true);
+        expect(sheet.querySelector('#exhaustion-levels-row')).not.toBeNull();
     });
 
     it('does not show spell cards before a character ID is loaded', () => {
@@ -337,5 +343,428 @@ describe('Frontend View Templates', () => {
         expect(html).toContain('120 ft.');
         expect(html).toContain('Devil\'s Sight');
         expect(html).toContain('120 ft.');
+    });
+
+    it('calculates Monk Unarmored Defense, Unarmored Movement, Martial Arts, Diamond Soul, and Bracers of Defense', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const monkPayload = {
+            id: 555001,
+            name: 'Master Shen',
+            classes: [
+                {
+                    level: 14,
+                    definition: { name: 'Monk', hitDice: 8 }
+                }
+            ],
+            race: {
+                fullName: 'Human',
+                weightSpeeds: { normal: { walk: 30 } }
+            },
+            baseHitPoints: 90,
+            stats: [
+                { id: 1, value: 10 }, // STR +0
+                { id: 2, value: 20 }, // DEX +5
+                { id: 3, value: 14 }, // CON +2
+                { id: 4, value: 11 }, // INT +0
+                { id: 5, value: 18 }, // WIS +4
+                { id: 6, value: 10 }  // CHA +0
+            ],
+            modifiers: {
+                class: [
+                    { type: 'set', subType: 'unarmored-armor-class', statId: 5, value: null },
+                    { type: 'bonus', subType: 'unarmored-movement', fixedValue: 25 },
+                    { type: 'proficiency', subType: 'saving-throws' }
+                ],
+                item: [
+                    // Equipped & attuned Bracers of Defense (+2 unarmored AC)
+                    { id: 'mod-bracers', componentId: 201, type: 'bonus', subType: 'unarmored-armor-class', fixedValue: 2 },
+                    // Unequipped Ring of Protection (+1 AC) -> should be ignored!
+                    { id: 'mod-ring', componentId: 202, type: 'bonus', subType: 'armor-class', fixedValue: 1 }
+                ]
+            },
+            inventory: [
+                {
+                    id: 1,
+                    equipped: true,
+                    isAttuned: true,
+                    definition: {
+                        id: 201,
+                        name: 'Bracers of Defense',
+                        filterType: 'Wondrous item',
+                        canEquip: true,
+                        canAttune: true
+                    }
+                },
+                {
+                    id: 2,
+                    equipped: false,
+                    isAttuned: false,
+                    definition: {
+                        id: 202,
+                        name: 'Ring of Protection',
+                        filterType: 'Ring',
+                        canEquip: true,
+                        canAttune: true
+                    }
+                },
+                {
+                    id: 3,
+                    equipped: true,
+                    quantity: 1,
+                    definition: {
+                        id: 203,
+                        name: 'Quarterstaff',
+                        filterType: 'Weapon',
+                        attackType: 1,
+                        categoryId: 1, // Simple melee -> Monk weapon
+                        damage: { diceString: '1d6' },
+                        damageType: 'Bludgeoning',
+                        properties: [{ name: 'Versatile' }]
+                    }
+                }
+            ],
+            spells: {}
+        };
+
+        const monk = parseDndBeyondCharacter(monkPayload);
+        // AC = 10 + DEX (+5) + WIS (+4) + Bracers (+2) = 21 (unequipped Ring ignored)
+        expect(monk.vitals.armorClass).toBe(21);
+        // Speed = 30 + 25 (Unarmored Movement) = 55 ft.
+        expect(monk.vitals.speed).toBe('55 ft.');
+        // Diamond Soul: all 6 saving throws are proficient (profBonus at Lv 14 is +5)
+        expect(monk.abilities.every(a => a.proficientSave)).toBe(true);
+        expect(monk.abilities.find(a => a.abbr === 'WIS')?.save).toBe(4 + 5);
+        // Quarterstaff uses DEX (+5) instead of STR (+0) via Martial Arts, and upgrades die from 1d6 to Lv 14 Martial Arts die (1d10)
+        const staff = monk.weapons?.find(w => w.name === 'Quarterstaff');
+        expect(staff?.toHitModifier).toBe(5 + 5); // DEX (+5) + Prof (+5) = +10
+        expect(staff?.damageDie).toBe('1d10');
+        expect(staff?.damage).toBe('1d10 + 5 Bludgeoning');
+    });
+
+    it('calculates Barbarian Unarmored Defense with Shield, Tough feat HP, Set Ability Score items, and Magic Weapon bonuses', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const barbPayload = {
+            id: 555002,
+            name: 'Grog Strongjaw',
+            classes: [
+                {
+                    level: 10,
+                    definition: { name: 'Barbarian', hitDice: 12 }
+                }
+            ],
+            baseHitPoints: 75,
+            stats: [
+                { id: 1, value: 16 }, // STR 16 -> overridden to 23 (+6) by Belt of Stone Giant Strength
+                { id: 2, value: 14 }, // DEX 14 (+2)
+                { id: 3, value: 18 }, // CON 18 (+4)
+                { id: 4, value: 8 },
+                { id: 5, value: 12 },
+                { id: 6, value: 10 }
+            ],
+            modifiers: {
+                class: [
+                    { type: 'set', subType: 'unarmored-armor-class', statId: 3 },
+                    { type: 'bonus', subType: 'unarmored-movement', fixedValue: 10 },
+                    { type: 'proficiency', subType: 'martial-weapons' }
+                ],
+                feat: [
+                    { type: 'bonus', subType: 'hit-points-per-level', fixedValue: 2 } // Tough feat (+20 HP at Lv 10)
+                ],
+                item: [
+                    { id: 'belt-str', componentId: 301, type: 'set', subType: 'strength-score', fixedValue: 23 },
+                    { id: 'shield-magic', componentId: 302, type: 'bonus', subType: 'armor-class', fixedValue: 1 }
+                ]
+            },
+            inventory: [
+                {
+                    id: 10,
+                    equipped: true,
+                    isAttuned: true,
+                    definition: {
+                        id: 301,
+                        name: 'Belt of Stone Giant Strength',
+                        filterType: 'Wondrous item',
+                        canEquip: true,
+                        canAttune: true
+                    }
+                },
+                {
+                    id: 11,
+                    equipped: true,
+                    definition: {
+                        id: 302,
+                        name: 'Shield, +1',
+                        filterType: 'Armor', // DDB represents Shields with filterType: Armor and armorTypeId: 4
+                        armorTypeId: 4,
+                        armorClass: 2,
+                        magic: true
+                    }
+                },
+                {
+                    id: 12,
+                    equipped: true,
+                    quantity: 1,
+                    definition: {
+                        id: 303,
+                        name: 'Greataxe, +2',
+                        filterType: 'Weapon',
+                        attackType: 1,
+                        categoryId: 2,
+                        magic: true,
+                        damage: { diceString: '1d12' },
+                        damageType: 'Slashing',
+                        grantedModifiers: [
+                            { type: 'bonus', subType: 'magic', fixedValue: 2 },
+                            { type: 'damage', subType: 'fire', friendlySubtypeName: 'Fire', dice: { diceString: '1d6' } }
+                        ]
+                    }
+                }
+            ],
+            spells: {}
+        };
+
+        const barb = parseDndBeyondCharacter(barbPayload);
+        // STR set to 23 (+6)
+        const strAbility = barb.abilities.find(a => a.abbr === 'STR');
+        expect(strAbility?.score).toBe(23);
+        expect(strAbility?.modifier).toBe(6);
+        // AC = 10 + DEX (+2) + CON (+4) + Shield base (+2) + Shield magic (+1) = 19
+        expect(barb.vitals.armorClass).toBe(19);
+        // Max HP = 75 (base) + 40 (CON +4 * 10) + 20 (Tough +2 * 10) = 135
+        expect(barb.vitals.maxHp).toBe(135);
+        // Greataxe +2: STR (+6) + Prof (+4 at Lv 10) + Magic (+2) = +12 to hit; 1d12 + 8 Slashing + 1d6 Fire
+        const axe = barb.weapons?.find(w => w.name === 'Greataxe, +2');
+        expect(axe?.toHitModifier).toBe(12);
+        expect(axe?.damage).toBe('1d12 + 8 Slashing + 1d6 Fire');
+    });
+
+    it('calculates Initiative, Saving Throws, Skills, Passive Perception, and Spell DC/Attack modifiers', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const paladinBardPayload = {
+            id: 555003,
+            name: 'Sir Dorian',
+            classes: [
+                {
+                    level: 6,
+                    definition: { name: 'Paladin', hitDice: 10, canCastSpells: true, spellCastingAbilityId: 6 }
+                },
+                {
+                    level: 4,
+                    definition: { name: 'Bard', hitDice: 8, canCastSpells: true, spellCastingAbilityId: 6 }
+                }
+            ],
+            baseHitPoints: 64,
+            stats: [
+                { id: 1, value: 16 }, // STR +3
+                { id: 2, value: 14 }, // DEX +2
+                { id: 3, value: 14 }, // CON +2
+                { id: 4, value: 10 }, // INT +0
+                { id: 5, value: 12 }, // WIS +1
+                { id: 6, value: 18 }  // CHA +4
+            ],
+            modifiers: {
+                class: [
+                    { type: 'half-proficiency', subType: 'ability-checks' }, // Jack of All Trades (+2 at Lv 10, profBonus = 4)
+                    { type: 'bonus', subType: 'armored-armor-class', fixedValue: 1 }, // Defense Fighting Style
+                    { type: 'bonus', subType: 'one-handed-melee-attacks', fixedValue: 2 } // Dueling Fighting Style
+                ],
+                feat: [
+                    { type: 'proficiency', subType: 'initiative' }, // 2024 Alert feat (+4 profBonus)
+                    { type: 'bonus', subType: 'passive-perception', fixedValue: 5 } // Observant feat (+5 passive perception)
+                ],
+                item: [
+                    { type: 'bonus', subType: 'saving-throws', fixedValue: 1 }, // Cloak of Protection (+1 all saves)
+                    { type: 'bonus', subType: 'armor-class', fixedValue: 1 }, // Cloak of Protection (+1 AC)
+                    { type: 'bonus', subType: 'spell-save-dc', fixedValue: 2 }, // Amulet of the Devout (+2 Spell DC)
+                    { type: 'bonus', subType: 'spell-attacks', fixedValue: 2 }, // Amulet of the Devout (+2 Spell Attack)
+                    { type: 'advantage', subType: 'perception', restriction: '' } // Sentinel Shield (advantage on Perception -> +5 passive)
+                ]
+            },
+            inventory: [
+                {
+                    id: 21,
+                    equipped: true,
+                    definition: {
+                        id: 401,
+                        name: 'Half Plate',
+                        filterType: 'Armor',
+                        armorTypeId: 2, // Medium armor (max +2 DEX)
+                        armorClass: 15
+                    }
+                },
+                {
+                    id: 22,
+                    equipped: true,
+                    quantity: 1,
+                    definition: {
+                        id: 402,
+                        name: 'Longsword',
+                        filterType: 'Weapon',
+                        attackType: 1,
+                        categoryId: 2,
+                        damage: { diceString: '1d8' },
+                        damageType: 'Slashing',
+                        properties: [{ name: 'Versatile' }]
+                    }
+                }
+            ],
+            spells: {}
+        };
+
+        const char = parseDndBeyondCharacter(paladinBardPayload);
+        // Prof bonus at total level 10 = +4
+        expect(char.vitals.proficiencyBonus).toBe(4);
+        // AC = Half Plate (15) + DEX (+2) + Defense (+1) + Cloak (+1) = 19
+        expect(char.vitals.armorClass).toBe(19);
+        // Initiative = DEX (+2) + Alert Proficiency (+4) = +6
+        expect(char.vitals.initiative).toBe(6);
+        // Saving Throws include Paladin Lv 6 Aura of Protection (+4 CHA) + Cloak of Protection (+1)
+        // WIS save (non-proficient) = WIS (+1) + Aura (+4) + Cloak (+1) = +6
+        expect(char.abilities.find(a => a.abbr === 'WIS')?.save).toBe(6);
+        // Non-proficient Perception skill gets Jack of All Trades (+2 half-prof): WIS (+1) + 2 = +3
+        const percSkill = char.skills.find(s => s.name === 'Perception');
+        expect(percSkill?.bonus).toBe(3);
+        // Passive Perception = 10 + Perception (+3) + Observant (+5) + Advantage (+5) = 23
+        expect(char.vitals.passivePerception).toBe(23);
+        // Spell Save DC = 8 + Prof (+4) + CHA (+4) + Amulet (+2) = 18; Spell Attack = 4 + 4 + 2 = +10
+        expect(char.vitals.spellSaveDc).toBe(18);
+        expect(char.vitals.spellAttackBonus).toBe(10);
+        // Longsword with Dueling (+2 damage): 1d8 + (3 STR + 2 Dueling) = 1d8 + 5 Slashing
+        const sword = char.weapons?.find(w => w.name === 'Longsword');
+        expect(sword?.damage).toBe('1d8 + 5 Slashing');
+    });
+
+    it('seeds all 15 D&D 5.5 conditions in migration and renders Active Conditions box & Exhaustion tracker', async () => {
+        const { CreateConditionsTable1792784000000 } = await import(
+            '../../../server/services/database/migration/1792784000000-create_conditions_table'
+        );
+        const { DEFAULT_DND55_CONDITIONS } = await import('../../../src/views/characterSheet/characterData');
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderHeroSection } = await import('../../../src/views/characterSheet/components/hero');
+
+        expect(DEFAULT_DND55_CONDITIONS).toHaveLength(15);
+        const exhaustionDef = DEFAULT_DND55_CONDITIONS.find(c => c.slug === 'exhaustion');
+        expect(exhaustionDef).toBeDefined();
+        expect(exhaustionDef?.hasLevels).toBe(true);
+        expect(exhaustionDef?.maxLevel).toBe(6);
+        expect(exhaustionDef?.description).toContain('2 times your Exhaustion level');
+        expect(exhaustionDef?.description).toContain('5 times your Exhaustion level');
+
+        // Verify migration SQL creates "conditions" table and inserts all 15 conditions
+        const queries: string[] = [];
+        const mockQueryRunner = {
+            query: async (sql: string) => {
+                queries.push(sql);
+            }
+        } as any;
+        const migration = new CreateConditionsTable1792784000000();
+        await migration.up(mockQueryRunner);
+
+        expect(queries.some(q => q.includes('CREATE TABLE IF NOT EXISTS `conditions`'))).toBe(true);
+        const insertSql = queries.find(q => q.includes('INSERT INTO `conditions`')) || '';
+        for (const cond of DEFAULT_DND55_CONDITIONS) {
+            expect(insertSql).toContain(`'${cond.slug}'`);
+            expect(insertSql).toContain(`'${cond.name}'`);
+        }
+
+        // Verify D&D Beyond condition parsing (Poisoned = 11, Exhaustion = 4 with level 3)
+        const charWithConditions = parseDndBeyondCharacter({
+            id: 777001,
+            name: 'Condition Tester',
+            classes: [{ level: 5, definition: { name: 'Fighter', hitDice: 10 } }],
+            baseHitPoints: 44,
+            stats: [
+                { id: 1, value: 16 },
+                { id: 2, value: 14 },
+                { id: 3, value: 14 },
+                { id: 4, value: 10 },
+                { id: 5, value: 12 },
+                { id: 6, value: 10 }
+            ],
+            conditions: [
+                { id: 11, level: null }, // Poisoned
+                { id: 4, level: 3 }      // Exhaustion Level 3
+            ],
+            modifiers: {},
+            inventory: [],
+            spells: {}
+        });
+
+        expect(charWithConditions.exhaustionLevel).toBe(3);
+        expect(charWithConditions.activeConditions).toContain('Poisoned');
+        expect(charWithConditions.activeConditions).toContain('Exhaustion');
+
+        const heroHtml = renderHeroSection(charWithConditions);
+        expect(heroHtml).toContain('active-conditions-box');
+        expect(heroHtml).toContain('Active Conditions');
+        expect(heroHtml).toContain('Exhaustion 3');
+        expect(heroHtml).toContain('Poisoned');
+    });
+
+    it('renders Manage Spells button, modal, and [current]/[allowed] spell level ratios', async () => {
+        const { getCharacterSpellLevelLimits, renderSpellsByLevel } = await import('../../../src/views/characterSheet/components/spells');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const charData = parseDndBeyondCharacter({
+            id: 9012,
+            name: 'Spellcaster Hero',
+            classes: [{ level: 5, definition: { name: 'Wizard', hitDice: 6 } }],
+            stats: [
+                { id: 1, value: 10 },
+                { id: 2, value: 14 },
+                { id: 3, value: 14 },
+                { id: 4, value: 18 },
+                { id: 5, value: 12 },
+                { id: 6, value: 10 }
+            ],
+            modifiers: {},
+            inventory: [],
+            spells: {
+                class: [
+                    { definition: { name: 'Fire Bolt', level: 0, school: 'Evocation', description: '<p>Character Pull Fire Bolt</p>' } },
+                    { definition: { name: 'Prestidigitation', level: 0, school: 'Transmutation', description: '<p>Character Pull Prestidigitation</p>' } },
+                    { definition: { name: 'Magic Missile', level: 1, school: 'Evocation', description: '<p>Character Pull Magic Missile</p>' } },
+                    { definition: { name: 'Shield', level: 1, school: 'Abjuration', description: '<p>Character Pull Shield</p>' } },
+                    { definition: { name: 'Fireball', level: 3, school: 'Evocation', description: '<p>Character Pull Fireball</p>' } }
+                ]
+            }
+        });
+
+        charData.spellSlots = [
+            { level: 1, total: 4, used: 1 },
+            { level: 2, total: 3, used: 0 },
+            { level: 3, total: 2, used: 0 }
+        ];
+        charData.allowedSpellsByLevel = { 0: 4, 1: 4, 2: 3, 3: 2 };
+
+        const limits = getCharacterSpellLevelLimits(charData);
+        expect(limits.availableLevels).toEqual([0, 1, 2, 3]);
+        expect(limits.currentByLevel[0].length).toBe(2);
+        expect(limits.allowedByLevel[0]).toBe(4);
+        expect(limits.currentByLevel[1].length).toBe(2);
+        expect(limits.allowedByLevel[1]).toBe(4);
+        expect(limits.currentByLevel[2].length).toBe(0);
+        expect(limits.allowedByLevel[2]).toBe(3);
+        expect(limits.currentByLevel[3].length).toBe(1);
+        expect(limits.allowedByLevel[3]).toBe(2);
+
+        const spellsHtml = renderSpellsByLevel(charData.spells, charData.spellSlots, charData);
+        expect(spellsHtml).toContain('2/4');
+        expect(spellsHtml).toContain('1/2');
+
+        const dynamicHtml = renderSheetContent(charData);
+        expect(dynamicHtml).toContain('id="open-manage-spells-btn"');
+        expect(dynamicHtml).toContain('Manage Spells');
+
+        const modalsHtml = renderModals();
+        expect(modalsHtml).toContain('id="manage-spells-modal-container"');
+        expect(modalsHtml).toContain('id="manage-spells-search-input"');
+        expect(modalsHtml).toContain('id="manage-spells-db-results"');
+        expect(modalsHtml).toContain('id="manage-spells-current-levels"');
     });
 });

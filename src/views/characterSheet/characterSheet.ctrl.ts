@@ -1,5 +1,5 @@
 import el from "@elements";
-import { getData, putData } from "@services/request";
+import { getData, postData, putData } from "@services/request";
 import { parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
@@ -32,6 +32,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
     // Dynamic state
     let activeCharacter: CharacterData | null = null;
+    let activeRawDndBeyondPayload: any = null;
+    let currentEquipOverrides: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }> = [];
     let currentHp = 0;
     let maxHp = 0;
     let tempHp = 0;
@@ -159,10 +161,28 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         activeCharacter.vitals.heroicInspiration = !!activeCharacter.trackingState.heroicInspiration;
         activeCharacter.vitals.currentHp = currentHp;
         activeCharacter.vitals.tempHp = tempHp;
+        if (Array.isArray(activeCharacter.activeConditions)) {
+            activeCharacter.trackingState.activeConditions = [...activeCharacter.activeConditions];
+        }
+        if (typeof activeCharacter.exhaustionLevel === "number") {
+            activeCharacter.trackingState.exhaustionLevel = activeCharacter.exhaustionLevel;
+        }
+        if (activeCharacter.allowedSpellsByLevel) {
+            activeCharacter.trackingState.allowedSpellsByLevel = { ...activeCharacter.allowedSpellsByLevel };
+        }
     }
 
     function applyTrackerSnapshot() {
         if (!activeCharacter) return;
+        if (Array.isArray(activeCharacter.trackingState?.activeConditions)) {
+            activeCharacter.activeConditions = [...activeCharacter.trackingState.activeConditions];
+        }
+        if (typeof activeCharacter.trackingState?.exhaustionLevel === "number") {
+            activeCharacter.exhaustionLevel = activeCharacter.trackingState.exhaustionLevel;
+        }
+        if (activeCharacter.trackingState?.allowedSpellsByLevel) {
+            activeCharacter.allowedSpellsByLevel = { ...activeCharacter.trackingState.allowedSpellsByLevel };
+        }
         const slotState = activeCharacter.trackingState?.slotPips || {};
         Object.keys(slotState).forEach(key => {
             const selector = key === "pact" ? "#pips-lvl-pact .pip" : `#pips-lvl-${key.replace("level", "")} .pip`;
@@ -500,10 +520,62 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         showStatus("Started a new site character. Edit fields and click Save Character.");
     }
 
+    function recalculateFromRawPayload() {
+        if (!activeCharacter || !activeRawDndBeyondPayload) return;
+        try {
+            const recomputed = parseDndBeyondCharacter(
+                activeRawDndBeyondPayload,
+                String(activeCharacter.id || activeCharacterId || ""),
+                currentEquipOverrides
+            );
+            activeCharacter.vitals.armorClass = recomputed.vitals.armorClass;
+            activeCharacter.vitals.initiative = recomputed.vitals.initiative;
+            activeCharacter.vitals.speed = recomputed.vitals.speed;
+            activeCharacter.vitals.proficiencyBonus = recomputed.vitals.proficiencyBonus;
+            activeCharacter.vitals.passivePerception = recomputed.vitals.passivePerception;
+            activeCharacter.vitals.passiveInvestigation = recomputed.vitals.passiveInvestigation;
+            activeCharacter.vitals.passiveInsight = recomputed.vitals.passiveInsight;
+            activeCharacter.vitals.spellSaveDc = recomputed.vitals.spellSaveDc;
+            activeCharacter.vitals.spellAttackBonus = recomputed.vitals.spellAttackBonus;
+            activeCharacter.vitals.spellcastingAbility = recomputed.vitals.spellcastingAbility;
+            activeCharacter.abilities = recomputed.abilities;
+            activeCharacter.skills = recomputed.skills;
+            activeCharacter.weapons = recomputed.weapons;
+            activeCharacter.actions = recomputed.actions;
+
+            // Update Vitals cards in DOM if already rendered
+            const acEl = sheet.querySelector<HTMLElement>(".vital-ac .vital-val");
+            if (acEl) acEl.textContent = String(activeCharacter.vitals.armorClass);
+            const initEl = sheet.querySelector<HTMLElement>(".vital-init .vital-val");
+            if (initEl) {
+                initEl.textContent =
+                    activeCharacter.vitals.initiative >= 0
+                        ? `+${activeCharacter.vitals.initiative}`
+                        : String(activeCharacter.vitals.initiative);
+            }
+            const speedEl = sheet.querySelector<HTMLElement>(".vital-speed .vital-val");
+            if (speedEl) speedEl.textContent = activeCharacter.vitals.speed;
+            const dcEl = sheet.querySelector<HTMLElement>(".vital-dc .vital-val");
+            if (dcEl) dcEl.textContent = String(activeCharacter.vitals.spellSaveDc);
+            const atkEl = sheet.querySelector<HTMLElement>(".vital-attack .vital-val");
+            if (atkEl) atkEl.textContent = `+${activeCharacter.vitals.spellAttackBonus}`;
+            const percEl = sheet.querySelector<HTMLElement>(".vital-passive-perception .vital-val");
+            if (percEl) percEl.textContent = String(activeCharacter.vitals.passivePerception);
+            const invEl = sheet.querySelector<HTMLElement>(".vital-passive-investigation .vital-val");
+            if (invEl) invEl.textContent = String(activeCharacter.vitals.passiveInvestigation);
+            const insEl = sheet.querySelector<HTMLElement>(".vital-passive-insight .vital-val");
+            if (insEl) insEl.textContent = String(activeCharacter.vitals.passiveInsight);
+        } catch (err) {
+            console.warn("Could not recalculate character stats from raw payload:", err);
+        }
+    }
+
     function applyPersistedEquipStates(
         states: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>
     ) {
         if (!states?.length || !activeCharacter) return;
+
+        currentEquipOverrides = [...states];
 
         const stateMap = new Map<string, boolean>();
         states.forEach(state => {
@@ -531,6 +603,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 }
             }
         });
+
+        recalculateFromRawPayload();
     }
 
     async function persistEquipState(
@@ -545,6 +619,16 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         const itemName = decodeURIComponent(encodedName).trim();
         const definitionId =
             rawDefinitionId && !Number.isNaN(Number(rawDefinitionId)) ? Number(rawDefinitionId) : undefined;
+
+        const existingIdx = currentEquipOverrides.findIndex(
+            s => s.scope === scope && s.itemName.toLowerCase() === itemName.toLowerCase()
+        );
+        if (existingIdx >= 0) {
+            currentEquipOverrides[existingIdx].equipped = equipped;
+        } else {
+            currentEquipOverrides.push({ scope, itemName, equipped });
+        }
+        recalculateFromRawPayload();
 
         try {
             await putData("/set-character-equip-state", {
@@ -636,7 +720,12 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
         try {
             const rawData = await getData<any>(`/get-dndbeyond-character?id=${extractedId}`);
+            activeRawDndBeyondPayload = rawData;
+            currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
+            if (parsed.spells?.length) {
+                void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });
+            }
             activeCharacterId = extractedId;
             activeCharacter = parsed;
             activeCharacter.source = "dndbeyond";
@@ -759,6 +848,11 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         closeActionModal: () => { },
         openCustomSpellModal: () => { },
         closeCustomSpellModal: () => { },
+        openManageSpellsModal: async () => { },
+        closeManageSpellsModal: () => { },
+        openConditionsModal: async () => { },
+        closeConditionsModal: () => { },
+        updateHeroConditionsDisplay: () => { },
         getCurrentHp: () => currentHp,
         setCurrentHp: (hp) => {
             currentHp = hp;

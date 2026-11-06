@@ -211,5 +211,155 @@ export function renderModals(): string {
                 </footer>
             </div>
         </div>
+
+        <!-- CONDITIONS & EXHAUSTION MODAL -->
+        <div id="conditions-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-conditions-title">
+            <div class="spell-modal-dialog conditions-modal-dialog">
+                <header class="spell-modal-header">
+                    <div class="spell-modal-title-group">
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-book-skull"></i> D&D 5.5 (2024 Rules)</span>
+                            <span class="modal-badge source-badge" id="conditions-active-count-badge">0 Active</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="modal-conditions-title">Conditions &amp; Exhaustion</h2>
+                        <div class="modal-spell-sub">Toggle active conditions affecting your character and track Exhaustion levels</div>
+                    </div>
+                    <button type="button" class="spell-modal-close" id="conditions-modal-close-btn" aria-label="Close conditions modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </header>
+
+                <div class="spell-modal-body conditions-modal-body">
+                    <div class="exhaustion-tracker-panel" id="exhaustion-tracker-panel">
+                        <div class="exhaustion-tracker-top">
+                            <div class="exhaustion-title-wrap">
+                                <span class="exhaustion-title">
+                                    <i class="fa-solid fa-battery-quarter"></i> Exhaustion Tracker (Levels 1–6)
+                                </span>
+                                <span class="exhaustion-subtitle">
+                                    D&amp;D 5.5: Each level applies <strong>-2 to all D20 Tests</strong> and <strong>-5 ft. Speed</strong>. Level 6 causes <strong>Death</strong>.
+                                </span>
+                            </div>
+                            <button type="button" class="clear-conditions-btn" id="clear-all-conditions-btn" title="Clear all active conditions and reset Exhaustion to 0">
+                                <i class="fa-solid fa-rotate-left"></i> Clear All
+                            </button>
+                        </div>
+
+                        <div class="exhaustion-levels-row" id="exhaustion-levels-row" role="group" aria-label="Exhaustion Level Selector">
+                            <button type="button" class="exhaustion-lvl-btn active" data-exhaustion-level="0">
+                                <span class="lvl-num">0</span>
+                                <span class="lvl-label">None</span>
+                            </button>
+                            <button type="button" class="exhaustion-lvl-btn" data-exhaustion-level="1">
+                                <span class="lvl-num">1</span>
+                                <span class="lvl-label">-2 D20 / -5 ft.</span>
+                            </button>
+                            <button type="button" class="exhaustion-lvl-btn" data-exhaustion-level="2">
+                                <span class="lvl-num">2</span>
+                                <span class="lvl-label">-4 D20 / -10 ft.</span>
+                            </button>
+                            <button type="button" class="exhaustion-lvl-btn" data-exhaustion-level="3">
+                                <span class="lvl-num">3</span>
+                                <span class="lvl-label">-6 D20 / -15 ft.</span>
+                            </button>
+                            <button type="button" class="exhaustion-lvl-btn" data-exhaustion-level="4">
+                                <span class="lvl-num">4</span>
+                                <span class="lvl-label">-8 D20 / -20 ft.</span>
+                            </button>
+                            <button type="button" class="exhaustion-lvl-btn" data-exhaustion-level="5">
+                                <span class="lvl-num">5</span>
+                                <span class="lvl-label">-10 D20 / -25 ft.</span>
+                            </button>
+                            <button type="button" class="exhaustion-lvl-btn deadly" data-exhaustion-level="6">
+                                <span class="lvl-num">6</span>
+                                <span class="lvl-label"><i class="fa-solid fa-skull"></i> Death</span>
+                            </button>
+                        </div>
+
+                        <div class="exhaustion-effects-banner" id="exhaustion-effects-banner">
+                            No Exhaustion penalties currently active.
+                        </div>
+                    </div>
+
+                    <div class="conditions-grid-list" id="conditions-modal-list">
+                    </div>
+                </div>
+
+                <footer class="spell-modal-footer">
+                    <span id="modal-conditions-source" class="modal-footer-source">Source: D&amp;D 5.5 (2024) Conditions Database</span>
+                    <button type="button" class="modal-action-btn" id="modal-conditions-close-action-btn">Done</button>
+                </footer>
+            </div>
+        </div>
+
+        <!-- MANAGE SPELLS MODAL -->
+        <div id="manage-spells-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-manage-spells-title">
+            <div class="spell-modal-dialog manage-spells-modal-dialog">
+                <header class="spell-modal-header">
+                    <div class="spell-modal-title-group">
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-database"></i> Spell Database</span>
+                            <span class="modal-badge source-badge" id="manage-spells-total-badge">0 Spells</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="modal-manage-spells-title">Manage Spells</h2>
+                        <div class="modal-spell-sub">Search spells in the database to add to your sheet, and review your current spells by level</div>
+                    </div>
+                    <button type="button" class="spell-modal-close" id="manage-spells-close-btn" aria-label="Close manage spells modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </header>
+
+                <div class="spell-modal-body manage-spells-modal-body">
+                    <div class="manage-spells-layout">
+                        <!-- Left Panel: Search Database Spells -->
+                        <div class="manage-spells-search-panel">
+                            <div class="manage-panel-header">
+                                <h3><i class="fa-solid fa-magnifying-glass"></i> Search Database Spells</h3>
+                                <span class="manage-db-count" id="manage-db-results-count">0 found</span>
+                            </div>
+                            <div class="manage-search-controls">
+                                <input
+                                    type="text"
+                                    id="manage-spells-search-input"
+                                    class="manage-spells-search-input"
+                                    placeholder="Search database by spell name, school, or effect..."
+                                    autocomplete="off"
+                                />
+                                <select id="manage-spells-level-select" class="manage-spells-level-select" aria-label="Filter database spells by level">
+                                    <option value="all">All Levels</option>
+                                    <option value="0">Cantrip (0)</option>
+                                    <option value="1">1st Level</option>
+                                    <option value="2">2nd Level</option>
+                                    <option value="3">3rd Level</option>
+                                    <option value="4">4th Level</option>
+                                    <option value="5">5th Level</option>
+                                    <option value="6">6th Level</option>
+                                    <option value="7">7th Level</option>
+                                    <option value="8">8th Level</option>
+                                    <option value="9">9th Level</option>
+                                </select>
+                            </div>
+                            <div class="manage-db-results-list" id="manage-spells-db-results">
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Character's Abbreviated Spell List by Available Level -->
+                        <div class="manage-spells-current-panel">
+                            <div class="manage-panel-header">
+                                <h3><i class="fa-solid fa-list-check"></i> Character's Current Spells</h3>
+                                <span class="manage-panel-hint">Current / Allowed per level</span>
+                            </div>
+                            <div class="manage-current-levels-list" id="manage-spells-current-levels">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="spell-modal-footer">
+                    <span class="modal-footer-source">Changes automatically update your character sheet</span>
+                    <button type="button" class="modal-action-btn" id="manage-spells-done-btn">Done</button>
+                </footer>
+            </div>
+        </div>
     `;
 }

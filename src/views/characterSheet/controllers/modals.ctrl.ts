@@ -1,6 +1,8 @@
 import { getData, postData } from "@services/request";
-import { SpellDefinition } from "../characterData";
+import { ConditionDefinition, DEFAULT_DND55_CONDITIONS, darvellData, SpellDefinition } from "../characterData";
+import { getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
 import { CharacterSheetContext } from "./context";
+import { initSpellsController } from "./spells.ctrl";
 
 export function initModalsController(ctx: CharacterSheetContext) {
     const sheet = ctx.sheet;
@@ -55,6 +57,581 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const customSpellForm = sheet.querySelector<HTMLFormElement>("#custom-spell-form");
     const customSpellStatus = sheet.querySelector<HTMLElement>("#custom-spell-status");
 
+    // Conditions modal elements
+    const conditionsModalBackdrop = sheet.querySelector<HTMLElement>("#conditions-modal-container");
+    const conditionsModalCloseBtn = sheet.querySelector<HTMLButtonElement>("#conditions-modal-close-btn");
+    const conditionsModalDoneBtn = sheet.querySelector<HTMLButtonElement>("#modal-conditions-close-action-btn");
+    const conditionsModalList = sheet.querySelector<HTMLElement>("#conditions-modal-list");
+    const conditionsActiveCountBadge = sheet.querySelector<HTMLElement>("#conditions-active-count-badge");
+    const exhaustionLevelsRow = sheet.querySelector<HTMLElement>("#exhaustion-levels-row");
+    const exhaustionEffectsBanner = sheet.querySelector<HTMLElement>("#exhaustion-effects-banner");
+    const clearAllConditionsBtn = sheet.querySelector<HTMLButtonElement>("#clear-all-conditions-btn");
+    const conditionsSourceLabel = sheet.querySelector<HTMLElement>("#modal-conditions-source");
+
+    // Manage Spells modal elements
+    const manageSpellsBackdrop = sheet.querySelector<HTMLElement>("#manage-spells-modal-container");
+    const manageSpellsCloseBtn = sheet.querySelector<HTMLButtonElement>("#manage-spells-close-btn");
+    const manageSpellsDoneBtn = sheet.querySelector<HTMLButtonElement>("#manage-spells-done-btn");
+    const manageSpellsSearchInput = sheet.querySelector<HTMLInputElement>("#manage-spells-search-input");
+    const manageSpellsLevelSelect = sheet.querySelector<HTMLSelectElement>("#manage-spells-level-select");
+    const manageSpellsDbResults = sheet.querySelector<HTMLElement>("#manage-spells-db-results");
+    const manageSpellsCurrentLevels = sheet.querySelector<HTMLElement>("#manage-spells-current-levels");
+    const manageSpellsTotalBadge = sheet.querySelector<HTMLElement>("#manage-spells-total-badge");
+    const manageDbResultsCount = sheet.querySelector<HTMLElement>("#manage-db-results-count");
+
+    let cachedConditions: ConditionDefinition[] = [...DEFAULT_DND55_CONDITIONS];
+    let hasFetchedDbConditions = false;
+
+    let cachedDbSpells: SpellDefinition[] = [];
+    let manageSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function getActiveConditionsState(): { activeSet: Set<string>; exhaustionLevel: number } {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) {
+            return { activeSet: new Set<string>(), exhaustionLevel: 0 };
+        }
+        const rawList = activeCharacter.trackingState?.activeConditions ?? activeCharacter.activeConditions ?? [];
+        const exhaustionLevel = Math.max(
+            0,
+            Math.min(6, Number(activeCharacter.trackingState?.exhaustionLevel ?? activeCharacter.exhaustionLevel ?? 0) || 0)
+        );
+        const activeSet = new Set<string>(rawList.map(c => String(c || "").trim()).filter(Boolean));
+        if (exhaustionLevel > 0) {
+            activeSet.add("Exhaustion");
+        } else {
+            Array.from(activeSet).forEach(c => {
+                if (c.toLowerCase() === "exhaustion") activeSet.delete(c);
+            });
+        }
+        return { activeSet, exhaustionLevel };
+    }
+
+    function commitConditionsState(activeSet: Set<string>, exhaustionLevel: number) {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        const clampedExhaustion = Math.max(0, Math.min(6, Number(exhaustionLevel) || 0));
+        if (clampedExhaustion > 0) {
+            activeSet.add("Exhaustion");
+        } else {
+            Array.from(activeSet).forEach(c => {
+                if (c.toLowerCase() === "exhaustion") activeSet.delete(c);
+            });
+        }
+
+        const list = Array.from(activeSet);
+        activeCharacter.activeConditions = list;
+        activeCharacter.exhaustionLevel = clampedExhaustion;
+
+        if (!activeCharacter.trackingState) {
+            activeCharacter.trackingState = {};
+        }
+        activeCharacter.trackingState.activeConditions = list;
+        activeCharacter.trackingState.exhaustionLevel = clampedExhaustion;
+
+        ctx.updateHeroConditionsDisplay();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function renderConditionsModalContent() {
+        const { activeSet, exhaustionLevel } = getActiveConditionsState();
+        const activeLowerSet = new Set(Array.from(activeSet).map(c => c.toLowerCase()));
+
+        // Update active count badge
+        if (conditionsActiveCountBadge) {
+            const count = activeLowerSet.size;
+            conditionsActiveCountBadge.textContent = `${count} Active`;
+            conditionsActiveCountBadge.classList.toggle("has-active", count > 0);
+        }
+
+        // Update Exhaustion level buttons
+        if (exhaustionLevelsRow) {
+            exhaustionLevelsRow.querySelectorAll<HTMLButtonElement>(".exhaustion-lvl-btn").forEach(btn => {
+                const lvl = Number(btn.getAttribute("data-exhaustion-level") || "0");
+                const isSelected = lvl === exhaustionLevel;
+                const isReached = exhaustionLevel > 0 && lvl > 0 && lvl <= exhaustionLevel;
+                btn.classList.toggle("active", isSelected);
+                btn.classList.toggle("reached", isReached);
+                btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+            });
+        }
+
+        // Update Exhaustion effects banner
+        if (exhaustionEffectsBanner) {
+            if (exhaustionLevel <= 0) {
+                exhaustionEffectsBanner.className = "exhaustion-effects-banner";
+                exhaustionEffectsBanner.innerHTML = `<i class="fa-solid fa-circle-check"></i> No Exhaustion penalties currently active.`;
+            } else if (exhaustionLevel >= 6) {
+                exhaustionEffectsBanner.className = "exhaustion-effects-banner active deadly";
+                exhaustionEffectsBanner.innerHTML = `<i class="fa-solid fa-skull"></i> <strong>Exhaustion Level 6:</strong> Roll penalty <strong>-12</strong> to all D20 Tests • Speed reduced by <strong>30 ft.</strong> • <strong>You Die.</strong>`;
+            } else {
+                const d20Penalty = exhaustionLevel * 2;
+                const speedPenalty = exhaustionLevel * 5;
+                exhaustionEffectsBanner.className = "exhaustion-effects-banner active";
+                exhaustionEffectsBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>Exhaustion Level ${exhaustionLevel}:</strong> <strong>-${d20Penalty}</strong> to all D20 Tests (attack rolls, ability checks, saving throws) • <strong>-${speedPenalty} ft.</strong> to Speed.`;
+            }
+        }
+
+        // Render condition cards
+        if (conditionsModalList) {
+            conditionsModalList.innerHTML = cachedConditions
+                .map(cond => {
+                    const isExhaustion = cond.slug === "exhaustion" || cond.name.toLowerCase() === "exhaustion";
+                    const isActive = isExhaustion ? exhaustionLevel > 0 : activeLowerSet.has(cond.name.toLowerCase());
+                    const statusBadge = isExhaustion
+                        ? (exhaustionLevel > 0 ? `Active (Lvl ${exhaustionLevel})` : "Inactive")
+                        : (isActive ? "Active" : "Inactive");
+
+                    return `
+                        <article class="condition-modal-card ${isActive ? 'is-active' : ''}" data-condition-name="${cond.name}" data-condition-slug="${cond.slug}">
+                            <div class="condition-card-header">
+                                <div class="condition-card-title-group">
+                                    <span class="condition-card-icon"><i class="${cond.icon || 'fa-solid fa-circle-exclamation'}"></i></span>
+                                    <div>
+                                        <h3 class="condition-card-name">${cond.name}</h3>
+                                        <p class="condition-card-summary">${cond.summary}</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="condition-toggle-btn ${isActive ? 'active' : ''}" data-toggle-condition="${cond.name}" aria-pressed="${isActive ? 'true' : 'false'}">
+                                    <i class="fa-solid ${isActive ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                                    <span>${statusBadge}</span>
+                                </button>
+                            </div>
+                            <div class="condition-card-body">
+                                ${cond.description}
+                            </div>
+                        </article>
+                    `;
+                })
+                .join("");
+
+            conditionsModalList.querySelectorAll<HTMLButtonElement>(".condition-toggle-btn[data-toggle-condition]").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const condName = btn.getAttribute("data-toggle-condition");
+                    if (!condName) return;
+                    toggleConditionByName(condName);
+                });
+            });
+
+            conditionsModalList.querySelectorAll<HTMLElement>(".condition-modal-card[data-condition-name]").forEach(card => {
+                card.addEventListener("click", () => {
+                    const condName = card.getAttribute("data-condition-name");
+                    if (!condName) return;
+                    toggleConditionByName(condName);
+                });
+            });
+        }
+    }
+
+    function toggleConditionByName(condName: string) {
+        const { activeSet, exhaustionLevel } = getActiveConditionsState();
+        const isExhaustion = condName.toLowerCase() === "exhaustion";
+
+        if (isExhaustion) {
+            const nextExhaustion = exhaustionLevel > 0 ? 0 : 1;
+            commitConditionsState(activeSet, nextExhaustion);
+        } else {
+            const existing = Array.from(activeSet).find(c => c.toLowerCase() === condName.toLowerCase());
+            if (existing) {
+                activeSet.delete(existing);
+            } else {
+                activeSet.add(condName);
+            }
+            commitConditionsState(activeSet, exhaustionLevel);
+        }
+        renderConditionsModalContent();
+    }
+
+    async function openConditionsModal() {
+        if (!conditionsModalBackdrop) return;
+
+        renderConditionsModalContent();
+        conditionsModalBackdrop.classList.remove("hidden");
+        conditionsModalBackdrop.classList.add("visible");
+        conditionsModalBackdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        conditionsModalCloseBtn?.focus();
+
+        if (!hasFetchedDbConditions) {
+            try {
+                const res = await getData<{ conditions?: ConditionDefinition[] }>("/get-conditions");
+                if (Array.isArray(res?.conditions) && res.conditions.length > 0) {
+                    cachedConditions = res.conditions;
+                    hasFetchedDbConditions = true;
+                    if (conditionsSourceLabel) {
+                        conditionsSourceLabel.textContent = "Source: Database (conditions table • D&D 5.5 2024 Rules)";
+                    }
+                    renderConditionsModalContent();
+                }
+            } catch {
+                // Keep DEFAULT_DND55_CONDITIONS fallback
+            }
+        }
+    }
+
+    function closeConditionsModal() {
+        if (!conditionsModalBackdrop) return;
+        conditionsModalBackdrop.classList.remove("visible");
+        conditionsModalBackdrop.classList.add("hidden");
+        conditionsModalBackdrop.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+
+    // Manage Spells Modal Logic
+    function refreshSheetSpellsView() {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        ctx.spellMap.clear();
+        activeCharacter.spells.forEach(s => {
+            ctx.spellMap.set(s.name.toLowerCase(), s);
+        });
+
+        const spellsGrid = sheet.querySelector<HTMLElement>("#spells-grid");
+        if (spellsGrid) {
+            spellsGrid.innerHTML = renderSpellsByLevel(activeCharacter.spells, activeCharacter.spellSlots, activeCharacter);
+        }
+
+        const tabSpellsCount = sheet.querySelector<HTMLElement>("#tab-spells-count");
+        if (tabSpellsCount) {
+            tabSpellsCount.textContent = `(${activeCharacter.spells.length})`;
+        }
+
+        const allChip = sheet.querySelector<HTMLButtonElement>('#spell-filter-chips .filter-chip[data-filter="all"]');
+        if (allChip) {
+            allChip.textContent = `All (${activeCharacter.spells.length})`;
+        }
+
+        initSpellsController(ctx);
+        ctx.syncHeaderSlotMarkers();
+    }
+
+    function renderManageCurrentSpellsPanel() {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter || !manageSpellsCurrentLevels) return;
+
+        const { availableLevels, allowedByLevel, currentByLevel } = getCharacterSpellLevelLimits(activeCharacter);
+
+        if (manageSpellsTotalBadge) {
+            manageSpellsTotalBadge.textContent = `${activeCharacter.spells.length} Spells on Sheet`;
+        }
+
+        manageSpellsCurrentLevels.innerHTML = availableLevels
+            .map(lvl => {
+                const levelSpells = currentByLevel[lvl] || [];
+                const allowed = allowedByLevel[lvl] ?? levelSpells.length;
+                const isOverLimit = levelSpells.length > allowed;
+                const isAtLimit = levelSpells.length === allowed && allowed > 0;
+
+                const spellsListHtml = levelSpells.length > 0
+                    ? `<ul class="manage-abbrev-spell-list">
+                        ${levelSpells.map(s => `
+                            <li class="manage-abbrev-spell-row" data-current-spell-name="${encodeURIComponent(s.name)}">
+                                <div class="manage-abbrev-spell-main" data-preview-spell-name="${encodeURIComponent(s.name)}" title="Click to view spell description">
+                                    <span class="manage-abbrev-spell-name">${s.name}</span>
+                                    <span class="manage-abbrev-spell-meta">${s.school} • ${s.castingTime}</span>
+                                    ${s.concentration ? '<span class="manage-mini-tag conc">C</span>' : ''}
+                                    ${s.ritual ? '<span class="manage-mini-tag ritual">R</span>' : ''}
+                                </div>
+                                <button type="button" class="manage-remove-spell-btn" data-remove-spell-name="${encodeURIComponent(s.name)}" title="Remove ${s.name} from character spell list" aria-label="Remove ${s.name}">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </li>
+                        `).join("")}
+                    </ul>`
+                    : `<div class="manage-empty-level-note">No ${spellLevelLabel(lvl).toLowerCase()} added yet.</div>`;
+
+                return `
+                    <div class="manage-level-group" data-manage-spell-level="${lvl}">
+                        <div class="manage-level-header">
+                            <span class="manage-level-title">${spellLevelLabel(lvl)}</span>
+                            <div class="manage-level-allowance-controls">
+                                <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="-1" title="Decrease allowed spells for ${spellLevelLabel(lvl)}" aria-label="Decrease allowed spells for ${spellLevelLabel(lvl)}">&minus;</button>
+                                <span class="manage-level-ratio ${isOverLimit ? 'over-limit' : isAtLimit ? 'at-limit' : ''}" data-level-ratio="${lvl}" title="${levelSpells.length} spells currently on sheet / ${allowed} spells allowed for ${spellLevelLabel(lvl)}">
+                                    ${levelSpells.length}/${allowed}
+                                </span>
+                                <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="1" title="Increase allowed spells for ${spellLevelLabel(lvl)}" aria-label="Increase allowed spells for ${spellLevelLabel(lvl)}">+</button>
+                            </div>
+                        </div>
+                        ${spellsListHtml}
+                    </div>
+                `;
+            })
+            .join("");
+
+        // Wire remove buttons
+        manageSpellsCurrentLevels.querySelectorAll<HTMLButtonElement>(".manage-remove-spell-btn[data-remove-spell-name]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const encoded = btn.getAttribute("data-remove-spell-name");
+                if (!encoded) return;
+                removeSpellFromCharacter(decodeURIComponent(encoded));
+            });
+        });
+
+        // Wire preview click on spell name
+        manageSpellsCurrentLevels.querySelectorAll<HTMLElement>(".manage-abbrev-spell-main[data-preview-spell-name]").forEach(row => {
+            row.addEventListener("click", () => {
+                const encoded = row.getAttribute("data-preview-spell-name");
+                if (!encoded) return;
+                void openSpellModal(encoded);
+            });
+        });
+
+        // Wire allowed spell limit step buttons (- / +)
+        manageSpellsCurrentLevels.querySelectorAll<HTMLButtonElement>(".manage-limit-step-btn[data-adjust-level]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const lvl = Number(btn.getAttribute("data-adjust-level") || "0");
+                const delta = Number(btn.getAttribute("data-adjust-delta") || "0");
+                adjustAllowedSpellsForLevel(lvl, delta);
+            });
+        });
+    }
+
+    function adjustAllowedSpellsForLevel(level: number, delta: number) {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        const { allowedByLevel } = getCharacterSpellLevelLimits(activeCharacter);
+        const currentAllowed = allowedByLevel[level] ?? 0;
+        const nextAllowed = Math.max(0, currentAllowed + delta);
+
+        if (!activeCharacter.allowedSpellsByLevel) {
+            activeCharacter.allowedSpellsByLevel = { ...allowedByLevel };
+        }
+        activeCharacter.allowedSpellsByLevel[level] = nextAllowed;
+
+        if (!activeCharacter.trackingState) {
+            activeCharacter.trackingState = {};
+        }
+        if (!activeCharacter.trackingState.allowedSpellsByLevel) {
+            activeCharacter.trackingState.allowedSpellsByLevel = { ...allowedByLevel };
+        }
+        activeCharacter.trackingState.allowedSpellsByLevel[level] = nextAllowed;
+
+        renderManageCurrentSpellsPanel();
+        refreshSheetSpellsView();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function addSpellToCharacter(spell: SpellDefinition) {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        const exists = activeCharacter.spells.some(s => s.name.toLowerCase() === spell.name.toLowerCase());
+        if (!exists) {
+            activeCharacter.spells.push({
+                id: spell.id,
+                name: spell.name,
+                level: Number(spell.level) || 0,
+                school: spell.school || "Universal",
+                source: spell.source || "Database",
+                castingTime: spell.castingTime || "1 Action",
+                range: spell.range || "Self",
+                duration: spell.duration || "Instantaneous",
+                components: spell.components || "V, S",
+                concentration: !!spell.concentration,
+                ritual: !!spell.ritual,
+                description: spell.description || "<p>No description provided.</p>",
+                imageUrl: spell.imageUrl
+            });
+            activeCharacter.spells.sort((a, b) => {
+                if (a.level !== b.level) return a.level - b.level;
+                return a.name.localeCompare(b.name);
+            });
+        }
+
+        renderManageCurrentSpellsPanel();
+        renderManageDbSearchResults();
+        refreshSheetSpellsView();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function removeSpellFromCharacter(spellName: string) {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        activeCharacter.spells = activeCharacter.spells.filter(
+            s => s.name.toLowerCase() !== spellName.toLowerCase()
+        );
+
+        renderManageCurrentSpellsPanel();
+        renderManageDbSearchResults();
+        refreshSheetSpellsView();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function renderManageDbSearchResults() {
+        const activeCharacter = ctx.getCharacter();
+        if (!manageSpellsDbResults) return;
+
+        const currentNames = new Set(
+            (activeCharacter?.spells || []).map(s => s.name.toLowerCase())
+        );
+
+        if (manageDbResultsCount) {
+            manageDbResultsCount.textContent = `${cachedDbSpells.length} found`;
+        }
+
+        if (cachedDbSpells.length === 0) {
+            manageSpellsDbResults.innerHTML = `
+                <div class="manage-db-empty">
+                    <i class="fa-solid fa-book-open"></i>
+                    <p>No matching spells found in database.</p>
+                </div>
+            `;
+            return;
+        }
+
+        manageSpellsDbResults.innerHTML = cachedDbSpells
+            .map((spell, idx) => {
+                const isAdded = currentNames.has(spell.name.toLowerCase());
+                const lvlBadge = Number(spell.level) === 0 ? "Cantrip" : `Lvl ${spell.level}`;
+                return `
+                    <div class="manage-db-spell-card ${isAdded ? 'is-added' : ''}" data-db-spell-idx="${idx}">
+                        <div class="manage-db-spell-info" data-preview-db-idx="${idx}" title="Click to preview full description">
+                            <div class="manage-db-spell-title-row">
+                                <span class="manage-db-spell-name">${spell.name}</span>
+                                <span class="manage-db-lvl-pill">${lvlBadge}</span>
+                                <span class="manage-db-school">${spell.school || 'Universal'}</span>
+                            </div>
+                            <div class="manage-db-spell-sub">
+                                <span><i class="fa-regular fa-clock"></i> ${spell.castingTime || '1 Action'}</span>
+                                <span><i class="fa-solid fa-bullseye"></i> ${spell.range || 'Self'}</span>
+                                ${spell.concentration ? '<span class="manage-mini-tag conc">Conc</span>' : ''}
+                                ${spell.ritual ? '<span class="manage-mini-tag ritual">Ritual</span>' : ''}
+                                ${spell.source ? `<span class="manage-db-source">${spell.source}</span>` : ''}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="manage-db-action-btn ${isAdded ? 'added' : 'add'}"
+                            data-db-action-idx="${idx}"
+                            title="${isAdded ? 'Click to remove from character' : 'Add spell to character sheet'}"
+                        >
+                            ${isAdded ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> Add'}
+                        </button>
+                    </div>
+                `;
+            })
+            .join("");
+
+        manageSpellsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-action-btn[data-db-action-idx]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const idx = Number(btn.getAttribute("data-db-action-idx") || "-1");
+                const spell = cachedDbSpells[idx];
+                if (!spell) return;
+                const activeChar = ctx.getCharacter();
+                const alreadyAdded = activeChar?.spells.some(s => s.name.toLowerCase() === spell.name.toLowerCase());
+                if (alreadyAdded) {
+                    removeSpellFromCharacter(spell.name);
+                } else {
+                    addSpellToCharacter(spell);
+                }
+            });
+        });
+
+        manageSpellsDbResults.querySelectorAll<HTMLElement>(".manage-db-spell-info[data-preview-db-idx]").forEach(info => {
+            info.addEventListener("click", () => {
+                const idx = Number(info.getAttribute("data-preview-db-idx") || "-1");
+                const spell = cachedDbSpells[idx];
+                if (!spell) return;
+                ctx.spellMap.set(spell.name.toLowerCase(), spell);
+                void openSpellModal(encodeURIComponent(spell.name), spell.id);
+            });
+        });
+    }
+
+    async function fetchDatabaseSpellsForManageModal() {
+        const q = (manageSpellsSearchInput?.value || "").trim();
+        const levelVal = manageSpellsLevelSelect?.value || "all";
+
+        const params = new URLSearchParams();
+        if (q) params.set("q", q);
+        if (levelVal && levelVal !== "all") params.set("level", levelVal);
+
+        let dbList: SpellDefinition[] = [];
+        try {
+            const res = await getData<{ spells?: any[] }>(`/search-spells?${params.toString()}`);
+            if (Array.isArray(res?.spells)) {
+                dbList = res.spells.map(s => ({
+                    id: s.dndBeyondId || s.id,
+                    name: s.name,
+                    level: Number(s.level) || 0,
+                    school: s.school || "Universal",
+                    source: s.source || "Database",
+                    castingTime: s.castingTime || "1 Action",
+                    range: s.range || "Self",
+                    duration: s.duration || "Instantaneous",
+                    components: s.components || "V, S",
+                    concentration: !!s.concentration,
+                    ritual: !!s.ritual,
+                    description: s.description || "<p>No description provided.</p>",
+                    imageUrl: s.imageUrl
+                }));
+            }
+        } catch {
+            // Fallback to in-memory spells if offline / uninitialized DB
+        }
+
+        // Merge with character's current pull spells and default Darvell spells if DB was empty (offline/test fallback)
+        if (dbList.length === 0) {
+            const activeCharacter = ctx.getCharacter();
+            const fallbackMap = new Map<string, SpellDefinition>();
+            [...(activeCharacter?.spells || []), ...(darvellData.spells || [])].forEach(s => {
+                fallbackMap.set(s.name.toLowerCase(), s);
+            });
+            dbList = Array.from(fallbackMap.values()).filter(spell => {
+                if (levelVal !== "all" && Number(spell.level) !== Number(levelVal)) return false;
+                if (!q) return true;
+                const haystack = `${spell.name} ${spell.school} ${spell.source} ${spell.description}`.toLowerCase();
+                return haystack.includes(q.toLowerCase());
+            });
+            dbList.sort((a, b) => (a.level !== b.level ? a.level - b.level : a.name.localeCompare(b.name)));
+        }
+
+        cachedDbSpells = dbList;
+        renderManageDbSearchResults();
+    }
+
+    async function openManageSpellsModal() {
+        if (!manageSpellsBackdrop) return;
+
+        renderManageCurrentSpellsPanel();
+        manageSpellsBackdrop.classList.remove("hidden");
+        manageSpellsBackdrop.classList.add("visible");
+        manageSpellsBackdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        manageSpellsSearchInput?.focus();
+
+        // Ensure current character's pull spells are synced to the database first
+        const activeCharacter = ctx.getCharacter();
+        if (activeCharacter?.spells?.length) {
+            try {
+                await postData("/sync-character-spells", { spells: activeCharacter.spells });
+            } catch {
+                // Ignore sync errors in offline mode
+            }
+        }
+
+        await fetchDatabaseSpellsForManageModal();
+    }
+
+    function closeManageSpellsModal() {
+        if (!manageSpellsBackdrop) return;
+        manageSpellsBackdrop.classList.remove("visible");
+        manageSpellsBackdrop.classList.add("hidden");
+        manageSpellsBackdrop.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+
     function showCustomSpellStatus(message: string, isError = false) {
         if (!customSpellStatus) return;
         customSpellStatus.textContent = message;
@@ -103,14 +680,36 @@ export function initModalsController(ctx: CharacterSheetContext) {
             }
         }
 
-        if (modalSource) modalSource.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Loading independent spell info...`;
-        if (modalDescription) modalDescription.innerHTML = localSpell ? localSpell.description : "<p><em>Loading spell details...</em></p>";
+        const hasCharacterPullDefinition = Boolean(
+            localSpell &&
+            localSpell.description &&
+            localSpell.description.trim() !== "" &&
+            localSpell.description.trim() !== "<p>No description provided.</p>"
+        );
+
+        if (modalDescription) {
+            modalDescription.innerHTML = hasCharacterPullDefinition
+                ? localSpell!.description
+                : "<p><em>Loading spell details...</em></p>";
+        }
+
+        if (modalSource) {
+            modalSource.innerHTML = hasCharacterPullDefinition
+                ? `<strong>Source:</strong> Character Pull (${localSpell?.source || "D&D Beyond"})`
+                : `<i class="fa-solid fa-spinner fa-spin"></i> Loading spell info from database...`;
+        }
 
         modalBackdrop.classList.remove("hidden");
         modalBackdrop.classList.add("visible");
         modalBackdrop.setAttribute("aria-hidden", "false");
         document.body.style.overflow = "hidden";
         modalCloseBtn?.focus();
+
+        // Prefer the spell definition that came in with the character pull, and persist it into the database
+        if (hasCharacterPullDefinition && localSpell) {
+            void postData("/sync-character-spells", { spells: [localSpell] }).catch(() => { });
+            return;
+        }
 
         try {
             const spellQuery = new URLSearchParams();
@@ -445,10 +1044,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
     ctx.closeSpellModal = closeSpellModal;
     ctx.openCustomSpellModal = openCustomSpellModal;
     ctx.closeCustomSpellModal = closeCustomSpellModal;
+    ctx.openManageSpellsModal = openManageSpellsModal;
+    ctx.closeManageSpellsModal = closeManageSpellsModal;
     ctx.openItemModal = openItemModal;
     ctx.closeItemModal = closeItemModal;
     ctx.openActionModal = openActionModal;
     ctx.closeActionModal = closeActionModal;
+    ctx.openConditionsModal = openConditionsModal;
+    ctx.closeConditionsModal = closeConditionsModal;
 
     // Listeners
     modalCloseBtn?.addEventListener("click", closeSpellModal);
@@ -481,6 +1084,47 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (event.target === customSpellModal) {
             closeCustomSpellModal();
         }
+    });
+
+    conditionsModalCloseBtn?.addEventListener("click", closeConditionsModal);
+    conditionsModalDoneBtn?.addEventListener("click", closeConditionsModal);
+    conditionsModalBackdrop?.addEventListener("click", (event) => {
+        if (event.target === conditionsModalBackdrop) {
+            closeConditionsModal();
+        }
+    });
+
+    manageSpellsCloseBtn?.addEventListener("click", closeManageSpellsModal);
+    manageSpellsDoneBtn?.addEventListener("click", closeManageSpellsModal);
+    manageSpellsBackdrop?.addEventListener("click", (event) => {
+        if (event.target === manageSpellsBackdrop) {
+            closeManageSpellsModal();
+        }
+    });
+
+    manageSpellsSearchInput?.addEventListener("input", () => {
+        if (manageSearchTimer) clearTimeout(manageSearchTimer);
+        manageSearchTimer = setTimeout(() => {
+            void fetchDatabaseSpellsForManageModal();
+        }, 180);
+    });
+
+    manageSpellsLevelSelect?.addEventListener("change", () => {
+        void fetchDatabaseSpellsForManageModal();
+    });
+
+    exhaustionLevelsRow?.querySelectorAll<HTMLButtonElement>(".exhaustion-lvl-btn[data-exhaustion-level]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lvl = Math.max(0, Math.min(6, Number(btn.getAttribute("data-exhaustion-level") || "0")));
+            const { activeSet } = getActiveConditionsState();
+            commitConditionsState(activeSet, lvl);
+            renderConditionsModalContent();
+        });
+    });
+
+    clearAllConditionsBtn?.addEventListener("click", () => {
+        commitConditionsState(new Set<string>(), 0);
+        renderConditionsModalContent();
     });
 
     // Custom spell form submission
@@ -582,6 +1226,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (actionModalBackdrop && !actionModalBackdrop.classList.contains("hidden")) {
                 closeActionModal();
             }
+            if (conditionsModalBackdrop && !conditionsModalBackdrop.classList.contains("hidden")) {
+                closeConditionsModal();
+            }
+            if (manageSpellsBackdrop && !manageSpellsBackdrop.classList.contains("hidden")) {
+                closeManageSpellsModal();
+            }
         }
     });
 
@@ -593,6 +1243,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
         openActionModal,
         closeActionModal,
         openCustomSpellModal,
-        closeCustomSpellModal
+        closeCustomSpellModal,
+        openManageSpellsModal,
+        closeManageSpellsModal,
+        openConditionsModal,
+        closeConditionsModal
     };
 }

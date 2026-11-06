@@ -31,6 +31,12 @@ export function initSpellsController(ctx: CharacterSheetContext) {
         });
     });
 
+    // Manage Spells modal open button
+    const openManageSpellsBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-spells-btn");
+    openManageSpellsBtn?.addEventListener("click", () => {
+        void ctx.openManageSpellsModal();
+    });
+
     // Custom spell modal open button
     const openCustomSpellBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-spell-btn");
     openCustomSpellBtn?.addEventListener("click", () => {
