@@ -5,6 +5,7 @@ import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
 import BaseController from "./baseController";
 import SessionController, { ReqAndUser } from "./sessionController";
+import SpellController from "./spellController";
 
 export default class CharacterController extends BaseController {
     public static async getDndBeyondCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -441,6 +442,10 @@ export default class CharacterController extends BaseController {
 
             const saved = await repo.save(record);
             const parsed = this.tryParsePayload(saved.payload) || payloadToSave;
+
+            if (Array.isArray((inputCharacter as any).spells) && (inputCharacter as any).spells.length > 0) {
+                await SpellController.upsertSpellsFromCharacter((inputCharacter as any).spells);
+            }
 
             return {
                 response: JSON.stringify({

@@ -28,6 +28,183 @@ function isLegacySrdSource(source?: string): boolean {
 }
 
 export default class SpellController extends BaseController {
+    /**
+     * Upserts spell definitions that come in with a character pull into the local database.
+     * Always prefers character-pull definitions over free online (Open5e / SRD) definitions.
+     */
+    public static async upsertSpellsFromCharacter(spells: Array<any>): Promise<number> {
+        if (!Array.isArray(spells) || spells.length === 0 || !AppDataSource.isInitialized) {
+            return 0;
+        }
+
+        let savedCount = 0;
+        const normalizeCastingTime = (val: unknown): string => {
+            const raw = String(val || "1 Action").trim();
+            if (/^which you take/i.test(raw)) {
+                return "1 Reaction";
+            }
+            return raw.slice(0, 100);
+        };
+
+        try {
+            const spellRepo = AppDataSource.getRepository(Spell);
+
+            for (const rawSpell of spells) {
+                try {
+                    const name = String(rawSpell?.name || "").trim().slice(0, 255);
+                    const description = String(rawSpell?.description || "").trim();
+                    if (!name || !description || description === "<p>No description provided.</p>") {
+                        continue;
+                    }
+
+                    const slug = slugify(name).slice(0, 255);
+                    if (!slug) continue;
+
+                    const parsedId = Number(rawSpell?.id ?? rawSpell?.dndBeyondId);
+                    const dndBeyondId = !Number.isNaN(parsedId) && parsedId > 0 ? parsedId : undefined;
+
+                    let existing = await spellRepo.findOne({ where: { slug } });
+                    if (!existing && dndBeyondId) {
+                        existing = await spellRepo.findOne({ where: { dndBeyondId } });
+                    }
+
+                    const sourceLabel = (rawSpell.source
+                        ? (String(rawSpell.source).toLowerCase().includes("d&d beyond") || String(rawSpell.source).toLowerCase().includes("custom")
+                            ? String(rawSpell.source)
+                            : `D&D Beyond (${rawSpell.source})`)
+                        : "D&D Beyond").slice(0, 100);
+
+                    const school = String(rawSpell.school || "Universal").slice(0, 100);
+                    const castingTime = normalizeCastingTime(rawSpell.castingTime);
+                    const range = String(rawSpell.range || "Self").slice(0, 100);
+                    const duration = String(rawSpell.duration || "Instantaneous").slice(0, 100);
+                    const components = String(rawSpell.components || "V, S").slice(0, 255);
+                    const imageUrl = rawSpell.imageUrl ? String(rawSpell.imageUrl).slice(0, 500) : undefined;
+
+                    if (!existing) {
+                        const created = spellRepo.create({
+                            slug,
+                            name,
+                            level: Number(rawSpell.level) || 0,
+                            school,
+                            source: sourceLabel,
+                            castingTime,
+                            range,
+                            duration,
+                            components,
+                            concentration: !!rawSpell.concentration,
+                            ritual: !!rawSpell.ritual,
+                            description,
+                            imageUrl,
+                            dndBeyondId,
+                            isCustom: false
+                        });
+                        const saved = await spellRepo.save(created);
+                        cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
+                        cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
+                        savedCount++;
+                    } else if (isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>") {
+                        // Prefer the definition from the character pull over free online sources
+                        existing.name = name;
+                        existing.level = Number(rawSpell.level) ?? existing.level;
+                        existing.school = school || existing.school || "Universal";
+                        existing.source = sourceLabel;
+                        existing.castingTime = normalizeCastingTime(rawSpell.castingTime || existing.castingTime);
+                        existing.range = range || existing.range || "Self";
+                        existing.duration = duration || existing.duration || "Instantaneous";
+                        existing.components = components || existing.components || "V, S";
+                        existing.concentration = !!rawSpell.concentration;
+                        existing.ritual = !!rawSpell.ritual;
+                        existing.description = description;
+                        if (imageUrl) existing.imageUrl = imageUrl;
+                        if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+
+                        const saved = await spellRepo.save(existing);
+                        cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
+                        cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
+                        savedCount++;
+                    }
+                } catch (spellErr) {
+                    console.warn(`Could not upsert spell "${rawSpell?.name || "unknown"}":`, spellErr);
+                }
+            }
+        } catch (err) {
+            console.warn("Could not upsert character spells into database:", err);
+        }
+
+        return savedCount;
+    }
+
+    public static async syncCharacterSpells(req: http.IncomingMessage, _res: http.ServerResponse) {
+        try {
+            const body = await BaseController.readBody<{ spells?: any[] }>(req);
+            const spells = Array.isArray(body?.spells) ? body.spells : [];
+            const savedCount = await this.upsertSpellsFromCharacter(spells);
+            return {
+                response: JSON.stringify({ success: true, syncedCount: savedCount }),
+                header: "application/json",
+                status: 200
+            };
+        } catch (error: any) {
+            return {
+                response: JSON.stringify({ error: error?.message || "Failed to sync character spells." }),
+                status: 400
+            };
+        }
+    }
+
+    public static async searchSpells(req: http.IncomingMessage, _res: http.ServerResponse) {
+        const query = this.parseUrlQuery(req.url);
+        const searchTerm = typeof query.q === "string" ? query.q.trim().toLowerCase() : "";
+        const levelParam = typeof query.level === "string" ? query.level.trim() : "";
+        const levelFilter = levelParam !== "" && levelParam !== "all" && !Number.isNaN(Number(levelParam))
+            ? Number(levelParam)
+            : undefined;
+        const limit = Math.min(200, Math.max(1, Number(query.limit) || 100));
+
+        if (!AppDataSource.isInitialized) {
+            return {
+                response: JSON.stringify({ spells: [] }),
+                header: "application/json",
+                status: 200
+            };
+        }
+
+        try {
+            const spellRepo = AppDataSource.getRepository(Spell);
+            const allSpells = await spellRepo.find({
+                order: {
+                    level: "ASC",
+                    name: "ASC"
+                }
+            });
+
+            const filtered = allSpells
+                .filter(spell => {
+                    if (levelFilter !== undefined && Number(spell.level) !== levelFilter) {
+                        return false;
+                    }
+                    if (!searchTerm) return true;
+                    const haystack = `${spell.name} ${spell.school} ${spell.source || ""} ${spell.description || ""}`.toLowerCase();
+                    return haystack.includes(searchTerm);
+                })
+                .slice(0, limit);
+
+            return {
+                response: JSON.stringify({ spells: filtered }),
+                header: "application/json",
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error searching database spells:", error);
+            return {
+                response: JSON.stringify({ spells: [] }),
+                header: "application/json",
+                status: 200
+            };
+        }
+    }
+
     public static async getSpell(req: http.IncomingMessage, res: http.ServerResponse) {
         const query = this.parseUrlQuery(req.url);
         const nameQuery = typeof query.name === "string" ? query.name.trim() : "";

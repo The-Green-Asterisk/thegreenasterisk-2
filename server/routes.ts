@@ -1,5 +1,6 @@
 import CharacterController from 'controllers/characterController';
 import CommentController from 'controllers/commentController';
+import ConditionController from 'controllers/conditionController';
 import ContactController from 'controllers/contactController';
 import ItemController from 'controllers/itemController';
 import LinkController from 'controllers/linkController';
@@ -298,6 +299,16 @@ export default class Routes {
         return SpellController.getSpell(req, res);
     }
 
+    @Method('GET')
+    private ['/search-spells'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return SpellController.searchSpells(req, res);
+    }
+
+    @Method('POST')
+    private ['/sync-character-spells'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return SpellController.syncCharacterSpells(req, res);
+    }
+
     @Method('POST')
     private ['/create-custom-spell'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return SpellController.createCustomSpell(req, res);
@@ -311,6 +322,11 @@ export default class Routes {
     @Method('POST')
     private ['/create-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ItemController.createCustomItem(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-conditions'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ConditionController.getConditions(req, res);
     }
 
     get response(): ResponsePromise {
