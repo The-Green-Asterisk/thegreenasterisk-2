@@ -2,6 +2,13 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { CharacterData } from "../characterData";
 
+export type PdfFormat = "letter" | "remarkable";
+
+export interface PdfExportOptions {
+    format?: PdfFormat;
+    statusCallback?: (msg: string) => void;
+}
+
 function escapeHtml(str: string | number | undefined | null): string {
     if (str === null || str === undefined) return "";
     return String(str)
@@ -39,8 +46,12 @@ function renderPips(count: number): string {
     return html;
 }
 
-export function generatePdfHtmlPages(data: CharacterData): string[] {
+export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "letter"): string[] {
     const pages: string[] = [];
+    const isRemarkable = format === "remarkable";
+    const formatLabel = isRemarkable ? "reMarkable (3:4 — 1404 × 1872)" : "Letter (8.5\" × 11\")";
+    const pageClass = `pdf-page ${isRemarkable ? "pdf-format-remarkable" : "pdf-format-letter"}`;
+
     const name = escapeHtml(data.name || "Hero");
     const race = escapeHtml(data.race || "");
     const background = escapeHtml(data.background || "");
@@ -54,7 +65,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     // PAGE 1: CORE CHARACTER SHEET
     // ==========================================
     let p1 = `
-    <div class="pdf-page">
+    <div class="${pageClass}">
         <!-- HEADER BLOCK -->
         <div class="pdf-header-block">
             <div class="pdf-header-name-box">
@@ -310,7 +321,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
             </div>
         </div>
 
-        <div class="pdf-page-footer">Page 1 — Core Stats &amp; Vitals | The Green Asterisk</div>
+        <div class="pdf-page-footer">Page 1 — Core Stats &amp; Vitals | ${formatLabel} | The Green Asterisk</div>
     </div>
     `;
     pages.push(p1);
@@ -319,7 +330,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     // PAGE 2: FEATURES, TRAITS & EQUIPMENT
     // ==========================================
     let p2 = `
-    <div class="pdf-page">
+    <div class="${pageClass}">
         <!-- MINI HEADER -->
         <div class="pdf-mini-header">
             <span class="pdf-mini-name">${name}</span>
@@ -407,7 +418,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
             </div>
         </div>
 
-        <div class="pdf-page-footer">Page 2 — Features, Traits &amp; Equipment | The Green Asterisk</div>
+        <div class="pdf-page-footer">Page 2 — Features, Traits &amp; Equipment | ${formatLabel} | The Green Asterisk</div>
     </div>
     `;
     pages.push(p2);
@@ -419,7 +430,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
 
     if (hasSpells) {
         let p3 = `
-        <div class="pdf-page">
+        <div class="${pageClass}">
             <!-- MINI HEADER -->
             <div class="pdf-mini-header">
                 <span class="pdf-mini-name">${name}</span>
@@ -534,7 +545,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
 
         p3 += `
             </div>
-            <div class="pdf-page-footer">Page 3 — Spellcasting &amp; Spell Slots | The Green Asterisk</div>
+            <div class="pdf-page-footer">Page 3 — Spellcasting &amp; Spell Slots | ${formatLabel} | The Green Asterisk</div>
         </div>
         `;
         pages.push(p3);
@@ -550,9 +561,16 @@ function getOrdinalSuffix(n: number): string {
     return "TH";
 }
 
-export function getPdfStyles(): string {
+export function getPdfStyles(format: PdfFormat = "letter"): string {
+    const isRemarkable = format === "remarkable";
+    const pageWidth = isRemarkable ? 792 : 816;
+    const pagePadding = isRemarkable ? "24px 26px" : "22px 24px";
+    const col1Width = isRemarkable ? "130px" : "135px";
+    const col2Width = isRemarkable ? "185px" : "190px";
+    const gridGap = isRemarkable ? "7px" : "8px";
+
     return `
-        /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES --- */
+        /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES (${isRemarkable ? "reMarkable 3:4" : "Letter"}) --- */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -561,13 +579,13 @@ export function getPdfStyles(): string {
         }
 
         .pdf-page {
-            width: 816px;
+            width: ${pageWidth}px;
             height: 1056px;
             max-height: 1056px;
             overflow: hidden;
             background: #ffffff !important;
             color: #000000 !important;
-            padding: 22px 24px;
+            padding: ${pagePadding};
             position: relative;
             display: flex;
             flex-direction: column;
@@ -672,8 +690,8 @@ export function getPdfStyles(): string {
         /* MAIN 3-COLUMN GRID */
         .pdf-main-grid {
             display: grid;
-            grid-template-columns: 135px 190px 1fr;
-            gap: 8px;
+            grid-template-columns: ${col1Width} ${col2Width} 1fr;
+            gap: ${gridGap};
             flex: 1;
         }
 
@@ -1285,14 +1303,25 @@ export function getPdfStyles(): string {
 
 export async function exportPdfCharacterSheet(
     data: CharacterData,
-    statusCallback?: (msg: string) => void
+    optionsOrCb?: PdfExportOptions | ((msg: string) => void)
 ): Promise<void> {
     if (!data) return;
 
-    statusCallback?.("Generating black & white printable PDF...");
+    const options: PdfExportOptions = typeof optionsOrCb === "function"
+        ? { statusCallback: optionsOrCb }
+        : (optionsOrCb || {});
 
-    const pagesHtml = generatePdfHtmlPages(data);
-    const styles = getPdfStyles();
+    const format: PdfFormat = options.format || "letter";
+    const statusCallback = options.statusCallback;
+    const isRemarkable = format === "remarkable";
+
+    statusCallback?.(`Generating black & white ${isRemarkable ? "reMarkable" : "Letter"} PDF...`);
+
+    const pagesHtml = generatePdfHtmlPages(data, format);
+    const styles = getPdfStyles(format);
+
+    const pageWidth = isRemarkable ? 792 : 816;
+    const pageHeight = 1056;
 
     // Create off-screen rendering mount
     const mount = document.createElement("div");
@@ -1300,7 +1329,7 @@ export async function exportPdfCharacterSheet(
     mount.style.position = "fixed";
     mount.style.left = "-9999px";
     mount.style.top = "0";
-    mount.style.width = "816px";
+    mount.style.width = `${pageWidth}px`;
     mount.style.zIndex = "-9999";
     mount.style.background = "#ffffff";
     mount.style.color = "#000000";
@@ -1323,16 +1352,22 @@ export async function exportPdfCharacterSheet(
     document.body.appendChild(mount);
 
     try {
+        // Dimensions in points:
+        // Letter: 612 x 792 pt
+        // reMarkable (3:4 aspect ratio, native 1404 x 1872 px): 594 x 792 pt (594/792 = 0.75 = 3/4)
+        const pdfPageWidthPt = isRemarkable ? 594 : 612;
+        const pdfPageHeightPt = 792;
+
         const doc = new jsPDF({
             orientation: "portrait",
             unit: "pt",
-            format: "letter"
+            format: isRemarkable ? [594, 792] : "letter"
         });
 
         for (let i = 0; i < pageElements.length; i++) {
             statusCallback?.(`Rendering page ${i + 1} of ${pageElements.length}...`);
             if (i > 0) {
-                doc.addPage("letter", "portrait");
+                doc.addPage(isRemarkable ? [594, 792] : "letter", "portrait");
             }
 
             const canvas = await html2canvas(pageElements[i], {
@@ -1340,17 +1375,19 @@ export async function exportPdfCharacterSheet(
                 useCORS: true,
                 backgroundColor: "#ffffff",
                 logging: false,
-                windowWidth: 816,
-                windowHeight: 1056
+                windowWidth: pageWidth,
+                windowHeight: pageHeight
             });
 
             const imgData = canvas.toDataURL("image/png");
-            doc.addImage(imgData, "PNG", 0, 0, 612, 792);
+            doc.addImage(imgData, "PNG", 0, 0, pdfPageWidthPt, pdfPageHeightPt);
         }
 
         const safeName = (data.name || "Character").replace(/[^a-zA-Z0-9_-]/g, "_");
-        doc.save(`${safeName}-Character-Sheet.pdf`);
-        statusCallback?.(`Downloaded ${safeName}-Character-Sheet.pdf`);
+        const formatSuffix = isRemarkable ? "reMarkable" : "Letter";
+        const filename = `${safeName}-Character-Sheet-${formatSuffix}.pdf`;
+        doc.save(filename);
+        statusCallback?.(`Downloaded ${filename}`);
     } catch (err) {
         console.error("PDF export error:", err);
         statusCallback?.("Failed to generate PDF. Check console for details.");
@@ -1359,3 +1396,4 @@ export async function exportPdfCharacterSheet(
         mount.remove();
     }
 }
+

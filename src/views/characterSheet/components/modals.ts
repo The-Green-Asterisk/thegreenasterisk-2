@@ -404,5 +404,77 @@ export function renderModals(): string {
                 </footer>
             </div>
         </div>
+
+        <!-- EXPORT PDF FORMAT SELECTION MODAL -->
+        <div id="export-pdf-modal-container" class="spell-modal-backdrop export-pdf-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-export-pdf-title">
+            <div class="spell-modal-dialog export-pdf-modal-dialog">
+                <header class="spell-modal-header">
+                    <div class="spell-modal-title-group">
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-file-pdf"></i> Black &amp; White PDF</span>
+                            <span class="modal-badge source-badge">Printable Outline</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="modal-export-pdf-title">Export Character Sheet</h2>
+                        <div class="modal-spell-sub">Select your preferred page format and layout</div>
+                    </div>
+                    <button type="button" class="spell-modal-close" id="export-pdf-close-btn" aria-label="Close export modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </header>
+
+                <div class="spell-modal-body export-pdf-modal-body">
+                    <p class="export-pdf-intro">
+                        Exports an ink-friendly, high-contrast black &amp; white character sheet with outline borders and fillable tabletop boxes for HP and spell slots.
+                    </p>
+
+                    <fieldset class="pdf-format-fieldset">
+                        <legend class="pdf-format-legend">Page Format</legend>
+                        <div class="pdf-format-options-grid">
+                            <label class="pdf-format-card" for="pdf-format-letter">
+                                <input type="radio" name="pdf-format-choice" id="pdf-format-letter" value="letter" checked />
+                                <div class="pdf-format-card-content">
+                                    <div class="pdf-format-header">
+                                        <i class="fa-regular fa-file-lines pdf-format-icon"></i>
+                                        <div class="pdf-format-title-wrap">
+                                            <span class="pdf-format-name">Standard Letter</span>
+                                            <span class="pdf-format-dims">8.5" × 11" (612 × 792 pt)</span>
+                                        </div>
+                                    </div>
+                                    <p class="pdf-format-desc">
+                                        Standard North American paper size. Perfect for home printers, binders, and tabletop clipboards.
+                                    </p>
+                                </div>
+                            </label>
+
+                            <label class="pdf-format-card" for="pdf-format-remarkable">
+                                <input type="radio" name="pdf-format-choice" id="pdf-format-remarkable" value="remarkable" />
+                                <div class="pdf-format-card-content">
+                                    <div class="pdf-format-header">
+                                        <i class="fa-solid fa-tablet-screen-button pdf-format-icon"></i>
+                                        <div class="pdf-format-title-wrap">
+                                            <span class="pdf-format-name">reMarkable / E-Reader</span>
+                                            <span class="pdf-format-dims">3:4 Aspect Ratio (1404 × 1872)</span>
+                                        </div>
+                                    </div>
+                                    <p class="pdf-format-desc">
+                                        Precision-fitted for reMarkable 2 &amp; Paper Pro e-ink tablets. Zero letterboxing with margins tailored for stylus writing.
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <footer class="spell-modal-footer">
+                    <span class="modal-footer-source">Choice is remembered for future exports</span>
+                    <div class="export-pdf-footer-actions">
+                        <button type="button" class="modal-action-btn secondary" id="export-pdf-cancel-btn">Cancel</button>
+                        <button type="button" class="modal-action-btn" id="export-pdf-confirm-btn">
+                            <i class="fa-solid fa-download"></i> Download PDF
+                        </button>
+                    </div>
+                </footer>
+            </div>
+        </div>
     `;
 }

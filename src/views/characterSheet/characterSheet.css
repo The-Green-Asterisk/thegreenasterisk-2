@@ -5154,5 +5154,172 @@ el-character-sheet.is-edit-mode .vital-hp .field-lock-btn {
     margin-left: 0;
 }
 
+/* ==========================================================================
+   Export PDF Format Selection Modal
+   ========================================================================== */
+
+.export-pdf-modal-dialog {
+    max-width: 600px;
+    width: 92vw;
+    min-height: auto;
+}
+
+.export-pdf-intro {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-muted, #475569);
+    margin: 0 0 1rem 0;
+}
+
+.pdf-format-fieldset {
+    border: 1px solid var(--border, #cbd5e1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0;
+}
+
+.pdf-format-legend {
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 0.5rem;
+    color: var(--text-muted, #64748b);
+}
+
+.pdf-format-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+}
+
+@media (max-width: 560px) {
+    .pdf-format-options-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pdf-format-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    padding: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--surface, #ffffff);
+}
+
+.pdf-format-card input[type="radio"] {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    margin: 0;
+    accent-color: var(--primary, #0284c7);
+    cursor: pointer;
+}
+
+.pdf-format-card:hover {
+    border-color: var(--primary, #0284c7);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.pdf-format-card.selected,
+.pdf-format-card:has(input[type="radio"]:checked) {
+    border-color: var(--primary, #0284c7);
+    background: var(--surface-hover, #f0f9ff);
+}
+
+.pdf-format-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+    padding-right: 1.5rem;
+}
+
+.pdf-format-icon {
+    font-size: 1.4rem;
+    color: var(--primary, #0284c7);
+    flex-shrink: 0;
+}
+
+.pdf-format-title-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.pdf-format-name {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text, #1e293b);
+}
+
+.pdf-format-dims {
+    font-size: 0.72rem;
+    color: var(--text-muted, #64748b);
+    font-weight: 500;
+}
+
+.pdf-format-desc {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-muted, #475569);
+    margin: 0;
+}
+
+.export-pdf-footer-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* Dark mode overrides for Export PDF Modal */
+:root[data-theme="dark"] .export-pdf-intro {
+    color: #94a3b8;
+}
+
+:root[data-theme="dark"] .pdf-format-fieldset {
+    border-color: var(--border, #334155);
+}
+
+:root[data-theme="dark"] .pdf-format-legend {
+    color: #94a3b8;
+}
+
+:root[data-theme="dark"] .pdf-format-card {
+    background: var(--surface, #1e293b);
+    border-color: var(--border, #334155);
+}
+
+:root[data-theme="dark"] .pdf-format-card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="dark"] .pdf-format-card.selected,
+:root[data-theme="dark"] .pdf-format-card:has(input[type="radio"]:checked) {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+}
+
+:root[data-theme="dark"] .pdf-format-name {
+    color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .pdf-format-icon {
+    color: #38bdf8;
+}
+
+:root[data-theme="dark"] .pdf-format-dims {
+    color: #94a3b8;
+}
+
+:root[data-theme="dark"] .pdf-format-desc {
+    color: #cbd5e1;
+}
+
+
 
 

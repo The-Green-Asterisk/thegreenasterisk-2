@@ -1,9 +1,10 @@
 import el from "@elements";
 import { CharacterSheetContext } from "./context";
-import { exportPdfCharacterSheet } from "../services/pdfExport";
+import { exportPdfCharacterSheet, PdfFormat } from "../services/pdfExport";
 
 const loaderStorageKey = "character-sheet-loader-collapsed";
 const rulesPreferenceStorageKey = "character-sheet-prefer-2024-rules";
+const pdfFormatStorageKey = "character-sheet-pdf-format-preference";
 
 export function initLoaderBarController(ctx: CharacterSheetContext) {
     const sheet = ctx.sheet;
@@ -100,23 +101,110 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         }
     });
 
-    exportPdfBtn?.addEventListener("click", async () => {
+    const exportPdfModal = sheet.querySelector<HTMLElement>("#export-pdf-modal-container");
+    const exportPdfCloseBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-close-btn");
+    const exportPdfCancelBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-cancel-btn");
+    const exportPdfConfirmBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-confirm-btn");
+    const formatRadios = sheet.querySelectorAll<HTMLInputElement>('input[name="pdf-format-choice"]');
+    const formatCards = sheet.querySelectorAll<HTMLElement>(".pdf-format-card");
+
+    function updateSelectedFormatCard() {
+        formatCards.forEach(card => {
+            const radio = card.querySelector<HTMLInputElement>('input[type="radio"]');
+            card.classList.toggle("selected", !!radio?.checked);
+        });
+    }
+
+    function openPdfExportModal() {
+        if (!exportPdfModal) return;
+        const savedFormat = (typeof window !== "undefined" && window.localStorage?.getItem(pdfFormatStorageKey)) as PdfFormat || "letter";
+        formatRadios.forEach(radio => {
+            radio.checked = radio.value === savedFormat;
+        });
+        updateSelectedFormatCard();
+        exportPdfModal.classList.remove("hidden");
+        exportPdfModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closePdfExportModal() {
+        if (!exportPdfModal) return;
+        exportPdfModal.classList.add("hidden");
+        exportPdfModal.setAttribute("aria-hidden", "true");
+    }
+
+    formatRadios.forEach(radio => {
+        radio.addEventListener("change", updateSelectedFormatCard);
+    });
+
+    formatCards.forEach(card => {
+        card.addEventListener("click", (e) => {
+            const radio = card.querySelector<HTMLInputElement>('input[type="radio"]');
+            if (radio && e.target !== radio) {
+                radio.checked = true;
+                updateSelectedFormatCard();
+            }
+        });
+    });
+
+    exportPdfCloseBtn?.addEventListener("click", closePdfExportModal);
+    exportPdfCancelBtn?.addEventListener("click", closePdfExportModal);
+    exportPdfModal?.addEventListener("click", (e) => {
+        if (e.target === exportPdfModal) {
+            closePdfExportModal();
+        }
+    });
+
+    exportPdfBtn?.addEventListener("click", () => {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter) {
             ctx.showStatus("Please load a character first before exporting a PDF.");
             return;
         }
-        exportPdfBtn.disabled = true;
-        const origHtml = exportPdfBtn.innerHTML;
-        exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+        openPdfExportModal();
+    });
+
+    exportPdfConfirmBtn?.addEventListener("click", async () => {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) {
+            closePdfExportModal();
+            ctx.showStatus("Please load a character first before exporting a PDF.");
+            return;
+        }
+
+        let chosenFormat: PdfFormat = "letter";
+        formatRadios.forEach(radio => {
+            if (radio.checked && (radio.value === "letter" || radio.value === "remarkable")) {
+                chosenFormat = radio.value as PdfFormat;
+            }
+        });
+
+        if (typeof window !== "undefined" && window.localStorage) {
+            window.localStorage.setItem(pdfFormatStorageKey, chosenFormat);
+        }
+
+        closePdfExportModal();
+
+        if (exportPdfBtn) {
+            exportPdfBtn.disabled = true;
+        }
+        const origHtml = exportPdfBtn ? exportPdfBtn.innerHTML : "";
+        if (exportPdfBtn) {
+            exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+        }
+
         try {
-            await exportPdfCharacterSheet(activeCharacter, (msg) => ctx.showStatus(msg));
+            await exportPdfCharacterSheet(activeCharacter, {
+                format: chosenFormat,
+                statusCallback: (msg) => ctx.showStatus(msg)
+            });
         } catch (err) {
             console.error("PDF export failed:", err);
             ctx.showStatus("Failed to generate PDF. Check console for details.");
         } finally {
-            exportPdfBtn.disabled = false;
-            exportPdfBtn.innerHTML = origHtml;
+            if (exportPdfBtn) {
+                exportPdfBtn.disabled = false;
+                exportPdfBtn.innerHTML = origHtml;
+            }
         }
     });
 

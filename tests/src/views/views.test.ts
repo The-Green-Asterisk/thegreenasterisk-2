@@ -1575,5 +1575,39 @@ describe('Frontend View Templates', () => {
         expect(pages[2]).toContain('1ST LEVEL');
         expect(pages[2]).toContain('pdf-slot-bubbles');
         expect(pages[2]).toContain('pdf-bubble');
+
+        // Test reMarkable 3:4 e-reader format option
+        const remarkablePages = generatePdfHtmlPages(mockCharacter, 'remarkable');
+        expect(remarkablePages.length).toBe(3);
+        expect(remarkablePages[0]).toContain('pdf-format-remarkable');
+        const remarkableStyles = getPdfStyles('remarkable');
+        expect(remarkableStyles).toContain('width: 792px');
+        expect(remarkableStyles).toContain('height: 1056px');
+
+        const letterStyles = getPdfStyles('letter');
+        expect(letterStyles).toContain('width: 816px');
+        expect(letterStyles).toContain('height: 1056px');
+    });
+
+    it('renders export PDF format selection modal in character sheet template', () => {
+        const sheet = characterSheetTemplate();
+        const exportModal = sheet.querySelector('#export-pdf-modal-container');
+        expect(exportModal).not.toBeNull();
+        expect(exportModal?.classList.contains('hidden')).toBe(true);
+
+        const letterRadio = sheet.querySelector<HTMLInputElement>('#pdf-format-letter');
+        const remarkableRadio = sheet.querySelector<HTMLInputElement>('#pdf-format-remarkable');
+        const confirmBtn = sheet.querySelector<HTMLButtonElement>('#export-pdf-confirm-btn');
+        const cancelBtn = sheet.querySelector<HTMLButtonElement>('#export-pdf-cancel-btn');
+
+        expect(letterRadio).not.toBeNull();
+        expect(letterRadio?.value).toBe('letter');
+        expect(letterRadio?.checked).toBe(true);
+
+        expect(remarkableRadio).not.toBeNull();
+        expect(remarkableRadio?.value).toBe('remarkable');
+
+        expect(confirmBtn).not.toBeNull();
+        expect(cancelBtn).not.toBeNull();
     });
 });
