@@ -58,6 +58,8 @@ export interface FeatureItem {
     source: string;
     type: "Class" | "Subclass" | "Invocation" | "Feat" | "Species";
     description: string;
+    scaleValue?: string;
+    limitedUse?: string;
     decisions?: FeatureDecision[];
 }
 

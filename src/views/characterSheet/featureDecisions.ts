@@ -657,6 +657,108 @@ export function extractFeaturesAndApplyDecisions(
     let hasPactBoonDecision = false;
     let activePactBoonValue: string | undefined = undefined;
 
+    // Collect all action entries across class, race, feat, background, item so we can look up limitedUse & scaleValue metadata for features
+    const allRawActions: any[] = [];
+    if (raw.actions && typeof raw.actions === "object") {
+        Object.values(raw.actions).forEach((arr: any) => {
+            if (Array.isArray(arr)) {
+                arr.forEach(a => {
+                    if (a) allRawActions.push(a);
+                });
+            }
+        });
+    }
+
+    // Also index runtime classFeature wrapper objects by definition id (they hold levelScale and limitedUse at the character's current level)
+    const runtimeClassFeatureById = new Map<number, any>();
+    (raw.classes || []).forEach((cl: any) => {
+        (cl.classFeatures || []).forEach((cfWrap: any) => {
+            const id = Number(cfWrap?.definition?.id ?? cfWrap?.id);
+            if (!Number.isNaN(id) && id > 0) {
+                runtimeClassFeatureById.set(id, cfWrap);
+            }
+        });
+    });
+
+    const formatScaleObject = (ls: any): string | undefined => {
+        if (!ls) return undefined;
+        if (ls.dice?.diceString) return String(ls.dice.diceString);
+        if (ls.fixedValue !== undefined && ls.fixedValue !== null) return String(ls.fixedValue);
+        if (ls.value !== undefined && ls.value !== null) return String(ls.value);
+        if (ls.description) return String(ls.description);
+        return undefined;
+    };
+
+    const resolveFeatureTemplateMeta = (
+        entityObj: any,
+        defObj: any,
+        compIds: Set<number>,
+        levelContext: number
+    ): { scaleValue?: string; limitedUse?: string } => {
+        let scaleValue: string | undefined = undefined;
+        let limitedUse: string | undefined = undefined;
+
+        // 1. Check direct levelScale on entityObj or runtimeClassFeature wrapper
+        const directId = Number(defObj?.id ?? entityObj?.id);
+        const runtimeWrap = !Number.isNaN(directId) ? runtimeClassFeatureById.get(directId) : undefined;
+        scaleValue =
+            formatScaleObject(entityObj?.levelScale) ||
+            formatScaleObject(runtimeWrap?.levelScale) ||
+            formatScaleObject(defObj?.levelScale);
+
+        // 2. Check levelScales array on definition (pick highest level <= levelContext)
+        const levelScales: any[] =
+            defObj?.levelScales ||
+            runtimeWrap?.definition?.levelScales ||
+            entityObj?.levelScales ||
+            [];
+        if (!scaleValue && Array.isArray(levelScales) && levelScales.length > 0) {
+            const applicable = levelScales
+                .filter((s: any) => (Number(s?.level) || 1) <= levelContext)
+                .sort((a: any, b: any) => (Number(b.level) || 0) - (Number(a.level) || 0));
+            const best = applicable[0] || levelScales[0];
+            scaleValue = formatScaleObject(best);
+        }
+
+        // 3. Check matching action in raw.actions for dice/value or limitedUse
+        const fNameLower = String(defObj?.name || entityObj?.name || "").toLowerCase();
+        const matchingAction = allRawActions.find(
+            a =>
+                compIds.has(Number(a.componentId)) ||
+                compIds.has(Number(a.id)) ||
+                (fNameLower && String(a.name || "").toLowerCase() === fNameLower)
+        );
+        if (!scaleValue && matchingAction) {
+            scaleValue =
+                matchingAction.dice?.diceString ||
+                (matchingAction.value !== undefined && matchingAction.value !== null ? String(matchingAction.value) : undefined) ||
+                (matchingAction.fixedValue !== undefined && matchingAction.fixedValue !== null
+                    ? String(matchingAction.fixedValue)
+                    : undefined);
+        }
+
+        // 4. Resolve limitedUse maxUses (flat maxUses or operator-based statId / proficiency bonus)
+        const luSource =
+            entityObj?.limitedUse ||
+            runtimeWrap?.limitedUse ||
+            defObj?.limitedUse ||
+            matchingAction?.limitedUse;
+        const luObj = Array.isArray(luSource) ? luSource[0] : luSource;
+        if (luObj) {
+            if (typeof luObj === "number" || typeof luObj === "string") {
+                limitedUse = String(luObj);
+            } else if (luObj.maxUses !== undefined && luObj.maxUses !== null && Number(luObj.maxUses) > 0) {
+                limitedUse = String(luObj.maxUses);
+            } else if (luObj.statModifierUsesId) {
+                limitedUse = `stat:${luObj.statModifierUsesId}:${Number(luObj.maxUses) || 0}`;
+            } else if (luObj.useProficiencyBonus) {
+                limitedUse = "proficiency";
+            }
+        }
+
+        return { scaleValue, limitedUse };
+    };
+
     const buildDecisionsForFeature = (
         featureKeyPrefix: string,
         featureName: string,
@@ -1122,6 +1224,9 @@ export function extractFeaturesAndApplyDecisions(
 
     const features: FeatureItem[] = [];
 
+    const totalCharLevel =
+        (raw.classes || []).reduce((sum: number, c: any) => sum + (Number(c.level) || 0), 0) || 1;
+
     // 1. Feats — process specific multi-ability feats (e.g. War Caster, Fey Touched) before full ASIs
     // so restricted feats claim their matching ability modifiers first
     const rawFeats: any[] = Array.isArray(raw.feats) ? raw.feats : [];
@@ -1146,12 +1251,15 @@ export function extractFeaturesAndApplyDecisions(
             compIds,
             "feat"
         );
+        const meta = resolveFeatureTemplateMeta(f, def, compIds, totalCharLevel);
         processedFeatsByIdx.set(idx, {
             name: def.name,
             source: "Feat",
             type: "Feat",
             description: def.description || def.snippet || "",
-            decisions: decisions.length > 0 ? decisions : undefined
+            decisions: decisions.length > 0 ? decisions : undefined,
+            scaleValue: meta.scaleValue,
+            limitedUse: meta.limitedUse
         });
     });
     for (let idx = 0; idx < rawFeats.length; idx++) {
@@ -1172,12 +1280,15 @@ export function extractFeaturesAndApplyDecisions(
             compIds,
             "class"
         );
+        const meta = resolveFeatureTemplateMeta(o, def, compIds, totalCharLevel);
         features.push({
             name: def.name,
             source: "Class Option / Invocation",
             type: "Invocation",
             description: def.description || def.snippet || "",
-            decisions: decisions.length > 0 ? decisions : undefined
+            decisions: decisions.length > 0 ? decisions : undefined,
+            scaleValue: meta.scaleValue,
+            limitedUse: meta.limitedUse
         });
     });
 
@@ -1208,12 +1319,15 @@ export function extractFeaturesAndApplyDecisions(
                     compIds,
                     "class"
                 );
+                const meta = resolveFeatureTemplateMeta(cf, cf.definition || cf, compIds, cLevel);
                 features.push({
                     name: cf.name,
                     source: cName,
                     type: "Class",
                     description: cf.description || cf.snippet || "",
-                    decisions: decisions.length > 0 ? decisions : undefined
+                    decisions: decisions.length > 0 ? decisions : undefined,
+                    scaleValue: meta.scaleValue,
+                    limitedUse: meta.limitedUse
                 });
             });
         }
@@ -1231,12 +1345,15 @@ export function extractFeaturesAndApplyDecisions(
                     compIds,
                     "class"
                 );
+                const meta = resolveFeatureTemplateMeta(cf, cf.definition || cf, compIds, cLevel);
                 features.push({
                     name: cf.name,
                     source: subName,
                     type: "Subclass",
                     description: cf.description || cf.snippet || "",
-                    decisions: decisions.length > 0 ? decisions : undefined
+                    decisions: decisions.length > 0 ? decisions : undefined,
+                    scaleValue: meta.scaleValue,
+                    limitedUse: meta.limitedUse
                 });
             });
         }
@@ -1257,12 +1374,15 @@ export function extractFeaturesAndApplyDecisions(
                 compIds,
                 "race"
             );
+            const meta = resolveFeatureTemplateMeta(rt, def, compIds, totalCharLevel);
             features.push({
                 name: def.name,
                 source: raceName,
                 type: "Species",
                 description: def.description || def.snippet || "",
-                decisions: decisions.length > 0 ? decisions : undefined
+                decisions: decisions.length > 0 ? decisions : undefined,
+                scaleValue: meta.scaleValue,
+                limitedUse: meta.limitedUse
             });
         });
     }
