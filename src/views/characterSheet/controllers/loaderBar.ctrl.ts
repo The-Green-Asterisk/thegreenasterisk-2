@@ -1,5 +1,6 @@
 import el from "@elements";
 import { CharacterSheetContext } from "./context";
+import { exportPdfCharacterSheet } from "../services/pdfExport";
 
 const loaderStorageKey = "character-sheet-loader-collapsed";
 const rulesPreferenceStorageKey = "character-sheet-prefer-2024-rules";
@@ -16,6 +17,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
     const refreshDndBeyondBtn = sheet.querySelector<HTMLButtonElement>("#refresh-dndbeyond-btn");
     const editFieldsBtn = sheet.querySelector<HTMLButtonElement>("#edit-character-fields-btn");
+    const exportPdfBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-sheet-btn");
     const prefer2024RulesToggle = sheet.querySelector<HTMLInputElement>("#prefer-2024-rules-toggle");
 
     function setLoaderCollapsed(collapsed: boolean) {
@@ -98,6 +100,26 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         }
     });
 
+    exportPdfBtn?.addEventListener("click", async () => {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) {
+            ctx.showStatus("Please load a character first before exporting a PDF.");
+            return;
+        }
+        exportPdfBtn.disabled = true;
+        const origHtml = exportPdfBtn.innerHTML;
+        exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+        try {
+            await exportPdfCharacterSheet(activeCharacter, (msg) => ctx.showStatus(msg));
+        } catch (err) {
+            console.error("PDF export failed:", err);
+            ctx.showStatus("Failed to generate PDF. Check console for details.");
+        } finally {
+            exportPdfBtn.disabled = false;
+            exportPdfBtn.innerHTML = origHtml;
+        }
+    });
+
     function setCharacterActionsVisibility() {
         const activeCharacter = ctx.getCharacter();
         const isEditMode = ctx.getIsEditMode();
@@ -110,6 +132,9 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
             editFieldsBtn.innerHTML = isEditMode
                 ? '<i class="fa-solid fa-check"></i> Done Editing'
                 : '<i class="fa-solid fa-pen"></i> Edit Fields';
+        }
+        if (exportPdfBtn) {
+            exportPdfBtn.classList.toggle("hidden", !hasCharacter);
         }
         if (saveBtn) {
             saveBtn.classList.toggle("hidden", !hasCharacter);

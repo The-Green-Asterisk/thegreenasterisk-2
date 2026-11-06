@@ -33,6 +33,9 @@ export function renderLoaderBar(): string {
                     <button type="button" id="edit-character-fields-btn" class="load-btn secondary hidden" title="Edit character fields in-place">
                         <i class="fa-solid fa-pen"></i> Edit Fields
                     </button>
+                    <button type="button" id="export-pdf-sheet-btn" class="load-btn secondary hidden" title="Export black & white printable PDF with fillable HP and spell slots">
+                        <i class="fa-solid fa-file-pdf"></i> Export B&W PDF
+                    </button>
                     <button type="button" id="save-character-btn" class="load-btn hidden" title="Save this character to your account">
                         <i class="fa-solid fa-floppy-disk"></i> Save Character
                     </button>

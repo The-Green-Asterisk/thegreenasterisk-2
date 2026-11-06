@@ -1468,4 +1468,112 @@ describe('Frontend View Templates', () => {
         expect(refreshed.background).toBe('Entertainer'); // updated from D&D Beyond
         expect(refreshed.alignment).toBe('Lawful Neutral'); // updated from D&D Beyond
     });
+
+    it('generates black & white outline PDF pages with fillable HP boxes and spell slot bubbles', async () => {
+        const { generatePdfHtmlPages, getPdfStyles } = await import(
+            '../../../src/views/characterSheet/services/pdfExport'
+        );
+        const { renderLoaderBar } = await import('../../../src/views/characterSheet/components/loaderBar');
+
+        // Check loader bar button
+        const loaderHtml = renderLoaderBar();
+        expect(loaderHtml).toContain('id="export-pdf-sheet-btn"');
+        expect(loaderHtml).toContain('Export B&W PDF');
+
+        // Check PDF styles have black & white outlines
+        const styles = getPdfStyles();
+        expect(styles).toContain('background: #ffffff !important');
+        expect(styles).toContain('color: #000000 !important');
+        expect(styles).toContain('border: 1.5px solid #000000');
+
+        const mockCharacter: any = {
+            name: 'Darvell',
+            level: 19,
+            classes: [{ name: 'Bard', level: 9 }, { name: 'Warlock', level: 10 }],
+            race: 'Aasimar',
+            background: 'Entertainer',
+            alignment: 'Lawful Neutral',
+            vitals: {
+                maxHp: 120,
+                currentHp: 120,
+                tempHp: 0,
+                armorClass: 15,
+                initiative: 2,
+                speed: '30 ft.',
+                proficiencyBonus: 6,
+                spellSaveDc: 19,
+                spellAttackBonus: 11,
+                spellcastingAbility: 'Charisma',
+                passivePerception: 11,
+                passiveInvestigation: 10,
+                passiveInsight: 11,
+                darkvision: '60 ft.'
+            },
+            abilities: [
+                { name: 'Strength', abbr: 'STR', score: 8, baseScore: 8, modifier: -1, save: -1, proficientSave: false },
+                { name: 'Dexterity', abbr: 'DEX', score: 14, baseScore: 14, modifier: 2, save: 8, proficientSave: true },
+                { name: 'Constitution', abbr: 'CON', score: 12, baseScore: 12, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Intelligence', abbr: 'INT', score: 10, baseScore: 10, modifier: 0, save: 0, proficientSave: false },
+                { name: 'Wisdom', abbr: 'WIS', score: 13, baseScore: 13, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Charisma', abbr: 'CHA', score: 20, baseScore: 15, modifier: 5, save: 11, proficientSave: true }
+            ],
+            skills: [
+                { name: 'Acrobatics', stat: 'DEX', bonus: 8, proficiency: 'proficient' },
+                { name: 'Deception', stat: 'CHA', bonus: 17, proficiency: 'expertise' }
+            ],
+            spellSlots: {
+                level1: { total: 4, label: '1st Level' },
+                level2: { total: 3, label: '2nd Level' },
+                level3: { total: 3, label: '3rd Level' },
+                level4: { total: 3, label: '4th Level' },
+                level5: { total: 1, label: '5th Level' },
+                pact: { total: 2, level: 5, label: 'Pact Magic' }
+            },
+            weapons: [
+                { name: 'Rapier', attackBonus: '+8', damage: '1d8+2', damageType: 'Piercing', properties: ['Finesse'] }
+            ],
+            features: [
+                { name: 'Bardic Inspiration', source: 'Bard', type: 'Class', description: 'Inspire allies with 1d10 die.' }
+            ],
+            equipment: [
+                { name: 'Leather Armor', quantity: 1, type: 'Armor' }
+            ],
+            proficiencies: {
+                armor: ['Light Armor'],
+                weapons: ['Simple Weapons', 'Rapiers'],
+                tools: ['Disguise Kit'],
+                languages: ['Common', 'Elvish']
+            },
+            spells: [
+                { name: 'Vicious Mockery', level: 0, castingTime: '1 Action', range: '60 ft.' },
+                { name: 'Healing Word', level: 1, castingTime: '1 Bonus Action', range: '60 ft.' }
+            ]
+        };
+
+        const pages = generatePdfHtmlPages(mockCharacter);
+        expect(pages.length).toBe(3);
+
+        // Page 1: Core Stats, Outlines, Fillable HP
+        expect(pages[0]).toContain('Darvell');
+        expect(pages[0]).toContain('pdf-abilities-block');
+        expect(pages[0]).toContain('CURRENT HIT POINTS');
+        expect(pages[0]).toContain('TEMPORARY HIT POINTS');
+        expect(pages[0]).toContain('pdf-fillable-blank-space');
+        expect(pages[0]).toContain('Hit Point Maximum:');
+        expect(pages[0]).toContain('120');
+        expect(pages[0]).toContain('DEATH SAVES');
+        expect(pages[0]).toContain('◯ ◯ ◯');
+
+        // Page 2: Features, Traits, Equipment
+        expect(pages[1]).toContain('FEATURES &amp; TRAITS');
+        expect(pages[1]).toContain('Bardic Inspiration');
+        expect(pages[1]).toContain('EQUIPMENT &amp; CURRENCY');
+
+        // Page 3: Spellcasting & Fillable Spell Slots
+        expect(pages[2]).toContain('Spellcasting &amp; Spell Slots');
+        expect(pages[2]).toContain('PACT MAGIC (Level 5) — 2 SLOTS');
+        expect(pages[2]).toContain('1ST LEVEL — 4 SLOTS');
+        expect(pages[2]).toContain('pdf-slot-bubbles');
+        expect(pages[2]).toContain('pdf-bubble');
+    });
 });
