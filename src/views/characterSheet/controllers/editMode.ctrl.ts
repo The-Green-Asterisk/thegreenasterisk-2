@@ -125,6 +125,31 @@ export function initEditModeController(ctx: CharacterSheetContext) {
         htmlEl.appendChild(input);
     }
 
+    function createLockToggleButton(fieldKey: string): HTMLButtonElement {
+        const isLocked = ctx.isFieldLocked ? ctx.isFieldLocked(fieldKey) : !!ctx.getCharacter()?.lockedFields?.[fieldKey];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `field-lock-btn ${isLocked ? "is-locked" : ""}`;
+        btn.setAttribute("data-lock-key", fieldKey);
+        btn.title = isLocked
+            ? "Locked: will not be overwritten when refreshed from D&D Beyond"
+            : "Unlocked: click to lock field from D&D Beyond refresh";
+        btn.innerHTML = `<i class="fa-solid ${isLocked ? "fa-lock" : "fa-lock-open"}"></i>`;
+
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const nextState = ctx.toggleFieldLock ? ctx.toggleFieldLock(fieldKey) : !isLocked;
+            btn.classList.toggle("is-locked", nextState);
+            btn.title = nextState
+                ? "Locked: will not be overwritten when refreshed from D&D Beyond"
+                : "Unlocked: click to lock field from D&D Beyond refresh";
+            btn.innerHTML = `<i class="fa-solid ${nextState ? "fa-lock" : "fa-lock-open"}"></i>`;
+        });
+
+        return btn;
+    }
+
     function enableCardLayoutEditors() {
         const activeCharacter = ctx.getCharacter();
         const dynamicContainer = ctx.dynamicContainer;
@@ -136,21 +161,25 @@ export function initEditModeController(ctx: CharacterSheetContext) {
         const nameEl = dynamicContainer.querySelector(".character-name");
         if (nameEl) {
             swapElementWithInput(nameEl, "name");
+            nameEl.appendChild(createLockToggleButton("name"));
         }
 
         const raceTag = dynamicContainer.querySelectorAll(".character-tags .tag")[0];
         if (raceTag) {
             swapTextWithInputKeepingIcon(raceTag, "race");
+            raceTag.appendChild(createLockToggleButton("race"));
         }
 
         const bgTag = dynamicContainer.querySelectorAll(".character-tags .tag")[1];
         if (bgTag) {
             swapTextWithInputKeepingIcon(bgTag, "background");
+            bgTag.appendChild(createLockToggleButton("background"));
         }
 
         const alignTag = dynamicContainer.querySelectorAll(".character-tags .tag")[2];
         if (alignTag) {
             swapTextWithInputKeepingIcon(alignTag, "alignment");
+            alignTag.appendChild(createLockToggleButton("alignment"));
         }
 
         // Class and Level editor
@@ -221,6 +250,7 @@ export function initEditModeController(ctx: CharacterSheetContext) {
 
             classEl.innerHTML = "";
             classEl.appendChild(classInput);
+            classEl.appendChild(createLockToggleButton("classes"));
         }
 
         // Max HP editor in the HP card
@@ -240,6 +270,7 @@ export function initEditModeController(ctx: CharacterSheetContext) {
                 if (hpDisplay) hpDisplay.max = String(nextMax);
             });
             hpRatioEl.appendChild(maxHpInput);
+            hpRatioEl.appendChild(createLockToggleButton("vitals.maxHp"));
         }
 
         // Vital Stats: Ability Scores (base score inputs with stacked modifier hint and live reactivity)
@@ -344,8 +375,13 @@ export function initEditModeController(ctx: CharacterSheetContext) {
                     }
                 });
 
+                const abKey = `abilities.${ability.abbr}`;
+                const abLockBtn = createLockToggleButton(abKey);
+                abLockBtn.classList.add("ability-lock-btn");
+
                 scoreEl.appendChild(baseInput);
                 scoreEl.appendChild(totalHint);
+                scoreEl.appendChild(abLockBtn);
             }
         });
     }

@@ -4965,4 +4965,61 @@ el-character-sheet.is-fullscreen {
     vertical-align: middle;
 }
 
+/* Field locking for editable fields */
+.field-lock-btn {
+    background: transparent;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    color: var(--text-muted, #94a3b8);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease-in-out;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.field-lock-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-color, #e2e8f0);
+}
+
+.field-lock-btn.is-locked {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: rgba(234, 179, 8, 0.55);
+    color: #eab308;
+}
+
+.field-lock-btn.is-locked:hover {
+    background: rgba(234, 179, 8, 0.25);
+    border-color: #eab308;
+}
+
+.field-locked-indicator {
+    font-size: 0.72rem;
+    color: #eab308;
+    margin-left: 4px;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    opacity: 0.9;
+}
+
+.ability-locked-indicator {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 0.68rem;
+    color: #eab308;
+}
+
+.ability-lock-btn {
+    font-size: 0.65rem !important;
+    padding: 1px 5px !important;
+    margin-top: 2px !important;
+}
+
 

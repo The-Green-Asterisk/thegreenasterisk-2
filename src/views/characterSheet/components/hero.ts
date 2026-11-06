@@ -71,6 +71,22 @@ export function renderHeroSection(data: CharacterData): string {
         .map(c => `<strong>${c.name} ${c.level}</strong>${c.subclass ? ` (${c.subclass})` : ''}`)
         .join(' / ');
 
+    const nameLockBadge = data.lockedFields?.["name"]
+        ? '<span class="field-locked-indicator" title="Name is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>'
+        : '';
+    const classLockBadge = data.lockedFields?.["classes"]
+        ? '<span class="field-locked-indicator" title="Class is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>'
+        : '';
+    const raceLockBadge = data.lockedFields?.["race"]
+        ? ' <i class="fa-solid fa-lock field-locked-indicator" title="Species is locked from D&D Beyond refresh"></i>'
+        : '';
+    const bgLockBadge = data.lockedFields?.["background"]
+        ? ' <i class="fa-solid fa-lock field-locked-indicator" title="Background is locked from D&D Beyond refresh"></i>'
+        : '';
+    const alignLockBadge = data.lockedFields?.["alignment"]
+        ? ' <i class="fa-solid fa-lock field-locked-indicator" title="Alignment is locked from D&D Beyond refresh"></i>'
+        : '';
+
     const conditionsHtml = renderActiveConditionsListHtml(data);
     const hasActiveConditions = !conditionsHtml.includes("no-conditions-placeholder");
 
@@ -83,19 +99,19 @@ export function renderHeroSection(data: CharacterData): string {
                 </div>
                 <div class="identity-info">
                     <div class="title-row">
-                        <h1 class="character-name">${data.name}</h1>
+                        <h1 class="character-name">${data.name}${nameLockBadge}</h1>
                         <div class="inspiration-badge ${data.vitals.heroicInspiration ? 'active' : ''}" id="inspiration-toggle" title="Heroic Inspiration (Click to toggle)">
                             <i class="fa-solid fa-star"></i>
                             <span>Heroic Inspiration</span>
                         </div>
                     </div>
                     <p class="character-classes">
-                        ${classText}
+                        ${classText}${classLockBadge}
                     </p>
                     <div class="character-tags">
-                        <span class="tag"><i class="fa-solid fa-dna"></i> ${data.race}</span>
-                        <span class="tag"><i class="fa-solid fa-masks-theater"></i> ${data.background}</span>
-                        <span class="tag"><i class="fa-solid fa-scale-balanced"></i> ${data.alignment}</span>
+                        <span class="tag"><i class="fa-solid fa-dna"></i> ${data.race}${raceLockBadge}</span>
+                        <span class="tag"><i class="fa-solid fa-masks-theater"></i> ${data.background}${bgLockBadge}</span>
+                        <span class="tag"><i class="fa-solid fa-scale-balanced"></i> ${data.alignment}${alignLockBadge}</span>
                         <a href="${data.dndBeyondUrl}" target="_blank" rel="noopener noreferrer" class="tag tag-link">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i> D&D Beyond
                         </a>

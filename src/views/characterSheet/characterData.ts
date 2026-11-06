@@ -136,6 +136,7 @@ export interface CharacterData {
     savedCharacterId?: number;
     siteCharacterId?: string;
     source?: "site" | "dndbeyond";
+    lockedFields?: Record<string, boolean>;
     activeConditions?: string[];
     exhaustionLevel?: number;
     allowedSpellsByLevel?: Record<number, number>;

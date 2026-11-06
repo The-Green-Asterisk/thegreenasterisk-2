@@ -1,6 +1,6 @@
 import el from "@elements";
 import { getData, postData, putData } from "@services/request";
-import { ensureBaseScoresOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
+import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
 import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
@@ -594,6 +594,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.featureChoices
             );
             ensureBaseScoresOnCharacter(recomputed, activeRawDndBeyondPayload);
+            if (activeCharacter.lockedFields) {
+                applyLockedFieldsToRefreshedCharacter(recomputed, activeCharacter);
+            }
             const maxHpDelta = (Number(recomputed.vitals.maxHp) || 0) - oldMaxHp;
             activeCharacter.vitals.maxHp = recomputed.vitals.maxHp;
             maxHp = recomputed.vitals.maxHp;
@@ -708,6 +711,24 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }
     }
 
+    function isFieldLocked(fieldKey: string): boolean {
+        return !!activeCharacter?.lockedFields?.[fieldKey];
+    }
+
+    function toggleFieldLock(fieldKey: string): boolean {
+        if (!activeCharacter) return false;
+        if (!activeCharacter.lockedFields) {
+            activeCharacter.lockedFields = {};
+        }
+        const nextState = !activeCharacter.lockedFields[fieldKey];
+        if (nextState) {
+            activeCharacter.lockedFields[fieldKey] = true;
+        } else {
+            delete activeCharacter.lockedFields[fieldKey];
+        }
+        scheduleDebouncedAutoSave();
+        return nextState;
+    }
 
     function applyPersistedEquipStates(
         states: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>
@@ -903,6 +924,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
             ensureBaseScoresOnCharacter(parsed, rawData);
+            const sourceWithLocks = activeCharacter || (existingSaved as any)?.savedPayload;
+            if (sourceWithLocks?.lockedFields) {
+                applyLockedFieldsToRefreshedCharacter(parsed, sourceWithLocks);
+            }
             if (parsed.spells?.length) {
                 void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });
             }
@@ -1014,6 +1039,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         setCharacterActionsVisibility: () => { },
         updateAbilityBaseScore,
         recalculateFromRawPayload,
+        isFieldLocked,
+        toggleFieldLock,
         saveActiveCharacter,
         scheduleDebouncedAutoSave,
         loadCharacter,

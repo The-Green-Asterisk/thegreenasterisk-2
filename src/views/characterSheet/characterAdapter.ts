@@ -2085,3 +2085,82 @@ export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload
     });
 }
 
+export function applyLockedFieldsToRefreshedCharacter(
+    target: CharacterData,
+    sourceWithLocks: CharacterData
+): void {
+    if (!target || !sourceWithLocks?.lockedFields) return;
+    const locks = sourceWithLocks.lockedFields;
+    target.lockedFields = { ...locks };
+
+    if (locks["name"] && sourceWithLocks.name) {
+        target.name = sourceWithLocks.name;
+    }
+    if (locks["race"] && sourceWithLocks.race) {
+        target.race = sourceWithLocks.race;
+    }
+    if (locks["background"] && sourceWithLocks.background) {
+        target.background = sourceWithLocks.background;
+    }
+    if (locks["alignment"] && sourceWithLocks.alignment) {
+        target.alignment = sourceWithLocks.alignment;
+    }
+    if (locks["classes"] && Array.isArray(sourceWithLocks.classes) && sourceWithLocks.classes.length > 0) {
+        target.classes = JSON.parse(JSON.stringify(sourceWithLocks.classes));
+        target.level = sourceWithLocks.level || target.classes.reduce((sum, c) => sum + (c.level || 0), 0) || 1;
+        target.subtitle = sourceWithLocks.subtitle || `${target.classes.map(c => `${c.name} ${c.level}`).join(" / ")} • Level ${target.level}`;
+        const newPb = Math.floor((target.level - 1) / 4) + 2;
+        target.vitals.proficiencyBonus = newPb;
+    }
+    if (locks["vitals.maxHp"] && typeof sourceWithLocks.vitals?.maxHp === "number") {
+        target.vitals.maxHp = sourceWithLocks.vitals.maxHp;
+    }
+
+    const abilityKeys = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+    let anyAbilityLocked = false;
+    abilityKeys.forEach((abbr, idx) => {
+        const lockKey = `abilities.${abbr}`;
+        if (locks[lockKey] || locks[`abilities.${idx}`]) {
+            anyAbilityLocked = true;
+            const srcAbility = sourceWithLocks.abilities?.[idx] || sourceWithLocks.abilities?.find(a => a.abbr === abbr);
+            const tgtAbility = target.abilities?.[idx] || target.abilities?.find(a => a.abbr === abbr);
+            if (srcAbility && tgtAbility) {
+                if (typeof srcAbility.baseScore === "number") {
+                    tgtAbility.baseScore = srcAbility.baseScore;
+                    tgtAbility.score = tgtAbility.baseScore + (tgtAbility.bonus || 0);
+                    tgtAbility.modifier = Math.floor((tgtAbility.score - 10) / 2);
+                    tgtAbility.save = tgtAbility.modifier + (tgtAbility.proficientSave ? target.vitals.proficiencyBonus : 0);
+                }
+            }
+        }
+    });
+
+    if (anyAbilityLocked || locks["classes"]) {
+        target.skills?.forEach(s => {
+            const ab = target.abilities.find(a => a.abbr === s.stat);
+            const mod = ab ? ab.modifier : 0;
+            const pb = target.vitals.proficiencyBonus;
+            if (s.proficiency === "expertise") s.bonus = mod + pb * 2;
+            else if (s.proficiency === "proficient") s.bonus = mod + pb;
+            else s.bonus = mod;
+        });
+
+        if (target.vitals?.spellcastingAbility) {
+            const spellAb = target.abilities.find(
+                a => a.name.toLowerCase() === target.vitals.spellcastingAbility.toLowerCase() ||
+                     a.abbr.toLowerCase() === target.vitals.spellcastingAbility.toLowerCase()
+            );
+            if (spellAb) {
+                target.vitals.spellSaveDc = 8 + target.vitals.proficiencyBonus + spellAb.modifier;
+                target.vitals.spellAttackBonus = target.vitals.proficiencyBonus + spellAb.modifier;
+            }
+        }
+
+        if (locks["abilities.DEX"] || locks["abilities.1"]) {
+            const dexAb = target.abilities.find(a => a.abbr === "DEX");
+            if (dexAb) {
+                target.vitals.initiative = dexAb.modifier;
+            }
+        }
+    }
+}

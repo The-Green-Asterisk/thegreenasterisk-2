@@ -1320,5 +1320,152 @@ describe('Frontend View Templates', () => {
         expect(container.querySelector('.vital-attack input')).toBeNull();
         expect(container.querySelector('.skill-bonus input')).toBeNull();
     });
-});
 
+    it('allows locking editable fields so that refreshing from D&D Beyond does not overwrite them', async () => {
+        const { parseDndBeyondCharacter, applyLockedFieldsToRefreshedCharacter } = await import(
+            '../../../src/views/characterSheet/characterAdapter'
+        );
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
+        const { initEditModeController } = await import('../../../src/views/characterSheet/controllers/editMode.ctrl');
+
+        // Initial character with custom/edited values and locked fields
+        const localChar: any = {
+            id: 138310322,
+            name: 'Custom Darvell Name',
+            source: 'dndbeyond',
+            level: 20,
+            classes: [{ name: 'Bard', level: 10 }, { name: 'Warlock', level: 10 }],
+            subtitle: 'Bard 10 / Warlock 10 • Level 20',
+            race: 'Aasimar',
+            background: 'Custom Entertainer',
+            alignment: 'Neutral Good',
+            vitals: {
+                currentHp: 160,
+                maxHp: 160,
+                armorClass: 15,
+                initiative: 2,
+                speed: '30 ft.',
+                proficiencyBonus: 6,
+                spellSaveDc: 19,
+                spellAttackBonus: 11
+            },
+            abilities: [
+                { name: 'Strength', abbr: 'STR', score: 8, baseScore: 8, bonus: 0, modifier: -1, save: -1, proficientSave: false },
+                { name: 'Dexterity', abbr: 'DEX', score: 15, baseScore: 14, bonus: 1, modifier: 2, save: 8, proficientSave: true },
+                { name: 'Constitution', abbr: 'CON', score: 12, baseScore: 12, bonus: 0, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Intelligence', abbr: 'INT', score: 10, baseScore: 10, bonus: 0, modifier: 0, save: 0, proficientSave: false },
+                { name: 'Wisdom', abbr: 'WIS', score: 13, baseScore: 13, bonus: 0, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Charisma', abbr: 'CHA', score: 22, baseScore: 17, bonus: 5, modifier: 6, save: 12, proficientSave: true }
+            ],
+            skills: [
+                { name: 'Deception', stat: 'CHA', bonus: 18, proficiency: 'expertise' }
+            ],
+            spellSlots: {},
+            features: [],
+            actions: [],
+            spells: [],
+            equipment: [],
+            weapons: [],
+            proficiencies: { armor: [], weapons: [], tools: [], languages: [] },
+            lockedFields: {
+                name: true,
+                classes: true,
+                race: true,
+                'vitals.maxHp': true,
+                'abilities.CHA': true
+            }
+        };
+
+        const container = document.createElement('div');
+        container.innerHTML = renderSheetContent(localChar);
+
+        const ctx: any = {
+            sheet: container,
+            dynamicContainer: container,
+            getCharacter: () => localChar,
+            setCharacter: (c: any) => { },
+            isFieldLocked: (k: string) => !!localChar.lockedFields[k],
+            toggleFieldLock: (k: string) => {
+                localChar.lockedFields[k] = !localChar.lockedFields[k];
+                return localChar.lockedFields[k];
+            },
+            updateAbilityBaseScore: () => { }
+        };
+
+        const editCtrl = initEditModeController(ctx);
+        editCtrl.enableCardLayoutEditors();
+
+        // Check lock button presence and state on editable fields
+        const nameLockBtn = container.querySelector<HTMLButtonElement>('.character-name .field-lock-btn');
+        const classLockBtn = container.querySelector<HTMLButtonElement>('.character-classes .field-lock-btn');
+        const chaLockBtn = container.querySelector<HTMLButtonElement>('.ability-card .ability-lock-btn[data-lock-key="abilities.CHA"]');
+        const maxHpLockBtn = container.querySelector<HTMLButtonElement>('.vital-hp .field-lock-btn[data-lock-key="vitals.maxHp"]');
+
+        expect(nameLockBtn).not.toBeNull();
+        expect(nameLockBtn?.classList.contains('is-locked')).toBe(true);
+        expect(classLockBtn?.classList.contains('is-locked')).toBe(true);
+        expect(chaLockBtn?.classList.contains('is-locked')).toBe(true);
+        expect(maxHpLockBtn?.classList.contains('is-locked')).toBe(true);
+
+        // Clicking toggle unlocks the field
+        nameLockBtn?.click();
+        expect(localChar.lockedFields.name).toBe(false);
+        expect(nameLockBtn?.classList.contains('is-locked')).toBe(false);
+
+        // Clicking toggle again locks the field
+        nameLockBtn?.click();
+        expect(localChar.lockedFields.name).toBe(true);
+        expect(nameLockBtn?.classList.contains('is-locked')).toBe(true);
+
+        // Simulate a fresh D&D Beyond re-pull payload
+        const freshDndBeyondPayload = {
+            id: 138310322,
+            name: 'Original Darvell on D&D Beyond',
+            classes: [
+                { level: 9, definition: { name: 'Bard' } },
+                { level: 10, definition: { name: 'Warlock' } }
+            ],
+            race: { fullName: 'Elf' },
+            background: { definition: { name: 'Entertainer' } },
+            alignmentId: 4,
+            baseHitPoints: 120,
+            stats: [
+                { id: 1, value: 8 },
+                { id: 2, value: 14 },
+                { id: 3, value: 12 },
+                { id: 4, value: 10 },
+                { id: 5, value: 13 },
+                { id: 6, value: 15 } // base 15 on D&D Beyond
+            ],
+            modifiers: {
+                feat: [
+                    { componentId: 1, type: 'bonus', subType: 'charisma-score', value: 5, isGranted: true }
+                ]
+            },
+            inventory: [],
+            spells: {}
+        };
+
+        const refreshed = parseDndBeyondCharacter(freshDndBeyondPayload);
+        // Before applying locks, refreshed character has upstream D&D Beyond values
+        expect(refreshed.name).toBe('Original Darvell on D&D Beyond');
+        expect(refreshed.abilities[5].score).toBe(20); // 15 + 5
+        expect(refreshed.race).toBe('Elf');
+
+        // Apply locks from localChar
+        applyLockedFieldsToRefreshedCharacter(refreshed, localChar);
+
+        // Locked fields are PRESERVED!
+        expect(refreshed.name).toBe('Custom Darvell Name'); // preserved
+        expect(refreshed.classes.length).toBe(2);
+        expect(refreshed.classes[0].level).toBe(10); // preserved custom level 10
+        expect(refreshed.race).toBe('Aasimar'); // preserved
+        expect(refreshed.vitals.maxHp).toBe(160); // preserved custom max HP
+        expect(refreshed.abilities[5].baseScore).toBe(17); // preserved custom base score
+        expect(refreshed.abilities[5].score).toBe(22); // 17 + 5 bonus = 22
+
+        // Non-locked fields ARE updated from upstream D&D Beyond
+        expect(refreshed.background).toBe('Entertainer'); // updated from D&D Beyond
+        expect(refreshed.alignment).toBe('Lawful Neutral'); // updated from D&D Beyond
+    });
+});

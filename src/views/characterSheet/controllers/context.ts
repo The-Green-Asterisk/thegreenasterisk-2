@@ -36,6 +36,8 @@ export interface CharacterSheetContext {
     setCharacterActionsVisibility: () => void;
     updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => void;
     recalculateFromRawPayload?: () => void;
+    toggleFieldLock?: (fieldKey: string) => boolean;
+    isFieldLocked?: (fieldKey: string) => boolean;
 
     // Persistence & API
     saveActiveCharacter: (options?: { silent?: boolean; background?: boolean }) => Promise<void>;
