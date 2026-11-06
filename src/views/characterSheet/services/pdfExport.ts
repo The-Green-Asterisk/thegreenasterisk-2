@@ -21,16 +21,20 @@ function escapeHtml(str: string | number | undefined | null): string {
 
 function stripHtml(html: string | undefined | null): string {
     if (!html) return "";
-    return html
+    let str = html;
+    for (let i = 0; i < 2; i++) {
+        str = str
+            .replace(/&lt;/gi, "<")
+            .replace(/&gt;/gi, ">")
+            .replace(/&amp;/gi, "&")
+            .replace(/&quot;/gi, '"')
+            .replace(/&#039;/gi, "'")
+            .replace(/&nbsp;/gi, " ");
+    }
+    return str
         .replace(/<br\s*\/?>/gi, " ")
         .replace(/<\/p>/gi, " ")
         .replace(/<[^>]*>/g, "")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/&amp;/gi, "&")
-        .replace(/&lt;/gi, "<")
-        .replace(/&gt;/gi, ">")
-        .replace(/&quot;/gi, '"')
-        .replace(/&#039;/gi, "'")
         .replace(/\s+/g, " ")
         .trim();
 }
@@ -72,30 +76,34 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
                 <div class="pdf-char-name">${name}</div>
                 <div class="pdf-char-subtitle">Character Name</div>
             </div>
-            <div class="pdf-header-details-grid">
-                <div class="pdf-detail-cell">
-                    <span class="pdf-detail-val">${classSummary}</span>
-                    <span class="pdf-detail-lbl">Class &amp; Level</span>
+            <div class="pdf-header-details-block">
+                <div class="pdf-header-row pdf-header-row-top">
+                    <div class="pdf-detail-cell pdf-cell-class">
+                        <span class="pdf-detail-val" style="${classSummary.length > 40 ? `font-size: ${isRemarkable ? "12px" : "8.5px"};` : ""}">${classSummary}</span>
+                        <span class="pdf-detail-lbl">Class &amp; Level</span>
+                    </div>
+                    <div class="pdf-detail-cell pdf-cell-race">
+                        <span class="pdf-detail-val">${race}</span>
+                        <span class="pdf-detail-lbl">Species / Race</span>
+                    </div>
                 </div>
-                <div class="pdf-detail-cell">
-                    <span class="pdf-detail-val">${background}</span>
-                    <span class="pdf-detail-lbl">Background</span>
-                </div>
-                <div class="pdf-detail-cell">
-                    <span class="pdf-detail-val"></span>
-                    <span class="pdf-detail-lbl">Player Name</span>
-                </div>
-                <div class="pdf-detail-cell">
-                    <span class="pdf-detail-val">${race}</span>
-                    <span class="pdf-detail-lbl">Species / Race</span>
-                </div>
-                <div class="pdf-detail-cell">
-                    <span class="pdf-detail-val">${alignment}</span>
-                    <span class="pdf-detail-lbl">Alignment</span>
-                </div>
-                <div class="pdf-detail-cell">
-                    <span class="pdf-detail-val">Level ${data.level || 1}</span>
-                    <span class="pdf-detail-lbl">Experience Points</span>
+                <div class="pdf-header-row pdf-header-row-bottom">
+                    <div class="pdf-detail-cell">
+                        <span class="pdf-detail-val">${background}</span>
+                        <span class="pdf-detail-lbl">Background</span>
+                    </div>
+                    <div class="pdf-detail-cell">
+                        <span class="pdf-detail-val">${alignment}</span>
+                        <span class="pdf-detail-lbl">Alignment</span>
+                    </div>
+                    <div class="pdf-detail-cell">
+                        <span class="pdf-detail-val"></span>
+                        <span class="pdf-detail-lbl">Player Name</span>
+                    </div>
+                    <div class="pdf-detail-cell">
+                        <span class="pdf-detail-val">Level ${data.level || 1}</span>
+                        <span class="pdf-detail-lbl">Experience Points</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -347,7 +355,8 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
     `;
 
     const featuresList = (data.features || []);
-    featuresList.slice(0, 14).forEach(f => {
+    const featuresLimit = isRemarkable ? 7 : 14;
+    featuresList.slice(0, featuresLimit).forEach(f => {
         const cleanDesc = stripHtml(f.description);
         p2 += `
             <div class="pdf-feature-item">
@@ -355,7 +364,7 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
                     <span class="pdf-feature-name">${escapeHtml(f.name)}</span>
                     <span class="pdf-feature-source">${escapeHtml(f.source || f.type || "")}</span>
                 </div>
-                <div class="pdf-feature-desc">${escapeHtml(cleanDesc.slice(0, 200))}</div>
+                <div class="pdf-feature-desc">${escapeHtml(cleanDesc.slice(0, isRemarkable ? 240 : 200))}</div>
             </div>
         `;
     });
@@ -390,7 +399,8 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
     `;
 
     const equipmentList = (data.equipment || []);
-    equipmentList.slice(0, 18).forEach(eq => {
+    const equipLimit = isRemarkable ? 12 : 18;
+    equipmentList.slice(0, equipLimit).forEach(eq => {
         p2 += `
             <tr>
                 <td class="pdf-equip-name">${escapeHtml(eq.name)}</td>
@@ -400,7 +410,7 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
         `;
     });
 
-    const blankEquipRows = Math.max(3, 18 - equipmentList.length);
+    const blankEquipRows = Math.max(2, equipLimit - equipmentList.length);
     for (let i = 0; i < blankEquipRows; i++) {
         p2 += `
             <tr class="pdf-blank-row">
@@ -564,10 +574,84 @@ function getOrdinalSuffix(n: number): string {
 export function getPdfStyles(format: PdfFormat = "letter"): string {
     const isRemarkable = format === "remarkable";
     const pageWidth = isRemarkable ? 792 : 816;
-    const pagePadding = isRemarkable ? "24px 26px" : "22px 24px";
-    const col1Width = isRemarkable ? "130px" : "135px";
-    const col2Width = isRemarkable ? "185px" : "190px";
-    const gridGap = isRemarkable ? "7px" : "8px";
+    const pagePadding = isRemarkable ? "16px 18px" : "20px 22px";
+    const col1Width = isRemarkable ? "150px" : "135px";
+    const col2Width = isRemarkable ? "250px" : "195px";
+    const gridGap = isRemarkable ? "8px" : "8px";
+
+    // Dynamic typography scaling: LARGE, BOLD, TABLET-OPTIMIZED on e-ink
+    const titleSize = isRemarkable ? "30px" : "20px";
+    const subTitleSize = isRemarkable ? "11px" : "7.5px";
+    const detailValSize = isRemarkable ? "14px" : "9.5px";
+    const detailLblSize = isRemarkable ? "9.5px" : "7px";
+    const headerHeight = isRemarkable ? "78px" : "64px";
+
+    const boxTitleSize = isRemarkable ? "13.5px" : "8.5px";
+    const abilityNameSize = isRemarkable ? "12px" : "7.5px";
+    const abilityModSize = isRemarkable ? "32px" : "18px";
+    const abilityScoreSize = isRemarkable ? "14px" : "9px";
+    const abilityBaseSize = isRemarkable ? "9.5px" : "6px";
+    const abilityBoxHeight = isRemarkable ? "72px" : "56px";
+
+    const toggleBubbleSize = isRemarkable ? "18px" : "12px";
+    const toggleLabelSize = isRemarkable ? "10.5px" : "7px";
+    const toggleValSize = isRemarkable ? "18px" : "12px";
+
+    const saveFontSize = isRemarkable ? "14px" : "8.5px";
+    const saveRowHeight = isRemarkable ? "22px" : "15px";
+
+    const skillFontSize = isRemarkable ? "13.5px" : "8.5px";
+    const skillCheckSize = isRemarkable ? "15px" : "10px";
+    const skillBonusSize = isRemarkable ? "14px" : "9px";
+    const skillRowHeight = isRemarkable ? "23px" : "16px";
+    const skillStatSize = isRemarkable ? "11px" : "7.5px";
+
+    const sensesFontSize = isRemarkable ? "12.5px" : "8px";
+    const profsFontSize = isRemarkable ? "12.5px" : "8px";
+
+    const vitalValSize = isRemarkable ? "36px" : "20px";
+    const vitalLblSize = isRemarkable ? "11.5px" : "7.5px";
+    const vitalBadgeHeight = isRemarkable ? "74px" : "54px";
+
+    const hpMaxFontSize = isRemarkable ? "14px" : "9px";
+    const hpBoxTitleSize = isRemarkable ? "11.5px" : "7.5px";
+    const hpBlankHeight = isRemarkable ? "54px" : "40px";
+
+    const hdTotalSize = isRemarkable ? "13px" : "8.5px";
+    const hdRemLblSize = isRemarkable ? "10.5px" : "7px";
+    const dsRowSize = isRemarkable ? "12px" : "7.5px";
+    const dsBubbleSize = isRemarkable ? "18px" : "11px";
+
+    const atkThSize = isRemarkable ? "12px" : "8px";
+    const atkTdSize = isRemarkable ? "13.5px" : "8.5px";
+    const atkBlankHeight = isRemarkable ? "28px" : "18px";
+
+    const footerFontSize = isRemarkable ? "10.5px" : "7.5px";
+
+    const miniNameSize = isRemarkable ? "22px" : "15px";
+    const miniSubSize = isRemarkable ? "13.5px" : "9px";
+
+    const featureNameSize = isRemarkable ? "15.5px" : "9.5px";
+    const featureSrcSize = isRemarkable ? "11.5px" : "7px";
+    const featureDescSize = isRemarkable ? "13px" : "8px";
+
+    const currLblSize = isRemarkable ? "10px" : "6.5px";
+    const currValSize = isRemarkable ? "15px" : "9.5px";
+    const equipThSize = isRemarkable ? "12px" : "7.5px";
+    const equipTdSize = isRemarkable ? "13.5px" : "8.5px";
+    const equipRowHeight = isRemarkable ? "28px" : "19px";
+    const equipTypeSize = isRemarkable ? "11.5px" : "7.5px";
+
+    const spellStatValSize = isRemarkable ? "28px" : "15px";
+    const spellStatLblSize = isRemarkable ? "11.5px" : "7px";
+    const spellLvlTitleSize = isRemarkable ? "14.5px" : "8.5px";
+    const spellSlotsLblSize = isRemarkable ? "12px" : "7.5px";
+    const spellBubbleSize = isRemarkable ? "22px" : "14px";
+    const spellEntrySize = isRemarkable ? "14px" : "8px";
+    const spellBulletSize = isRemarkable ? "15px" : "10px";
+    const spellMetaSize = isRemarkable ? "11.5px" : "7px";
+    const spellEntryHeight = isRemarkable ? "26px" : "16px";
+    const spellGridCols = isRemarkable ? "repeat(2, 1fr)" : "repeat(3, 1fr)";
 
     return `
         /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES (${isRemarkable ? "reMarkable 3:4" : "Letter"}) --- */
@@ -602,12 +686,12 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-box-title {
-            font-size: 7.5px;
+            font-size: ${boxTitleSize};
             font-weight: 900;
             letter-spacing: 0.5px;
             text-transform: uppercase;
             color: #000000;
-            border-bottom: 1px solid #000000;
+            border-bottom: 1.5px solid #000000;
             padding-bottom: 2px;
             margin-bottom: 4px;
         }
@@ -618,72 +702,100 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             border: 2px solid #000000;
             border-radius: 6px;
             margin-bottom: 8px;
-            height: 60px;
+            height: ${headerHeight};
+            overflow: hidden;
         }
 
         .pdf-header-name-box {
-            width: 36%;
+            flex: 0 0 auto;
+            min-width: ${isRemarkable ? "140px" : "120px"};
+            max-width: ${isRemarkable ? "240px" : "210px"};
             border-right: 2px solid #000000;
-            padding: 6px 10px;
+            padding: 6px 12px;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
 
         .pdf-char-name {
-            font-size: 18px;
+            font-size: ${titleSize};
             font-weight: 900;
             letter-spacing: -0.5px;
             line-height: 1.1;
             text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .pdf-char-subtitle {
-            font-size: 7px;
+            font-size: ${subTitleSize};
             font-weight: 700;
             text-transform: uppercase;
-            color: #444444;
+            color: #333333;
             margin-top: 2px;
         }
 
-        .pdf-header-details-grid {
-            width: 64%;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
+        .pdf-header-details-block {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .pdf-header-row {
+            display: flex;
+            height: 50%;
+            min-width: 0;
+        }
+
+        .pdf-header-row-top {
+            border-bottom: 1.5px solid #000000;
+        }
+
+        .pdf-cell-class {
+            flex: 2.2;
+            min-width: 0;
+        }
+
+        .pdf-cell-race {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .pdf-header-row-bottom .pdf-detail-cell {
+            flex: 1;
+            min-width: 0;
         }
 
         .pdf-detail-cell {
             padding: 2px 6px;
             border-right: 1px solid #000000;
-            border-bottom: 1px solid #000000;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            overflow: hidden;
         }
 
-        .pdf-detail-cell:nth-child(3n) {
+        .pdf-detail-cell:last-child {
             border-right: none;
         }
 
-        .pdf-detail-cell:nth-child(n+4) {
-            border-bottom: none;
-        }
-
         .pdf-detail-val {
-            font-size: 8.5px;
+            font-size: ${detailValSize};
             font-weight: 700;
-            line-height: 1.1;
+            line-height: 1.15;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .pdf-detail-lbl {
-            font-size: 6.5px;
+            font-size: ${detailLblSize};
             font-weight: 800;
             text-transform: uppercase;
-            color: #555555;
+            color: #333333;
             margin-top: 1px;
         }
 
@@ -713,7 +825,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             border-radius: 4px;
             text-align: center;
             padding: 3px 2px;
-            height: 54px;
+            height: ${abilityBoxHeight};
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -722,19 +834,19 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-ability-name {
-            font-size: 6.5px;
+            font-size: ${abilityNameSize};
             font-weight: 900;
             letter-spacing: 0.3px;
         }
 
         .pdf-ability-mod {
-            font-size: 16px;
+            font-size: ${abilityModSize};
             font-weight: 900;
             line-height: 1;
         }
 
         .pdf-ability-score {
-            font-size: 8px;
+            font-size: ${abilityScoreSize};
             font-weight: 700;
             border: 1px solid #000000;
             border-radius: 8px;
@@ -743,8 +855,8 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-ability-base {
-            font-size: 5.5px;
-            color: #555555;
+            font-size: ${abilityBaseSize};
+            color: #444444;
         }
 
         /* SIDE TOGGLES (INSPIRATION & PB) */
@@ -762,22 +874,22 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-insp-bubble {
-            font-size: 11px;
+            font-size: ${toggleBubbleSize};
             font-weight: 900;
         }
 
         .pdf-insp-label {
-            font-size: 6px;
+            font-size: ${toggleLabelSize};
             font-weight: 800;
         }
 
         .pdf-pb-val {
-            font-size: 11px;
+            font-size: ${toggleValSize};
             font-weight: 900;
         }
 
         .pdf-pb-label {
-            font-size: 6px;
+            font-size: ${toggleLabelSize};
             font-weight: 800;
         }
 
@@ -794,10 +906,10 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
         .pdf-save-row {
             display: grid;
-            grid-template-columns: 14px 20px 1fr;
+            grid-template-columns: ${isRemarkable ? "18px 30px 1fr" : "16px 26px 1fr"};
             align-items: center;
-            font-size: 7.5px;
-            height: 14px;
+            font-size: ${saveFontSize};
+            height: ${saveRowHeight};
             line-height: 1;
         }
 
@@ -819,22 +931,23 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
         .pdf-skill-row {
             display: grid;
-            grid-template-columns: 14px 20px 1fr 24px;
+            grid-template-columns: ${isRemarkable ? "18px 32px 1fr 34px" : "16px 26px 1fr 30px"};
             align-items: center;
-            font-size: 7.5px;
-            height: 15px;
+            font-size: ${skillFontSize};
+            height: ${skillRowHeight};
             line-height: 1;
         }
 
         .pdf-check-col {
             text-align: center;
-            font-size: 9px;
+            font-size: ${skillCheckSize};
             line-height: 1;
         }
 
         .pdf-bonus-col {
             text-align: right;
             font-weight: 800;
+            font-size: ${skillBonusSize};
             padding-right: 3px;
         }
 
@@ -847,8 +960,8 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
         .pdf-stat-col {
             text-align: right;
-            font-size: 6.5px;
-            color: #666666;
+            font-size: ${skillStatSize};
+            color: #444444;
             font-weight: 600;
         }
 
@@ -858,7 +971,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-senses-grid {
-            font-size: 7px;
+            font-size: ${sensesFontSize};
             line-height: 1.35;
         }
 
@@ -870,8 +983,8 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
         .pdf-profs-box-col2 {
             padding: 4px 6px;
-            font-size: 7px;
-            line-height: 1.3;
+            font-size: ${profsFontSize};
+            line-height: 1.35;
             flex: 1;
         }
 
@@ -891,7 +1004,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             border-radius: 6px;
             text-align: center;
             padding: 4px;
-            height: 52px;
+            height: ${vitalBadgeHeight};
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -900,13 +1013,13 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-vital-val {
-            font-size: 18px;
+            font-size: ${vitalValSize};
             font-weight: 900;
             line-height: 1;
         }
 
         .pdf-vital-lbl {
-            font-size: 6.5px;
+            font-size: ${vitalLblSize};
             font-weight: 800;
             letter-spacing: 0.3px;
             margin-top: 2px;
@@ -919,7 +1032,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-hp-max-row {
-            font-size: 8px;
+            font-size: ${hpMaxFontSize};
             border-bottom: 1px dashed #000000;
             padding-bottom: 2px;
             margin-bottom: 4px;
@@ -940,14 +1053,14 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-hp-box-title {
-            font-size: 6.5px;
+            font-size: ${hpBoxTitleSize};
             font-weight: 900;
-            color: #444444;
+            color: #333333;
             text-align: center;
         }
 
         .pdf-hp-box-blank {
-            height: 38px;
+            height: ${hpBlankHeight};
         }
 
         /* HIT DICE & DEATH SAVES */
@@ -958,7 +1071,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-hd-total {
-            font-size: 7.5px;
+            font-size: ${hdTotalSize};
             font-weight: 700;
             margin-bottom: 3px;
         }
@@ -966,7 +1079,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         .pdf-hd-remaining-box {
             border: 1px solid #000000;
             border-radius: 3px;
-            height: 20px;
+            height: 22px;
             padding: 2px 4px;
             display: flex;
             align-items: center;
@@ -974,22 +1087,22 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-hd-rem-lbl {
-            font-size: 6px;
+            font-size: ${hdRemLblSize};
             font-weight: 800;
-            color: #555555;
+            color: #444444;
         }
 
         .pdf-ds-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 6.5px;
+            font-size: ${dsRowSize};
             font-weight: 800;
             margin-top: 2px;
         }
 
         .pdf-ds-bubbles {
-            font-size: 10px;
+            font-size: ${dsBubbleSize};
             letter-spacing: 2px;
         }
 
@@ -1002,21 +1115,21 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         .pdf-attacks-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 7.5px;
+            font-size: ${atkTdSize};
         }
 
         .pdf-attacks-table th {
-            border-bottom: 1px solid #000000;
+            border-bottom: 1.5px solid #000000;
             text-align: left;
-            padding: 2px 4px;
-            font-size: 6.5px;
+            padding: ${isRemarkable ? "4px 5px" : "2px 4px"};
+            font-size: ${atkThSize};
             font-weight: 800;
         }
 
         .pdf-attacks-table td {
             border-bottom: 1px dotted #888888;
-            padding: 2px 4px;
-            line-height: 1.1;
+            padding: ${isRemarkable ? "4px 5px" : "3px 4px"};
+            line-height: 1.15;
         }
 
         .pdf-atk-bonus {
@@ -1025,15 +1138,15 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-blank-row td {
-            height: 16px;
+            height: ${atkBlankHeight};
         }
 
         /* PAGE FOOTER */
         .pdf-page-footer {
             margin-top: auto;
             text-align: center;
-            font-size: 6.5px;
-            color: #666666;
+            font-size: ${footerFontSize};
+            color: #444444;
             border-top: 1px solid #cccccc;
             padding-top: 3px;
         }
@@ -1049,19 +1162,19 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-mini-name {
-            font-size: 14px;
+            font-size: ${miniNameSize};
             font-weight: 900;
             text-transform: uppercase;
         }
 
         .pdf-mini-class {
-            font-size: 8.5px;
+            font-size: ${miniSubSize};
             font-weight: 700;
-            color: #444444;
+            color: #333333;
         }
 
         .pdf-mini-title {
-            font-size: 8.5px;
+            font-size: ${miniSubSize};
             font-weight: 800;
             text-transform: uppercase;
             border: 1px solid #000000;
@@ -1091,12 +1204,12 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         .pdf-features-list {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 5px;
         }
 
         .pdf-feature-item {
             border-bottom: 1px dotted #888888;
-            padding-bottom: 3px;
+            padding-bottom: 4px;
         }
 
         .pdf-feature-hdr {
@@ -1107,21 +1220,21 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-feature-name {
-            font-size: 8px;
-            font-weight: 800;
+            font-size: ${featureNameSize};
+            font-weight: 900;
         }
 
         .pdf-feature-source {
-            font-size: 6px;
+            font-size: ${featureSrcSize};
             font-weight: 700;
-            color: #666666;
+            color: #444444;
             text-transform: uppercase;
         }
 
         .pdf-feature-desc {
-            font-size: 6.8px;
-            color: #222222;
-            line-height: 1.25;
+            font-size: ${featureDescSize};
+            color: #111111;
+            line-height: 1.35;
         }
 
         .pdf-equip-container {
@@ -1147,43 +1260,44 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
         .pdf-curr-lbl {
             display: block;
-            font-size: 5.5px;
+            font-size: ${currLblSize};
             font-weight: 800;
         }
 
         .pdf-curr-val {
-            font-size: 8.5px;
+            font-size: ${currValSize};
             font-weight: 800;
         }
 
         .pdf-equip-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 7.5px;
+            font-size: ${equipTdSize};
         }
 
         .pdf-equip-table th {
-            border-bottom: 1px solid #000000;
+            border-bottom: 1.5px solid #000000;
             text-align: left;
             padding: 2px 4px;
-            font-size: 6.5px;
+            font-size: ${equipThSize};
             font-weight: 800;
         }
 
         .pdf-equip-table td {
             border-bottom: 1px dotted #cccccc;
             padding: 2px 4px;
-            height: 18px;
+            height: ${equipRowHeight};
             line-height: 1.15;
         }
 
         .pdf-equip-qty {
             text-align: center;
+            font-weight: 700;
         }
 
         .pdf-equip-type {
-            font-size: 6.5px;
-            color: #555555;
+            font-size: ${equipTypeSize};
+            color: #444444;
         }
 
         /* PAGE 3: SPELLCASTING */
@@ -1200,15 +1314,15 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
         .pdf-spell-stat-val {
             display: block;
-            font-size: 13px;
+            font-size: ${spellStatValSize};
             font-weight: 900;
             line-height: 1.1;
         }
 
         .pdf-spell-stat-lbl {
-            font-size: 6px;
+            font-size: ${spellStatLblSize};
             font-weight: 800;
-            color: #444444;
+            color: #333333;
         }
 
         .pdf-spells-container {
@@ -1228,59 +1342,59 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #000000;
+            border-bottom: 1.5px solid #000000;
             padding-bottom: 2px;
             margin-bottom: 3px;
-            height: 18px;
+            height: ${isRemarkable ? "26px" : "20px"};
         }
 
         .pdf-lvl-title {
-            font-size: 7.5px;
+            font-size: ${spellLvlTitleSize};
             font-weight: 900;
             letter-spacing: 0.3px;
         }
 
         .pdf-slot-bubbles {
             display: inline-flex;
-            gap: 5px;
+            gap: ${isRemarkable ? "7px" : "5px"};
             align-items: center;
         }
 
         .pdf-slots-label {
-            font-size: 6.5px;
+            font-size: ${spellSlotsLblSize};
             font-weight: 800;
             margin-right: 2px;
         }
 
         .pdf-bubble {
-            font-size: 14px;
+            font-size: ${spellBubbleSize};
             font-weight: 900;
             line-height: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 14px;
-            height: 14px;
+            width: ${spellBubbleSize};
+            height: ${spellBubbleSize};
         }
 
         .pdf-spell-items-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px 8px;
+            grid-template-columns: ${spellGridCols};
+            gap: 2px 8px;
         }
 
         .pdf-spell-entry {
             display: grid;
-            grid-template-columns: 12px 1fr auto;
+            grid-template-columns: ${isRemarkable ? "18px 1fr auto" : "14px 1fr auto"};
             align-items: center;
-            gap: 2px;
-            font-size: 7.2px;
-            height: 15px;
+            gap: ${isRemarkable ? "4px" : "2px"};
+            font-size: ${spellEntrySize};
+            height: ${spellEntryHeight};
             line-height: 1;
         }
 
         .pdf-spell-bullet {
-            font-size: 9px;
+            font-size: ${spellBulletSize};
             font-weight: 900;
             text-align: center;
         }
@@ -1293,8 +1407,8 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         .pdf-spell-meta {
-            font-size: 6.2px;
-            color: #666666;
+            font-size: ${spellMetaSize};
+            color: #444444;
             white-space: nowrap;
             margin-left: 2px;
         }
