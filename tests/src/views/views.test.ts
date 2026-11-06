@@ -920,4 +920,62 @@ describe('Frontend View Templates', () => {
         applyFeatureDecisionOnCharacterData(asiChar, 'feat:ability-score-improvement:0:asi:1', 'ability:6:1');
         expect(asiChar.abilities.find(a => a.abbr === 'CHA')!.score).toBe(19);
     });
+
+    it('replaces exact case-sensitive condition names and [condition] blocks with condition definition modal links', async () => {
+        const { linkifyConditionAndSpellTags } = await import('../../../src/views/characterSheet/components/markupLinks');
+
+        const input = '<p>The target has the Charmed condition and [condition]Frightened[/condition], while charmed or blinded in lowercase stays plain text.</p>';
+        const output = linkifyConditionAndSpellTags(input);
+
+        // Capitalized "Charmed" and tagged "Frightened" become inline condition links
+        expect(output).toContain('class="inline-condition-link" data-condition-link="Charmed"');
+        expect(output).toContain('class="inline-condition-link" data-condition-link="Frightened"');
+
+        // Lowercase "charmed" and "blinded" are not linked
+        expect(output).toContain('while charmed or blinded in lowercase');
+        expect(output).not.toContain('data-condition-link="blinded"');
+
+        // [rules]...[/rules] blocks become links to D&D Beyond 2024 Basic Rules
+        const rulesInput = '<p>Make a [rules]D20 Test[/rules] or take the [rules]Magic[/rules] action.</p>';
+        const rulesOutput = linkifyConditionAndSpellTags(rulesInput);
+        expect(rulesOutput).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#D20Tests"');
+        expect(rulesOutput).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#Magic');
+
+        // [action]...[/action] blocks become interactive action links with D&D Beyond 2024 Rules Glossary URLs
+        const actionInput = '<p>Take the [action]Magic[/action] action or [action]Study[/action] action, without provoking [action]Opportunity Attack;Opportunity Attacks[/action].</p>';
+        const actionOutput = linkifyConditionAndSpellTags(actionInput);
+        expect(actionOutput).toContain('class="inline-action-link" data-action-link="Magic"');
+        expect(actionOutput).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#MagicAction"');
+        expect(actionOutput).toContain('class="inline-action-link" data-action-link="Study"');
+        expect(actionOutput).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#StudyAction"');
+
+        // Semicolon syntax [action]Target;Display[/action] resolves display text and links to the specific action definition
+        expect(actionOutput).toContain('data-action-link="Opportunity%20Attack"');
+        expect(actionOutput).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#OpportunityAttacks"');
+        expect(actionOutput).toContain('> Opportunity Attacks</a>');
+        expect(actionOutput).not.toContain('Opportunity Attack;Opportunity Attacks');
+
+        const { findStandardActionDefinition } = await import('../../../src/views/characterSheet/components/markupLinks');
+        const oppDef = findStandardActionDefinition('Opportunity Attack;Opportunity Attacks');
+        expect(oppDef?.name).toBe('Opportunity Attack');
+        expect(oppDef?.type).toContain('Reaction');
+
+        const oppPluralDef = findStandardActionDefinition('Opportunity Attacks');
+        expect(oppPluralDef?.name).toBe('Opportunity Attack');
+
+        const attackDef = findStandardActionDefinition('Attack');
+        expect(attackDef?.name).toBe('Attack');
+
+        // {{scalevalue}}, {{limiteduse}}, {{savedc:cha}}, {{modifier:cha}} placeholders resolve against character context
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+        const templateInput = 'Roll {{scalevalue}} up to {{limiteduse}} times (DC {{savedc:cha}}, bonus {{modifier:cha#signed}}).';
+        const resolved = linkifyConditionAndSpellTags(templateInput, {
+            character: darvellData,
+            entityName: 'Bardic Inspiration',
+            sourceName: 'Bard',
+            scaleValue: '1d8',
+            limitedUse: '4'
+        });
+        expect(resolved).toContain('Roll 1d8 up to 4 times (DC 16, bonus +4).');
+    });
 });

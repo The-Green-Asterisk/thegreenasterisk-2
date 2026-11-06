@@ -283,14 +283,13 @@ export function renderModals(): string {
 
                     <div class="conditions-toolbar">
                         <div class="conditions-search-wrap">
-                            <i class="fa-solid fa-magnifying-glass conditions-search-icon" aria-hidden="true"></i>
+                            <i class="fa-solid fa-magnifying-glass conditions-search-icon"></i>
                             <input
                                 type="search"
                                 id="conditions-search-input"
                                 class="conditions-search-input"
-                                placeholder="Search conditions..."
-                                aria-label="Search conditions by name or rule"
-                                autocomplete="off"
+                                placeholder="Filter conditions..."
+                                aria-label="Filter conditions"
                             />
                         </div>
                     </div>
@@ -372,6 +371,36 @@ export function renderModals(): string {
                 <footer class="spell-modal-footer">
                     <span class="modal-footer-source">Changes automatically update your character sheet</span>
                     <button type="button" class="modal-action-btn" id="manage-spells-done-btn">Done</button>
+                </footer>
+            </div>
+        </div>
+
+        <!-- SINGLE CONDITION DEFINITION MODAL -->
+        <div id="condition-detail-modal-container" class="spell-modal-backdrop condition-detail-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-condition-detail-name">
+            <div class="spell-modal-dialog condition-detail-modal-dialog">
+                <header class="spell-modal-header">
+                    <div class="spell-modal-title-group">
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-book-skull"></i> Condition</span>
+                            <span class="modal-badge source-badge" id="modal-condition-detail-status">Inactive</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="modal-condition-detail-name">Condition</h2>
+                        <div class="modal-spell-sub" id="modal-condition-detail-summary">D&amp;D 5.5 (2024 Rules)</div>
+                    </div>
+                    <button type="button" class="spell-modal-close" id="condition-detail-close-btn" aria-label="Close condition details">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </header>
+
+                <div class="spell-modal-body condition-detail-modal-body" id="modal-condition-detail-description">
+                </div>
+
+                <footer class="spell-modal-footer">
+                    <span class="modal-footer-source">Source: D&amp;D 5.5 (2024 Rules)</span>
+                    <div class="condition-detail-footer-actions">
+                        <button type="button" class="modal-action-btn secondary" id="condition-detail-toggle-active-btn">Toggle Active on Character</button>
+                        <button type="button" class="modal-action-btn" id="condition-detail-done-btn">Close</button>
+                    </div>
                 </footer>
             </div>
         </div>

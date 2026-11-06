@@ -3791,6 +3791,165 @@ el-character-sheet .content-slate section.sheet-hero,
     margin-bottom: 0.3rem;
 }
 
+/* Inline Condition Link & Single Condition Definition Modal */
+.inline-condition-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: #fbbf24;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-condition-link:hover {
+    background: rgba(245, 158, 11, 0.28);
+    border-color: #f59e0b;
+    color: #fef3c7;
+}
+
+.inline-rule-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: #93c5fd;
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-rule-link:hover {
+    background: rgba(59, 130, 246, 0.28);
+    border-color: #3b82f6;
+    color: #eff6ff;
+    text-decoration: none;
+}
+
+.inline-action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: #6ee7b7;
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-action-link:hover {
+    background: rgba(16, 185, 129, 0.28);
+    border-color: #10b981;
+    color: #ecfdf5;
+    text-decoration: none;
+}
+
+#action-modal-container {
+    z-index: 10040;
+}
+
+.action-modal-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+}
+
+@media (max-width: 679px) {
+    .action-modal-meta-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .action-modal-meta-grid .meta-box:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+#modal-action-damage {
+    max-height: 3.6rem;
+    overflow-y: auto;
+    padding-right: 0.35rem;
+    line-height: 1.35;
+    font-size: 0.84rem;
+    scrollbar-width: thin;
+}
+
+#modal-action-damage p {
+    margin: 0 0 0.35rem 0;
+}
+
+#modal-action-damage p:last-child {
+    margin-bottom: 0;
+}
+
+.action-modal-external-link-row {
+    margin-top: 0.85rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.condition-detail-backdrop {
+    z-index: 10050;
+}
+
+.condition-detail-modal-dialog {
+    max-width: 560px;
+    width: 92vw;
+    min-height: auto;
+}
+
+.condition-detail-modal-body {
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+#modal-condition-detail-status.active-status {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: #f59e0b;
+    color: #fde68a;
+}
+
+.condition-detail-footer-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+#condition-detail-toggle-active-btn {
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+#condition-detail-toggle-active-btn.is-active {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: #f59e0b;
+    color: #fde68a;
+}
+
 /* ==========================================================================
    Manage Spells Button & Modal
    ========================================================================== */

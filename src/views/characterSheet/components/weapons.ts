@@ -1,4 +1,5 @@
 import { CharacterData } from "../characterData";
+import { linkifyConditionAndSpellTags } from "./markupLinks";
 
 export function renderWeapons(data: CharacterData): string {
     const weps = data.weapons || [];
@@ -77,7 +78,7 @@ export function renderWeapons(data: CharacterData): string {
                     ${propBadges}
                 </div>
 
-                ${w.notes ? `<div class="weapon-notes">${w.notes}</div>` : ''}
+                ${w.notes ? `<div class="weapon-notes">${linkifyConditionAndSpellTags(w.notes, { character: data, entityName: w.name, sourceName: w.category })}</div>` : ''}
             </div>
         `;
     }).join('');

@@ -7,6 +7,7 @@ export * from './equipment';
 export * from './features';
 export * from './hero';
 export * from './loaderBar';
+export * from './markupLinks';
 export * from './modals';
 export * from './resources';
 export * from './skills';

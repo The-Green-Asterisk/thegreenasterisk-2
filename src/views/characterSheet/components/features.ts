@@ -1,4 +1,5 @@
 import { CharacterData } from "../characterData";
+import { linkifyConditionAndSpellTags } from "./markupLinks";
 
 export function renderFeatures(data: CharacterData): string {
     return data.features
@@ -47,7 +48,13 @@ export function renderFeatures(data: CharacterData): string {
                     <span class="feature-badge ${f.type.toLowerCase()}">${f.source}</span>
                 </div>
                 ${decisionsHtml}
-                <div class="feature-desc">${f.description}</div>
+                <div class="feature-desc">${linkifyConditionAndSpellTags(f.description, {
+                    character: data,
+                    entityName: f.name,
+                    sourceName: f.source,
+                    scaleValue: f.scaleValue,
+                    limitedUse: f.limitedUse
+                })}</div>
             </div>
         `;
         })

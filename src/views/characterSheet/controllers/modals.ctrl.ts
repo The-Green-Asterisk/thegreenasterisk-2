@@ -1,5 +1,10 @@
 import { getData, postData } from "@services/request";
 import { ConditionDefinition, DEFAULT_DND55_CONDITIONS, darvellData, SpellDefinition } from "../characterData";
+import {
+    findStandardActionDefinition,
+    linkifyConditionAndSpellTags,
+    resolveDndBeyondActionUrl
+} from "../components/markupLinks";
 import { getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
 import { CharacterSheetContext } from "./context";
 import { initSpellsController } from "./spells.ctrl";
@@ -69,6 +74,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const clearAllConditionsBtn = sheet.querySelector<HTMLButtonElement>("#clear-all-conditions-btn");
     const conditionsSourceLabel = sheet.querySelector<HTMLElement>("#modal-conditions-source");
 
+    // Single Condition Detail modal elements
+    const conditionDetailBackdrop = sheet.querySelector<HTMLElement>("#condition-detail-modal-container");
+    const conditionDetailCloseBtn = sheet.querySelector<HTMLButtonElement>("#condition-detail-close-btn");
+    const conditionDetailDoneBtn = sheet.querySelector<HTMLButtonElement>("#condition-detail-done-btn");
+    const conditionDetailToggleActiveBtn = sheet.querySelector<HTMLButtonElement>("#condition-detail-toggle-active-btn");
+    const modalConditionDetailName = sheet.querySelector<HTMLElement>("#modal-condition-detail-name");
+    const modalConditionDetailSummary = sheet.querySelector<HTMLElement>("#modal-condition-detail-summary");
+    const modalConditionDetailStatus = sheet.querySelector<HTMLElement>("#modal-condition-detail-status");
+    const modalConditionDetailDescription = sheet.querySelector<HTMLElement>("#modal-condition-detail-description");
+
     // Manage Spells modal elements
     const manageSpellsBackdrop = sheet.querySelector<HTMLElement>("#manage-spells-modal-container");
     const manageSpellsCloseBtn = sheet.querySelector<HTMLButtonElement>("#manage-spells-close-btn");
@@ -82,6 +97,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
     let cachedConditions: ConditionDefinition[] = [...DEFAULT_DND55_CONDITIONS];
     let hasFetchedDbConditions = false;
+    let activeConditionDetailName = "";
 
     let cachedDbSpells: SpellDefinition[] = [];
     let manageSearchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -174,27 +190,28 @@ export function initModalsController(ctx: CharacterSheetContext) {
             }
         }
 
-        const filterQuery = (conditionsSearchInput?.value || "").trim().toLowerCase();
-        const filteredConditions = filterQuery
-            ? cachedConditions.filter(
-                  cond =>
-                      cond.name.toLowerCase().includes(filterQuery) ||
-                      cond.summary.toLowerCase().includes(filterQuery) ||
-                      cond.description.toLowerCase().includes(filterQuery)
-              )
-            : cachedConditions;
-
         // Render condition cards
         if (conditionsModalList) {
+            const searchQuery = (conditionsSearchInput?.value || "").trim().toLowerCase();
+            const filteredConditions = searchQuery
+                ? cachedConditions.filter(cond => {
+                    const plainDesc = (cond.description || "").replace(/<[^>]*>/g, " ");
+                    const haystack = `${cond.name} ${cond.summary} ${plainDesc}`.toLowerCase();
+                    return haystack.includes(searchQuery);
+                })
+                : cachedConditions;
+
             if (filteredConditions.length === 0) {
                 conditionsModalList.innerHTML = `
                     <div class="conditions-empty-search">
-                        <i class="fa-solid fa-circle-question"></i> No conditions matched "<strong>${filterQuery}</strong>".
+                        No conditions match "${(conditionsSearchInput?.value || "").trim()}".
                     </div>
                 `;
-            } else {
-                conditionsModalList.innerHTML = filteredConditions
-                    .map(cond => {
+                return;
+            }
+
+            conditionsModalList.innerHTML = filteredConditions
+                .map(cond => {
                     const isExhaustion = cond.slug === "exhaustion" || cond.name.toLowerCase() === "exhaustion";
                     const isActive = isExhaustion ? exhaustionLevel > 0 : activeLowerSet.has(cond.name.toLowerCase());
                     const statusBadge = isExhaustion
@@ -217,13 +234,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                                 </button>
                             </div>
                             <div class="condition-card-body">
-                                ${cond.description}
+                                ${linkifyConditionAndSpellTags(cond.description)}
                             </div>
                         </article>
                     `;
                 })
                 .join("");
-            }
 
             conditionsModalList.querySelectorAll<HTMLButtonElement>(".condition-toggle-btn[data-toggle-condition]").forEach(btn => {
                 btn.addEventListener("click", (e) => {
@@ -299,6 +315,99 @@ export function initModalsController(ctx: CharacterSheetContext) {
         conditionsModalBackdrop.classList.add("hidden");
         conditionsModalBackdrop.setAttribute("aria-hidden", "true");
         document.body.style.overflow = "";
+    }
+
+    function findConditionDefinition(nameOrSlug: string): ConditionDefinition | undefined {
+        const needle = decodeURIComponent(nameOrSlug || "")
+            .trim()
+            .toLowerCase();
+        if (!needle) return undefined;
+        const slugNeedle = needle.replace(/[^a-z0-9]+/g, "-");
+        return (
+            cachedConditions.find(
+                c => c.name.toLowerCase() === needle || c.slug.toLowerCase() === slugNeedle
+            ) ||
+            cachedConditions.find(
+                c => c.name.toLowerCase().includes(needle) || needle.includes(c.name.toLowerCase())
+            )
+        );
+    }
+
+    function renderConditionDetailModalContent(conditionNameInput: string) {
+        const decoded = decodeURIComponent(conditionNameInput || "").trim();
+        const cond = findConditionDefinition(decoded);
+        const displayName = cond?.name || decoded || "Condition";
+        activeConditionDetailName = displayName;
+
+        const { activeSet, exhaustionLevel } = getActiveConditionsState();
+        const activeLowerSet = new Set(Array.from(activeSet).map(c => c.toLowerCase()));
+        const isExhaustion = displayName.toLowerCase() === "exhaustion" || cond?.slug === "exhaustion";
+        const isActive = isExhaustion ? exhaustionLevel > 0 : activeLowerSet.has(displayName.toLowerCase());
+
+        if (modalConditionDetailName) {
+            modalConditionDetailName.innerHTML = `<i class="${cond?.icon || "fa-solid fa-circle-exclamation"}"></i> ${displayName}`;
+        }
+        if (modalConditionDetailSummary) {
+            modalConditionDetailSummary.textContent = cond?.summary || "D&D 5.5 (2024 Rules) Condition";
+        }
+        if (modalConditionDetailStatus) {
+            modalConditionDetailStatus.textContent = isExhaustion
+                ? (exhaustionLevel > 0 ? `Active (Level ${exhaustionLevel})` : "Inactive")
+                : (isActive ? "Active on Character" : "Inactive");
+            modalConditionDetailStatus.classList.toggle("active-status", isActive);
+        }
+        if (conditionDetailToggleActiveBtn) {
+            conditionDetailToggleActiveBtn.innerHTML = isActive
+                ? `<i class="fa-solid fa-toggle-on"></i> Active on Character (Click to Remove)`
+                : `<i class="fa-solid fa-toggle-off"></i> Mark Active on Character`;
+            conditionDetailToggleActiveBtn.classList.toggle("is-active", isActive);
+        }
+        if (modalConditionDetailDescription) {
+            modalConditionDetailDescription.innerHTML = cond?.description
+                ? linkifyConditionAndSpellTags(cond.description)
+                : `<p>No detailed definition found for <strong>${displayName}</strong>.</p>`;
+        }
+    }
+
+    async function openConditionDetailModal(conditionName: string) {
+        if (!conditionDetailBackdrop) return;
+        renderConditionDetailModalContent(conditionName);
+        conditionDetailBackdrop.classList.remove("hidden");
+        conditionDetailBackdrop.classList.add("visible");
+        conditionDetailBackdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        conditionDetailCloseBtn?.focus();
+
+        if (!hasFetchedDbConditions) {
+            try {
+                const res = await getData<{ conditions?: ConditionDefinition[] }>("/get-conditions");
+                if (Array.isArray(res?.conditions) && res.conditions.length > 0) {
+                    cachedConditions = res.conditions;
+                    hasFetchedDbConditions = true;
+                    renderConditionDetailModalContent(conditionName);
+                }
+            } catch {
+                // Keep DEFAULT_DND55_CONDITIONS fallback
+            }
+        }
+    }
+
+    function closeConditionDetailModal() {
+        if (!conditionDetailBackdrop) return;
+        conditionDetailBackdrop.classList.remove("visible");
+        conditionDetailBackdrop.classList.add("hidden");
+        conditionDetailBackdrop.setAttribute("aria-hidden", "true");
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            itemModalBackdrop,
+            actionModalBackdrop,
+            customSpellModal,
+            conditionsModalBackdrop,
+            manageSpellsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     // Manage Spells Modal Logic
@@ -723,7 +832,11 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         if (modalDescription) {
             modalDescription.innerHTML = hasCharacterPullDefinition
-                ? localSpell!.description
+                ? linkifyConditionAndSpellTags(localSpell!.description, {
+                    character: ctx.getCharacter(),
+                    entityName: localSpell!.name,
+                    sourceName: localSpell!.source
+                })
                 : "<p><em>Loading spell details...</em></p>";
         }
 
@@ -778,7 +891,13 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 if (modalRange) modalRange.textContent = independentSpell.range || localSpell?.range || "60 ft.";
                 if (modalDuration) modalDuration.textContent = independentSpell.duration || localSpell?.duration || "Instantaneous";
                 if (modalComponents) modalComponents.textContent = independentSpell.components || localSpell?.components || "V, S";
-                if (modalDescription && independentSpell.description) modalDescription.innerHTML = independentSpell.description;
+                if (modalDescription && independentSpell.description) {
+                    modalDescription.innerHTML = linkifyConditionAndSpellTags(independentSpell.description, {
+                        character: ctx.getCharacter(),
+                        entityName: independentSpell.name,
+                        sourceName: independentSpell.source
+                    });
+                }
 
                 const finalImg = independentSpell.imageUrl || initialSpellImg;
                 if (modalSpellImage && modalSpellImageWrap) {
@@ -890,9 +1009,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         const localDesc = localWeapon?.description || localEquipment?.description || localWeapon?.notes || localEquipment?.notes;
         if (modalItemDescription) {
-            modalItemDescription.innerHTML = localDesc
+            const rawLocalHtml = localDesc
                 ? (localDesc.startsWith("<") ? localDesc : `<p>${localDesc}</p>`)
                 : "<p><em>Loading item details...</em></p>";
+            modalItemDescription.innerHTML = linkifyConditionAndSpellTags(rawLocalHtml, {
+                character: activeCharacter,
+                entityName: displayName,
+                sourceName: displayType
+            });
         }
         if (modalItemSource) {
             modalItemSource.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Loading independent item info...`;
@@ -944,9 +1068,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 }
 
                 if (modalItemDescription && itemObj.description) {
-                    modalItemDescription.innerHTML = itemObj.description.startsWith("<")
+                    const rawItemHtml = itemObj.description.startsWith("<")
                         ? itemObj.description
                         : `<p>${itemObj.description}</p>`;
+                    modalItemDescription.innerHTML = linkifyConditionAndSpellTags(rawItemHtml, {
+                        character: activeCharacter,
+                        entityName: itemObj.name,
+                        sourceName: itemObj.category || displayType
+                    });
                 }
 
                 const finalItemImg = itemObj.imageUrl || initialItemImg;
@@ -994,27 +1123,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
             const rawNotes = (rawNotesInput || "").trim();
             if (!rawNotes) return "<p>No additional details.</p>";
 
-            const spellButtons: string[] = [];
-            const tokenized = rawNotes.replace(/\[spells\]([\s\S]*?)\[\/spells\]/gi, (_match, spellNameRaw: string) => {
-                const spellName = (spellNameRaw || "").trim();
-                if (!spellName) return "";
-                const encodedSpellName = encodeURIComponent(spellName);
-                const escapedLabel = spellName
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/\"/g, "&quot;")
-                    .replace(/'/g, "&#39;");
-                const buttonHtml = `<button type="button" class="action-spell-link inline-spell-link" data-spell-name="${encodedSpellName}" title="Click to view spell details"><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapedLabel}</button>`;
-                const token = `__SPELL_LINK_TOKEN_${spellButtons.length}__`;
-                spellButtons.push(buttonHtml);
-                return token;
-            });
-
-            const hasHtml = /<[a-z][\s\S]*>/i.test(tokenized);
-            let html = hasHtml
-                ? tokenized
-                : `<p>${tokenized
+            const hasHtml = /<[a-z][\s\S]*>/i.test(rawNotes);
+            const baseHtml = hasHtml
+                ? rawNotes
+                : `<p>${rawNotes
                     .replace(/&/g, "&amp;")
                     .replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;")
@@ -1022,40 +1134,90 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     .replace(/'/g, "&#39;")
                     .replace(/\n/g, "<br />")}</p>`;
 
-            spellButtons.forEach((buttonHtml, index) => {
-                html = html.replaceAll(`__SPELL_LINK_TOKEN_${index}__`, buttonHtml);
+            return linkifyConditionAndSpellTags(baseHtml, {
+                character: activeCharacter,
+                entityName: action.name
             });
-
-            return html;
         };
 
         if (modalActionName) modalActionName.textContent = action.name || "Action";
         if (modalActionType) modalActionType.textContent = action.type || "Action";
         if (modalActionRange) modalActionRange.textContent = action.rangeOrReach || "—";
         if (modalActionHitDc) modalActionHitDc.textContent = action.hitOrDc || "—";
-        if (modalActionDamage) modalActionDamage.textContent = action.damageOrEffect || "—";
+        if (modalActionDamage) {
+            modalActionDamage.innerHTML = linkifyConditionAndSpellTags(action.damageOrEffect || "—", {
+                character: activeCharacter,
+                entityName: action.name
+            });
+        }
         if (modalActionNotes) {
             modalActionNotes.innerHTML = renderActionNotesHtml(action.notes || "");
-            modalActionNotes.querySelectorAll<HTMLButtonElement>(".inline-spell-link[data-spell-name]").forEach(btn => {
-                const spellName = btn.getAttribute("data-spell-name");
-                if (!spellName) return;
+        }
 
-                btn.addEventListener("click", (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    closeActionModal();
-                    void openSpellModal(spellName);
-                });
+        actionModalBackdrop.classList.remove("hidden");
+        actionModalBackdrop.classList.add("visible");
+        actionModalBackdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        actionModalCloseBtn?.focus();
+    }
 
-                btn.addEventListener("keydown", (event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        closeActionModal();
-                        void openSpellModal(spellName);
-                    }
-                });
+    function openActionByNameModal(actionNameInput: string) {
+        if (!actionModalBackdrop) return;
+        const decoded = decodeURIComponent(actionNameInput || "").trim();
+        const targetName = decoded.includes(";") ? decoded.split(";")[0].trim() : decoded;
+        const activeCharacter = ctx.getCharacter();
+
+        // 1. Check if character has a matching sheet action first
+        if (activeCharacter && Array.isArray(activeCharacter.actions)) {
+            const needle = targetName.toLowerCase();
+            const singularNeedle = needle.endsWith("s") ? needle.slice(0, -1) : needle;
+            const matchedIdx = activeCharacter.actions.findIndex(a => {
+                const aName = a.name.toLowerCase();
+                return (
+                    aName === needle ||
+                    aName === singularNeedle ||
+                    aName === `${needle} action` ||
+                    aName === `${singularNeedle} action`
+                );
             });
+            if (matchedIdx >= 0) {
+                openActionModal(matchedIdx);
+                return;
+            }
+        }
+
+        // 2. Otherwise resolve from D&D 5.5 (2024) standard Actions glossary
+        const stdAction = findStandardActionDefinition(targetName);
+        let displayName = targetName || "Action";
+        if (stdAction) {
+            const isReactionOrOption =
+                stdAction.type.includes("Reaction") ||
+                stdAction.type.includes("Option") ||
+                stdAction.name.toLowerCase().includes("strike") ||
+                (stdAction.name.toLowerCase().includes("attack") && stdAction.name !== "Attack");
+            displayName = isReactionOrOption ? stdAction.name : `${stdAction.name} Action`;
+        }
+        const dndBeyondUrl = stdAction?.url || resolveDndBeyondActionUrl(targetName);
+
+        if (modalActionName) modalActionName.textContent = displayName;
+        if (modalActionType) modalActionType.textContent = stdAction?.type || "Action • D&D 5.5 (2024 Rules)";
+        if (modalActionRange) modalActionRange.textContent = stdAction?.rangeOrReach || "—";
+        if (modalActionHitDc) modalActionHitDc.textContent = stdAction?.hitOrDc || "—";
+        if (modalActionDamage) {
+            modalActionDamage.innerHTML = linkifyConditionAndSpellTags(stdAction?.damageOrEffect || "—", {
+                character: activeCharacter,
+                entityName: displayName
+            });
+        }
+        if (modalActionNotes) {
+            const descHtml = stdAction?.description
+                ? linkifyConditionAndSpellTags(stdAction.description, {
+                      character: activeCharacter,
+                      entityName: displayName
+                  })
+                : `<p>Standard D&amp;D 5.5 (2024) action rule for <strong>${displayName}</strong>.</p>`;
+            const externalLinkHtml = `<p class="action-modal-external-link-row"><a href="${dndBeyondUrl}" class="inline-rule-link" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-book"></i> View ${displayName} on D&amp;D Beyond</a></p>`;
+            modalActionNotes.innerHTML = `${descHtml}${externalLinkHtml}`;
         }
 
         actionModalBackdrop.classList.remove("hidden");
@@ -1070,7 +1232,17 @@ export function initModalsController(ctx: CharacterSheetContext) {
         actionModalBackdrop.classList.remove("visible");
         actionModalBackdrop.classList.add("hidden");
         actionModalBackdrop.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            itemModalBackdrop,
+            conditionDetailBackdrop,
+            customSpellModal,
+            conditionsModalBackdrop,
+            manageSpellsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     // Attach open/close functions to ctx
@@ -1086,6 +1258,68 @@ export function initModalsController(ctx: CharacterSheetContext) {
     ctx.closeActionModal = closeActionModal;
     ctx.openConditionsModal = openConditionsModal;
     ctx.closeConditionsModal = closeConditionsModal;
+    ctx.openConditionDetailModal = openConditionDetailModal;
+    ctx.closeConditionDetailModal = closeConditionDetailModal;
+
+    // Delegated click listener across sheet for [condition], [action], [rules], and [spell] links
+    sheet.addEventListener("click", (event) => {
+        const target = event.target as HTMLElement | null;
+        if (!target) return;
+
+        const ruleLink = target.closest<HTMLAnchorElement>(".inline-rule-link");
+        if (ruleLink) {
+            event.stopPropagation();
+            return;
+        }
+
+        const actionBtn = target.closest<HTMLElement>(".inline-action-link[data-action-link]");
+        if (actionBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const encodedAction = actionBtn.getAttribute("data-action-link");
+            if (encodedAction) {
+                openActionByNameModal(encodedAction);
+            }
+            return;
+        }
+
+        const conditionBtn = target.closest<HTMLElement>(".inline-condition-link[data-condition-link]");
+        if (conditionBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const encodedCond = conditionBtn.getAttribute("data-condition-link");
+            if (encodedCond) {
+                void openConditionDetailModal(encodedCond);
+            }
+            return;
+        }
+
+        const inlineSpellBtn = target.closest<HTMLElement>(".inline-spell-link[data-spell-name]");
+        if (inlineSpellBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const encodedSpell = inlineSpellBtn.getAttribute("data-spell-name");
+            if (encodedSpell) {
+                if (actionModalBackdrop && !actionModalBackdrop.classList.contains("hidden")) {
+                    closeActionModal();
+                }
+                void openSpellModal(encodedSpell);
+            }
+        }
+    });
+
+    conditionDetailCloseBtn?.addEventListener("click", closeConditionDetailModal);
+    conditionDetailDoneBtn?.addEventListener("click", closeConditionDetailModal);
+    conditionDetailBackdrop?.addEventListener("click", (event) => {
+        if (event.target === conditionDetailBackdrop) {
+            closeConditionDetailModal();
+        }
+    });
+    conditionDetailToggleActiveBtn?.addEventListener("click", () => {
+        if (!activeConditionDetailName) return;
+        toggleConditionByName(activeConditionDetailName);
+        renderConditionDetailModalContent(activeConditionDetailName);
+    });
 
     // Listeners
     modalCloseBtn?.addEventListener("click", closeSpellModal);
@@ -1252,6 +1486,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
     // Global escape key handler
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
+            if (conditionDetailBackdrop && !conditionDetailBackdrop.classList.contains("hidden")) {
+                closeConditionDetailModal();
+                return;
+            }
             if (modalBackdrop && !modalBackdrop.classList.contains("hidden")) {
                 closeSpellModal();
             }
@@ -1285,6 +1523,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
         openManageSpellsModal,
         closeManageSpellsModal,
         openConditionsModal,
-        closeConditionsModal
+        closeConditionsModal,
+        openConditionDetailModal,
+        closeConditionDetailModal
     };
 }

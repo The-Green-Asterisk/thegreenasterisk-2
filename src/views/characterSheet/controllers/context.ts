@@ -64,6 +64,8 @@ export interface CharacterSheetContext {
     closeManageSpellsModal: () => void;
     openConditionsModal: () => Promise<void>;
     closeConditionsModal: () => void;
+    openConditionDetailModal: (conditionName: string) => Promise<void>;
+    closeConditionDetailModal: () => void;
     updateHeroConditionsDisplay: () => void;
 
     // HP & Vitals

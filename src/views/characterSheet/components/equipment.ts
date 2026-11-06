@@ -1,4 +1,5 @@
 import { CharacterData } from "../characterData";
+import { linkifyConditionAndSpellTags } from "./markupLinks";
 
 export function renderEquipment(data: CharacterData): string {
     return data.equipment.map(item => {
@@ -30,7 +31,7 @@ export function renderEquipment(data: CharacterData): string {
                     ${magicBadge}
                     ${rarityBadge}
                 </div>
-                ${item.notes ? `<div class="item-notes">${item.notes}</div>` : ''}
+                ${item.notes ? `<div class="item-notes">${linkifyConditionAndSpellTags(item.notes, { character: data, entityName: item.name, sourceName: item.type })}</div>` : ''}
             </div>
         `;
     }).join('');

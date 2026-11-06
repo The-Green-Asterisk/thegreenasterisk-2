@@ -947,6 +947,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         closeManageSpellsModal: () => { },
         openConditionsModal: async () => { },
         closeConditionsModal: () => { },
+        openConditionDetailModal: async () => { },
+        closeConditionDetailModal: () => { },
         updateHeroConditionsDisplay: () => { },
         getCurrentHp: () => currentHp,
         setCurrentHp: (hp) => {
