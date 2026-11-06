@@ -882,6 +882,14 @@ el-character-sheet .content-slate section {
     --badge-senses-row-text: var(--text-muted);
 }
 
+#dnd-beyond-note {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    text-align: center;
+    font-style: italic;
+}
+
 .vital-card {
     position: relative;
     background: transparent;

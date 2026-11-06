@@ -23,6 +23,9 @@ const characterSheetTemplate = () => html`
     <el-character-sheet>
         <div class="content-slate">
             ${renderLoaderBar()}
+            <div id="dnd-beyond-note">
+                Note that none of the changes you make here will be reflected on D&D Beyond.
+            </div>
 
             <div id="character-sheet-dynamic-content" class="sheet-dynamic-content">
             </div>
