@@ -115,22 +115,43 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         });
     }
 
+    function getExportPdfModal(): HTMLElement | null {
+        return exportPdfModal || sheet.querySelector<HTMLElement>("#export-pdf-modal-container") || document.getElementById("export-pdf-modal-container");
+    }
+
     function openPdfExportModal() {
-        if (!exportPdfModal) return;
+        const modal = getExportPdfModal();
+        if (!modal) {
+            console.error("Export PDF modal not found");
+            return;
+        }
         const savedFormat = (typeof window !== "undefined" && window.localStorage?.getItem(pdfFormatStorageKey)) as PdfFormat || "letter";
-        formatRadios.forEach(radio => {
+        const radios = modal.querySelectorAll<HTMLInputElement>('input[name="pdf-format-choice"]');
+        radios.forEach(radio => {
             radio.checked = radio.value === savedFormat;
         });
         updateSelectedFormatCard();
-        exportPdfModal.classList.remove("hidden");
-        exportPdfModal.setAttribute("aria-hidden", "false");
+        modal.classList.remove("hidden");
+        modal.classList.add("visible");
+        modal.setAttribute("aria-hidden", "false");
     }
 
     function closePdfExportModal() {
-        if (!exportPdfModal) return;
-        exportPdfModal.classList.add("hidden");
-        exportPdfModal.setAttribute("aria-hidden", "true");
+        const modal = getExportPdfModal();
+        if (!modal) return;
+        modal.classList.remove("visible");
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden", "true");
     }
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            const modal = getExportPdfModal();
+            if (modal && !modal.classList.contains("hidden")) {
+                closePdfExportModal();
+            }
+        }
+    });
 
     formatRadios.forEach(radio => {
         radio.addEventListener("change", updateSelectedFormatCard);
@@ -146,24 +167,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         });
     });
 
-    exportPdfCloseBtn?.addEventListener("click", closePdfExportModal);
-    exportPdfCancelBtn?.addEventListener("click", closePdfExportModal);
-    exportPdfModal?.addEventListener("click", (e) => {
-        if (e.target === exportPdfModal) {
-            closePdfExportModal();
-        }
-    });
-
-    exportPdfBtn?.addEventListener("click", () => {
-        const activeCharacter = ctx.getCharacter();
-        if (!activeCharacter) {
-            ctx.showStatus("Please load a character first before exporting a PDF.");
-            return;
-        }
-        openPdfExportModal();
-    });
-
-    exportPdfConfirmBtn?.addEventListener("click", async () => {
+    const handleConfirmExport = async () => {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter) {
             closePdfExportModal();
@@ -171,8 +175,10 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
             return;
         }
 
+        const modal = getExportPdfModal();
         let chosenFormat: PdfFormat = "letter";
-        formatRadios.forEach(radio => {
+        const currentRadios = modal ? modal.querySelectorAll<HTMLInputElement>('input[name="pdf-format-choice"]') : formatRadios;
+        currentRadios.forEach(radio => {
             if (radio.checked && (radio.value === "letter" || radio.value === "remarkable")) {
                 chosenFormat = radio.value as PdfFormat;
             }
@@ -206,7 +212,38 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 exportPdfBtn.innerHTML = origHtml;
             }
         }
+    };
+
+    exportPdfCloseBtn?.addEventListener("click", closePdfExportModal);
+    exportPdfCancelBtn?.addEventListener("click", closePdfExportModal);
+    const modalEl = getExportPdfModal();
+    modalEl?.querySelector("#export-pdf-close-btn")?.addEventListener("click", closePdfExportModal);
+    modalEl?.querySelector("#export-pdf-cancel-btn")?.addEventListener("click", closePdfExportModal);
+    modalEl?.querySelector("#export-pdf-confirm-btn")?.addEventListener("click", handleConfirmExport);
+
+    exportPdfModal?.addEventListener("click", (e) => {
+        if (e.target === exportPdfModal) {
+            closePdfExportModal();
+        }
     });
+    if (modalEl && modalEl !== exportPdfModal) {
+        modalEl.addEventListener("click", (e) => {
+            if (e.target === modalEl) {
+                closePdfExportModal();
+            }
+        });
+    }
+
+    exportPdfBtn?.addEventListener("click", () => {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) {
+            ctx.showStatus("Please load a character first before exporting a PDF.");
+            return;
+        }
+        openPdfExportModal();
+    });
+
+    exportPdfConfirmBtn?.addEventListener("click", handleConfirmExport);
 
     function setCharacterActionsVisibility() {
         const activeCharacter = ctx.getCharacter();
