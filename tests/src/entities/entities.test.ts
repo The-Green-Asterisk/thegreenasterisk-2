@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import entities, {
     Category,
     Comment,
+    Condition,
     Segment,
     Stat,
     Tag,
@@ -24,6 +25,7 @@ describe('Frontend Entities', () => {
         expect(entities.Segment).toBe(Segment);
         expect(entities.Comment).toBe(Comment);
         expect(entities.Stat).toBe(Stat);
+        expect(entities.Condition).toBe(Condition);
     });
 
     it('instantiates PrDigest with structured alerts', () => {

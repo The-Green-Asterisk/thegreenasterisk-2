@@ -1,5 +1,6 @@
 import Category from "./Category";
 import Comment from "./Comment";
+import Condition from "./Condition";
 import Item from "./Item";
 import Segment from "./Segment";
 import Spell from "./Spell";
@@ -12,6 +13,7 @@ import YouTubeVideo from "./YouTubeVideo";
 
 export { default as Category } from "./Category";
 export { default as Comment } from "./Comment";
+export { default as Condition } from "./Condition";
 export { default as Item } from "./Item";
 export { default as Segment } from "./Segment";
 export { default as Spell } from "./Spell";
@@ -33,6 +35,7 @@ const entities = {
     Comment,
     Stat,
     Spell,
-    Item
+    Item,
+    Condition
 };
 export default entities;
