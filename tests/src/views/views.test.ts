@@ -1555,10 +1555,10 @@ describe('Frontend View Templates', () => {
 
         // Page 1: Core Stats, Outlines, Fillable HP
         expect(pages[0]).toContain('Darvell');
-        expect(pages[0]).toContain('pdf-abilities-block');
+        expect(pages[0]).toContain('pdf-abilities-col');
         expect(pages[0]).toContain('CURRENT HIT POINTS');
         expect(pages[0]).toContain('TEMPORARY HIT POINTS');
-        expect(pages[0]).toContain('pdf-fillable-blank-space');
+        expect(pages[0]).toContain('pdf-hp-box-blank');
         expect(pages[0]).toContain('Hit Point Maximum:');
         expect(pages[0]).toContain('120');
         expect(pages[0]).toContain('DEATH SAVES');
@@ -1571,8 +1571,8 @@ describe('Frontend View Templates', () => {
 
         // Page 3: Spellcasting & Fillable Spell Slots
         expect(pages[2]).toContain('Spellcasting &amp; Spell Slots');
-        expect(pages[2]).toContain('PACT MAGIC (Level 5) — 2 SLOTS');
-        expect(pages[2]).toContain('1ST LEVEL — 4 SLOTS');
+        expect(pages[2]).toContain('PACT MAGIC (Level 5)');
+        expect(pages[2]).toContain('1ST LEVEL');
         expect(pages[2]).toContain('pdf-slot-bubbles');
         expect(pages[2]).toContain('pdf-bubble');
     });

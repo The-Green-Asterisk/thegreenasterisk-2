@@ -12,11 +12,28 @@ function escapeHtml(str: string | number | undefined | null): string {
         .replace(/'/g, "&#039;");
 }
 
+function stripHtml(html: string | undefined | null): string {
+    if (!html) return "";
+    return html
+        .replace(/<br\s*\/?>/gi, " ")
+        .replace(/<\/p>/gi, " ")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#039;/gi, "'")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
 function renderPips(count: number): string {
     if (count <= 0) return "";
     let html = '<div class="pdf-slot-bubbles">';
+    html += `<span class="pdf-slots-label">${count} ${count === 1 ? "SLOT" : "SLOTS"}</span>`;
     for (let i = 0; i < count; i++) {
-        html += '<span class="pdf-bubble" title="Fillable spell slot">◯</span>';
+        html += '<span class="pdf-bubble" title="Fillable slot">◯</span>';
     }
     html += '</div>';
     return html;
@@ -74,10 +91,10 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
 
         <!-- MAIN 3-COLUMN CONTENT -->
         <div class="pdf-main-grid">
-            <!-- COLUMN 1: ABILITIES, SAVES, SKILLS -->
-            <div class="pdf-col pdf-col-left">
-                <!-- 6 ABILITIES -->
-                <div class="pdf-abilities-block">
+            <!-- COLUMN 1: ABILITY SCORES & SAVING THROWS (135px) -->
+            <div class="pdf-col pdf-col-abilities">
+                <!-- 6 ABILITIES VERTICALLY STACKED -->
+                <div class="pdf-abilities-col">
     `;
 
     data.abilities.forEach(ab => {
@@ -95,7 +112,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     p1 += `
                 </div>
 
-                <!-- INSPIRATION & PROFICIENCY -->
+                <!-- INSPIRATION & PROFICIENCY BONUS -->
                 <div class="pdf-side-toggles">
                     <div class="pdf-outline-box pdf-insp-box">
                         <span class="pdf-insp-bubble">◯</span>
@@ -103,7 +120,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
                     </div>
                     <div class="pdf-outline-box pdf-pb-box">
                         <span class="pdf-pb-val">+${data.vitals.proficiencyBonus}</span>
-                        <span class="pdf-pb-label">PROFICIENCY BONUS</span>
+                        <span class="pdf-pb-label">PROFICIENCY</span>
                     </div>
                 </div>
 
@@ -118,8 +135,8 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
         const marker = ab.proficientSave ? "●" : "◯";
         p1 += `
             <div class="pdf-save-row ${ab.proficientSave ? "proficient" : ""}">
-                <span class="pdf-check-circle">${marker}</span>
-                <span class="pdf-save-bonus">${sign}</span>
+                <span class="pdf-check-col">${marker}</span>
+                <span class="pdf-bonus-col">${sign}</span>
                 <span class="pdf-save-name">${escapeHtml(ab.name)}</span>
             </div>
         `;
@@ -128,8 +145,11 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     p1 += `
                     </div>
                 </div>
+            </div>
 
-                <!-- SKILLS -->
+            <!-- COLUMN 2: SKILLS, SENSES, PROFICIENCIES (190px) -->
+            <div class="pdf-col pdf-col-skills">
+                <!-- SKILLS (ALL 18 IN TABULAR GRID) -->
                 <div class="pdf-outline-box pdf-skills-box">
                     <div class="pdf-box-title">SKILLS</div>
                     <div class="pdf-skills-list">
@@ -143,10 +163,10 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
 
         p1 += `
             <div class="pdf-skill-row ${sk.proficiency ? "proficient" : ""}">
-                <span class="pdf-check-circle">${marker}</span>
-                <span class="pdf-skill-bonus">${sign}</span>
+                <span class="pdf-check-col">${marker}</span>
+                <span class="pdf-bonus-col">${sign}</span>
                 <span class="pdf-skill-name">${escapeHtml(sk.name)}</span>
-                <span class="pdf-skill-stat">(${escapeHtml(sk.stat)})</span>
+                <span class="pdf-stat-col">${escapeHtml(sk.stat)}</span>
             </div>
         `;
     });
@@ -154,11 +174,41 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     p1 += `
                     </div>
                 </div>
+
+                <!-- PASSIVE SENSES -->
+                <div class="pdf-outline-box pdf-senses-box">
+                    <div class="pdf-box-title">PASSIVE SENSES</div>
+                    <div class="pdf-senses-grid">
+                        <div class="pdf-sense-item"><strong>${data.vitals.passivePerception}</strong> Passive Perception</div>
+                        <div class="pdf-sense-item"><strong>${data.vitals.passiveInvestigation}</strong> Passive Investigation</div>
+                        <div class="pdf-sense-item"><strong>${data.vitals.passiveInsight}</strong> Passive Insight</div>
+                        ${(() => {
+                            const senses: string[] = [];
+                            if (data.vitals.darkvision) senses.push(`Darkvision ${data.vitals.darkvision}`);
+                            if (data.vitals.blindsight) senses.push(`Blindsight ${data.vitals.blindsight}`);
+                            if (data.vitals.tremorsense) senses.push(`Tremorsense ${data.vitals.tremorsense}`);
+                            if (data.vitals.truesight) senses.push(`Truesight ${data.vitals.truesight}`);
+                            if (data.vitals.devilsSight) senses.push(`Devil's Sight ${data.vitals.devilsSight}`);
+                            return senses.length ? `<div class="pdf-sense-item"><strong>Senses:</strong> ${escapeHtml(senses.join(", "))}</div>` : "";
+                        })()}
+                    </div>
+                </div>
+
+                <!-- OTHER PROFICIENCIES & LANGUAGES -->
+                <div class="pdf-outline-box pdf-profs-box-col2">
+                    <div class="pdf-box-title">PROFICIENCIES &amp; LANGUAGES</div>
+                    <div class="pdf-profs-content">
+                        ${data.proficiencies?.armor?.length ? `<div><strong>Armor:</strong> ${escapeHtml(data.proficiencies.armor.join(", "))}</div>` : ""}
+                        ${data.proficiencies?.weapons?.length ? `<div><strong>Weapons:</strong> ${escapeHtml(data.proficiencies.weapons.join(", "))}</div>` : ""}
+                        ${data.proficiencies?.tools?.length ? `<div><strong>Tools:</strong> ${escapeHtml(data.proficiencies.tools.join(", "))}</div>` : ""}
+                        ${data.proficiencies?.languages?.length ? `<div><strong>Languages:</strong> ${escapeHtml(data.proficiencies.languages.join(", "))}</div>` : ""}
+                    </div>
+                </div>
             </div>
 
-            <!-- COLUMN 2: VITALS, HP, ATTACKS -->
-            <div class="pdf-col pdf-col-mid">
-                <!-- TOP VITALS ROW -->
+            <!-- COLUMN 3: VITALS, COMPACT HP, ATTACKS & WEAPONS (FLEX 1) -->
+            <div class="pdf-col pdf-col-vitals">
+                <!-- TOP VITALS ROW (AC, INITIATIVE, SPEED) -->
                 <div class="pdf-vitals-row">
                     <div class="pdf-vital-badge pdf-ac-badge">
                         <div class="pdf-vital-val">${data.vitals.armorClass}</div>
@@ -174,19 +224,20 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
                     </div>
                 </div>
 
-                <!-- HIT POINTS BLOCK (FILLABLE TABLETOP BOXES) -->
+                <!-- COMPACT HIT POINTS CONTAINER -->
                 <div class="pdf-outline-box pdf-hp-container">
                     <div class="pdf-hp-max-row">
-                        <span class="pdf-hp-max-label">Hit Point Maximum:</span>
-                        <span class="pdf-hp-max-val">${data.vitals.maxHp}</span>
+                        <span>Hit Point Maximum: <strong>${data.vitals.maxHp}</strong></span>
                     </div>
-                    <div class="pdf-fillable-hp-box">
-                        <div class="pdf-fillable-title">CURRENT HIT POINTS</div>
-                        <div class="pdf-fillable-blank-space"></div>
-                    </div>
-                    <div class="pdf-fillable-hp-box pdf-temp-hp-box">
-                        <div class="pdf-fillable-title">TEMPORARY HIT POINTS</div>
-                        <div class="pdf-fillable-blank-space"></div>
+                    <div class="pdf-hp-boxes-row">
+                        <div class="pdf-hp-box-half">
+                            <div class="pdf-hp-box-title">CURRENT HIT POINTS</div>
+                            <div class="pdf-hp-box-blank"></div>
+                        </div>
+                        <div class="pdf-hp-box-half">
+                            <div class="pdf-hp-box-title">TEMPORARY HIT POINTS</div>
+                            <div class="pdf-hp-box-blank"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -213,15 +264,15 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
                     </div>
                 </div>
 
-                <!-- ATTACKS & SPELLCASTING TABLE -->
+                <!-- ATTACKS & WEAPONS TABLE -->
                 <div class="pdf-outline-box pdf-attacks-box">
                     <div class="pdf-box-title">ATTACKS &amp; WEAPONS</div>
                     <table class="pdf-attacks-table">
                         <thead>
                             <tr>
-                                <th>NAME</th>
-                                <th>ATK</th>
-                                <th>DAMAGE / TYPE</th>
+                                <th style="width: 28%;">NAME</th>
+                                <th style="width: 14%;">ATK</th>
+                                <th style="width: 28%;">DAMAGE / TYPE</th>
                                 <th>NOTES</th>
                             </tr>
                         </thead>
@@ -229,7 +280,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     `;
 
     const weaponsList = (data.weapons && data.weapons.length > 0) ? data.weapons : [];
-    weaponsList.slice(0, 6).forEach(w => {
+    weaponsList.slice(0, 5).forEach(w => {
         p1 += `
             <tr>
                 <td class="pdf-atk-name"><strong>${escapeHtml(w.name)}</strong></td>
@@ -240,9 +291,8 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
         `;
     });
 
-    // Provide 2 blank fillable attack rows if table has room
-    const blankRowsNeeded = Math.max(2, 6 - weaponsList.length);
-    for (let i = 0; i < blankRowsNeeded; i++) {
+    const blankAtkRows = Math.max(3, 5 - weaponsList.length);
+    for (let i = 0; i < blankAtkRows; i++) {
         p1 += `
             <tr class="pdf-blank-row">
                 <td>&nbsp;</td>
@@ -256,25 +306,6 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     p1 += `
                         </tbody>
                     </table>
-                </div>
-
-                <!-- PASSIVE SENSES & PROFICIENCIES -->
-                <div class="pdf-outline-box pdf-senses-box">
-                    <div class="pdf-box-title">PASSIVE SENSES</div>
-                    <div class="pdf-senses-grid">
-                        <div><strong>${data.vitals.passivePerception}</strong> Passive Perception (Wisdom)</div>
-                        <div><strong>${data.vitals.passiveInvestigation}</strong> Passive Investigation (Intelligence)</div>
-                        <div><strong>${data.vitals.passiveInsight}</strong> Passive Insight (Wisdom)</div>
-                        ${(() => {
-                            const senses: string[] = [];
-                            if (data.vitals.darkvision) senses.push(`Darkvision ${data.vitals.darkvision}`);
-                            if (data.vitals.blindsight) senses.push(`Blindsight ${data.vitals.blindsight}`);
-                            if (data.vitals.tremorsense) senses.push(`Tremorsense ${data.vitals.tremorsense}`);
-                            if (data.vitals.truesight) senses.push(`Truesight ${data.vitals.truesight}`);
-                            if (data.vitals.devilsSight) senses.push(`Devil's Sight ${data.vitals.devilsSight}`);
-                            return senses.length ? `<div><strong>Senses:</strong> ${escapeHtml(senses.join(", "))}</div>` : "";
-                        })()}
-                    </div>
                 </div>
             </div>
         </div>
@@ -305,14 +336,15 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     `;
 
     const featuresList = (data.features || []);
-    featuresList.slice(0, 12).forEach(f => {
+    featuresList.slice(0, 14).forEach(f => {
+        const cleanDesc = stripHtml(f.description);
         p2 += `
             <div class="pdf-feature-item">
                 <div class="pdf-feature-hdr">
                     <span class="pdf-feature-name">${escapeHtml(f.name)}</span>
                     <span class="pdf-feature-source">${escapeHtml(f.source || f.type || "")}</span>
                 </div>
-                <div class="pdf-feature-desc">${escapeHtml(f.description || "").slice(0, 180)}</div>
+                <div class="pdf-feature-desc">${escapeHtml(cleanDesc.slice(0, 200))}</div>
             </div>
         `;
     });
@@ -322,20 +354,8 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
                 </div>
             </div>
 
-            <!-- EQUIPMENT, PROFICIENCIES & NOTES (RIGHT) -->
+            <!-- EQUIPMENT & CURRENCY (RIGHT) -->
             <div class="pdf-page2-col">
-                <!-- PROFICIENCIES & LANGUAGES -->
-                <div class="pdf-outline-box pdf-profs-box">
-                    <div class="pdf-box-title">OTHER PROFICIENCIES &amp; LANGUAGES</div>
-                    <div class="pdf-profs-content">
-                        ${data.proficiencies?.armor?.length ? `<div><strong>Armor:</strong> ${escapeHtml(data.proficiencies.armor.join(", "))}</div>` : ""}
-                        ${data.proficiencies?.weapons?.length ? `<div><strong>Weapons:</strong> ${escapeHtml(data.proficiencies.weapons.join(", "))}</div>` : ""}
-                        ${data.proficiencies?.tools?.length ? `<div><strong>Tools:</strong> ${escapeHtml(data.proficiencies.tools.join(", "))}</div>` : ""}
-                        ${data.proficiencies?.languages?.length ? `<div><strong>Languages:</strong> ${escapeHtml(data.proficiencies.languages.join(", "))}</div>` : ""}
-                    </div>
-                </div>
-
-                <!-- EQUIPMENT & CURRENCY -->
                 <div class="pdf-outline-box pdf-equip-container">
                     <div class="pdf-box-title">EQUIPMENT &amp; CURRENCY</div>
                     <!-- CURRENCY -->
@@ -350,26 +370,26 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
                     <table class="pdf-equip-table">
                         <thead>
                             <tr>
-                                <th>ITEM</th>
-                                <th>QTY</th>
-                                <th>TYPE</th>
+                                <th style="width: 60%;">ITEM</th>
+                                <th style="width: 15%; text-align: center;">QTY</th>
+                                <th style="width: 25%;">TYPE</th>
                             </tr>
                         </thead>
                         <tbody>
     `;
 
     const equipmentList = (data.equipment || []);
-    equipmentList.slice(0, 14).forEach(eq => {
+    equipmentList.slice(0, 18).forEach(eq => {
         p2 += `
             <tr>
-                <td>${escapeHtml(eq.name)}</td>
-                <td>${eq.quantity || 1}</td>
-                <td>${escapeHtml(eq.type || "Item")}</td>
+                <td class="pdf-equip-name">${escapeHtml(eq.name)}</td>
+                <td class="pdf-equip-qty">${eq.quantity || 1}</td>
+                <td class="pdf-equip-type">${escapeHtml(eq.type || "Item")}</td>
             </tr>
         `;
     });
 
-    const blankEquipRows = Math.max(2, 14 - equipmentList.length);
+    const blankEquipRows = Math.max(3, 18 - equipmentList.length);
     for (let i = 0; i < blankEquipRows; i++) {
         p2 += `
             <tr class="pdf-blank-row">
@@ -395,7 +415,6 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
     // ==========================================
     // PAGE 3: SPELLCASTING & FILLABLE SLOTS
     // ==========================================
-    // Render spell page if character has spell slots, spellcasting ability, or spells
     const hasSpells = (data.spells && data.spells.length > 0) || (data.spellSlots && Object.keys(data.spellSlots).length > 0) || !!data.vitals.spellcastingAbility;
 
     if (hasSpells) {
@@ -435,7 +454,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
             p3 += `
                 <div class="pdf-spell-level-box">
                     <div class="pdf-spell-level-header">
-                        <span class="pdf-lvl-title">PACT MAGIC (Level ${pactLevel}) — ${pactSlots} SLOTS</span>
+                        <span class="pdf-lvl-title">PACT MAGIC (Level ${pactLevel})</span>
                         ${renderPips(pactSlots)}
                     </div>
                     <div class="pdf-spell-items-grid">
@@ -492,7 +511,7 @@ export function generatePdfHtmlPages(data: CharacterData): string[] {
                 p3 += `
                     <div class="pdf-spell-level-box">
                         <div class="pdf-spell-level-header">
-                            <span class="pdf-lvl-title">${lvl}${getOrdinalSuffix(lvl)} LEVEL ${maxSlots > 0 ? `— ${maxSlots} SLOTS` : ""}</span>
+                            <span class="pdf-lvl-title">${lvl}${getOrdinalSuffix(lvl)} LEVEL</span>
                             ${renderPips(maxSlots)}
                         </div>
                         <div class="pdf-spell-items-grid">
@@ -533,7 +552,7 @@ function getOrdinalSuffix(n: number): string {
 
 export function getPdfStyles(): string {
     return `
-        /* --- PDF PRINTABLE STYLES: BLACK & WHITE OUTLINE SHAPES --- */
+        /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES --- */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -548,7 +567,7 @@ export function getPdfStyles(): string {
             overflow: hidden;
             background: #ffffff !important;
             color: #000000 !important;
-            padding: 24px 28px;
+            padding: 22px 24px;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -558,14 +577,14 @@ export function getPdfStyles(): string {
 
         .pdf-outline-box {
             border: 1.5px solid #000000;
-            border-radius: 6px;
+            border-radius: 5px;
             background: #ffffff;
-            padding: 6px 8px;
+            padding: 5px 7px;
             position: relative;
         }
 
         .pdf-box-title {
-            font-size: 8px;
+            font-size: 7.5px;
             font-weight: 900;
             letter-spacing: 0.5px;
             text-transform: uppercase;
@@ -580,21 +599,21 @@ export function getPdfStyles(): string {
             display: flex;
             border: 2px solid #000000;
             border-radius: 6px;
-            margin-bottom: 10px;
-            height: 64px;
+            margin-bottom: 8px;
+            height: 60px;
         }
 
         .pdf-header-name-box {
-            width: 38%;
+            width: 36%;
             border-right: 2px solid #000000;
-            padding: 6px 12px;
+            padding: 6px 10px;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
 
         .pdf-char-name {
-            font-size: 19px;
+            font-size: 18px;
             font-weight: 900;
             letter-spacing: -0.5px;
             line-height: 1.1;
@@ -602,7 +621,7 @@ export function getPdfStyles(): string {
         }
 
         .pdf-char-subtitle {
-            font-size: 7.5px;
+            font-size: 7px;
             font-weight: 700;
             text-transform: uppercase;
             color: #444444;
@@ -610,14 +629,14 @@ export function getPdfStyles(): string {
         }
 
         .pdf-header-details-grid {
-            width: 62%;
+            width: 64%;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(2, 1fr);
         }
 
         .pdf-detail-cell {
-            padding: 3px 6px;
+            padding: 2px 6px;
             border-right: 1px solid #000000;
             border-bottom: 1px solid #000000;
             display: flex;
@@ -634,9 +653,9 @@ export function getPdfStyles(): string {
         }
 
         .pdf-detail-val {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 700;
-            line-height: 1;
+            line-height: 1.1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -647,35 +666,40 @@ export function getPdfStyles(): string {
             font-weight: 800;
             text-transform: uppercase;
             color: #555555;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
-        /* MAIN GRID */
+        /* MAIN 3-COLUMN GRID */
         .pdf-main-grid {
             display: grid;
-            grid-template-columns: 200px 1fr;
-            gap: 10px;
+            grid-template-columns: 135px 190px 1fr;
+            gap: 8px;
             flex: 1;
         }
 
-        .pdf-col-left {
+        .pdf-col {
             display: flex;
             flex-direction: column;
             gap: 6px;
         }
 
-        /* 6 ABILITIES ROW */
-        .pdf-abilities-block {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 3px;
+        /* COLUMN 1: ABILITIES VERTICAL */
+        .pdf-abilities-col {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .pdf-ability-box {
             border: 1.5px solid #000000;
             border-radius: 4px;
             text-align: center;
-            padding: 2px 1px;
+            padding: 3px 2px;
+            height: 54px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
             background: #ffffff;
         }
 
@@ -686,36 +710,33 @@ export function getPdfStyles(): string {
         }
 
         .pdf-ability-mod {
-            font-size: 12px;
+            font-size: 16px;
             font-weight: 900;
-            line-height: 1.1;
-            margin: 1px 0;
+            line-height: 1;
         }
 
         .pdf-ability-score {
             font-size: 8px;
             font-weight: 700;
             border: 1px solid #000000;
-            border-radius: 10px;
-            display: inline-block;
-            padding: 0 3px;
+            border-radius: 8px;
+            padding: 0 5px;
             line-height: 1.1;
         }
 
         .pdf-ability-base {
             font-size: 5.5px;
-            color: #666666;
-            margin-top: 1px;
+            color: #555555;
         }
 
-        /* SIDE TOGGLES */
+        /* SIDE TOGGLES (INSPIRATION & PB) */
         .pdf-side-toggles {
             display: flex;
+            flex-direction: column;
             gap: 4px;
         }
 
-        .pdf-insp-box {
-            flex: 1;
+        .pdf-insp-box, .pdf-pb-box {
             display: flex;
             align-items: center;
             gap: 4px;
@@ -728,16 +749,8 @@ export function getPdfStyles(): string {
         }
 
         .pdf-insp-label {
-            font-size: 6.5px;
+            font-size: 6px;
             font-weight: 800;
-        }
-
-        .pdf-pb-box {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 5px;
         }
 
         .pdf-pb-val {
@@ -746,86 +759,113 @@ export function getPdfStyles(): string {
         }
 
         .pdf-pb-label {
-            font-size: 6.5px;
+            font-size: 6px;
             font-weight: 800;
         }
 
-        /* SAVES & SKILLS */
+        /* SAVES (COLUMN 1) */
         .pdf-saves-box {
             padding: 4px 6px;
         }
 
         .pdf-saves-list {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1px 4px;
-        }
-
-        .pdf-save-row {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            font-size: 8px;
-            line-height: 1.2;
-        }
-
-        .pdf-check-circle {
-            font-size: 9px;
-            line-height: 1;
-        }
-
-        .pdf-save-bonus {
-            font-weight: 800;
-            width: 14px;
-            text-align: right;
-        }
-
-        .pdf-skills-box {
-            padding: 4px 6px;
-            flex: 1;
-        }
-
-        .pdf-skills-list {
             display: flex;
             flex-direction: column;
             gap: 1.5px;
         }
 
-        .pdf-skill-row {
-            display: flex;
+        .pdf-save-row {
+            display: grid;
+            grid-template-columns: 14px 20px 1fr;
             align-items: center;
-            gap: 3px;
             font-size: 7.5px;
-            line-height: 1.15;
+            height: 14px;
+            line-height: 1;
         }
 
-        .pdf-skill-bonus {
-            font-weight: 800;
-            width: 15px;
+        .pdf-save-name {
+            font-weight: 600;
+            margin-left: 2px;
+        }
+
+        /* COLUMN 2: SKILLS (TABULAR ALIGNED) */
+        .pdf-skills-box {
+            padding: 4px 6px;
+        }
+
+        .pdf-skills-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .pdf-skill-row {
+            display: grid;
+            grid-template-columns: 14px 20px 1fr 24px;
+            align-items: center;
+            font-size: 7.5px;
+            height: 15px;
+            line-height: 1;
+        }
+
+        .pdf-check-col {
+            text-align: center;
+            font-size: 9px;
+            line-height: 1;
+        }
+
+        .pdf-bonus-col {
             text-align: right;
+            font-weight: 800;
+            padding-right: 3px;
         }
 
         .pdf-skill-name {
             font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .pdf-skill-stat {
+        .pdf-stat-col {
+            text-align: right;
             font-size: 6.5px;
             color: #666666;
-            margin-left: auto;
+            font-weight: 600;
         }
 
-        /* COLUMN 2 (CENTER) */
-        .pdf-col-mid {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+        /* SENSES & PROFICIENCIES IN COL 2 */
+        .pdf-senses-box {
+            padding: 4px 6px;
         }
 
+        .pdf-senses-grid {
+            font-size: 7px;
+            line-height: 1.35;
+        }
+
+        .pdf-sense-item {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pdf-profs-box-col2 {
+            padding: 4px 6px;
+            font-size: 7px;
+            line-height: 1.3;
+            flex: 1;
+        }
+
+        .pdf-profs-content div {
+            margin-bottom: 2px;
+        }
+
+        /* COLUMN 3: VITALS, COMPACT HP, ATTACKS */
         .pdf-vitals-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
+            gap: 6px;
         }
 
         .pdf-vital-badge {
@@ -833,6 +873,11 @@ export function getPdfStyles(): string {
             border-radius: 6px;
             text-align: center;
             padding: 4px;
+            height: 52px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             background: #ffffff;
         }
 
@@ -843,69 +888,67 @@ export function getPdfStyles(): string {
         }
 
         .pdf-vital-lbl {
-            font-size: 7px;
+            font-size: 6.5px;
             font-weight: 800;
             letter-spacing: 0.3px;
             margin-top: 2px;
         }
 
-        /* HIT POINTS (FILLABLE BOXES) */
+        /* COMPACT HIT POINTS */
         .pdf-hp-container {
             border: 2px solid #000000;
-            padding: 6px 8px;
+            padding: 4px 6px;
         }
 
         .pdf-hp-max-row {
+            font-size: 8px;
+            border-bottom: 1px dashed #000000;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
             display: flex;
             justify-content: flex-end;
-            gap: 6px;
-            font-size: 8.5px;
-            font-weight: 800;
-            border-bottom: 1px dashed #000000;
-            padding-bottom: 3px;
-            margin-bottom: 4px;
         }
 
-        .pdf-fillable-hp-box {
+        .pdf-hp-boxes-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .pdf-hp-box-half {
             border: 1.5px solid #000000;
             border-radius: 4px;
-            padding: 3px 6px;
-            margin-bottom: 4px;
+            padding: 3px 4px;
         }
 
-        .pdf-temp-hp-box {
-            margin-bottom: 0;
-        }
-
-        .pdf-fillable-title {
-            font-size: 7px;
+        .pdf-hp-box-title {
+            font-size: 6.5px;
             font-weight: 900;
             color: #444444;
-            letter-spacing: 0.3px;
+            text-align: center;
         }
 
-        .pdf-fillable-blank-space {
-            height: 28px;
-            background: #ffffff;
+        .pdf-hp-box-blank {
+            height: 38px;
         }
 
         /* HIT DICE & DEATH SAVES */
         .pdf-hd-ds-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 6px;
         }
 
         .pdf-hd-total {
-            font-size: 8.5px;
+            font-size: 7.5px;
             font-weight: 700;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .pdf-hd-remaining-box {
             border: 1px solid #000000;
             border-radius: 3px;
-            height: 24px;
+            height: 20px;
             padding: 2px 4px;
             display: flex;
             align-items: center;
@@ -913,7 +956,7 @@ export function getPdfStyles(): string {
         }
 
         .pdf-hd-rem-lbl {
-            font-size: 6.5px;
+            font-size: 6px;
             font-weight: 800;
             color: #555555;
         }
@@ -922,17 +965,17 @@ export function getPdfStyles(): string {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 7px;
+            font-size: 6.5px;
             font-weight: 800;
-            margin-top: 3px;
+            margin-top: 2px;
         }
 
         .pdf-ds-bubbles {
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: 2px;
         }
 
-        /* ATTACKS TABLE */
+        /* ATTACKS & WEAPONS TABLE */
         .pdf-attacks-box {
             flex: 1;
             padding: 4px 6px;
@@ -954,38 +997,27 @@ export function getPdfStyles(): string {
 
         .pdf-attacks-table td {
             border-bottom: 1px dotted #888888;
-            padding: 3px 4px;
+            padding: 2px 4px;
             line-height: 1.1;
         }
 
         .pdf-atk-bonus {
             font-weight: 800;
             text-align: center;
-            width: 32px;
         }
 
         .pdf-blank-row td {
-            height: 18px;
-        }
-
-        /* PASSIVE SENSES */
-        .pdf-senses-box {
-            padding: 4px 6px;
-        }
-
-        .pdf-senses-grid {
-            font-size: 7.5px;
-            line-height: 1.3;
+            height: 16px;
         }
 
         /* PAGE FOOTER */
         .pdf-page-footer {
             margin-top: auto;
             text-align: center;
-            font-size: 7px;
+            font-size: 6.5px;
             color: #666666;
             border-top: 1px solid #cccccc;
-            padding-top: 4px;
+            padding-top: 3px;
         }
 
         /* MINI HEADER (PAGES 2 & 3) */
@@ -994,8 +1026,8 @@ export function getPdfStyles(): string {
             align-items: center;
             justify-content: space-between;
             border-bottom: 2px solid #000000;
-            padding-bottom: 4px;
-            margin-bottom: 8px;
+            padding-bottom: 3px;
+            margin-bottom: 6px;
         }
 
         .pdf-mini-name {
@@ -1005,13 +1037,13 @@ export function getPdfStyles(): string {
         }
 
         .pdf-mini-class {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 700;
             color: #444444;
         }
 
         .pdf-mini-title {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 800;
             text-transform: uppercase;
             border: 1px solid #000000;
@@ -1030,23 +1062,23 @@ export function getPdfStyles(): string {
         .pdf-page2-col {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .pdf-features-container {
             flex: 1;
-            padding: 6px 8px;
+            padding: 5px 7px;
         }
 
         .pdf-features-list {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
 
         .pdf-feature-item {
             border-bottom: 1px dotted #888888;
-            padding-bottom: 4px;
+            padding-bottom: 3px;
         }
 
         .pdf-feature-hdr {
@@ -1057,32 +1089,26 @@ export function getPdfStyles(): string {
         }
 
         .pdf-feature-name {
-            font-size: 8.5px;
+            font-size: 8px;
             font-weight: 800;
         }
 
         .pdf-feature-source {
-            font-size: 6.5px;
+            font-size: 6px;
             font-weight: 700;
             color: #666666;
             text-transform: uppercase;
         }
 
         .pdf-feature-desc {
-            font-size: 7px;
+            font-size: 6.8px;
             color: #222222;
-            line-height: 1.2;
-        }
-
-        .pdf-profs-box {
-            padding: 6px 8px;
-            font-size: 7.5px;
-            line-height: 1.35;
+            line-height: 1.25;
         }
 
         .pdf-equip-container {
             flex: 1;
-            padding: 6px 8px;
+            padding: 5px 7px;
             display: flex;
             flex-direction: column;
         }
@@ -1103,12 +1129,12 @@ export function getPdfStyles(): string {
 
         .pdf-curr-lbl {
             display: block;
-            font-size: 6px;
+            font-size: 5.5px;
             font-weight: 800;
         }
 
         .pdf-curr-val {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 800;
         }
 
@@ -1116,7 +1142,6 @@ export function getPdfStyles(): string {
             width: 100%;
             border-collapse: collapse;
             font-size: 7.5px;
-            flex: 1;
         }
 
         .pdf-equip-table th {
@@ -1128,8 +1153,19 @@ export function getPdfStyles(): string {
         }
 
         .pdf-equip-table td {
-            border-bottom: 1px dotted #888888;
+            border-bottom: 1px dotted #cccccc;
             padding: 2px 4px;
+            height: 18px;
+            line-height: 1.15;
+        }
+
+        .pdf-equip-qty {
+            text-align: center;
+        }
+
+        .pdf-equip-type {
+            font-size: 6.5px;
+            color: #555555;
         }
 
         /* PAGE 3: SPELLCASTING */
@@ -1139,20 +1175,20 @@ export function getPdfStyles(): string {
             gap: 8px;
             border: 1.5px solid #000000;
             border-radius: 6px;
-            padding: 4px 8px;
-            margin-bottom: 8px;
+            padding: 3px 8px;
+            margin-bottom: 6px;
             text-align: center;
         }
 
         .pdf-spell-stat-val {
             display: block;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 900;
             line-height: 1.1;
         }
 
         .pdf-spell-stat-lbl {
-            font-size: 6.5px;
+            font-size: 6px;
             font-weight: 800;
             color: #444444;
         }
@@ -1160,14 +1196,14 @@ export function getPdfStyles(): string {
         .pdf-spells-container {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             flex: 1;
         }
 
         .pdf-spell-level-box {
             border: 1.5px solid #000000;
             border-radius: 4px;
-            padding: 4px 6px;
+            padding: 3px 5px;
         }
 
         .pdf-spell-level-header {
@@ -1176,57 +1212,73 @@ export function getPdfStyles(): string {
             align-items: center;
             border-bottom: 1px solid #000000;
             padding-bottom: 2px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
+            height: 18px;
         }
 
         .pdf-lvl-title {
-            font-size: 8px;
+            font-size: 7.5px;
             font-weight: 900;
             letter-spacing: 0.3px;
         }
 
         .pdf-slot-bubbles {
-            display: flex;
-            gap: 4px;
+            display: inline-flex;
+            gap: 5px;
             align-items: center;
         }
 
+        .pdf-slots-label {
+            font-size: 6.5px;
+            font-weight: 800;
+            margin-right: 2px;
+        }
+
         .pdf-bubble {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 900;
             line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
         }
 
         .pdf-spell-items-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 2px 8px;
+            gap: 1px 8px;
         }
 
         .pdf-spell-entry {
-            display: flex;
-            align-items: baseline;
-            gap: 3px;
-            font-size: 7.5px;
-            line-height: 1.15;
+            display: grid;
+            grid-template-columns: 12px 1fr auto;
+            align-items: center;
+            gap: 2px;
+            font-size: 7.2px;
+            height: 15px;
+            line-height: 1;
+        }
+
+        .pdf-spell-bullet {
+            font-size: 9px;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .pdf-spell-name {
+            font-weight: 700;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .pdf-spell-bullet {
-            font-size: 8px;
-            font-weight: 900;
-        }
-
-        .pdf-spell-name {
-            font-weight: 700;
-        }
-
         .pdf-spell-meta {
-            font-size: 6.5px;
+            font-size: 6.2px;
             color: #666666;
-            margin-left: auto;
+            white-space: nowrap;
+            margin-left: 2px;
         }
     `;
 }
