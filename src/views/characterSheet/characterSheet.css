@@ -882,6 +882,9 @@ el-character-sheet .content-slate section {
     --badge-senses-row-text: var(--text-muted);
 }
 
+#dnd-beyond-note.hidden {
+    display: none;
+}
 #dnd-beyond-note {
     font-size: 0.75rem;
     color: var(--text-muted);

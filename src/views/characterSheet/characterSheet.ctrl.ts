@@ -42,12 +42,14 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const spellMap = new Map<string, SpellDefinition>();
     let savedCharacters: SavedCharacterSummary[] = [];
     let statusHideTimer: ReturnType<typeof setTimeout> | null = null;
+    let dndBeyondNoteTimer: ReturnType<typeof setTimeout> | null = null;
     let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
     let autoSaveInFlight = false;
     let autoSaveQueued = false;
 
     const dynamicContainer = sheet.querySelector<HTMLElement>("#character-sheet-dynamic-content");
     const statusMsg = sheet.querySelector<HTMLElement>("#character-status-message");
+    const dndBeyondNote = sheet.querySelector<HTMLElement>("#dnd-beyond-note");
     const idInput = sheet.querySelector<HTMLInputElement>("#dndbeyond-id-input");
     const loadBtn = sheet.querySelector<HTMLButtonElement>("#load-character-btn");
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
@@ -55,6 +57,27 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const prefer2024Rules = {
         value: true
     };
+
+    function showDndBeyondNoteTemporarily(durationMs = 15000) {
+        if (!dndBeyondNote) return;
+        if (dndBeyondNoteTimer) {
+            clearTimeout(dndBeyondNoteTimer);
+            dndBeyondNoteTimer = null;
+        }
+        dndBeyondNote.classList.remove("hidden");
+        dndBeyondNoteTimer = setTimeout(() => {
+            dndBeyondNote.classList.add("hidden");
+            dndBeyondNoteTimer = null;
+        }, durationMs);
+    }
+
+    function hideDndBeyondNote() {
+        if (dndBeyondNoteTimer) {
+            clearTimeout(dndBeyondNoteTimer);
+            dndBeyondNoteTimer = null;
+        }
+        dndBeyondNote?.classList.add("hidden");
+    }
 
     function showStatus(message: string, isError = false) {
         if (!statusMsg) return;
@@ -446,6 +469,11 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 idInput.value = activeCharacterId;
             }
             renderActiveCharacterView();
+            if (activeCharacter.source === "dndbeyond") {
+                showDndBeyondNoteTemporarily(15000);
+            } else {
+                hideDndBeyondNote();
+            }
             showStatus(`Loaded saved character "${activeCharacter.name}".`);
             if (typeof window !== "undefined" && window.history?.replaceState && activeCharacterId) {
                 const currentUrl = new URL(window.location.href);
@@ -527,6 +555,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         tempHp = Number(activeCharacter.vitals.tempHp) || 0;
         isEditMode = true;
         if (idInput) idInput.value = "";
+        hideDndBeyondNote();
         renderActiveCharacterView();
         showStatus("Started a new site character. Edit fields and click Save Character.");
     }
@@ -845,6 +874,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             tempHp = Number(activeCharacter.vitals.tempHp) || 0;
 
             renderActiveCharacterView();
+            showDndBeyondNoteTemporarily(15000);
             showStatus(
                 shouldOverwriteSaved
                     ? (options?.refreshed
