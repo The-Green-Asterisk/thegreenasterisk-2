@@ -1038,4 +1038,80 @@ describe('Frontend View Templates', () => {
 
         ctrl.destroy();
     });
+
+    it('correctly calculates Darvell abilities including feat and choice modifiers', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const darvellPayload = {
+            id: 138310322,
+            name: 'Darvell',
+            classes: [
+                { level: 9, definition: { name: 'Bard', spellCastingAbilityId: 6 }, subclassDefinition: { name: 'College of Glamour' } },
+                { level: 10, definition: { name: 'Warlock', spellCastingAbilityId: 6 }, subclassDefinition: { name: 'The Great Old One' } }
+            ],
+            stats: [
+                { id: 1, value: 8 },  // STR
+                { id: 2, value: 14 }, // DEX
+                { id: 3, value: 12 }, // CON
+                { id: 4, value: 10 }, // INT
+                { id: 5, value: 13 }, // WIS
+                { id: 6, value: 15 }  // CHA
+            ],
+            bonusStats: [],
+            overrideStats: [],
+            characterValues: [],
+            feats: [
+                { definition: { id: 1789100, name: 'Actor' } },
+                { definition: { id: 1789101, name: 'Alert' } },
+                { definition: { id: 1789112, name: 'Boon of Fate' } },
+                { definition: { id: 1789139, name: 'Entertainer Ability Score Improvements' } },
+                { definition: { id: 1789172, name: 'Musician' } },
+                { definition: { id: 1789209, name: 'War Caster' } }
+            ],
+            modifiers: {
+                race: [
+                    { id: 'r1', type: 'set-base', subType: 'darkvision', value: 60, isGranted: true }
+                ],
+                class: [
+                    { id: 'c1', type: 'proficiency', subType: 'charisma-saving-throws', isGranted: true },
+                    { id: 'c2', type: 'proficiency', subType: 'dexterity-saving-throws', isGranted: true },
+                    { id: 'c3', type: 'proficiency', subType: 'arcana', isGranted: false },
+                    { id: 'c4', type: 'expertise', subType: 'deception', isGranted: false }
+                ],
+                feat: [
+                    { id: 'f1', componentId: 1789100, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: true },  // Actor
+                    { id: 'f2', componentId: 1789112, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: false }, // Boon of Fate
+                    { id: 'f3', componentId: 1789209, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: false }, // War Caster
+                    { id: 'f4', componentId: 1789139, type: 'bonus', subType: 'charisma-score', value: 2, isGranted: false }, // Entertainer ASI
+                    { id: 'f5', componentId: 1789139, type: 'bonus', subType: 'dexterity-score', value: 1, isGranted: false }  // Entertainer ASI
+                ]
+            },
+            inventory: [],
+            spells: {}
+        };
+
+        const darvell = parseDndBeyondCharacter(darvellPayload);
+
+        const cha = darvell.abilities.find(a => a.abbr === 'CHA')!;
+        const dex = darvell.abilities.find(a => a.abbr === 'DEX')!;
+        expect(cha.score).toBe(20);
+        expect(cha.modifier).toBe(5);
+        expect(dex.score).toBe(15);
+        expect(dex.modifier).toBe(2);
+
+        // Spellcasting DC and attack bonus with CHA +5 and PB +6 (level 19: Bard 9 / Warlock 10)
+        expect(darvell.vitals.spellSaveDc).toBe(19); // 8 + 6 (PB) + 5 (CHA) = 19
+        expect(darvell.vitals.spellAttackBonus).toBe(11); // 6 (PB) + 5 (CHA) = 11
+        expect(cha.save).toBe(11); // 5 (CHA) + 6 (PB) = 11
+        expect(cha.proficientSave).toBe(true);
+
+        // Choice proficiencies with isGranted: false are retained
+        const arcanaSkill = darvell.skills.find(s => s.name === 'Arcana')!;
+        expect(arcanaSkill.proficiency).toBe('proficient');
+        expect(arcanaSkill.bonus).toBe(0 + 6); // INT (0) + PB (6) = 6
+
+        const deceptionSkill = darvell.skills.find(s => s.name === 'Deception')!;
+        expect(deceptionSkill.proficiency).toBe('expertise');
+        expect(deceptionSkill.bonus).toBe(5 + 6 * 2); // CHA (5) + 2 * PB (12) = 17
+    });
 });

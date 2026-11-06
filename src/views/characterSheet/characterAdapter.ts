@@ -174,7 +174,7 @@ export function parseDndBeyondCharacter(
     const seenModKeys = new Set<string>();
 
     const pushModifier = (m: any, sourceKey: string) => {
-        if (!m || m.isGranted === false) return;
+        if (!m) return;
         if (sourceKey === "item") {
             const compId = Number(m.componentId);
             // If this modifier corresponds to an item present in inventory, require that item to be equipped/attuned
@@ -261,7 +261,9 @@ export function parseDndBeyondCharacter(
                 m =>
                     (m.type === "bonus" || m.type === "stacking-bonus") &&
                     (m.subType === `${statKey}-score` ||
-                        (m.subType === "ability-score-increases" && Number(m.statId) === id))
+                        m.subType === statKey ||
+                        (m.subType === "ability-score-increases" &&
+                            (Number(m.statId) === id || Number(m.entityId) === id)))
             )
             .reduce((sum, m) => sum + getModFlatValue(m), 0);
 
@@ -269,7 +271,14 @@ export function parseDndBeyondCharacter(
 
         // "set" modifiers (e.g. Gauntlets of Ogre Power = 19, Belt of Giant Strength = 21..29, Headband of Intellect = 19, Amulet of Health = 19)
         // raise the score if the set value is higher than the natural score
-        const setMods = allMods.filter(m => m.type === "set" && m.subType === `${statKey}-score`);
+        const setMods = allMods.filter(
+            m =>
+                m.type === "set" &&
+                (m.subType === `${statKey}-score` ||
+                    m.subType === statKey ||
+                    (m.subType === "ability-score-increases" &&
+                        (Number(m.statId) === id || Number(m.entityId) === id)))
+        );
         for (const sm of setMods) {
             const setVal = getModFlatValue(sm);
             if (setVal > computedScore) {
