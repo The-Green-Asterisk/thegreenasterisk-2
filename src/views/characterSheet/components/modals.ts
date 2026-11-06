@@ -195,7 +195,7 @@ export function renderModals(): string {
                         <span class="meta-box-label"><i class="fa-solid fa-dice-d20"></i> HIT / DC</span>
                         <span class="meta-box-val" id="modal-action-hit-dc">—</span>
                     </div>
-                    <div class="meta-box">
+                    <div class="meta-box meta-box-damage">
                         <span class="meta-box-label"><i class="fa-solid fa-burst"></i> DAMAGE / EFFECT</span>
                         <span class="meta-box-val" id="modal-action-damage">—</span>
                     </div>

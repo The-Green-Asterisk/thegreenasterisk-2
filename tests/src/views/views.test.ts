@@ -1648,4 +1648,15 @@ describe('Frontend View Templates', () => {
         expect(dyingHtml).toContain('id="death-status-badge"');
         expect(dyingHtml).toContain('DYING (0 HP)');
     });
+
+    it('renders action details modal with dedicated full-width damage/effect meta box', async () => {
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const modalsHtml = renderModals();
+        expect(modalsHtml).toContain('id="action-modal-container"');
+        expect(modalsHtml).toContain('action-modal-meta-grid');
+        expect(modalsHtml).toContain('id="modal-action-range"');
+        expect(modalsHtml).toContain('id="modal-action-hit-dc"');
+        expect(modalsHtml).toContain('class="meta-box meta-box-damage"');
+        expect(modalsHtml).toContain('id="modal-action-damage"');
+    });
 });
