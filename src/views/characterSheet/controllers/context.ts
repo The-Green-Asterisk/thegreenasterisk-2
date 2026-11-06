@@ -49,6 +49,7 @@ export interface CharacterSheetContext {
         rawDefinitionId: string | null,
         equipped: boolean
     ) => Promise<void>;
+    applyFeatureDecisionChange: (decisionId: string, newValue: string) => void;
 
     // Modals
     openSpellModal: (spellName: string, spellId?: number | string) => Promise<void>;

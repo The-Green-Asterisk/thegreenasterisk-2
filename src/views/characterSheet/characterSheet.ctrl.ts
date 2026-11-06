@@ -3,6 +3,7 @@ import { getData, postData, putData } from "@services/request";
 import { parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
+import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
 import {
     CharacterSheetContext,
     SavedCharacterSummary,
@@ -170,6 +171,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (activeCharacter.allowedSpellsByLevel) {
             activeCharacter.trackingState.allowedSpellsByLevel = { ...activeCharacter.allowedSpellsByLevel };
         }
+        if (activeCharacter.featureChoices) {
+            activeCharacter.trackingState.featureChoices = { ...activeCharacter.featureChoices };
+        }
     }
 
     function applyTrackerSnapshot() {
@@ -182,6 +186,12 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }
         if (activeCharacter.trackingState?.allowedSpellsByLevel) {
             activeCharacter.allowedSpellsByLevel = { ...activeCharacter.trackingState.allowedSpellsByLevel };
+        }
+        if (activeCharacter.trackingState?.featureChoices) {
+            activeCharacter.featureChoices = {
+                ...activeCharacter.trackingState.featureChoices,
+                ...(activeCharacter.featureChoices || {})
+            };
         }
         const slotState = activeCharacter.trackingState?.slotPips || {};
         Object.keys(slotState).forEach(key => {
@@ -419,6 +429,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             }
 
             activeCharacter = response.character;
+            ensureFeatureDecisionsOnCharacterData(activeCharacter);
             isEditMode = false;
             activeCharacter.savedCharacterId = response.savedCharacter?.id || activeCharacter.savedCharacterId;
             activeCharacter.siteCharacterId = response.savedCharacter?.siteCharacterId || activeCharacter.siteCharacterId;
@@ -523,11 +534,20 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     function recalculateFromRawPayload() {
         if (!activeCharacter || !activeRawDndBeyondPayload) return;
         try {
+            const oldMaxHp = Number(activeCharacter.vitals.maxHp) || 0;
             const recomputed = parseDndBeyondCharacter(
                 activeRawDndBeyondPayload,
                 String(activeCharacter.id || activeCharacterId || ""),
-                currentEquipOverrides
+                currentEquipOverrides,
+                activeCharacter.featureChoices
             );
+            const maxHpDelta = (Number(recomputed.vitals.maxHp) || 0) - oldMaxHp;
+            activeCharacter.vitals.maxHp = recomputed.vitals.maxHp;
+            maxHp = recomputed.vitals.maxHp;
+            if (maxHpDelta !== 0) {
+                currentHp = Math.max(0, Math.min(maxHp, currentHp + maxHpDelta));
+                activeCharacter.vitals.currentHp = currentHp;
+            }
             activeCharacter.vitals.armorClass = recomputed.vitals.armorClass;
             activeCharacter.vitals.initiative = recomputed.vitals.initiative;
             activeCharacter.vitals.speed = recomputed.vitals.speed;
@@ -535,6 +555,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeCharacter.vitals.passivePerception = recomputed.vitals.passivePerception;
             activeCharacter.vitals.passiveInvestigation = recomputed.vitals.passiveInvestigation;
             activeCharacter.vitals.passiveInsight = recomputed.vitals.passiveInsight;
+            activeCharacter.vitals.blindsight = recomputed.vitals.blindsight;
+            activeCharacter.vitals.darkvision = recomputed.vitals.darkvision;
             activeCharacter.vitals.spellSaveDc = recomputed.vitals.spellSaveDc;
             activeCharacter.vitals.spellAttackBonus = recomputed.vitals.spellAttackBonus;
             activeCharacter.vitals.spellcastingAbility = recomputed.vitals.spellcastingAbility;
@@ -542,6 +564,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeCharacter.skills = recomputed.skills;
             activeCharacter.weapons = recomputed.weapons;
             activeCharacter.actions = recomputed.actions;
+            activeCharacter.features = recomputed.features;
+            activeCharacter.proficiencies = recomputed.proficiencies;
 
             // Update Vitals cards in DOM if already rendered
             const acEl = sheet.querySelector<HTMLElement>(".vital-ac .vital-val");
@@ -640,6 +664,46 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             });
         } catch (error) {
             console.warn(`Failed to persist ${scope} equipped state for ${itemName}:`, error);
+        }
+    }
+
+    function applyFeatureDecisionChange(decisionId: string, newValue: string) {
+        if (!activeCharacter) return;
+        persistTrackerSnapshot();
+
+        const beforeScores = new Map<string, number>();
+        activeCharacter.abilities.forEach(a => beforeScores.set(a.abbr, a.score));
+
+        const applied = applyFeatureDecisionOnCharacterData(activeCharacter, decisionId, newValue);
+        const inPlaceAbilities = activeCharacter.abilities.map(a => ({ ...a }));
+        const inPlaceVitals = { ...activeCharacter.vitals };
+        const inPlaceSkills = activeCharacter.skills.map(s => ({ ...s }));
+
+        if (activeRawDndBeyondPayload) {
+            recalculateFromRawPayload();
+            // Ensure that if applyFeatureDecisionOnCharacterData changed an ability score
+            // (e.g. from an unlinked or saved decision), recalculateFromRawPayload did not revert it
+            const abilityChangedInPlace = inPlaceAbilities.some(
+                a => (beforeScores.get(a.abbr) ?? a.score) !== a.score
+            );
+            const abilityChangedInRaw = activeCharacter.abilities.some(
+                a => (beforeScores.get(a.abbr) ?? a.score) !== a.score
+            );
+            if (abilityChangedInPlace && !abilityChangedInRaw) {
+                activeCharacter.abilities = inPlaceAbilities;
+                activeCharacter.vitals = inPlaceVitals;
+                activeCharacter.skills = inPlaceSkills;
+            }
+        }
+        currentHp = Number(activeCharacter.vitals.currentHp) || 0;
+        maxHp = Number(activeCharacter.vitals.maxHp) || 0;
+
+        renderActiveCharacterView();
+        persistTrackerSnapshot();
+        scheduleDebouncedAutoSave();
+
+        if (applied) {
+            showStatus(`Updated ${applied.featureName} (${applied.decisionLabel}: ${applied.optionLabel}) — character stats recalculated.`);
         }
     }
 
@@ -840,6 +904,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         beginNewSiteCharacter,
         refreshFromDndBeyondAndOverride,
         persistEquipState,
+        applyFeatureDecisionChange,
         openSpellModal: async () => { },
         closeSpellModal: () => { },
         openItemModal: async () => { },
@@ -880,6 +945,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
     function renderActiveCharacterView() {
         if (!activeCharacter || !dynamicContainer) return;
+        const previousActiveTabTarget = sheet
+            .querySelector<HTMLButtonElement>(".tab-btn.active")
+            ?.getAttribute("data-tab-target");
+
         dynamicContainer.innerHTML = renderSheetContent(activeCharacter);
         sheet.classList.toggle("is-edit-mode", isEditMode);
 
@@ -899,6 +968,24 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
             // Run each component's dedicated controller
             initTabsController(ctx);
+            if (previousActiveTabTarget) {
+                const targetBtn = sheet.querySelector<HTMLButtonElement>(
+                    `.tab-btn[data-tab-target="${previousActiveTabTarget}"]`
+                );
+                const targetPane = sheet.querySelector<HTMLElement>(`#${previousActiveTabTarget}`);
+                if (targetBtn && targetPane) {
+                    sheet.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach(b => {
+                        b.classList.remove("active");
+                        b.setAttribute("aria-selected", "false");
+                    });
+                    sheet.querySelectorAll<HTMLElement>(".tab-pane").forEach(p => {
+                        p.classList.remove("active");
+                    });
+                    targetBtn.classList.add("active");
+                    targetBtn.setAttribute("aria-selected", "true");
+                    targetPane.classList.add("active");
+                }
+            }
             initHeroController(ctx);
             initVitalsController(ctx);
             initAbilitiesController(ctx);

@@ -9,6 +9,7 @@ import {
     SpellDefinition,
     WeaponItem
 } from "./characterData";
+import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
     1: { name: "Strength", abbr: "STR", key: "strength" },
@@ -83,7 +84,8 @@ function dieAverageSize(diceString?: string): number {
 export function parseDndBeyondCharacter(
     payload: any,
     originalUrlOrId?: string,
-    equipStateOverrides?: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>
+    equipStateOverrides?: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>,
+    featureChoiceOverrides?: Record<string, string>
 ): CharacterData {
     const raw = payload?.data || payload;
     if (!raw || !raw.name) {
@@ -225,6 +227,16 @@ export function parseDndBeyondCharacter(
         return !m?.restriction || String(m.restriction).trim() === "";
     };
 
+    // Extract Features, Invocations, Feats, and Species Traits along with their interactive decisions,
+    // and apply any user-selected feature choices directly onto `allMods` before computing stats
+    const activeFeatureChoices: Record<string, string> = {
+        ...(raw.trackingState?.featureChoices || {}),
+        ...(raw.featureChoices || {}),
+        ...(featureChoiceOverrides || {})
+    };
+    const extractedFeaturesResult = extractFeaturesAndApplyDecisions(raw, allMods, activeFeatureChoices);
+    const features: FeatureItem[] = extractedFeaturesResult.features;
+
     // 3. Ability Scores (Base + Bonus + Modifiers + Set + Overrides)
     const statsArray = raw.stats || [];
     const bonusStats = raw.bonusStats || [];
@@ -268,10 +280,11 @@ export function parseDndBeyondCharacter(
             computedScore = Math.max(computedScore, Number(cvSet.value));
         }
 
+        const decisionDelta = extractedFeaturesResult.netAbilityDecisionDelta?.[id] || 0;
         if (override !== null && override !== undefined) {
-            abilityScoresMap[id] = Number(override);
+            abilityScoresMap[id] = Number(override) + decisionDelta;
         } else if (cvOverride && Number.isFinite(Number(cvOverride.value))) {
-            abilityScoresMap[id] = Number(cvOverride.value);
+            abilityScoresMap[id] = Number(cvOverride.value) + decisionDelta;
         } else {
             abilityScoresMap[id] = computedScore;
         }
@@ -324,6 +337,15 @@ export function parseDndBeyondCharacter(
     };
     const hasClassFeatureOrOption = (featureKeyword: string): boolean => {
         const kw = featureKeyword.toLowerCase();
+        if (extractedFeaturesResult.hasFightingStyleDecision) {
+            if (kw === "archery") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:archery");
+            if (kw === "defense") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:defense");
+            if (kw === "dueling") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:dueling");
+            if (kw === "thrown weapon fighting") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:thrown");
+        }
+        if (extractedFeaturesResult.hasPactBoonDecision && kw === "pact of the blade") {
+            return extractedFeaturesResult.activePactBoonValue === "pact-boon:blade";
+        }
         if ((raw.options?.class || []).some((o: any) => (o.definition?.name || "").toLowerCase().includes(kw))) {
             return true;
         }
@@ -1384,8 +1406,13 @@ export function parseDndBeyondCharacter(
             qualifiesForDueling && duelingModBonus === 0 && hasClassFeatureOrOption("Dueling") ? 2 : 0;
 
         // Thrown Weapon Fighting bonus
+        const thrownModBonus = isThrown
+            ? allMods
+                  .filter(m => (m.type === "bonus" || m.type === "damage") && m.subType === "thrown-weapon-damage")
+                  .reduce((sum, m) => sum + getModFlatValue(m), 0)
+            : 0;
         const thrownStyleFallback =
-            isThrown && hasClassFeatureOrOption("Thrown Weapon Fighting") ? 2 : 0;
+            isThrown && thrownModBonus === 0 && hasClassFeatureOrOption("Thrown Weapon Fighting") ? 2 : 0;
 
         const globalDmgBonus = allMods
             .filter(m => {
@@ -1426,6 +1453,7 @@ export function parseDndBeyondCharacter(
             magicBonus +
             duelingModBonus +
             duelingFallback +
+            thrownModBonus +
             thrownStyleFallback +
             globalDmgBonus +
             cvDamageBonus;
@@ -1499,95 +1527,7 @@ export function parseDndBeyondCharacter(
         });
     });
 
-    // 11. Features & Invocations & Feats
-    const features: FeatureItem[] = [];
-
-    (raw.feats || []).forEach((f: any) => {
-        if (f.definition?.name) {
-            features.push({
-                name: f.definition.name,
-                source: "Feat",
-                type: "Feat",
-                description: f.definition.description || f.definition.snippet || ""
-            });
-        }
-    });
-
-    (raw.options?.class || []).forEach((o: any) => {
-        if (o.definition?.name) {
-            features.push({
-                name: o.definition.name,
-                source: "Eldritch Invocations",
-                type: "Invocation",
-                description: o.definition.description || o.definition.snippet || ""
-            });
-        }
-    });
-
-    // Base class and Subclass traits
-    const BOILERPLATE_CLASS_FEATURES = new Set([
-        "hit points",
-        "proficiencies",
-        "equipment",
-        "ability score improvement",
-        "core barbarian traits",
-        "core bard traits",
-        "core cleric traits",
-        "core druid traits",
-        "core fighter traits",
-        "core monk traits",
-        "core paladin traits",
-        "core ranger traits",
-        "core rogue traits",
-        "core sorcerer traits",
-        "core warlock traits",
-        "core wizard traits"
-    ]);
-    (raw.classes || []).forEach((cl: any) => {
-        if (cl.definition?.classFeatures) {
-            cl.definition.classFeatures.forEach((cf: any) => {
-                if (
-                    (cf.requiredLevel ?? 1) <= cl.level &&
-                    cf.name &&
-                    !BOILERPLATE_CLASS_FEATURES.has(String(cf.name).toLowerCase())
-                ) {
-                    features.push({
-                        name: cf.name,
-                        source: cl.definition.name || "Class",
-                        type: "Class",
-                        description: cf.description || cf.snippet || ""
-                    });
-                }
-            });
-        }
-        if (cl.subclassDefinition?.classFeatures) {
-            cl.subclassDefinition.classFeatures.forEach((cf: any) => {
-                if ((cf.requiredLevel ?? 1) <= cl.level) {
-                    features.push({
-                        name: cf.name,
-                        source: cl.subclassDefinition.name,
-                        type: "Subclass",
-                        description: cf.description || cf.snippet || ""
-                    });
-                }
-            });
-        }
-    });
-
-    // Species / Race traits
-    if (raw.race?.racialTraits) {
-        raw.race.racialTraits.forEach((rt: any) => {
-            if (rt.definition?.name) {
-                features.push({
-                    name: rt.definition.name,
-                    source: raw.race.fullName || "Species",
-                    type: "Species",
-                    description: rt.definition.description || rt.definition.snippet || ""
-                });
-            }
-        });
-    }
-
+    // 11. Features & Invocations & Feats (already extracted with interactive decisions above)
     // 12. Equipment & Weapons
     const equipment: EquipmentItem[] = inventory.map((i: any) => {
         const def = i.definition;
@@ -1971,6 +1911,7 @@ export function parseDndBeyondCharacter(
         dndBeyondUrl,
         activeConditions,
         exhaustionLevel,
+        featureChoices: Object.keys(activeFeatureChoices).length > 0 ? { ...activeFeatureChoices } : undefined,
         vitals: {
             currentHp,
             maxHp: calculatedMaxHp,

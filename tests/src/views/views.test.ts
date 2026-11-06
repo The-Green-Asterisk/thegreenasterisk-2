@@ -767,4 +767,157 @@ describe('Frontend View Templates', () => {
         expect(modalsHtml).toContain('id="manage-spells-db-results"');
         expect(modalsHtml).toContain('id="manage-spells-current-levels"');
     });
+
+    it('renders feat and trait decision dropdowns and updates character stats when choices change', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderFeatures } = await import('../../../src/views/characterSheet/components/features');
+        const { applyFeatureDecisionOnCharacterData } = await import('../../../src/views/characterSheet/featureDecisions');
+
+        const rawPayload = {
+            id: 445566,
+            name: 'Decision Hero',
+            classes: [
+                {
+                    level: 5,
+                    definition: {
+                        name: 'Bard',
+                        hitDice: 8,
+                        spellRules: { multiClassSpellSlotDivisor: 1 },
+                        spellCastingAbilityId: 6,
+                        classFeatures: [
+                            {
+                                id: 301,
+                                name: 'Expertise',
+                                requiredLevel: 2,
+                                description: '<p>Choose two of your skill proficiencies to gain Expertise.</p>'
+                            },
+                            {
+                                id: 302,
+                                name: 'Fighting Style',
+                                requiredLevel: 2,
+                                description: '<p>You adopt a particular style of fighting as your specialty.</p>'
+                            }
+                        ]
+                    }
+                }
+            ],
+            stats: [
+                { id: 1, value: 10 },
+                { id: 2, value: 14 },
+                { id: 3, value: 13 },
+                { id: 4, value: 10 },
+                { id: 5, value: 13 },
+                { id: 6, value: 17 }
+            ],
+            feats: [
+                {
+                    definition: {
+                        id: 101,
+                        name: 'War Caster',
+                        description: '<p>Increase your Intelligence, Wisdom, or Charisma score by 1, to a maximum of 20.</p>'
+                    }
+                },
+                {
+                    definition: {
+                        id: 102,
+                        name: 'Resilient',
+                        description: '<p>Increase one ability score of your choice by 1. You gain proficiency in saving throws using the chosen ability.</p>'
+                    }
+                }
+            ],
+            modifiers: {
+                feat: [
+                    { id: 'm-wc', componentId: 101, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: true },
+                    { id: 'm-res-asi', componentId: 102, type: 'bonus', subType: 'constitution-score', value: 1, isGranted: true },
+                    { id: 'm-res-save', componentId: 102, type: 'proficiency', subType: 'constitution-saving-throws', isGranted: true }
+                ],
+                class: [
+                    { id: 'm-exp-1', componentId: 301, type: 'expertise', subType: 'deception', isGranted: true },
+                    { id: 'm-exp-2', componentId: 301, type: 'expertise', subType: 'performance', isGranted: true },
+                    { id: 'm-fs', componentId: 302, type: 'bonus', subType: 'armor-class', value: 1, isGranted: true }
+                ]
+            },
+            inventory: [],
+            spells: {}
+        };
+
+        const initialChar = parseDndBeyondCharacter(rawPayload);
+
+        // Verify initial stats: CHA = 17 + 1 (War Caster) = 18 (+4), CON = 13 + 1 (Resilient) = 14 (+2, proficient save = +5)
+        const chaInitial = initialChar.abilities.find(a => a.abbr === 'CHA')!;
+        const wisInitial = initialChar.abilities.find(a => a.abbr === 'WIS')!;
+        const conInitial = initialChar.abilities.find(a => a.abbr === 'CON')!;
+        expect(chaInitial.score).toBe(18);
+        expect(chaInitial.modifier).toBe(4);
+        expect(wisInitial.score).toBe(13);
+        expect(wisInitial.modifier).toBe(1);
+        expect(conInitial.score).toBe(14);
+        expect(conInitial.proficientSave).toBe(true);
+        expect(initialChar.vitals.armorClass).toBe(13); // 10 + 2 (DEX) + 1 (Defense Fighting Style)
+
+        // Verify dropdowns render in features HTML
+        const featuresHtml = renderFeatures(initialChar);
+        expect(featuresHtml).toContain('feature-decision-select');
+        expect(featuresHtml).toContain('data-feature-decision-id="feat:war-caster:0:asi:0"');
+        expect(featuresHtml).toContain('data-feature-decision-id="feat:resilient:1:resilient:0"');
+        expect(featuresHtml).toContain('data-feature-decision-id="class:bard:expertise:2:skill-exp:0"');
+        expect(featuresHtml).toContain('data-feature-decision-id="class:bard:fighting-style:2:fighting-style:0"');
+
+        // Now change decisions:
+        // 1) War Caster ASI from Charisma (+1 CHA) -> Wisdom (+1 WIS)
+        // 2) Resilient from Constitution -> Wisdom (+1 WIS & WIS Save Proficiency)
+        // 3) Expertise #1 from Deception -> Perception
+        // 4) Fighting Style from Defense (+1 AC) -> Blind Fighting (10 ft. Blindsight)
+        const updatedChar = parseDndBeyondCharacter(rawPayload, undefined, undefined, {
+            'feat:war-caster:0:asi:0': 'ability:5:1',
+            'feat:resilient:1:resilient:0': 'resilient:5',
+            'class:bard:expertise:2:skill-exp:0': 'skill-exp:perception',
+            'class:bard:fighting-style:2:fighting-style:0': 'fighting-style:blind-fighting'
+        });
+
+        const chaUpdated = updatedChar.abilities.find(a => a.abbr === 'CHA')!;
+        const wisUpdated = updatedChar.abilities.find(a => a.abbr === 'WIS')!;
+        const conUpdated = updatedChar.abilities.find(a => a.abbr === 'CON')!;
+
+        expect(chaUpdated.score).toBe(17); // 18 -> 17 (+3)
+        expect(chaUpdated.modifier).toBe(3);
+        expect(wisUpdated.score).toBe(15); // 13 + 1 (War Caster) + 1 (Resilient) = 15 (+2)
+        expect(wisUpdated.modifier).toBe(2);
+        expect(wisUpdated.proficientSave).toBe(true);
+        expect(conUpdated.score).toBe(13); // 14 -> 13 (+1)
+        expect(conUpdated.proficientSave).toBe(false);
+
+        const perceptionSkill = updatedChar.skills.find(s => s.name === 'Perception')!;
+        expect(perceptionSkill.proficiency).toBe('expertise');
+        expect(perceptionSkill.bonus).toBe(2 + 3 * 2); // WIS (+2) + 2 * PB (6) = +8
+        expect(updatedChar.vitals.passivePerception).toBe(18);
+        expect(updatedChar.vitals.armorClass).toBe(12); // Defense (+1 AC) removed
+        expect(updatedChar.vitals.blindsight).toBe('10 ft.');
+
+        // Also verify in-place CharacterData helper works without raw payload
+        applyFeatureDecisionOnCharacterData(initialChar, 'feat:war-caster:0:asi:0', 'ability:5:1');
+        expect(initialChar.abilities.find(a => a.abbr === 'WIS')!.score).toBe(14);
+        expect(initialChar.abilities.find(a => a.abbr === 'CHA')!.score).toBe(17);
+
+        // Verify unlinked Ability Score Improvement decisions start at 'none' and increase ability scores when chosen
+        const asiPayload = {
+            ...rawPayload,
+            feats: [
+                {
+                    definition: {
+                        id: 201,
+                        name: 'Ability Score Improvement',
+                        description: '<p>Increase one ability score of your choice by 2, or increase two ability scores of your choice by 1.</p>'
+                    }
+                }
+            ],
+            modifiers: { feat: [], class: [] }
+        };
+        const asiChar = parseDndBeyondCharacter(asiPayload);
+        expect(asiChar.abilities.find(a => a.abbr === 'CHA')!.score).toBe(17);
+        applyFeatureDecisionOnCharacterData(asiChar, 'feat:ability-score-improvement:0:asi:0', 'ability:6:1');
+        expect(asiChar.abilities.find(a => a.abbr === 'CHA')!.score).toBe(18);
+        applyFeatureDecisionOnCharacterData(asiChar, 'feat:ability-score-improvement:0:asi:1', 'ability:6:1');
+        expect(asiChar.abilities.find(a => a.abbr === 'CHA')!.score).toBe(19);
+    });
 });

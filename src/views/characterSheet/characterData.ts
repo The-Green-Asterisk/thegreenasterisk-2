@@ -41,11 +41,24 @@ export interface ActionItem {
     spellName?: string;
 }
 
+export interface FeatureChoiceOption {
+    value: string;
+    label: string;
+}
+
+export interface FeatureDecision {
+    id: string;
+    label: string;
+    selectedValue: string;
+    options: FeatureChoiceOption[];
+}
+
 export interface FeatureItem {
     name: string;
     source: string;
     type: "Class" | "Subclass" | "Invocation" | "Feat" | "Species";
     description: string;
+    decisions?: FeatureDecision[];
 }
 
 export interface EquipmentItem {
@@ -122,6 +135,7 @@ export interface CharacterData {
     activeConditions?: string[];
     exhaustionLevel?: number;
     allowedSpellsByLevel?: Record<number, number>;
+    featureChoices?: Record<string, string>;
     trackingState?: {
         slotPips?: Record<string, boolean[]>;
         resourcePips?: Record<string, boolean[]>;
@@ -129,6 +143,7 @@ export interface CharacterData {
         activeConditions?: string[];
         exhaustionLevel?: number;
         allowedSpellsByLevel?: Record<number, number>;
+        featureChoices?: Record<string, string>;
     };
     id?: string | number;
     name: string;
@@ -188,6 +203,7 @@ export interface CharacterData {
         weapons: string[];
         tools: string[];
         languages: string[];
+        defenses?: string[];
     };
     spells: SpellDefinition[];
 }
@@ -425,7 +441,19 @@ export const darvellData: CharacterData = {
             name: "War Caster",
             source: "Feat",
             type: "Feat",
-            description: "Advantage on Constitution saving throws to maintain concentration. Can perform somatic components even with weapons/shields in hand. Can cast a 1-action spell as a reaction when a hostile creature provokes an opportunity attack."
+            description: "Advantage on Constitution saving throws to maintain concentration. Can perform somatic components even with weapons/shields in hand. Can cast a 1-action spell as a reaction when a hostile creature provokes an opportunity attack.",
+            decisions: [
+                {
+                    id: "feat:war-caster:asi:0",
+                    label: "Ability Score Increase (+1)",
+                    selectedValue: "ability:6:1",
+                    options: [
+                        { value: "ability:4:1", label: "Intelligence (+1 INT)" },
+                        { value: "ability:5:1", label: "Wisdom (+1 WIS)" },
+                        { value: "ability:6:1", label: "Charisma (+1 CHA)" }
+                    ]
+                }
+            ]
         },
         {
             name: "Actor",
