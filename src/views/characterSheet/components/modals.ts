@@ -281,6 +281,20 @@ export function renderModals(): string {
                         </div>
                     </div>
 
+                    <div class="conditions-toolbar">
+                        <div class="conditions-search-wrap">
+                            <i class="fa-solid fa-magnifying-glass conditions-search-icon" aria-hidden="true"></i>
+                            <input
+                                type="search"
+                                id="conditions-search-input"
+                                class="conditions-search-input"
+                                placeholder="Search conditions..."
+                                aria-label="Search conditions by name or rule"
+                                autocomplete="off"
+                            />
+                        </div>
+                    </div>
+
                     <div class="conditions-grid-list" id="conditions-modal-list">
                     </div>
                 </div>

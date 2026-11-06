@@ -62,6 +62,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const conditionsModalCloseBtn = sheet.querySelector<HTMLButtonElement>("#conditions-modal-close-btn");
     const conditionsModalDoneBtn = sheet.querySelector<HTMLButtonElement>("#modal-conditions-close-action-btn");
     const conditionsModalList = sheet.querySelector<HTMLElement>("#conditions-modal-list");
+    const conditionsSearchInput = sheet.querySelector<HTMLInputElement>("#conditions-search-input");
     const conditionsActiveCountBadge = sheet.querySelector<HTMLElement>("#conditions-active-count-badge");
     const exhaustionLevelsRow = sheet.querySelector<HTMLElement>("#exhaustion-levels-row");
     const exhaustionEffectsBanner = sheet.querySelector<HTMLElement>("#exhaustion-effects-banner");
@@ -173,10 +174,27 @@ export function initModalsController(ctx: CharacterSheetContext) {
             }
         }
 
+        const filterQuery = (conditionsSearchInput?.value || "").trim().toLowerCase();
+        const filteredConditions = filterQuery
+            ? cachedConditions.filter(
+                  cond =>
+                      cond.name.toLowerCase().includes(filterQuery) ||
+                      cond.summary.toLowerCase().includes(filterQuery) ||
+                      cond.description.toLowerCase().includes(filterQuery)
+              )
+            : cachedConditions;
+
         // Render condition cards
         if (conditionsModalList) {
-            conditionsModalList.innerHTML = cachedConditions
-                .map(cond => {
+            if (filteredConditions.length === 0) {
+                conditionsModalList.innerHTML = `
+                    <div class="conditions-empty-search">
+                        <i class="fa-solid fa-circle-question"></i> No conditions matched "<strong>${filterQuery}</strong>".
+                    </div>
+                `;
+            } else {
+                conditionsModalList.innerHTML = filteredConditions
+                    .map(cond => {
                     const isExhaustion = cond.slug === "exhaustion" || cond.name.toLowerCase() === "exhaustion";
                     const isActive = isExhaustion ? exhaustionLevel > 0 : activeLowerSet.has(cond.name.toLowerCase());
                     const statusBadge = isExhaustion
@@ -205,6 +223,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     `;
                 })
                 .join("");
+            }
 
             conditionsModalList.querySelectorAll<HTMLButtonElement>(".condition-toggle-btn[data-toggle-condition]").forEach(btn => {
                 btn.addEventListener("click", (e) => {
@@ -247,6 +266,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
     async function openConditionsModal() {
         if (!conditionsModalBackdrop) return;
 
+        if (conditionsSearchInput) {
+            conditionsSearchInput.value = "";
+        }
         renderConditionsModalContent();
         conditionsModalBackdrop.classList.remove("hidden");
         conditionsModalBackdrop.classList.add("visible");
@@ -1104,6 +1126,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (event.target === conditionsModalBackdrop) {
             closeConditionsModal();
         }
+    });
+
+    conditionsSearchInput?.addEventListener("input", () => {
+        renderConditionsModalContent();
     });
 
     manageSpellsCloseBtn?.addEventListener("click", closeManageSpellsModal);
