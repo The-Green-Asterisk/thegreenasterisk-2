@@ -10,6 +10,7 @@ export type SavedCharacterSummary = {
     subtitle?: string;
     avatarUrl?: string;
     updatedAt?: string;
+    savedPayload?: CharacterData;
 };
 
 export interface CharacterSheetContext {
@@ -33,6 +34,8 @@ export interface CharacterSheetContext {
     renderActiveCharacterView: () => void;
     renderSavedCharacterList: () => void;
     setCharacterActionsVisibility: () => void;
+    updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => void;
+    recalculateFromRawPayload?: () => void;
 
     // Persistence & API
     saveActiveCharacter: (options?: { silent?: boolean; background?: boolean }) => Promise<void>;

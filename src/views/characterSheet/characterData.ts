@@ -21,6 +21,8 @@ export interface AbilityScore {
     modifier: number;
     save: number;
     proficientSave: boolean;
+    baseScore?: number;
+    bonus?: number;
     notes?: string;
 }
 

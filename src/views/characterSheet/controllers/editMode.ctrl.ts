@@ -1,4 +1,36 @@
+import { ensureBaseScoresOnCharacter } from "../characterAdapter";
 import { CharacterSheetContext } from "./context";
+
+export function parseClassInputString(str: string): Array<{ name: string; level: number; subclass?: string }> {
+    const trimmed = str.trim();
+    if (!trimmed) return [{ name: "Adventurer", level: 1 }];
+
+    const parts = trimmed.split(/[/,]/);
+    const parsed: Array<{ name: string; level: number; subclass?: string }> = [];
+
+    for (const part of parts) {
+        const item = part.trim();
+        if (!item) continue;
+
+        // Match optional (subclass) at the end, e.g. "Bard 9 (Glamour)" or "Warlock 10" or "Fighter"
+        const subMatch = item.match(/\((.*?)\)/);
+        const subclass = subMatch ? subMatch[1].trim() : undefined;
+        const mainPart = item.replace(/\(.*?\)/, "").trim();
+
+        // Match class name and optional level: e.g. "Bard 9" or "Bard" or "9 Bard"
+        const levelMatch = mainPart.match(/\b(\d+)\b/);
+        const level = levelMatch ? Math.max(1, parseInt(levelMatch[1], 10)) : 1;
+        const className = mainPart.replace(/\b\d+\b/, "").trim() || "Adventurer";
+
+        parsed.push({
+            name: className,
+            level,
+            subclass
+        });
+    }
+
+    return parsed.length > 0 ? parsed : [{ name: trimmed, level: 1 }];
+}
 
 export function initEditModeController(ctx: CharacterSheetContext) {
     function parsePathSegments(path: string): Array<string | number> {
@@ -98,103 +130,224 @@ export function initEditModeController(ctx: CharacterSheetContext) {
         const dynamicContainer = ctx.dynamicContainer;
         if (!activeCharacter || !dynamicContainer) return;
 
-        swapElementWithInput(dynamicContainer.querySelector(".character-name"), "name");
-        swapTextWithInputKeepingIcon(dynamicContainer.querySelectorAll(".character-tags .tag")[0], "race");
-        swapTextWithInputKeepingIcon(dynamicContainer.querySelectorAll(".character-tags .tag")[1], "background");
-        swapTextWithInputKeepingIcon(dynamicContainer.querySelectorAll(".character-tags .tag")[2], "alignment");
+        ensureBaseScoresOnCharacter(activeCharacter);
 
-        swapElementWithInput(dynamicContainer.querySelector(".vital-ac .vital-val"), "vitals.armorClass", true);
-        swapElementWithInput(dynamicContainer.querySelector(".vital-init .vital-val"), "vitals.initiative", true);
-        swapElementWithInput(dynamicContainer.querySelector(".vital-speed .vital-val"), "vitals.speed");
-        swapElementWithInput(dynamicContainer.querySelector(".vital-dc .vital-val"), "vitals.spellSaveDc", true);
-        swapElementWithInput(dynamicContainer.querySelector(".vital-attack .vital-val"), "vitals.spellAttackBonus", true);
-        swapElementWithInput(dynamicContainer.querySelector(".vital-prof .vital-val"), "vitals.proficiencyBonus", true);
-        swapElementWithInput(
-            dynamicContainer.querySelector(".vital-passive-perception .vital-val"),
-            "vitals.passivePerception",
-            true
-        );
-        swapElementWithInput(
-            dynamicContainer.querySelector(".vital-passive-investigation .vital-val"),
-            "vitals.passiveInvestigation",
-            true
-        );
-        swapElementWithInput(
-            dynamicContainer.querySelector(".vital-passive-insight .vital-val"),
-            "vitals.passiveInsight",
-            true
-        );
-        swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-blindsight-val"), "vitals.blindsight");
-        swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-darkvision-val"), "vitals.darkvision");
-        swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-devils-sight-val"), "vitals.devilsSight");
-        swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-tremorsense-val"), "vitals.tremorsense");
-        swapElementWithInput(dynamicContainer.querySelector(".vital-special-senses .sense-truesight-val"), "vitals.truesight");
+        // Core Identity Fields: Name, Species (race), Background, Alignment, Class
+        const nameEl = dynamicContainer.querySelector(".character-name");
+        if (nameEl) {
+            swapElementWithInput(nameEl, "name");
+        }
 
+        const raceTag = dynamicContainer.querySelectorAll(".character-tags .tag")[0];
+        if (raceTag) {
+            swapTextWithInputKeepingIcon(raceTag, "race");
+        }
+
+        const bgTag = dynamicContainer.querySelectorAll(".character-tags .tag")[1];
+        if (bgTag) {
+            swapTextWithInputKeepingIcon(bgTag, "background");
+        }
+
+        const alignTag = dynamicContainer.querySelectorAll(".character-tags .tag")[2];
+        if (alignTag) {
+            swapTextWithInputKeepingIcon(alignTag, "alignment");
+        }
+
+        // Class and Level editor
+        const classEl = dynamicContainer.querySelector(".character-classes");
+        if (classEl) {
+            const classStr = activeCharacter.classes?.length
+                ? activeCharacter.classes
+                      .map(c => `${c.name} ${c.level}${c.subclass ? ` (${c.subclass})` : ""}`)
+                      .join(" / ")
+                : activeCharacter.subtitle || "";
+            const classInput = document.createElement("input");
+            classInput.className = "card-inline-editor character-class-input";
+            classInput.type = "text";
+            classInput.value = classStr;
+            classInput.placeholder = "e.g. Bard 9 (Glamour) / Warlock 10";
+            classInput.title = "Class and Level (e.g. Bard 9 / Warlock 10)";
+            classInput.style.width = "100%";
+            classInput.style.maxWidth = "420px";
+
+            classInput.addEventListener("input", () => {
+                const char = ctx.getCharacter();
+                if (!char) return;
+                const parsedClasses = parseClassInputString(classInput.value);
+                char.classes = parsedClasses;
+                const totalLevel = parsedClasses.reduce((sum, c) => sum + (c.level || 0), 0) || 1;
+                char.level = totalLevel;
+                char.subtitle = `${parsedClasses.map(c => `${c.name} ${c.level}`).join(" / ")} • Level ${totalLevel}`;
+
+                const newPb = Math.floor((totalLevel - 1) / 4) + 2;
+                char.vitals.proficiencyBonus = newPb;
+
+                // Update saving throws, skills, DCs with new PB
+                char.abilities.forEach(ab => {
+                    ab.save = ab.modifier + (ab.proficientSave ? newPb : 0);
+                });
+                char.skills.forEach(s => {
+                    const ab = char.abilities.find(a => a.abbr === s.stat);
+                    const mod = ab ? ab.modifier : 0;
+                    if (s.proficiency === "expertise") s.bonus = mod + newPb * 2;
+                    else if (s.proficiency === "proficient") s.bonus = mod + newPb;
+                    else s.bonus = mod;
+                });
+                if (char.vitals.spellcastingAbility) {
+                    const spellAb = char.abilities.find(
+                        a =>
+                            a.name.toLowerCase() === char.vitals.spellcastingAbility.toLowerCase() ||
+                            a.abbr.toLowerCase() === char.vitals.spellcastingAbility.toLowerCase()
+                    );
+                    if (spellAb) {
+                        char.vitals.spellSaveDc = 8 + newPb + spellAb.modifier;
+                        char.vitals.spellAttackBonus = newPb + spellAb.modifier;
+                    }
+                }
+
+                // Update DOM display elements
+                const profVal = dynamicContainer.querySelector<HTMLElement>(".vital-prof .vital-val");
+                if (profVal) profVal.textContent = `+${newPb}`;
+                const dcVal = dynamicContainer.querySelector<HTMLElement>(".vital-dc .vital-val");
+                if (dcVal) dcVal.textContent = String(char.vitals.spellSaveDc);
+                const atkVal = dynamicContainer.querySelector<HTMLElement>(".vital-attack .vital-val");
+                if (atkVal) atkVal.textContent = `+${char.vitals.spellAttackBonus}`;
+                char.abilities.forEach((ab, idx) => {
+                    const card = dynamicContainer.querySelectorAll(".ability-card")[idx];
+                    const saveEl = card?.querySelector<HTMLElement>(".save-val");
+                    if (saveEl) saveEl.textContent = ab.save >= 0 ? `+${ab.save}` : String(ab.save);
+                });
+            });
+
+            classEl.innerHTML = "";
+            classEl.appendChild(classInput);
+        }
+
+        // Max HP editor in the HP card
+        const hpRatioEl = dynamicContainer.querySelector(".vital-hp #hp-ratio");
+        if (hpRatioEl) {
+            hpRatioEl.innerHTML = `Max: `;
+            const maxHpInput = document.createElement("input");
+            maxHpInput.type = "number";
+            maxHpInput.className = "card-inline-editor max-hp-input";
+            maxHpInput.value = String(activeCharacter.vitals.maxHp);
+            maxHpInput.min = "1";
+            maxHpInput.title = "Maximum Hit Points";
+            maxHpInput.addEventListener("input", () => {
+                const nextMax = Math.max(1, Number(maxHpInput.value || 1));
+                ctx.setMaxHp(nextMax);
+                const hpDisplay = dynamicContainer.querySelector<HTMLInputElement>("#hp-display");
+                if (hpDisplay) hpDisplay.max = String(nextMax);
+            });
+            hpRatioEl.appendChild(maxHpInput);
+        }
+
+        // Vital Stats: Ability Scores (base score inputs with stacked modifier hint and live reactivity)
         dynamicContainer.querySelectorAll(".ability-card").forEach((card, index) => {
-            swapElementWithInput(card.querySelector(".ability-header"), `abilities[${index}].abbr`);
-            swapElementWithInput(card.querySelector(".ability-mod"), `abilities[${index}].modifier`, true);
-            swapElementWithInput(card.querySelector(".ability-score"), `abilities[${index}].score`, true);
-            swapElementWithInput(card.querySelector(".save-val"), `abilities[${index}].save`, true);
-            const noteEl = card.querySelector(".ability-note");
-            if (noteEl) {
-                swapElementWithInput(noteEl, `abilities[${index}].notes`);
+            const activeCharacter = ctx.getCharacter();
+            if (!activeCharacter) return;
+            const ability = activeCharacter.abilities[index];
+            if (!ability) return;
+
+            const baseVal = typeof ability.baseScore === "number"
+                ? ability.baseScore
+                : (ability.score - (ability.bonus || 0));
+            const bonusVal = typeof ability.bonus === "number"
+                ? ability.bonus
+                : (ability.score - baseVal);
+
+            // The score element becomes the base score editor with live modifier stacking
+            const scoreEl = card.querySelector<HTMLElement>(".ability-score");
+            const modEl = card.querySelector<HTMLElement>(".ability-mod");
+            const saveEl = card.querySelector<HTMLElement>(".save-val");
+
+            if (scoreEl) {
+                scoreEl.innerHTML = "";
+                scoreEl.classList.add("ability-score-editor-container");
+
+                const baseInput = document.createElement("input");
+                baseInput.type = "number";
+                baseInput.className = "card-inline-editor ability-base-input";
+                baseInput.value = String(baseVal);
+                baseInput.min = "1";
+                baseInput.max = "30";
+                baseInput.title = "Base score (modifiers stack on top)";
+
+                const totalHint = document.createElement("span");
+                totalHint.className = "ability-total-hint";
+                const updateTotalHint = () => {
+                    const currentAb = ctx.getCharacter()?.abilities[index];
+                    const currentScore = currentAb ? currentAb.score : ability.score;
+                    const currentBonus = currentAb
+                        ? (currentAb.bonus ?? (currentScore - (currentAb.baseScore ?? baseVal)))
+                        : bonusVal;
+                    if (currentBonus !== 0) {
+                        const sign = currentBonus > 0 ? `+${currentBonus}` : `${currentBonus}`;
+                        totalHint.textContent = `Total: ${currentScore} (${sign})`;
+                        totalHint.title = `Base ${currentAb?.baseScore ?? baseVal} ${sign} modifier bonus = ${currentScore}`;
+                    } else {
+                        totalHint.textContent = `Total: ${currentScore}`;
+                        totalHint.title = `Total score: ${currentScore}`;
+                    }
+                };
+                updateTotalHint();
+
+                baseInput.addEventListener("input", () => {
+                    const nextBase = Number(baseInput.value || 0);
+                    ctx.updateAbilityBaseScore(index, nextBase);
+
+                    // Update live ability card elements
+                    const updatedChar = ctx.getCharacter();
+                    const updatedAb = updatedChar?.abilities[index];
+                    if (updatedAb) {
+                        if (modEl) {
+                            modEl.textContent = updatedAb.modifier >= 0 ? `+${updatedAb.modifier}` : String(updatedAb.modifier);
+                        }
+                        if (saveEl) {
+                            saveEl.textContent = updatedAb.save >= 0 ? `+${updatedAb.save}` : String(updatedAb.save);
+                        }
+                        updateTotalHint();
+
+                        // Update skill rows in DOM if rendered
+                        if (dynamicContainer) {
+                            dynamicContainer.querySelectorAll(".skill-row").forEach((row, sIdx) => {
+                                const s = updatedChar?.skills[sIdx];
+                                if (s && s.stat === updatedAb.abbr) {
+                                    const bonusEl = row.querySelector<HTMLElement>(".skill-bonus");
+                                    if (bonusEl) {
+                                        bonusEl.textContent = s.bonus >= 0 ? `+${s.bonus}` : String(s.bonus);
+                                    }
+                                }
+                            });
+
+                            // Update vitals in DOM
+                            const dcVal = dynamicContainer.querySelector<HTMLElement>(".vital-dc .vital-val");
+                            if (dcVal && updatedChar) dcVal.textContent = String(updatedChar.vitals.spellSaveDc);
+                            const atkVal = dynamicContainer.querySelector<HTMLElement>(".vital-attack .vital-val");
+                            if (atkVal && updatedChar) atkVal.textContent = `+${updatedChar.vitals.spellAttackBonus}`;
+                            const initVal = dynamicContainer.querySelector<HTMLElement>(".vital-init .vital-val");
+                            if (initVal && updatedChar && updatedAb.abbr === "DEX") {
+                                initVal.textContent =
+                                    updatedChar.vitals.initiative >= 0
+                                        ? `+${updatedChar.vitals.initiative}`
+                                        : String(updatedChar.vitals.initiative);
+                            }
+                            const acVal = dynamicContainer.querySelector<HTMLElement>(".vital-ac .vital-val");
+                            if (acVal && updatedChar) acVal.textContent = String(updatedChar.vitals.armorClass);
+                            const percVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-perception .vital-val");
+                            if (percVal && updatedChar) percVal.textContent = String(updatedChar.vitals.passivePerception);
+                            const invVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-investigation .vital-val");
+                            if (invVal && updatedChar) invVal.textContent = String(updatedChar.vitals.passiveInvestigation);
+                            const insVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-insight .vital-val");
+                            if (insVal && updatedChar) insVal.textContent = String(updatedChar.vitals.passiveInsight);
+                        }
+                    }
+                });
+
+                scoreEl.appendChild(baseInput);
+                scoreEl.appendChild(totalHint);
             }
         });
-
-        dynamicContainer.querySelectorAll(".skill-row").forEach((row, index) => {
-            swapElementWithInput(row.querySelector(".skill-name"), `skills[${index}].name`);
-            swapElementWithInput(row.querySelector(".skill-stat"), `skills[${index}].stat`);
-            swapElementWithInput(row.querySelector(".skill-bonus"), `skills[${index}].bonus`, true);
-        });
-
-        dynamicContainer.querySelectorAll(".action-card").forEach((card, index) => {
-            swapElementWithInput(card.querySelector(".action-name"), `actions[${index}].name`);
-            swapElementWithInput(card.querySelector(".action-badge"), `actions[${index}].type`);
-            const stats = card.querySelectorAll(".action-stat strong");
-            swapElementWithInput(stats[0], `actions[${index}].rangeOrReach`);
-            swapElementWithInput(stats[1], `actions[${index}].hitOrDc`);
-            swapElementWithInput(stats[2], `actions[${index}].damageOrEffect`);
-            swapElementWithInput(card.querySelector(".action-notes"), `actions[${index}].notes`);
-        });
-
-        dynamicContainer.querySelectorAll(".feature-card").forEach((card, index) => {
-            swapElementWithInput(card.querySelector(".feature-name"), `features[${index}].name`);
-            swapElementWithInput(card.querySelector(".feature-badge"), `features[${index}].source`);
-            swapElementWithInput(card.querySelector(".feature-desc"), `features[${index}].description`);
-        });
-
-        dynamicContainer.querySelectorAll(".spell-card").forEach((card, index) => {
-            swapElementWithInput(card.querySelector(".spell-title"), `spells[${index}].name`);
-            swapElementWithInput(card.querySelector(".spell-school-level"), `spells[${index}].school`);
-            const metaValues = card.querySelectorAll(".meta-value");
-            swapElementWithInput(metaValues[0], `spells[${index}].castingTime`);
-            swapElementWithInput(metaValues[1], `spells[${index}].range`);
-            swapElementWithInput(metaValues[2], `spells[${index}].duration`);
-        });
-
-        dynamicContainer.querySelectorAll(".equipment-row").forEach((row, index) => {
-            swapTextWithInputKeepingIcon(row.querySelector(".item-name"), `equipment[${index}].name`);
-            swapElementWithInput(row.querySelector(".item-type"), `equipment[${index}].type`);
-            const notes = row.querySelector(".item-notes");
-            if (notes) swapElementWithInput(notes, `equipment[${index}].notes`);
-        });
-
-        dynamicContainer.querySelectorAll(".weapon-card").forEach((card, index) => {
-            swapTextWithInputKeepingIcon(card.querySelector(".weapon-name"), `weapons[${index}].name`);
-            swapElementWithInput(card.querySelector(".weapon-category"), `weapons[${index}].category`);
-            const stats = card.querySelectorAll(".wstat-val");
-            swapElementWithInput(stats[0], `weapons[${index}].attackBonus`);
-            swapElementWithInput(stats[1], `weapons[${index}].damage`);
-            swapElementWithInput(stats[2], `weapons[${index}].range`);
-            const notes = card.querySelector(".weapon-notes");
-            if (notes) swapElementWithInput(notes, `weapons[${index}].notes`);
-        });
-
-        const firstSenseList = dynamicContainer.querySelectorAll(".sense-card ul li");
-        swapElementWithInput(firstSenseList[0]?.querySelector("strong")?.parentElement || null, "vitals.passivePerception", true);
-        swapElementWithInput(firstSenseList[1]?.querySelector("strong")?.parentElement || null, "vitals.passiveInvestigation", true);
-        swapElementWithInput(firstSenseList[2]?.querySelector("strong")?.parentElement || null, "vitals.passiveInsight", true);
-        swapElementWithInput(firstSenseList[3]?.querySelector("strong")?.parentElement || null, "vitals.darkvision");
     }
 
     return {

@@ -4915,3 +4915,54 @@ el-character-sheet.is-fullscreen {
     background-color: var(--surface);
 }
 
+/* Ability Score in-place editor with base score & stacked modifiers */
+.ability-score-editor-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0.2rem 0;
+}
+
+.ability-base-input {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    text-align: center;
+    padding: 2px 4px !important;
+    font-size: 0.88rem !important;
+    font-weight: 700;
+}
+
+.ability-total-hint {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.character-class-input {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    padding: 3px 6px !important;
+    border-radius: 4px;
+    margin-top: 0.2rem;
+}
+
+.max-hp-input {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    padding: 1px 4px !important;
+    text-align: center;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+

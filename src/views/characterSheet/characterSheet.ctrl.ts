@@ -1,6 +1,6 @@
 import el from "@elements";
 import { getData, postData, putData } from "@services/request";
-import { parseDndBeyondCharacter } from "./characterAdapter";
+import { ensureBaseScoresOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
 import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
@@ -421,7 +421,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 siteCharacterId: response.savedCharacter.siteCharacterId,
                 source: response.savedCharacter.source,
                 name: response.savedCharacter.name || response.character?.name || "Saved Character",
-                externalCharacterId: response.savedCharacter.externalCharacterId
+                externalCharacterId: response.savedCharacter.externalCharacterId,
+                savedPayload: response.character
             };
         } catch {
             return undefined;
@@ -454,6 +455,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
             activeCharacter = response.character;
             ensureFeatureDecisionsOnCharacterData(activeCharacter);
+            ensureBaseScoresOnCharacter(activeCharacter, activeRawDndBeyondPayload);
             isEditMode = false;
             activeCharacter.savedCharacterId = response.savedCharacter?.id || activeCharacter.savedCharacterId;
             activeCharacter.siteCharacterId = response.savedCharacter?.siteCharacterId || activeCharacter.siteCharacterId;
@@ -470,6 +472,26 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 idInput.value = activeCharacterId;
             }
             renderActiveCharacterView();
+
+            if (activeCharacter.source === "dndbeyond") {
+                const externalId =
+                    response.savedCharacter?.externalCharacterId ||
+                    (activeCharacter.id && /^\d+$/.test(String(activeCharacter.id)) ? String(activeCharacter.id) : undefined) ||
+                    activeCharacterId;
+                if (externalId && /^\d+$/.test(String(externalId))) {
+                    void getData<any>(`/get-dndbeyond-character?id=${externalId}`).then(raw => {
+                        if (raw) {
+                            activeRawDndBeyondPayload = raw;
+                            if (activeCharacter) {
+                                ensureBaseScoresOnCharacter(activeCharacter, raw);
+                                if (isEditMode) {
+                                    editModeCtrl.enableCardLayoutEditors();
+                                }
+                            }
+                        }
+                    }).catch(() => { });
+                }
+            }
             if (activeCharacter.source === "dndbeyond") {
                 showDndBeyondNoteTemporarily(15000);
             } else {
@@ -521,12 +543,12 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 spellcastingAbility: "None"
             },
             abilities: [
-                { name: "Strength", abbr: "STR", score: 10, modifier: 0, save: 0, proficientSave: false },
-                { name: "Dexterity", abbr: "DEX", score: 10, modifier: 0, save: 0, proficientSave: false },
-                { name: "Constitution", abbr: "CON", score: 10, modifier: 0, save: 0, proficientSave: false },
-                { name: "Intelligence", abbr: "INT", score: 10, modifier: 0, save: 0, proficientSave: false },
-                { name: "Wisdom", abbr: "WIS", score: 10, modifier: 0, save: 0, proficientSave: false },
-                { name: "Charisma", abbr: "CHA", score: 10, modifier: 0, save: 0, proficientSave: false }
+                { name: "Strength", abbr: "STR", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 },
+                { name: "Dexterity", abbr: "DEX", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 },
+                { name: "Constitution", abbr: "CON", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 },
+                { name: "Intelligence", abbr: "INT", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 },
+                { name: "Wisdom", abbr: "WIS", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 },
+                { name: "Charisma", abbr: "CHA", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 }
             ],
             skills: [],
             spellSlots: {},
@@ -571,6 +593,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 currentEquipOverrides,
                 activeCharacter.featureChoices
             );
+            ensureBaseScoresOnCharacter(recomputed, activeRawDndBeyondPayload);
             const maxHpDelta = (Number(recomputed.vitals.maxHp) || 0) - oldMaxHp;
             activeCharacter.vitals.maxHp = recomputed.vitals.maxHp;
             maxHp = recomputed.vitals.maxHp;
@@ -623,6 +646,68 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             console.warn("Could not recalculate character stats from raw payload:", err);
         }
     }
+
+    function updateAbilityBaseScore(abilityIndex: number, newBaseScore: number) {
+        if (!activeCharacter) return;
+        const ability = activeCharacter.abilities[abilityIndex];
+        if (!ability) return;
+
+        const statId = abilityIndex + 1; // 1=STR, 2=DEX, 3=CON, 4=INT, 5=WIS, 6=CHA
+
+        if (activeRawDndBeyondPayload) {
+            const raw = activeRawDndBeyondPayload.data || activeRawDndBeyondPayload;
+            if (!Array.isArray(raw.stats)) {
+                raw.stats = [];
+            }
+            let statObj = raw.stats.find((s: any) => s.id === statId);
+            if (!statObj) {
+                statObj = { id: statId, value: newBaseScore };
+                raw.stats.push(statObj);
+            } else {
+                statObj.value = newBaseScore;
+            }
+
+            recalculateFromRawPayload();
+        } else {
+            const oldBase = typeof ability.baseScore === "number"
+                ? ability.baseScore
+                : (ability.score - (ability.bonus || 0));
+            const bonus = typeof ability.bonus === "number"
+                ? ability.bonus
+                : (ability.score - oldBase);
+            ability.baseScore = newBaseScore;
+            ability.bonus = bonus;
+            ability.score = newBaseScore + bonus;
+            ability.modifier = Math.floor((ability.score - 10) / 2);
+
+            const profBonus =
+                activeCharacter.vitals.proficiencyBonus ||
+                Math.floor(((activeCharacter.level || 1) - 1) / 4) + 2;
+            ability.save = ability.modifier + (ability.proficientSave ? profBonus : 0);
+
+            // Update skills tied to this ability
+            activeCharacter.skills.forEach(s => {
+                if (s.stat === ability.abbr) {
+                    let b = ability.modifier;
+                    if (s.proficiency === "expertise") b += profBonus * 2;
+                    else if (s.proficiency === "proficient") b += profBonus;
+                    s.bonus = b;
+                }
+            });
+
+            // Update vitals
+            if (ability.abbr === "DEX") {
+                activeCharacter.vitals.initiative = ability.modifier;
+            }
+            const spellAbilityAbbr = activeCharacter.vitals.spellcastingAbility?.slice(0, 3)?.toUpperCase();
+            if (spellAbilityAbbr === ability.abbr) {
+                activeCharacter.vitals.spellSaveDc = 8 + profBonus + ability.modifier;
+                activeCharacter.vitals.spellAttackBonus = profBonus + ability.modifier;
+                activeCharacter.vitals.spellcastingAbility = `${ability.name} (${ability.modifier >= 0 ? `+${ability.modifier}` : ability.modifier})`;
+            }
+        }
+    }
+
 
     function applyPersistedEquipStates(
         states: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>
@@ -817,6 +902,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeRawDndBeyondPayload = rawData;
             currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
+            ensureBaseScoresOnCharacter(parsed, rawData);
             if (parsed.spells?.length) {
                 void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });
             }
@@ -926,6 +1012,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         renderActiveCharacterView,
         renderSavedCharacterList: () => { },
         setCharacterActionsVisibility: () => { },
+        updateAbilityBaseScore,
+        recalculateFromRawPayload,
         saveActiveCharacter,
         scheduleDebouncedAutoSave,
         loadCharacter,

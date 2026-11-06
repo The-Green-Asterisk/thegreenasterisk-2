@@ -243,8 +243,10 @@ export function parseDndBeyondCharacter(
     const overrideStats = raw.overrideStats || [];
 
     const abilityScoresMap: Record<number, number> = {};
+    const baseAbilityScoresMap: Record<number, number> = {};
     for (let id = 1; id <= 6; id++) {
         const base = statsArray.find((s: any) => s.id === id)?.value ?? 10;
+        baseAbilityScoresMap[id] = base;
         const bonus = bonusStats.find((s: any) => s.id === id)?.value ?? 0;
         const override = overrideStats.find((s: any) => s.id === id)?.value;
 
@@ -490,6 +492,7 @@ export function parseDndBeyondCharacter(
             if (!saveNotes.includes(label)) saveNotes.push(label);
         });
 
+        const baseVal = baseAbilityScoresMap[id] ?? score;
         abilities.push({
             name: meta.name,
             abbr: meta.abbr,
@@ -497,6 +500,8 @@ export function parseDndBeyondCharacter(
             modifier,
             save,
             proficientSave: isProf,
+            baseScore: baseVal,
+            bonus: score - baseVal,
             notes: saveNotes.length > 0 ? saveNotes.join("; ") : undefined
         });
     }
@@ -1981,3 +1986,102 @@ export function parseDndBeyondCharacter(
         spells: spellsList
     };
 }
+
+export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload?: any): void {
+    if (!character || !Array.isArray(character.abilities)) return;
+
+    const raw = rawPayload?.data || rawPayload;
+    const statsArray = Array.isArray(raw?.stats) ? raw.stats : undefined;
+
+    // Build known feature bonuses map from features list
+    const featureBonuses: Record<string, number> = {
+        STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 0
+    };
+
+    if (Array.isArray(character.features)) {
+        for (const feat of character.features) {
+            const name = (feat.name || "").toLowerCase();
+            const desc = (feat.description || "").toLowerCase();
+            const text = `${name} ${desc}`;
+
+            // Specific known feat bonuses
+            if (name === "actor" || name.includes("actor")) {
+                featureBonuses.CHA += 1;
+            }
+            if (name.includes("boon of fate")) {
+                featureBonuses.CHA += 1;
+            }
+            if (name.includes("war caster") && (text.includes("charisma") || text.includes("score increase") || !text.includes("wisdom"))) {
+                featureBonuses.CHA += 1;
+            }
+            if (name.includes("entertainer ability score") || (name.includes("entertainer") && text.includes("ability score"))) {
+                featureBonuses.CHA += 2;
+                featureBonuses.DEX += 1;
+            }
+
+            // General regex matching: e.g. "Charisma score increases by 2", "+1 Charisma", "increase your Charisma score by 1"
+            const statRegexes: Array<[string, RegExp]> = [
+                ["STR", /(?:\+([1-4])\s+strength|strength\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
+                ["DEX", /(?:\+([1-4])\s+dexterity|dexterity\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
+                ["CON", /(?:\+([1-4])\s+constitution|constitution\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
+                ["INT", /(?:\+([1-4])\s+intelligence|intelligence\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
+                ["WIS", /(?:\+([1-4])\s+wisdom|wisdom\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
+                ["CHA", /(?:\+([1-4])\s+charisma|charisma\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i]
+            ];
+
+            for (const [abbr, regex] of statRegexes) {
+                if (abbr === "CHA" && (name.includes("actor") || name.includes("boon of fate") || name.includes("war caster") || name.includes("entertainer"))) {
+                    continue;
+                }
+                if (abbr === "DEX" && name.includes("entertainer")) {
+                    continue;
+                }
+                const match = regex.exec(text);
+                if (match) {
+                    const val = Number(match[1] || match[2]) || 0;
+                    featureBonuses[abbr] += val;
+                }
+            }
+        }
+    }
+
+    character.abilities.forEach((ability, idx) => {
+        const statId = idx + 1; // 1=STR, 2=DEX, 3=CON, 4=INT, 5=WIS, 6=CHA
+        const abbr = ability.abbr;
+
+        if (statsArray) {
+            const rawStat = statsArray.find((s: any) => s.id === statId);
+            if (rawStat && typeof rawStat.value === "number") {
+                ability.baseScore = rawStat.value;
+                ability.bonus = ability.score - rawStat.value;
+                return;
+            }
+        }
+
+        // If baseScore and bonus are already both valid numbers, keep them
+        if (typeof ability.baseScore === "number" && typeof ability.bonus === "number") {
+            return;
+        }
+
+        if (typeof ability.baseScore === "number" && typeof ability.bonus !== "number") {
+            ability.bonus = ability.score - ability.baseScore;
+            return;
+        }
+
+        if (typeof ability.bonus === "number" && typeof ability.baseScore !== "number") {
+            ability.baseScore = ability.score - ability.bonus;
+            return;
+        }
+
+        // Infer from known features if possible
+        const inferredBonus = featureBonuses[abbr] || 0;
+        if (inferredBonus > 0 && ability.score - inferredBonus >= 1) {
+            ability.baseScore = ability.score - inferredBonus;
+            ability.bonus = inferredBonus;
+        } else {
+            ability.baseScore = ability.score;
+            ability.bonus = 0;
+        }
+    });
+}
+

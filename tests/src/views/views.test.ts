@@ -1113,5 +1113,212 @@ describe('Frontend View Templates', () => {
         const deceptionSkill = darvell.skills.find(s => s.name === 'Deception')!;
         expect(deceptionSkill.proficiency).toBe('expertise');
         expect(deceptionSkill.bonus).toBe(5 + 6 * 2); // CHA (5) + 2 * PB (12) = 17
+
+        expect(cha.baseScore).toBe(15);
+        expect(cha.bonus).toBe(5);
+        expect(dex.baseScore).toBe(14);
+        expect(dex.bonus).toBe(1);
+    });
+
+    it('only edits the base score in edit mode and stacks all modifiers on top', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
+        const { initEditModeController } = await import('../../../src/views/characterSheet/controllers/editMode.ctrl');
+
+        const rawPayload = {
+            id: 138310322,
+            name: 'Darvell',
+            classes: [
+                { level: 9, definition: { name: 'Bard', spellCastingAbilityId: 6 }, subclassDefinition: { name: 'College of Glamour' } },
+                { level: 10, definition: { name: 'Warlock', spellCastingAbilityId: 6 }, subclassDefinition: { name: 'The Great Old One' } }
+            ],
+            stats: [
+                { id: 1, value: 8 },
+                { id: 2, value: 14 },
+                { id: 3, value: 12 },
+                { id: 4, value: 10 },
+                { id: 5, value: 13 },
+                { id: 6, value: 15 }
+            ],
+            modifiers: {
+                class: [
+                    { id: 'c1', type: 'proficiency', subType: 'charisma-saving-throws', isGranted: true }
+                ],
+                feat: [
+                    { id: 'f1', componentId: 1789100, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: true },
+                    { id: 'f2', componentId: 1789112, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: false },
+                    { id: 'f3', componentId: 1789209, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: false },
+                    { id: 'f4', componentId: 1789139, type: 'bonus', subType: 'charisma-score', value: 2, isGranted: false }
+                ]
+            },
+            inventory: [],
+            spells: {}
+        };
+
+        let activeCharacter = parseDndBeyondCharacter(rawPayload);
+        const container = document.createElement('div');
+        container.innerHTML = renderSheetContent(activeCharacter);
+
+        const ctx: any = {
+            sheet: container,
+            dynamicContainer: container,
+            getCharacter: () => activeCharacter,
+            setCharacter: (c: any) => { activeCharacter = c; },
+            updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => {
+                const statId = abilityIndex + 1;
+                const statObj = rawPayload.stats.find(s => s.id === statId);
+                if (statObj) statObj.value = newBaseScore;
+                activeCharacter = parseDndBeyondCharacter(rawPayload);
+            }
+        };
+
+        const editCtrl = initEditModeController(ctx);
+        editCtrl.enableCardLayoutEditors();
+
+        // Charisma is index 5
+        const cards = container.querySelectorAll('.ability-card');
+        const chaCard = cards[5];
+        const chaInput = chaCard.querySelector<HTMLInputElement>('.ability-base-input')!;
+        const chaModEl = chaCard.querySelector<HTMLElement>('.ability-mod')!;
+        const chaSaveEl = chaCard.querySelector<HTMLElement>('.save-val')!;
+        const totalHintEl = chaCard.querySelector<HTMLElement>('.ability-total-hint')!;
+
+        // Value in input is the BASE score (15), hint displays Total: 20 (+5)
+        expect(chaInput.value).toBe('15');
+        expect(totalHintEl.textContent).toContain('Total: 20 (+5)');
+        expect(chaModEl.textContent).toBe('+5');
+        expect(chaSaveEl.textContent).toBe('+11');
+
+        // Edit base score to 14: total should become 14 + 5 = 19, modifier should become +4, save +10
+        chaInput.value = '14';
+        chaInput.dispatchEvent(new Event('input'));
+
+        expect(activeCharacter.abilities[5].baseScore).toBe(14);
+        expect(activeCharacter.abilities[5].score).toBe(19);
+        expect(activeCharacter.abilities[5].modifier).toBe(4);
+        expect(chaModEl.textContent).toBe('+4');
+        expect(chaSaveEl.textContent).toBe('+10');
+        expect(totalHintEl.textContent).toContain('Total: 19 (+5)');
+
+        // Edit base score to 16: total should become 16 + 5 = 21, modifier should become +5, save +11
+        chaInput.value = '16';
+        chaInput.dispatchEvent(new Event('input'));
+
+        expect(activeCharacter.abilities[5].baseScore).toBe(16);
+        expect(activeCharacter.abilities[5].score).toBe(21);
+        expect(activeCharacter.abilities[5].modifier).toBe(5);
+        expect(chaModEl.textContent).toBe('+5');
+        expect(chaSaveEl.textContent).toBe('+11');
+        expect(totalHintEl.textContent).toContain('Total: 21 (+5)');
+    });
+
+    it('properly restores baseScore and bonus on a saved character where baseScore was not originally saved', async () => {
+        const { ensureBaseScoresOnCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
+        const { initEditModeController } = await import('../../../src/views/characterSheet/controllers/editMode.ctrl');
+
+        // Character object simulating old saved character in DB (no baseScore, no bonus)
+        const savedCharFromDb: any = {
+            id: 138310322,
+            name: 'Darvell',
+            source: 'dndbeyond',
+            level: 19,
+            classes: [{ name: 'Bard', level: 9 }, { name: 'Warlock', level: 10 }],
+            vitals: {
+                currentHp: 150,
+                maxHp: 150,
+                armorClass: 15,
+                initiative: 2,
+                speed: '30 ft.',
+                proficiencyBonus: 6,
+                spellSaveDc: 19,
+                spellAttackBonus: 11
+            },
+            abilities: [
+                { name: 'Strength', abbr: 'STR', score: 8, modifier: -1, save: -1, proficientSave: false },
+                { name: 'Dexterity', abbr: 'DEX', score: 15, modifier: 2, save: 8, proficientSave: true },
+                { name: 'Constitution', abbr: 'CON', score: 12, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Intelligence', abbr: 'INT', score: 10, modifier: 0, save: 0, proficientSave: false },
+                { name: 'Wisdom', abbr: 'WIS', score: 13, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Charisma', abbr: 'CHA', score: 20, modifier: 5, save: 11, proficientSave: true }
+            ],
+            skills: [
+                { name: 'Deception', stat: 'CHA', bonus: 17, proficiency: 'expertise' }
+            ],
+            spellSlots: {},
+            features: [
+                { name: 'Actor', type: 'Feat', description: 'Your Charisma score increases by 1.' },
+                { name: 'Boon of Fate', type: 'Feat', description: 'Increase one ability score by 1 (Charisma).' },
+                { name: 'War Caster', type: 'Feat', description: 'Increase your Charisma score by 1.' },
+                { name: 'Entertainer Ability Score Improvements', type: 'Feat', description: '+2 Charisma, +1 Dexterity' }
+            ],
+            actions: [],
+            spells: [],
+            equipment: [],
+            weapons: [],
+            proficiencies: { armor: [], weapons: [], tools: [], languages: [] }
+        };
+
+        // Before ensureBaseScores, baseScore is undefined
+        expect(savedCharFromDb.abilities[5].baseScore).toBeUndefined();
+
+        // ensureBaseScoresOnCharacter restores baseScore=15, bonus=5 for CHA, and baseScore=14, bonus=1 for DEX
+        ensureBaseScoresOnCharacter(savedCharFromDb);
+        expect(savedCharFromDb.abilities[5].baseScore).toBe(15);
+        expect(savedCharFromDb.abilities[5].bonus).toBe(5);
+        expect(savedCharFromDb.abilities[1].baseScore).toBe(14);
+        expect(savedCharFromDb.abilities[1].bonus).toBe(1);
+
+        const container = document.createElement('div');
+        container.innerHTML = renderSheetContent(savedCharFromDb);
+
+        const ctx: any = {
+            sheet: container,
+            dynamicContainer: container,
+            getCharacter: () => savedCharFromDb,
+            setCharacter: (c: any) => { },
+            updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => {
+                const ab = savedCharFromDb.abilities[abilityIndex];
+                ab.baseScore = newBaseScore;
+                ab.score = newBaseScore + ab.bonus;
+                ab.modifier = Math.floor((ab.score - 10) / 2);
+                ab.save = ab.modifier + (ab.proficientSave ? 6 : 0);
+            }
+        };
+
+        const editCtrl = initEditModeController(ctx);
+        editCtrl.enableCardLayoutEditors();
+
+        const cards = container.querySelectorAll('.ability-card');
+        const chaCard = cards[5];
+        const chaInput = chaCard.querySelector<HTMLInputElement>('.ability-base-input')!;
+        const totalHintEl = chaCard.querySelector<HTMLElement>('.ability-total-hint')!;
+
+        // The input MUST display the base score (15), NOT the total score (20)
+        expect(chaInput.value).toBe('15');
+        expect(totalHintEl.textContent).toContain('Total: 20 (+5)');
+
+        // Editing base to 16 updates total to 21 (+5)
+        chaInput.value = '16';
+        chaInput.dispatchEvent(new Event('input'));
+        expect(savedCharFromDb.abilities[5].baseScore).toBe(16);
+        expect(savedCharFromDb.abilities[5].score).toBe(21);
+        expect(totalHintEl.textContent).toContain('Total: 21 (+5)');
+
+        // Only core stats, name, species, background, alignment, class, and ability base scores should be editable
+        const nameInput = container.querySelector<HTMLInputElement>('.character-name input');
+        const classInput = container.querySelector<HTMLInputElement>('.character-class-input');
+        expect(nameInput).not.toBeNull();
+        expect(nameInput?.value).toBe('Darvell');
+        expect(classInput).not.toBeNull();
+        expect(classInput?.value).toBe('Bard 9 / Warlock 10');
+
+        // Derived stats must NOT have inputs
+        expect(container.querySelector('.vital-ac input')).toBeNull();
+        expect(container.querySelector('.vital-init input')).toBeNull();
+        expect(container.querySelector('.vital-dc input')).toBeNull();
+        expect(container.querySelector('.vital-attack input')).toBeNull();
+        expect(container.querySelector('.skill-bonus input')).toBeNull();
     });
 });
+
