@@ -179,7 +179,7 @@ export default class SpellController extends BaseController {
                 }
             });
 
-            const filtered = allSpells
+            let filtered = allSpells
                 .filter(spell => {
                     if (levelFilter !== undefined && Number(spell.level) !== levelFilter) {
                         return false;
@@ -190,8 +190,18 @@ export default class SpellController extends BaseController {
                 })
                 .slice(0, limit);
 
+            let fetchedOnline = false;
+            if (filtered.length === 0 && searchTerm.length >= 2) {
+                const rawQuery = typeof query.q === "string" ? query.q.trim() : searchTerm;
+                const onlineSpells = await this.searchAndSaveOnlineSpells(rawQuery, levelFilter);
+                if (onlineSpells.length > 0) {
+                    filtered = onlineSpells.slice(0, limit);
+                    fetchedOnline = true;
+                }
+            }
+
             return {
-                response: JSON.stringify({ spells: filtered }),
+                response: JSON.stringify({ spells: filtered, fetchedOnline }),
                 header: "application/json",
                 status: 200
             };
@@ -563,5 +573,109 @@ export default class SpellController extends BaseController {
             console.warn("Failed fetching from Open 5e APIs:", err);
         }
         return null;
+    }
+
+    /**
+     * When a database search returns 0 results, branches out to free online sources
+     * (D&D Beyond public spell pages, dnd5eapi.co, and api.open5e.com), saves any
+     * discovered spells to the database, and returns the matching spells.
+     */
+    private static async searchAndSaveOnlineSpells(rawQuery: string, levelFilter?: number): Promise<Spell[]> {
+        const candidatesMap = new Map<string, Partial<Spell>>();
+
+        try {
+            // 1. Try direct D&D Beyond public spell page and dnd5eapi.co by exact/slug name
+            const [ddbDirect, open5eDirect] = await Promise.all([
+                this.fetchFromDndBeyond(rawQuery).catch(() => null),
+                this.fetchFromOpen5e(rawQuery).catch(() => null)
+            ]);
+
+            if (ddbDirect && ddbDirect.name && ddbDirect.description) {
+                const sSlug = (ddbDirect.slug || slugify(ddbDirect.name)).slice(0, 255);
+                if (sSlug) candidatesMap.set(sSlug, ddbDirect);
+            }
+            if (open5eDirect && open5eDirect.name && open5eDirect.description) {
+                const sSlug = (open5eDirect.slug || slugify(open5eDirect.name)).slice(0, 255);
+                if (sSlug && !candidatesMap.has(sSlug)) {
+                    candidatesMap.set(sSlug, open5eDirect);
+                }
+            }
+
+            // 2. Also query Open5e search endpoint for partial/keyword spell matches
+            const open5eRes = await fetch(`https://api.open5e.com/v1/spells/?search=${encodeURIComponent(rawQuery)}&limit=12`);
+            if (open5eRes.ok) {
+                const data = await open5eRes.json();
+                const results = Array.isArray(data?.results) ? data.results : [];
+                for (const match of results) {
+                    if (!match?.name) continue;
+                    const sSlug = slugify(match.name).slice(0, 255);
+                    if (!sSlug || candidatesMap.has(sSlug)) continue;
+
+                    let descHtml = `<p>${String(match.desc || "").replace(/\n\n/g, "</p><p>")}</p>`;
+                    if (match.higher_level) {
+                        descHtml += `<p><strong>At Higher Levels.</strong> ${match.higher_level}</p>`;
+                    }
+                    candidatesMap.set(sSlug, {
+                        slug: sSlug,
+                        name: String(match.name).slice(0, 255),
+                        level: Number(match.level_int ?? match.level) || 0,
+                        school: String(match.school || "Universal").slice(0, 100),
+                        source: `Open 5e (${match.document__title || "SRD"})`.slice(0, 100),
+                        castingTime: String(match.casting_time || "1 Action").slice(0, 100),
+                        range: String(match.range || "Self").slice(0, 100),
+                        duration: String(match.duration || "Instantaneous").slice(0, 100),
+                        components: String(match.components || "V, S").slice(0, 255),
+                        concentration: match.concentration === "yes" || match.concentration === true,
+                        ritual: match.ritual === "yes" || match.ritual === true,
+                        description: descHtml
+                    });
+                }
+            }
+        } catch (onlineErr) {
+            console.warn("Error searching free online spell sources:", onlineErr);
+        }
+
+        const savedResults: Spell[] = [];
+        if (candidatesMap.size === 0 || !AppDataSource.isInitialized) {
+            return savedResults;
+        }
+
+        const spellRepo = AppDataSource.getRepository(Spell);
+        for (const [slug, candidate] of candidatesMap.entries()) {
+            try {
+                let dbSpell = await spellRepo.findOne({ where: { slug } });
+                if (!dbSpell) {
+                    const created = spellRepo.create({
+                        slug: slug.slice(0, 255),
+                        name: String(candidate.name || rawQuery).slice(0, 255),
+                        level: Number(candidate.level) || 0,
+                        school: String(candidate.school || "Universal").slice(0, 100),
+                        source: String(candidate.source || "Open 5e (SRD)").slice(0, 100),
+                        castingTime: String(candidate.castingTime || "1 Action").slice(0, 100),
+                        range: String(candidate.range || "Self").slice(0, 100),
+                        duration: String(candidate.duration || "Instantaneous").slice(0, 100),
+                        components: String(candidate.components || "V, S").slice(0, 255),
+                        concentration: !!candidate.concentration,
+                        ritual: !!candidate.ritual,
+                        description: candidate.description || "<p>No description provided.</p>",
+                        imageUrl: candidate.imageUrl ? String(candidate.imageUrl).slice(0, 500) : undefined,
+                        dndBeyondId: candidate.dndBeyondId,
+                        isCustom: false
+                    });
+                    dbSpell = await spellRepo.save(created);
+                    cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: dbSpell }), 3600);
+                    cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: dbSpell }), 3600);
+                }
+
+                if (levelFilter === undefined || Number(dbSpell.level) === levelFilter) {
+                    savedResults.push(dbSpell);
+                }
+            } catch (saveErr) {
+                console.warn(`Could not persist online search spell "${candidate.name}":`, saveErr);
+            }
+        }
+
+        savedResults.sort((a, b) => (a.level !== b.level ? a.level - b.level : a.name.localeCompare(b.name)));
+        return savedResults;
     }
 }

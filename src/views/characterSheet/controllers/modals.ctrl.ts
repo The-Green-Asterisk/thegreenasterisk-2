@@ -467,6 +467,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
         ctx.scheduleDebouncedAutoSave();
     }
 
+    let lastSearchFetchedOnline = false;
+
     function renderManageDbSearchResults() {
         const activeCharacter = ctx.getCharacter();
         if (!manageSpellsDbResults) return;
@@ -476,14 +478,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
         );
 
         if (manageDbResultsCount) {
-            manageDbResultsCount.textContent = `${cachedDbSpells.length} found`;
+            manageDbResultsCount.textContent = lastSearchFetchedOnline
+                ? `${cachedDbSpells.length} found online & saved`
+                : `${cachedDbSpells.length} found`;
         }
 
         if (cachedDbSpells.length === 0) {
             manageSpellsDbResults.innerHTML = `
                 <div class="manage-db-empty">
                     <i class="fa-solid fa-book-open"></i>
-                    <p>No matching spells found in database.</p>
+                    <p>No matching spells found in database or free online sources.</p>
                 </div>
             `;
             return;
@@ -557,10 +561,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (q) params.set("q", q);
         if (levelVal && levelVal !== "all") params.set("level", levelVal);
 
+        if (q.length >= 2 && manageDbResultsCount) {
+            manageDbResultsCount.textContent = "Searching...";
+        }
+
         let dbList: SpellDefinition[] = [];
+        let serverResponded = false;
+        lastSearchFetchedOnline = false;
         try {
-            const res = await getData<{ spells?: any[] }>(`/search-spells?${params.toString()}`);
+            const res = await getData<{ spells?: any[]; fetchedOnline?: boolean }>(`/search-spells?${params.toString()}`);
             if (Array.isArray(res?.spells)) {
+                serverResponded = true;
+                lastSearchFetchedOnline = !!res?.fetchedOnline;
                 dbList = res.spells.map(s => ({
                     id: s.dndBeyondId || s.id,
                     name: s.name,
@@ -581,8 +593,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
             // Fallback to in-memory spells if offline / uninitialized DB
         }
 
-        // Merge with character's current pull spells and default Darvell spells if DB was empty (offline/test fallback)
-        if (dbList.length === 0) {
+        // Merge with character's current pull spells and default Darvell spells only if server was unreachable
+        if (!serverResponded && dbList.length === 0) {
             const activeCharacter = ctx.getCharacter();
             const fallbackMap = new Map<string, SpellDefinition>();
             [...(activeCharacter?.spells || []), ...(darvellData.spells || [])].forEach(s => {
