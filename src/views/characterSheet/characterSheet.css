@@ -3277,7 +3277,7 @@ el-character-sheet .content-slate section.sheet-hero,
 .sheet-hero {
     display: flex !important;
     flex-direction: row !important;
-    align-items: stretch !important;
+    align-items: center !important;
     justify-content: space-between !important;
     gap: 1.25rem;
 }
@@ -3302,9 +3302,32 @@ el-character-sheet .content-slate section.sheet-hero,
     min-width: 220px;
     max-width: 340px;
     flex: 0 0 auto;
+    align-self: center;
     margin-left: auto;
     user-select: none;
     box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    el-character-sheet .content-slate section.sheet-hero,
+    .sheet-hero {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 1rem;
+    }
+
+    .sheet-hero .sheet-identity {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
+    .active-conditions-box {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        margin-left: 0;
+        align-self: stretch;
+    }
 }
 
 .active-conditions-box:hover,
