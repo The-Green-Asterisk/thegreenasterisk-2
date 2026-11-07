@@ -74,6 +74,11 @@ export function renderSheetContent(data: CharacterData): string {
                             <h3><i class="fa-solid fa-khanda"></i> Weapons & Attack Mastery</h3>
                             <p class="tab-lead-note">Equipped and carried weapons, attack bonuses, damage formulas, weapon properties, and 2024 Weapon Masteries. Click any weapon for full tiered details.</p>
                         </div>
+                        <div class="weapons-header-actions">
+                            <button class="manage-weapons-btn" id="open-manage-weapons-btn" title="Search database items and manage weapons inventory">
+                                <i class="fa-solid fa-khanda"></i> Manage Weapons/Items
+                            </button>
+                        </div>
                     </div>
                     <div class="weapons-grid">
                         ${renderWeapons(data)}
@@ -184,7 +189,14 @@ export function renderSheetContent(data: CharacterData): string {
             <div class="tab-pane" id="tab-equipment" role="tabpanel" aria-labelledby="btn-tab-equipment">
                 <div class="equipment-container">
                     <div class="equipment-header-banner">
-                        <p class="tab-lead-note">Equipment, inventory items, and magical gear. Click any magic item or equipment to view full tiered details.</p>
+                        <div class="equipment-header-info">
+                            <p class="tab-lead-note">Equipment, inventory items, and magical gear. Click any magic item or equipment to view full tiered details.</p>
+                        </div>
+                        <div class="equipment-header-actions">
+                            <button class="manage-equipment-btn" id="open-manage-equipment-btn" title="Search database items and manage equipment inventory">
+                                <i class="fa-solid fa-shield"></i> Manage Weapons/Items
+                            </button>
+                        </div>
                     </div>
                     <div class="equipment-grid">
                         ${renderEquipment(data)}

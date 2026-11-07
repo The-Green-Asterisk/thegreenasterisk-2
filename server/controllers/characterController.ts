@@ -6,6 +6,7 @@ import cache from "../cache";
 import BaseController from "./baseController";
 import SessionController, { ReqAndUser } from "./sessionController";
 import SpellController from "./spellController";
+import ItemController from "./itemController";
 
 export default class CharacterController extends BaseController {
     public static async getDndBeyondCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -445,6 +446,13 @@ export default class CharacterController extends BaseController {
 
             if (Array.isArray((inputCharacter as any).spells) && (inputCharacter as any).spells.length > 0) {
                 await SpellController.upsertSpellsFromCharacter((inputCharacter as any).spells);
+            }
+
+            if (Array.isArray((inputCharacter as any).weapons) || Array.isArray((inputCharacter as any).equipment)) {
+                await ItemController.upsertItemsFromCharacter(
+                    (inputCharacter as any).weapons || [],
+                    (inputCharacter as any).equipment || []
+                );
             }
 
             return {

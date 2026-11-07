@@ -6,8 +6,13 @@ import {
     resolveDndBeyondActionUrl
 } from "../components/markupLinks";
 import { getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
+import { renderWeapons } from "../components/weapons";
+import { renderEquipment } from "../components/equipment";
 import { CharacterSheetContext } from "./context";
 import { initSpellsController } from "./spells.ctrl";
+import { initWeaponsController } from "./weapons.ctrl";
+import { initEquipmentController } from "./equipment.ctrl";
+import { isMundaneEquipment } from "../services/magicItemBonuses";
 
 export function initModalsController(ctx: CharacterSheetContext) {
     const sheet = ctx.sheet;
@@ -94,6 +99,21 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const manageSpellsCurrentLevels = sheet.querySelector<HTMLElement>("#manage-spells-current-levels");
     const manageSpellsTotalBadge = sheet.querySelector<HTMLElement>("#manage-spells-total-badge");
     const manageDbResultsCount = sheet.querySelector<HTMLElement>("#manage-db-results-count");
+
+    // Manage Items modal elements
+    const manageItemsBackdrop = sheet.querySelector<HTMLElement>("#manage-items-modal-container");
+    const manageItemsCloseBtn = sheet.querySelector<HTMLButtonElement>("#manage-items-close-btn");
+    const manageItemsDoneBtn = sheet.querySelector<HTMLButtonElement>("#manage-items-done-btn");
+    const manageItemsSearchInput = sheet.querySelector<HTMLInputElement>("#manage-items-search-input");
+    const manageItemsTypeSelect = sheet.querySelector<HTMLSelectElement>("#manage-items-type-select");
+    const manageItemsDbResults = sheet.querySelector<HTMLElement>("#manage-items-db-results");
+    const manageItemsCurrentList = sheet.querySelector<HTMLElement>("#manage-items-current-list");
+    const manageItemsTotalBadge = sheet.querySelector<HTMLElement>("#manage-items-total-badge");
+    const manageItemsResultsCount = sheet.querySelector<HTMLElement>("#manage-items-results-count");
+
+    let cachedDbItems: any[] = [];
+    let manageItemsSearchTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastItemSearchFetchedOnline = false;
 
     let cachedConditions: ConditionDefinition[] = [...DEFAULT_DND55_CONDITIONS];
     let hasFetchedDbConditions = false;
@@ -314,7 +334,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
         conditionsModalBackdrop.classList.remove("visible");
         conditionsModalBackdrop.classList.add("hidden");
         conditionsModalBackdrop.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            itemModalBackdrop,
+            actionModalBackdrop,
+            customSpellModal,
+            conditionDetailBackdrop,
+            manageSpellsBackdrop,
+            manageItemsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     function findConditionDefinition(nameOrSlug: string): ConditionDefinition | undefined {
@@ -403,7 +434,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
             actionModalBackdrop,
             customSpellModal,
             conditionsModalBackdrop,
-            manageSpellsBackdrop
+            manageSpellsBackdrop,
+            manageItemsBackdrop
         ].some(m => m && !m.classList.contains("hidden"));
         if (!anyOtherModalOpen) {
             document.body.style.overflow = "";
@@ -772,7 +804,452 @@ export function initModalsController(ctx: CharacterSheetContext) {
         manageSpellsBackdrop.classList.remove("visible");
         manageSpellsBackdrop.classList.add("hidden");
         manageSpellsBackdrop.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            itemModalBackdrop,
+            actionModalBackdrop,
+            customSpellModal,
+            conditionsModalBackdrop,
+            conditionDetailBackdrop,
+            manageItemsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
+    }
+
+    // Manage Weapons & Items Modal Logic
+    function refreshSheetItemsView() {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        sheet.querySelectorAll<HTMLElement>(".weapons-grid").forEach(grid => {
+            grid.innerHTML = renderWeapons(activeCharacter);
+        });
+
+        const tabWeaponsCount = sheet.querySelector<HTMLElement>("#tab-weapons-count");
+        if (tabWeaponsCount) {
+            tabWeaponsCount.textContent = `(${activeCharacter.weapons?.length || 0})`;
+        }
+
+        const equipmentGrid = sheet.querySelector<HTMLElement>(".equipment-grid");
+        if (equipmentGrid) {
+            equipmentGrid.innerHTML = renderEquipment(activeCharacter);
+        }
+
+        initWeaponsController(ctx);
+        initEquipmentController(ctx);
+    }
+
+    function renderManageCurrentItemsPanel() {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter || !manageItemsCurrentList) return;
+
+        const weapons = activeCharacter.weapons || [];
+        const equipment = activeCharacter.equipment || [];
+        const totalCount = weapons.length + equipment.length;
+
+        if (manageItemsTotalBadge) {
+            manageItemsTotalBadge.textContent = `${totalCount} Items on Sheet`;
+        }
+
+        const weaponsHtml = weapons.length > 0
+            ? `<ul class="manage-abbrev-spell-list">
+                ${weapons.map((w, idx) => {
+                    const isMagic = isMundaneEquipment(w.name) ? false : !!w.isMagic;
+                    return `
+                    <li class="manage-abbrev-spell-row" data-current-weapon-idx="${idx}">
+                        <div class="manage-abbrev-spell-main" data-preview-weapon-name="${encodeURIComponent(w.name)}" title="Click to view weapon details">
+                            <span class="manage-abbrev-spell-name">${w.name}</span>
+                            <span class="manage-abbrev-spell-meta">${w.category || 'Weapon'} • ${w.damage || '—'}</span>
+                            ${isMagic ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
+                            ${w.mastery?.unlocked ? `<span class="manage-mini-tag ritual">${w.mastery.name}</span>` : ''}
+                        </div>
+                        <button type="button" class="manage-remove-spell-btn" data-remove-weapon-name="${encodeURIComponent(w.name)}" title="Remove ${w.name} from character sheet" aria-label="Remove ${w.name}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </li>
+                `;}).join("")}
+            </ul>`
+            : `<div class="manage-empty-level-note">No weapons added yet.</div>`;
+
+        const equipmentHtml = equipment.length > 0
+            ? `<ul class="manage-abbrev-spell-list">
+                ${equipment.map((e, idx) => {
+                    const isMagic = isMundaneEquipment(e.name) ? false : !!e.isMagic;
+                    return `
+                    <li class="manage-abbrev-spell-row" data-current-equipment-idx="${idx}">
+                        <div class="manage-abbrev-spell-main" data-preview-equipment-name="${encodeURIComponent(e.name)}" data-preview-equipment-type="${encodeURIComponent(e.type || 'Equipment')}" title="Click to view item details">
+                            <span class="manage-abbrev-spell-name">${e.name}</span>
+                            <span class="manage-abbrev-spell-meta">${e.type || 'Item'}${isMagic && e.rarity && e.rarity !== 'Common' ? ` • ${e.rarity}` : ''}${e.quantity > 1 ? ` ×${e.quantity}` : ''}</span>
+                            ${isMagic ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
+                            ${e.equipped ? '<span class="manage-mini-tag ritual">Equipped</span>' : ''}
+                        </div>
+                        <button type="button" class="manage-remove-spell-btn" data-remove-equipment-name="${encodeURIComponent(e.name)}" title="Remove ${e.name} from character sheet" aria-label="Remove ${e.name}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </li>
+                `;}).join("")}
+            </ul>`
+            : `<div class="manage-empty-level-note">No equipment added yet.</div>`;
+
+        manageItemsCurrentList.innerHTML = `
+            <div class="manage-level-group">
+                <div class="manage-level-header">
+                    <span class="manage-level-title"><i class="fa-solid fa-khanda"></i> Weapons (${weapons.length})</span>
+                </div>
+                ${weaponsHtml}
+            </div>
+            <div class="manage-level-group">
+                <div class="manage-level-header">
+                    <span class="manage-level-title"><i class="fa-solid fa-shield"></i> Equipment &amp; Magic Items (${equipment.length})</span>
+                </div>
+                ${equipmentHtml}
+            </div>
+        `;
+
+        // Wire remove buttons
+        manageItemsCurrentList.querySelectorAll<HTMLButtonElement>(".manage-remove-spell-btn[data-remove-weapon-name]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const encoded = btn.getAttribute("data-remove-weapon-name");
+                if (!encoded) return;
+                removeItemFromCharacter(decodeURIComponent(encoded), "weapon");
+            });
+        });
+
+        manageItemsCurrentList.querySelectorAll<HTMLButtonElement>(".manage-remove-spell-btn[data-remove-equipment-name]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const encoded = btn.getAttribute("data-remove-equipment-name");
+                if (!encoded) return;
+                removeItemFromCharacter(decodeURIComponent(encoded), "equipment");
+            });
+        });
+
+        // Wire preview clicks
+        manageItemsCurrentList.querySelectorAll<HTMLElement>(".manage-abbrev-spell-main[data-preview-weapon-name]").forEach(row => {
+            row.addEventListener("click", () => {
+                const encoded = row.getAttribute("data-preview-weapon-name");
+                if (!encoded) return;
+                void openItemModal(encoded, undefined, "Weapon");
+            });
+        });
+
+        manageItemsCurrentList.querySelectorAll<HTMLElement>(".manage-abbrev-spell-main[data-preview-equipment-name]").forEach(row => {
+            row.addEventListener("click", () => {
+                const encodedName = row.getAttribute("data-preview-equipment-name");
+                const encodedType = row.getAttribute("data-preview-equipment-type");
+                if (!encodedName) return;
+                void openItemModal(encodedName, undefined, encodedType ? decodeURIComponent(encodedType) : undefined);
+            });
+        });
+    }
+
+    function addItemToCharacter(item: any) {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        const isWeapon =
+            item.filterType === "weapon" ||
+            (item.category && item.category.toLowerCase().includes("weapon")) ||
+            (item.damage && item.damage !== "—" && !item.filterType);
+
+        if (isWeapon) {
+            if (!activeCharacter.weapons) activeCharacter.weapons = [];
+            const exists = activeCharacter.weapons.some(w => w.name.toLowerCase() === item.name.toLowerCase());
+            if (!exists) {
+                const strScore = activeCharacter.abilities?.find(a => a.abbr === "STR")?.modifier ?? 0;
+                const dexScore = activeCharacter.abilities?.find(a => a.abbr === "DEX")?.modifier ?? 0;
+                const profBonus = activeCharacter.vitals?.proficiencyBonus ?? 2;
+                const props: string[] = Array.isArray(item.properties)
+                    ? item.properties
+                    : (item.properties ? String(item.properties).split(",").map(p => p.trim()).filter(Boolean) : []);
+                const isFinesseOrRanged = props.some(p => p.toLowerCase().includes("finesse") || p.toLowerCase().includes("ranged") || p.toLowerCase().includes("ammunition"));
+                const mod = isFinesseOrRanged && dexScore > strScore ? dexScore : strScore;
+                const toHit = mod + profBonus;
+                const attackBonusStr = toHit >= 0 ? `+${toHit}` : `${toHit}`;
+
+                activeCharacter.weapons.push({
+                    id: item.dndBeyondId || item.id,
+                    definitionId: item.id,
+                    name: item.name,
+                    quantity: 1,
+                    equipped: true,
+                    category: item.category || "Simple Melee",
+                    damage: item.damage || "1d6",
+                    damageType: item.damageType || (item.damage?.split(" ")?.slice(1)?.join(" ") || "Slashing"),
+                    damageDie: item.damageDie || (item.damage?.split(" ")?.[0] || "1d6"),
+                    attackBonus: attackBonusStr,
+                    toHitModifier: toHit,
+                    range: item.range || "Reach 5 ft.",
+                    properties: props,
+                    isMagic: !!item.isMagic,
+                    rarity: item.rarity || "Common",
+                    description: item.description,
+                    imageUrl: item.imageUrl,
+                    mastery: item.mastery ? { name: item.mastery, unlocked: true } : undefined
+                });
+            }
+        }
+
+        if (!activeCharacter.equipment) activeCharacter.equipment = [];
+        const equipExists = activeCharacter.equipment.some(e => e.name.toLowerCase() === item.name.toLowerCase());
+        if (!equipExists) {
+            activeCharacter.equipment.push({
+                id: item.dndBeyondId || item.id,
+                definitionId: item.id,
+                name: item.name,
+                quantity: 1,
+                equipped: true,
+                type: item.category || item.filterType || "Equipment",
+                filterType: item.filterType || (isWeapon ? "weapon" : "gear"),
+                rarity: item.rarity || "Common",
+                isMagic: !!item.isMagic,
+                description: item.description,
+                imageUrl: item.imageUrl,
+                notes: item.notes || (item.weight ? `${item.weight} lb.` : undefined)
+            });
+        }
+
+        renderManageCurrentItemsPanel();
+        renderManageDbItemSearchResults();
+        refreshSheetItemsView();
+        ctx.syncSheetStats();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function removeItemFromCharacter(itemName: string, preferredType?: "weapon" | "equipment") {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter) return;
+
+        const nameLower = itemName.toLowerCase();
+        if (preferredType === "weapon") {
+            activeCharacter.weapons = (activeCharacter.weapons || []).filter(w => w.name.toLowerCase() !== nameLower);
+            activeCharacter.equipment = (activeCharacter.equipment || []).filter(e => e.name.toLowerCase() !== nameLower || e.filterType !== "weapon");
+        } else if (preferredType === "equipment") {
+            activeCharacter.equipment = (activeCharacter.equipment || []).filter(e => e.name.toLowerCase() !== nameLower);
+            activeCharacter.weapons = (activeCharacter.weapons || []).filter(w => w.name.toLowerCase() !== nameLower);
+        } else {
+            activeCharacter.weapons = (activeCharacter.weapons || []).filter(w => w.name.toLowerCase() !== nameLower);
+            activeCharacter.equipment = (activeCharacter.equipment || []).filter(e => e.name.toLowerCase() !== nameLower);
+        }
+
+        renderManageCurrentItemsPanel();
+        renderManageDbItemSearchResults();
+        refreshSheetItemsView();
+        ctx.syncSheetStats();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function renderManageDbItemSearchResults() {
+        const activeCharacter = ctx.getCharacter();
+        if (!manageItemsDbResults) return;
+
+        const currentNames = new Set([
+            ...(activeCharacter?.weapons || []).map(w => w.name.toLowerCase()),
+            ...(activeCharacter?.equipment || []).map(e => e.name.toLowerCase())
+        ]);
+
+        if (manageItemsResultsCount) {
+            manageItemsResultsCount.textContent = lastItemSearchFetchedOnline
+                ? `${cachedDbItems.length} found online & saved`
+                : `${cachedDbItems.length} found`;
+        }
+
+        if (cachedDbItems.length === 0) {
+            manageItemsDbResults.innerHTML = `
+                <div class="manage-db-empty">
+                    <i class="fa-solid fa-box-open"></i>
+                    <p>No matching weapons or items found in database or free online sources.</p>
+                </div>
+            `;
+            return;
+        }
+
+        manageItemsDbResults.innerHTML = cachedDbItems
+            .map((item, idx) => {
+                const isAdded = currentNames.has(item.name.toLowerCase());
+                const categoryLabel = item.category || item.filterType || "Item";
+                const rarityBadge = item.rarity && item.rarity !== "Common" ? item.rarity : "";
+                return `
+                    <div class="manage-db-spell-card ${isAdded ? 'is-added' : ''}" data-db-item-idx="${idx}">
+                        <div class="manage-db-spell-info" data-preview-db-item-idx="${idx}" title="Click to preview item description">
+                            <div class="manage-db-spell-title-row">
+                                <span class="manage-db-spell-name">${item.name}</span>
+                                <span class="manage-db-lvl-pill">${categoryLabel}</span>
+                                ${rarityBadge ? `<span class="manage-db-school">${rarityBadge}</span>` : ''}
+                            </div>
+                            <div class="manage-db-spell-sub">
+                                ${item.damage ? `<span><i class="fa-solid fa-khanda"></i> ${item.damage}</span>` : ''}
+                                ${item.range ? `<span><i class="fa-solid fa-bullseye"></i> ${item.range}</span>` : ''}
+                                ${item.weight ? `<span><i class="fa-solid fa-weight-hanging"></i> ${item.weight} lb.</span>` : ''}
+                                ${(!isMundaneEquipment(item.name) && item.isMagic) ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
+                                ${item.mastery ? `<span class="manage-mini-tag ritual">${item.mastery}</span>` : ''}
+                                ${item.source ? `<span class="manage-db-source">${item.source}</span>` : ''}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="manage-db-action-btn ${isAdded ? 'added' : 'add'}"
+                            data-db-item-action-idx="${idx}"
+                            title="${isAdded ? 'Click to remove from character' : 'Add item to character sheet'}"
+                        >
+                            ${isAdded ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> Add'}
+                        </button>
+                    </div>
+                `;
+            })
+            .join("");
+
+        manageItemsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-action-btn[data-db-item-action-idx]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const idx = Number(btn.getAttribute("data-db-item-action-idx") || "-1");
+                const item = cachedDbItems[idx];
+                if (!item) return;
+                const activeChar = ctx.getCharacter();
+                const alreadyAdded = (activeChar?.weapons || []).some(w => w.name.toLowerCase() === item.name.toLowerCase()) ||
+                    (activeChar?.equipment || []).some(eq => eq.name.toLowerCase() === item.name.toLowerCase());
+                if (alreadyAdded) {
+                    removeItemFromCharacter(item.name);
+                } else {
+                    addItemToCharacter(item);
+                }
+            });
+        });
+
+        manageItemsDbResults.querySelectorAll<HTMLElement>(".manage-db-spell-info[data-preview-db-item-idx]").forEach(info => {
+            info.addEventListener("click", () => {
+                const idx = Number(info.getAttribute("data-preview-db-item-idx") || "-1");
+                const item = cachedDbItems[idx];
+                if (!item) return;
+                void openItemModal(encodeURIComponent(item.name), item.id, item.category || item.filterType);
+            });
+        });
+    }
+
+    async function fetchDatabaseItemsForManageModal() {
+        const q = (manageItemsSearchInput?.value || "").trim();
+        const typeVal = manageItemsTypeSelect?.value || "all";
+
+        const params = new URLSearchParams();
+        if (q) params.set("q", q);
+        if (typeVal && typeVal !== "all") params.set("type", typeVal);
+
+        if (q.length >= 2 && manageItemsResultsCount) {
+            manageItemsResultsCount.textContent = "Searching...";
+        }
+
+        let dbList: any[] = [];
+        let serverResponded = false;
+        lastItemSearchFetchedOnline = false;
+
+        try {
+            const res = await getData<{ items?: any[]; fetchedOnline?: boolean }>(`/search-items?${params.toString()}`);
+            if (Array.isArray(res?.items)) {
+                serverResponded = true;
+                lastItemSearchFetchedOnline = !!res?.fetchedOnline;
+                dbList = res.items;
+            }
+        } catch {
+            // Fallback to in-memory items if offline / uninitialized DB
+        }
+
+        // Fallback to active character's current items if server was unreachable
+        if (!serverResponded && dbList.length === 0) {
+            const activeCharacter = ctx.getCharacter();
+            const fallbackMap = new Map<string, any>();
+            (activeCharacter?.weapons || []).forEach(w => {
+                fallbackMap.set(w.name.toLowerCase(), {
+                    name: w.name,
+                    category: w.category,
+                    damage: w.damage,
+                    range: w.range,
+                    properties: Array.isArray(w.properties) ? w.properties.join(", ") : w.properties,
+                    filterType: "weapon",
+                    rarity: w.rarity,
+                    isMagic: w.isMagic,
+                    mastery: w.mastery?.name,
+                    source: "Character Inventory",
+                    description: w.description
+                });
+            });
+            (activeCharacter?.equipment || []).forEach(e => {
+                if (!fallbackMap.has(e.name.toLowerCase())) {
+                    fallbackMap.set(e.name.toLowerCase(), {
+                        name: e.name,
+                        category: e.type,
+                        filterType: e.filterType || "gear",
+                        rarity: e.rarity,
+                        isMagic: e.isMagic,
+                        source: "Character Inventory",
+                        description: e.description
+                    });
+                }
+            });
+            dbList = Array.from(fallbackMap.values()).filter(item => {
+                if (typeVal !== "all" && item.filterType !== typeVal) return false;
+                if (!q) return true;
+                const haystack = `${item.name} ${item.category || ''} ${item.source || ''} ${item.description || ''}`.toLowerCase();
+                return haystack.includes(q.toLowerCase());
+            });
+            dbList.sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        cachedDbItems = dbList;
+        renderManageDbItemSearchResults();
+    }
+
+    async function openManageItemsModal(initialType?: string) {
+        if (!manageItemsBackdrop) return;
+
+        if (initialType && manageItemsTypeSelect) {
+            manageItemsTypeSelect.value = initialType;
+        }
+
+        renderManageCurrentItemsPanel();
+        manageItemsBackdrop.classList.remove("hidden");
+        manageItemsBackdrop.classList.add("visible");
+        manageItemsBackdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        manageItemsSearchInput?.focus();
+
+        // Ensure current character's weapons and equipment are synced to the database first
+        const activeCharacter = ctx.getCharacter();
+        if (activeCharacter && ((activeCharacter.weapons?.length || 0) > 0 || (activeCharacter.equipment?.length || 0) > 0)) {
+            try {
+                await postData("/sync-character-items", {
+                    weapons: activeCharacter.weapons,
+                    equipment: activeCharacter.equipment
+                });
+            } catch {
+                // Ignore sync errors in offline mode
+            }
+        }
+
+        await fetchDatabaseItemsForManageModal();
+    }
+
+    function closeManageItemsModal() {
+        if (!manageItemsBackdrop) return;
+        manageItemsBackdrop.classList.remove("visible");
+        manageItemsBackdrop.classList.add("hidden");
+        manageItemsBackdrop.setAttribute("aria-hidden", "true");
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            itemModalBackdrop,
+            actionModalBackdrop,
+            customSpellModal,
+            conditionsModalBackdrop,
+            conditionDetailBackdrop,
+            manageSpellsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     function showCustomSpellStatus(message: string, isError = false) {
@@ -935,7 +1412,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
         modalBackdrop.classList.remove("visible");
         modalBackdrop.classList.add("hidden");
         modalBackdrop.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+        const anyOtherModalOpen = [
+            itemModalBackdrop,
+            actionModalBackdrop,
+            customSpellModal,
+            conditionsModalBackdrop,
+            conditionDetailBackdrop,
+            manageSpellsBackdrop,
+            manageItemsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     function openCustomSpellModal() {
@@ -956,7 +1444,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
         customSpellModal.classList.remove("visible");
         customSpellModal.classList.add("hidden");
         customSpellModal.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            itemModalBackdrop,
+            actionModalBackdrop,
+            conditionsModalBackdrop,
+            conditionDetailBackdrop,
+            manageSpellsBackdrop,
+            manageItemsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     async function openItemModal(itemName: string, itemId?: number | string, itemType?: string) {
@@ -969,16 +1468,17 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const localEquipment = activeCharacter.equipment.find(e => e.name.toLowerCase() === decodedName.toLowerCase());
 
         const displayName = localWeapon?.name || localEquipment?.name || decodedName;
+        const isMundane = isMundaneEquipment(displayName);
         const displayType = localWeapon ? localWeapon.category : (localEquipment?.type || itemType || "Equipment");
-        const displayRarity = localWeapon?.rarity || localEquipment?.rarity || "Common";
-        const isMagic = !!(localWeapon?.isMagic || localEquipment?.isMagic);
+        const displayRarity = isMundane ? "Common" : (localWeapon?.rarity || localEquipment?.rarity || "Common");
+        const isMagic = isMundane ? false : !!(localWeapon?.isMagic || localEquipment?.isMagic);
 
         if (modalItemName) modalItemName.textContent = displayName;
         if (modalItemType) modalItemType.textContent = displayType;
 
         if (modalItemBadges) {
             let badges = `<span class="modal-badge school-badge">${displayType}</span>`;
-            if (displayRarity && displayRarity !== "Common") {
+            if (displayRarity && displayRarity !== "Common" && !isMundane) {
                 badges += `<span class="modal-badge rarity-badge">${displayRarity}</span>`;
             }
             if (isMagic) {
@@ -1046,10 +1546,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     let badges = `<span class="modal-badge school-badge">${itemObj.category || itemObj.filterType || displayType}</span>`;
                     const sourceTier = independentRes.sourceTier || (itemObj.isCustom ? 'Custom Database' : 'Database');
                     badges += `<span class="modal-badge tier-badge tier-${sourceTier.toLowerCase().replace(/[^a-z0-9]/g, '-')}"><i class="fa-solid fa-database"></i> Source: ${sourceTier}</span>`;
-                    if (itemObj.rarity && itemObj.rarity !== 'Common') {
+                    const itemIsMundane = isMundaneEquipment(itemObj.name);
+                    const itemIsMagic = itemIsMundane ? false : !!itemObj.isMagic;
+                    if (itemObj.rarity && itemObj.rarity !== 'Common' && !itemIsMundane) {
                         badges += `<span class="modal-badge rarity-badge">${itemObj.rarity}</span>`;
                     }
-                    if (itemObj.isMagic) {
+                    if (itemIsMagic) {
                         badges += `<span class="modal-badge magic-badge"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>`;
                     }
                     if (itemObj.mastery) {
@@ -1110,7 +1612,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
         itemModalBackdrop.classList.remove("visible");
         itemModalBackdrop.classList.add("hidden");
         itemModalBackdrop.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            actionModalBackdrop,
+            customSpellModal,
+            conditionsModalBackdrop,
+            conditionDetailBackdrop,
+            manageSpellsBackdrop,
+            manageItemsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
     }
 
     function openActionModal(actionIndex: number) {
@@ -1238,7 +1751,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
             conditionDetailBackdrop,
             customSpellModal,
             conditionsModalBackdrop,
-            manageSpellsBackdrop
+            manageSpellsBackdrop,
+            manageItemsBackdrop
         ].some(m => m && !m.classList.contains("hidden"));
         if (!anyOtherModalOpen) {
             document.body.style.overflow = "";
@@ -1252,6 +1766,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
     ctx.closeCustomSpellModal = closeCustomSpellModal;
     ctx.openManageSpellsModal = openManageSpellsModal;
     ctx.closeManageSpellsModal = closeManageSpellsModal;
+    ctx.openManageItemsModal = openManageItemsModal;
+    ctx.closeManageItemsModal = closeManageItemsModal;
     ctx.openItemModal = openItemModal;
     ctx.closeItemModal = closeItemModal;
     ctx.openActionModal = openActionModal;
@@ -1385,6 +1901,25 @@ export function initModalsController(ctx: CharacterSheetContext) {
         void fetchDatabaseSpellsForManageModal();
     });
 
+    manageItemsCloseBtn?.addEventListener("click", closeManageItemsModal);
+    manageItemsDoneBtn?.addEventListener("click", closeManageItemsModal);
+    manageItemsBackdrop?.addEventListener("click", (event) => {
+        if (event.target === manageItemsBackdrop) {
+            closeManageItemsModal();
+        }
+    });
+
+    manageItemsSearchInput?.addEventListener("input", () => {
+        if (manageItemsSearchTimer) clearTimeout(manageItemsSearchTimer);
+        manageItemsSearchTimer = setTimeout(() => {
+            void fetchDatabaseItemsForManageModal();
+        }, 180);
+    });
+
+    manageItemsTypeSelect?.addEventListener("change", () => {
+        void fetchDatabaseItemsForManageModal();
+    });
+
     exhaustionLevelsRow?.querySelectorAll<HTMLButtonElement>(".exhaustion-lvl-btn[data-exhaustion-level]").forEach(btn => {
         btn.addEventListener("click", () => {
             const lvl = Math.max(0, Math.min(6, Number(btn.getAttribute("data-exhaustion-level") || "0")));
@@ -1490,23 +2025,33 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 closeConditionDetailModal();
                 return;
             }
-            if (modalBackdrop && !modalBackdrop.classList.contains("hidden")) {
-                closeSpellModal();
-            }
             if (itemModalBackdrop && !itemModalBackdrop.classList.contains("hidden")) {
                 closeItemModal();
+                return;
             }
-            if (customSpellModal && !customSpellModal.classList.contains("hidden")) {
-                closeCustomSpellModal();
+            if (modalBackdrop && !modalBackdrop.classList.contains("hidden")) {
+                closeSpellModal();
+                return;
             }
             if (actionModalBackdrop && !actionModalBackdrop.classList.contains("hidden")) {
                 closeActionModal();
+                return;
             }
-            if (conditionsModalBackdrop && !conditionsModalBackdrop.classList.contains("hidden")) {
-                closeConditionsModal();
+            if (customSpellModal && !customSpellModal.classList.contains("hidden")) {
+                closeCustomSpellModal();
+                return;
+            }
+            if (manageItemsBackdrop && !manageItemsBackdrop.classList.contains("hidden")) {
+                closeManageItemsModal();
+                return;
             }
             if (manageSpellsBackdrop && !manageSpellsBackdrop.classList.contains("hidden")) {
                 closeManageSpellsModal();
+                return;
+            }
+            if (conditionsModalBackdrop && !conditionsModalBackdrop.classList.contains("hidden")) {
+                closeConditionsModal();
+                return;
             }
         }
     });
@@ -1522,6 +2067,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
         closeCustomSpellModal,
         openManageSpellsModal,
         closeManageSpellsModal,
+        openManageItemsModal,
+        closeManageItemsModal,
         openConditionsModal,
         closeConditionsModal,
         openConditionDetailModal,

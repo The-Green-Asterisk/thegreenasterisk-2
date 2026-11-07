@@ -35,6 +35,7 @@ export interface CharacterSheetContext {
     renderSavedCharacterList: () => void;
     setCharacterActionsVisibility: () => void;
     updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => void;
+    syncSheetStats: () => void;
     recalculateFromRawPayload?: () => void;
     toggleFieldLock?: (fieldKey: string) => boolean;
     isFieldLocked?: (fieldKey: string) => boolean;
@@ -67,6 +68,8 @@ export interface CharacterSheetContext {
     closeCustomSpellModal: () => void;
     openManageSpellsModal: () => Promise<void>;
     closeManageSpellsModal: () => void;
+    openManageItemsModal: (initialType?: string) => Promise<void>;
+    closeManageItemsModal: () => void;
     openConditionsModal: () => Promise<void>;
     closeConditionsModal: () => void;
     openConditionDetailModal: (conditionName: string) => Promise<void>;

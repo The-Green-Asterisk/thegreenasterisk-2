@@ -375,6 +375,72 @@ export function renderModals(): string {
             </div>
         </div>
 
+        <!-- MANAGE WEAPONS & ITEMS MODAL -->
+        <div id="manage-items-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-manage-items-title">
+            <div class="spell-modal-dialog manage-spells-modal-dialog">
+                <header class="spell-modal-header">
+                    <div class="spell-modal-title-group">
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-database"></i> Items &amp; Weapons Database</span>
+                            <span class="modal-badge source-badge" id="manage-items-total-badge">0 Items</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="modal-manage-items-title">Manage Weapons &amp; Magic Items</h2>
+                        <div class="modal-spell-sub">Search weapons, armor, and magic items in the database to add to your sheet, and manage carried gear</div>
+                    </div>
+                    <button type="button" class="spell-modal-close" id="manage-items-close-btn" aria-label="Close manage items modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </header>
+
+                <div class="spell-modal-body manage-spells-modal-body">
+                    <div class="manage-spells-layout">
+                        <!-- Left Panel: Search Database Items -->
+                        <div class="manage-spells-search-panel">
+                            <div class="manage-panel-header">
+                                <h3><i class="fa-solid fa-magnifying-glass"></i> Search Weapons &amp; Items</h3>
+                                <span class="manage-db-count" id="manage-items-results-count">0 found</span>
+                            </div>
+                            <div class="manage-search-controls">
+                                <input
+                                    type="text"
+                                    id="manage-items-search-input"
+                                    class="manage-spells-search-input"
+                                    placeholder="Search weapons, magic items, armor, gear..."
+                                    autocomplete="off"
+                                />
+                                <select id="manage-items-type-select" class="manage-spells-level-select" aria-label="Filter database items by type">
+                                    <option value="all">All Types</option>
+                                    <option value="weapon">Weapons</option>
+                                    <option value="magic-item">Magic Items</option>
+                                    <option value="armor">Armor &amp; Shields</option>
+                                    <option value="potion">Potions &amp; Consumables</option>
+                                    <option value="wondrous">Wondrous Items</option>
+                                    <option value="gear">Adventuring Gear</option>
+                                </select>
+                            </div>
+                            <div class="manage-db-results-list" id="manage-items-db-results">
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Character's Current Weapons & Equipment -->
+                        <div class="manage-spells-current-panel">
+                            <div class="manage-panel-header">
+                                <h3><i class="fa-solid fa-shield"></i> Character's Inventory</h3>
+                                <span class="manage-panel-hint">Current weapons &amp; equipment</span>
+                            </div>
+                            <div class="manage-current-levels-list" id="manage-items-current-list">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="spell-modal-footer">
+                    <span class="modal-footer-source">Changes automatically update your character sheet</span>
+                    <button type="button" class="modal-action-btn" id="manage-items-done-btn">Done</button>
+                </footer>
+            </div>
+        </div>
+
         <!-- SINGLE CONDITION DEFINITION MODAL -->
         <div id="condition-detail-modal-container" class="spell-modal-backdrop condition-detail-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-condition-detail-name">
             <div class="spell-modal-dialog condition-detail-modal-dialog">

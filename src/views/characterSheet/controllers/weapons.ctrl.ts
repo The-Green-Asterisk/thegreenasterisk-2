@@ -58,6 +58,7 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
             });
 
             void ctx.persistEquipState("weapon", encodedWeaponName, rawWeaponId, nextState);
+            ctx.syncSheetStats();
         });
 
         btn.addEventListener("keydown", (e) => {
@@ -113,5 +114,11 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
         });
+    });
+
+    // Open Manage Weapons/Items modal
+    const openManageWeaponsBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-weapons-btn");
+    openManageWeaponsBtn?.addEventListener("click", () => {
+        void ctx.openManageItemsModal("weapon");
     });
 }

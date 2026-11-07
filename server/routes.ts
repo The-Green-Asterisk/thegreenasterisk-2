@@ -319,6 +319,16 @@ export default class Routes {
         return ItemController.getItem(req, res);
     }
 
+    @Method('GET')
+    private ['/search-items'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ItemController.searchItems(req, res);
+    }
+
+    @Method('POST')
+    private ['/sync-character-items'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ItemController.syncCharacterItems(req, res);
+    }
+
     @Method('POST')
     private ['/create-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ItemController.createCustomItem(req, res);

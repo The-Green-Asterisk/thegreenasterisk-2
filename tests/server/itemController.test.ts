@@ -141,4 +141,29 @@ describe('ItemController', () => {
         expect(parsed.imageUrl).toBe('https://www.dndbeyond.com/avatars/magic-item.png');
         expect(parsed.isMagic).toBe(true);
     });
+
+    it('correctly identifies mundane weapons and does not classify Dagger as magic even if page contains navbar magic links', async () => {
+        const fakeDaggerHtml = `
+            <html>
+                <nav class="site-nav"><a href="/magic-items">Magic Items</a><a href="/equipment">Equipment</a></nav>
+                <h1 class="page-title">Dagger</h1>
+                <div class="details-container-content-description-text">
+                    <p>Finesse, Light, Thrown (range 20/60). Damage: 1d4 piercing.</p>
+                </div>
+            </html>
+        `;
+
+        const parsed = (ItemController as any).parseDndBeyondItemHtml(
+            fakeDaggerHtml,
+            'Dagger',
+            'dagger',
+            undefined,
+            'https://www.dndbeyond.com/equipment/dagger'
+        );
+        expect(parsed).toBeDefined();
+        expect(parsed.name).toBe('Dagger');
+        expect(parsed.isMagic).toBe(false);
+        expect(parsed.rarity).toBe('Common');
+        expect(parsed.filterType).toBe('Equipment');
+    });
 });

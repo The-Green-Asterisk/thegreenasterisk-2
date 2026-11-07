@@ -57,10 +57,17 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
             });
 
             void ctx.persistEquipState("item", encodedItemName, rawItemId, nextState);
+            ctx.syncSheetStats();
         });
 
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
         });
+    });
+
+    // Open Manage Weapons/Items modal
+    const openManageEquipmentBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-equipment-btn");
+    openManageEquipmentBtn?.addEventListener("click", () => {
+        void ctx.openManageItemsModal("all");
     });
 }

@@ -231,7 +231,7 @@ export default class SpellController extends BaseController {
 
         const slug = slugify(nameQuery || `spell-${dndBeyondId}`);
         const cacheKey = `spell_detail_${slug}_${preferRules2024 ? "pref2024" : "mixed"}`;
-        const cached = cache.get<string>(cacheKey);
+        const cached = cache.get<string>(cacheKey) || cache.get<string>(`spell_detail_${slug}`);
         if (cached) {
             return {
                 response: cached,
