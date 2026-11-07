@@ -497,8 +497,8 @@ export const darvellData: CharacterData = {
     ] as FeatureItem[],
     equipment: [
         { name: "Ring of Mind Shielding", quantity: 1, equipped: true, attuned: true, type: "Wondrous Item", notes: "Immune to telepathic mind reading; soul enters ring if slain." },
-        { name: "Leather Armor", quantity: 1, equipped: true, type: "Light Armor", notes: "AC 11 + Dex modifier (+2) = 13 AC." },
-        { name: "Dagger", quantity: 2, equipped: true, type: "Weapon", notes: "1d4 Piercing, Finesse, Light, Thrown (20/60)." },
+        { name: "Leather Armor", quantity: 1, equipped: true, type: "Light Armor", isMagic: false, rarity: "Common", notes: "AC 11 + Dex modifier (+2) = 13 AC." },
+        { name: "Dagger", quantity: 2, equipped: true, type: "Weapon", isMagic: false, rarity: "Common", notes: "1d4 Piercing, Finesse, Light, Thrown (20/60)." },
         { name: "Lyre", quantity: 1, equipped: false, type: "Musical Instrument", notes: "Spellcasting focus and instrument for Musician feat." },
         { name: "Potion of Healing (Greater)", quantity: 1, equipped: false, type: "Potion", notes: "Regains 4d4 + 4 hit points." },
         { name: "Potion of Healing", quantity: 1, equipped: false, type: "Potion", notes: "Regains 2d4 + 2 hit points." },
@@ -517,6 +517,8 @@ export const darvellData: CharacterData = {
             toHitModifier: 6,
             range: "20/60 ft. (Reach 5 ft.)",
             properties: ["Finesse", "Light", "Thrown"],
+            isMagic: false,
+            rarity: "Common",
             notes: "Finesse (DEX used for attack & damage). Thrown range 20/60 ft."
         }
     ],

@@ -1659,4 +1659,165 @@ describe('Frontend View Templates', () => {
         expect(modalsHtml).toContain('class="meta-box meta-box-damage"');
         expect(modalsHtml).toContain('id="modal-action-damage"');
     });
+
+    it('renders manage weapons & items modal markup and manage buttons', async () => {
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const modalsHtml = renderModals();
+        expect(modalsHtml).toContain('id="manage-items-modal-container"');
+        expect(modalsHtml).toContain('id="manage-items-search-input"');
+        expect(modalsHtml).toContain('id="manage-items-type-select"');
+        expect(modalsHtml).toContain('id="manage-items-db-results"');
+        expect(modalsHtml).toContain('id="manage-items-current-list"');
+        expect(modalsHtml).toContain('id="manage-items-close-btn"');
+        expect(modalsHtml).toContain('id="manage-items-done-btn"');
+
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+        const sheetHtml = renderSheetContent(darvellData);
+        expect(sheetHtml).toContain('id="open-manage-weapons-btn"');
+        expect(sheetHtml).toContain('id="open-manage-equipment-btn"');
+    });
+
+    it('applies magical weapon and item bonuses to character stats accurately', async () => {
+        const { applyMagicalItemBonuses } = await import('../../../src/views/characterSheet/services/magicItemBonuses');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        const testChar = JSON.parse(JSON.stringify(darvellData));
+        testChar.abilities = [
+            { name: "Strength", abbr: "STR", score: 14, modifier: 2, save: 2, proficientSave: false, baseScore: 14, bonus: 0 },
+            { name: "Dexterity", abbr: "DEX", score: 14, modifier: 2, save: 2, proficientSave: false, baseScore: 14, bonus: 0 },
+            { name: "Constitution", abbr: "CON", score: 14, modifier: 2, save: 5, proficientSave: true, baseScore: 14, bonus: 0 },
+            { name: "Intelligence", abbr: "INT", score: 10, modifier: 0, save: 0, proficientSave: false, baseScore: 10, bonus: 0 },
+            { name: "Wisdom", abbr: "WIS", score: 12, modifier: 1, save: 1, proficientSave: false, baseScore: 12, bonus: 0 },
+            { name: "Charisma", abbr: "CHA", score: 18, modifier: 4, save: 7, proficientSave: true, baseScore: 16, bonus: 2 }
+        ];
+        testChar.vitals = {
+            currentHp: 40,
+            maxHp: 40,
+            tempHp: 0,
+            armorClass: 16,
+            initiative: 2,
+            speed: "30 ft.",
+            proficiencyBonus: 3,
+            passivePerception: 11,
+            passiveInvestigation: 10,
+            passiveInsight: 11,
+            hitDice: "5d8",
+            heroicInspiration: false,
+            spellSaveDc: 15,
+            spellAttackBonus: 7,
+            spellcastingAbility: "Charisma (+4)"
+        };
+        testChar.skills = [
+            { name: "Athletics", stat: "STR", bonus: 5, proficiency: "proficient" },
+            { name: "Arcana", stat: "INT", bonus: 0, proficiency: "none" }
+        ];
+        testChar.weapons = [
+            {
+                name: "Longsword, +1",
+                quantity: 1,
+                equipped: true,
+                category: "Martial Melee",
+                damage: "1d8 + 2 Slashing",
+                damageType: "Slashing",
+                damageDie: "1d8",
+                attackBonus: "+5",
+                toHitModifier: 5,
+                range: "Reach 5 ft.",
+                properties: ["Versatile"]
+            }
+        ];
+        testChar.equipment = [
+            {
+                name: "Gauntlets of Ogre Power",
+                quantity: 1,
+                equipped: true,
+                type: "Wondrous Item",
+                isMagic: true,
+                description: "Your Strength score is 19 while you wear these gauntlets."
+            },
+            {
+                name: "Cloak of Protection",
+                quantity: 1,
+                equipped: true,
+                type: "Wondrous Item",
+                isMagic: true,
+                description: "You gain a +1 bonus to AC and saving throws while you wear this cloak."
+            },
+            {
+                name: "Rod of the Pact Keeper, +2",
+                quantity: 1,
+                equipped: true,
+                type: "Rod",
+                isMagic: true,
+                description: "You gain a +2 bonus to spell attack rolls and to the saving throw DCs of your warlock spells."
+            }
+        ];
+
+        applyMagicalItemBonuses(testChar);
+
+        // 1. Gauntlets of Ogre Power should override STR to 19 (+4 modifier)
+        const strAbility = testChar.abilities.find((a: any) => a.abbr === "STR");
+        expect(strAbility?.score).toBe(19);
+        expect(strAbility?.modifier).toBe(4);
+        // Save should be STR mod (4) + Cloak of Protection (+1) = 5
+        expect(strAbility?.save).toBe(5);
+
+        // 2. Athletics skill should update: STR mod (4) + proficiency (3) = 7
+        const athletics = testChar.skills.find((s: any) => s.name === "Athletics");
+        expect(athletics?.bonus).toBe(7);
+
+        // 3. Cloak of Protection should add +1 to AC: 16 + 1 = 17
+        expect(testChar.vitals.armorClass).toBe(17);
+
+        // 4. Rod of the Pact Keeper +2 should add +2 to Spell Save DC (15 + 2 = 17) and Spell Attack (7 + 2 = 9)
+        expect(testChar.vitals.spellSaveDc).toBe(17);
+        expect(testChar.vitals.spellAttackBonus).toBe(9);
+
+        // 5. Longsword, +1 should incorporate STR mod (+4) + prof (+3) + magic bonus (+1) = +8 to hit
+        const longsword = testChar.weapons[0];
+        expect(longsword.toHitModifier).toBe(8);
+        expect(longsword.attackBonus).toBe("+8");
+        // Damage: 1d8 + (STR mod 4 + magic 1 = 5) Slashing
+        expect(longsword.damage).toContain("+ 5");
+
+        // 6. Unequipping Gauntlets of Ogre Power should restore natural STR 14 (+2 mod)
+        testChar.equipment[0].equipped = false;
+        applyMagicalItemBonuses(testChar);
+
+        const restoredStr = testChar.abilities.find((a: any) => a.abbr === "STR");
+        expect(restoredStr?.score).toBe(14);
+        expect(restoredStr?.modifier).toBe(2);
+        // Save: STR mod (2) + Cloak of Protection (+1) = 3
+        expect(restoredStr?.save).toBe(3);
+        // Athletics: STR mod (2) + prof (3) = 5
+        expect(testChar.skills.find((s: any) => s.name === "Athletics")?.bonus).toBe(5);
+        // Longsword: STR mod (2) + prof (3) + magic (1) = +6 to hit
+        expect(testChar.weapons[0].toHitModifier).toBe(6);
+        expect(testChar.weapons[0].attackBonus).toBe("+6");
+    });
+
+    it('ensures mundane weapons like Darvell dagger are not marked as magic and render no magic badge', async () => {
+        const { isMundaneEquipment, applyMagicalItemBonuses } = await import('../../../src/views/characterSheet/services/magicItemBonuses');
+        const { renderWeapons } = await import('../../../src/views/characterSheet/components/weapons');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        expect(isMundaneEquipment('Dagger')).toBe(true);
+        expect(isMundaneEquipment('Dagger (Melee/Ranged)')).toBe(true);
+        expect(isMundaneEquipment('Leather Armor')).toBe(true);
+        expect(isMundaneEquipment('+1 Dagger')).toBe(false);
+        expect(isMundaneEquipment('Dagger of Venom')).toBe(false);
+
+        const charClone = JSON.parse(JSON.stringify(darvellData));
+        applyMagicalItemBonuses(charClone);
+
+        const dagger = charClone.weapons?.find((w: any) => w.name === 'Dagger');
+        expect(dagger).toBeDefined();
+        expect(dagger.isMagic).toBe(false);
+
+        const renderedWeaponsHtml = renderWeapons(charClone);
+        expect(renderedWeaponsHtml).toContain('Dagger');
+        expect(renderedWeaponsHtml).not.toContain('weapon-badge magic');
+        expect(renderedWeaponsHtml).not.toContain('Magic</span>');
+    });
 });

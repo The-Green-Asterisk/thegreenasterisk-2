@@ -1,5 +1,6 @@
 import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
+import { isMundaneEquipment } from "../services/magicItemBonuses";
 
 export function renderEquipment(data: CharacterData): string {
     return data.equipment.map(item => {
@@ -17,8 +18,9 @@ export function renderEquipment(data: CharacterData): string {
             </button>
         `;
         const attunedBadge = item.attuned ? '<span class="item-badge attuned">Attuned</span>' : '';
-        const magicBadge = item.isMagic ? '<span class="item-badge magic"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>' : '';
-        const rarityBadge = item.rarity && item.rarity !== 'Common' ? `<span class="item-badge rarity-${item.rarity.toLowerCase().replace(/\s+/g, '-')}">${item.rarity}</span>` : '';
+        const isMagic = isMundaneEquipment(item.name) ? false : !!item.isMagic;
+        const magicBadge = isMagic ? '<span class="item-badge magic"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>' : '';
+        const rarityBadge = !isMagic ? '' : (item.rarity && item.rarity !== 'Common' ? `<span class="item-badge rarity-${item.rarity.toLowerCase().replace(/\s+/g, '-')}">${item.rarity}</span>` : '');
         return `
             <div class="equipment-row clickable-item-card" data-item-name="${encodeURIComponent(item.name)}" data-item-id="${item.definitionId || item.id || ''}" data-item-type="${item.type || ''}" tabindex="0" role="button" title="Click to view details and tiered info">
                 <div class="item-info">

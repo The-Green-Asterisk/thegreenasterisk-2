@@ -10,6 +10,7 @@ import {
     WeaponItem
 } from "./characterData";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
+import { applyMagicalItemBonuses, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
     1: { name: "Strength", abbr: "STR", key: "strength" },
@@ -1554,8 +1555,8 @@ export function parseDndBeyondCharacter(
             attuned: !!i.isAttuned,
             type: def?.filterType || "Gear",
             filterType: def?.filterType || "Gear",
-            rarity: def?.rarity || "Common",
-            isMagic: !!def?.magic,
+            rarity: isMundaneEquipment(def?.name) ? "Common" : (def?.rarity || "Common"),
+            isMagic: isMundaneEquipment(def?.name) ? false : !!def?.magic,
             description: def?.description || def?.snippet || undefined,
             imageUrl: def?.largeAvatarUrl || def?.avatarUrl || undefined,
             notes: def?.snippet || def?.description ? def.snippet || "" : undefined
@@ -1641,8 +1642,8 @@ export function parseDndBeyondCharacter(
             toHitModifier: wStats.toHitModifier,
             range: rangeStr,
             properties: wStats.props,
-            isMagic: !!def.magic,
-            rarity: def.rarity || "Common",
+            isMagic: isMundaneEquipment(def.name) ? false : !!def.magic,
+            rarity: isMundaneEquipment(def.name) ? "Common" : (def.rarity || "Common"),
             description: def.description || def.snippet || undefined,
             imageUrl: def.largeAvatarUrl || def.avatarUrl || undefined,
             mastery,
@@ -2083,6 +2084,10 @@ export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload
             ability.bonus = 0;
         }
     });
+
+    if (!rawPayload) {
+        applyMagicalItemBonuses(character);
+    }
 }
 
 export function applyLockedFieldsToRefreshedCharacter(

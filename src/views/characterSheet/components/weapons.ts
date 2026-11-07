@@ -1,5 +1,6 @@
 import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
+import { isMundaneEquipment } from "../services/magicItemBonuses";
 
 export function renderWeapons(data: CharacterData): string {
     const weps = data.weapons || [];
@@ -27,7 +28,8 @@ export function renderWeapons(data: CharacterData): string {
             </button>
         `;
         const propBadges = w.properties.map(p => `<span class="weapon-prop-badge">${p}</span>`).join('');
-        const magicBadge = w.isMagic ? '<span class="weapon-badge magic"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>' : '';
+        const isMagic = isMundaneEquipment(w.name) ? false : !!w.isMagic;
+        const magicBadge = isMagic ? '<span class="weapon-badge magic"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>' : '';
         const masteryBadge = w.mastery
             ? `<button
                 type="button"
