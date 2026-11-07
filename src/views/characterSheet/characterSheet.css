@@ -2842,9 +2842,169 @@ el-character-sheet .content-slate section {
     border-color: var(--border);
 }
 
-.item-badge.attuned {
+.item-badge.attune-toggle-btn,
+.weapon-badge.attune-toggle-btn {
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.item-badge.attune-toggle-btn:hover,
+.weapon-badge.attune-toggle-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.item-badge.attune-toggle-btn:focus-visible,
+.weapon-badge.attune-toggle-btn:focus-visible {
+    outline: 2px solid #8e24aa;
+    outline-offset: 2px;
+}
+
+.item-badge.attuned,
+.weapon-badge.attuned {
     background: #8e24aa;
-    color: white;
+    color: #ffffff;
+    border: 1px solid #7b1fa2;
+}
+
+.item-badge.unattuned,
+.weapon-badge.unattuned {
+    background: var(--surface-alt);
+    color: var(--text-muted, var(--subtle));
+    border: 1px dashed var(--border);
+}
+
+/* Inline Item & Weapon Quantity Stepper */
+.item-qty-stepper {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 20px;
+    padding: 0;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.weapon-qty-stepper {
+    height: 22px;
+    border-radius: 11px;
+}
+
+.item-qty-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    width: 18px;
+    height: 100%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.item-qty-btn:hover {
+    background: var(--ui-hover, rgba(0, 0, 0, 0.08));
+    color: var(--ui-color);
+}
+
+.item-qty-input {
+    width: 28px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-main);
+    padding: 0;
+    -moz-appearance: textfield;
+}
+
+.item-qty-input::-webkit-outer-spin-button,
+.item-qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.item-qty-input:focus {
+    outline: 1px solid var(--ui-color);
+    background: var(--surface);
+}
+
+/* Modal Quantity Stepper */
+.meta-box-quantity {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.modal-qty-stepper {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    height: 32px;
+    padding: 2px;
+    gap: 2px;
+    width: fit-content;
+    margin-top: 4px;
+}
+
+.modal-qty-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modal-qty-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.modal-qty-input {
+    width: 48px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    padding: 0;
+    -moz-appearance: textfield;
+}
+
+.modal-qty-input::-webkit-outer-spin-button,
+.modal-qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.modal-qty-input:focus {
+    outline: 2px solid var(--ui-color);
+    border-radius: 4px;
+    background: var(--surface);
 }
 
 .item-notes {

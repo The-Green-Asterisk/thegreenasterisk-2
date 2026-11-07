@@ -61,6 +61,23 @@ export function isMundaneEquipment(name?: string): boolean {
     return MUNDANE_EQUIPMENT_NAMES.has(baseClean) || MUNDANE_WEAPON_NAMES.has(baseClean) || MUNDANE_ARMOR_NAMES.has(baseClean);
 }
 
+/**
+ * Accurately determines if an item or weapon requires attunement.
+ */
+export function checkItemRequiresAttunement(item?: {
+    name?: string;
+    attuned?: boolean;
+    requiresAttunement?: boolean;
+    description?: string;
+    notes?: string;
+}): boolean {
+    if (!item) return false;
+    if (item.requiresAttunement === true) return true;
+    if (item.attuned === true) return true;
+    const text = `${item.name || ""} ${item.description || ""} ${item.notes || ""}`.toLowerCase();
+    return text.includes("requires attunement") || text.includes("(requires attunement") || text.includes("require attunement");
+}
+
 const STAT_ABBRS: Record<string, string> = {
     strength: "STR",
     dexterity: "DEX",
@@ -294,8 +311,15 @@ export function extractItemMagicBonuses(
 export function applyMagicalItemBonuses(character: CharacterData): CharacterData {
     if (!character || !Array.isArray(character.abilities)) return character;
 
-    const equippedItems = (character.equipment || []).filter(e => e.equipped !== false);
-    const equippedWeapons = (character.weapons || []).filter(w => w.equipped !== false);
+    const isItemActive = (item: any): boolean => {
+        if (item.equipped === false) return false;
+        const requiresAttune = checkItemRequiresAttunement(item);
+        if (requiresAttune && !item.attuned) return false;
+        return true;
+    };
+
+    const equippedItems = (character.equipment || []).filter(isItemActive);
+    const equippedWeapons = (character.weapons || []).filter(isItemActive);
 
     const isShieldEquipped = equippedItems.some(i => (i.name || "").toLowerCase().includes("shield") || (i.type || "").toLowerCase() === "shield");
     const isBodyArmorEquipped = equippedItems.some(i => {
@@ -460,6 +484,10 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
                 weapon.rarity = "Common";
             }
 
+            const reqAttune = checkItemRequiresAttunement(weapon);
+            const isAttuned = !reqAttune || !!weapon.attuned;
+            const effectiveMagicPlus = (isAttuned && !isMundane) ? magicPlus : 0;
+
             const props = Array.isArray(weapon.properties) ? weapon.properties : [];
             const isFinesse = props.some(p => p.toLowerCase().includes("finesse"));
             const isRanged = props.some(p => p.toLowerCase().includes("ranged") || p.toLowerCase().includes("ammunition"));
@@ -474,14 +502,14 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
                 chosenMod = Math.max(strMod, dexMod);
             }
 
-            const toHit = chosenMod + profBonus + magicPlus;
+            const toHit = chosenMod + profBonus + effectiveMagicPlus;
             weapon.toHitModifier = toHit;
             weapon.attackBonus = toHit >= 0 ? `+${toHit}` : `${toHit}`;
 
             // Adjust damage formula to reflect weapon's magic bonus (+1/+2/+3)
             const dmgDie = weapon.damageDie || (weapon.damage ? weapon.damage.split(" ")[0] : "1d6");
             const dmgType = weapon.damageType || (weapon.damage ? weapon.damage.split(" ").slice(1).join(" ") : "Slashing");
-            const totalDmgMod = chosenMod + magicPlus;
+            const totalDmgMod = chosenMod + effectiveMagicPlus;
             const dmgModStr = totalDmgMod >= 0 ? `+ ${totalDmgMod}` : `- ${Math.abs(totalDmgMod)}`;
 
             // Extract extra damage parts (e.g. + 2d6 Fire) if present

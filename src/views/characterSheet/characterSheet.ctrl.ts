@@ -40,7 +40,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     // Dynamic state
     let activeCharacter: CharacterData | null = null;
     let activeRawDndBeyondPayload: any = null;
-    let currentEquipOverrides: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }> = [];
+    let currentEquipOverrides: Array<{ scope: "item" | "weapon" | "weapon-mastery" | "attunement"; itemName: string; equipped: boolean }> = [];
     let currentHp = 0;
     let maxHp = 0;
     let tempHp = 0;
@@ -298,6 +298,19 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (activeCharacter.vitals.deathSaves) {
             activeCharacter.trackingState.deathSaves = { ...activeCharacter.vitals.deathSaves };
         }
+        if (!activeCharacter.trackingState.itemQuantities) {
+            activeCharacter.trackingState.itemQuantities = {};
+        }
+        activeCharacter.equipment.forEach(item => {
+            if (typeof item.quantity === "number") {
+                activeCharacter!.trackingState!.itemQuantities![item.name.toLowerCase().trim()] = item.quantity;
+            }
+        });
+        (activeCharacter.weapons || []).forEach(w => {
+            if (typeof w.quantity === "number") {
+                activeCharacter!.trackingState!.itemQuantities![`weapon:${w.name.toLowerCase().trim()}`] = w.quantity;
+            }
+        });
     }
 
     function applyTrackerSnapshot() {
@@ -319,6 +332,24 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 ...activeCharacter.trackingState.featureChoices,
                 ...(activeCharacter.featureChoices || {})
             };
+        }
+        if (activeCharacter.trackingState?.itemQuantities) {
+            const quantities = activeCharacter.trackingState.itemQuantities;
+            activeCharacter.equipment.forEach(item => {
+                const k = item.name.toLowerCase().trim();
+                if (typeof quantities[k] === "number") {
+                    item.quantity = quantities[k];
+                }
+            });
+            (activeCharacter.weapons || []).forEach(w => {
+                const wk = `weapon:${w.name.toLowerCase().trim()}`;
+                const k = w.name.toLowerCase().trim();
+                if (typeof quantities[wk] === "number") {
+                    w.quantity = quantities[wk];
+                } else if (typeof quantities[k] === "number") {
+                    w.quantity = quantities[k];
+                }
+            });
         }
         const slotState = activeCharacter.trackingState?.slotPips || {};
         Object.keys(slotState).forEach(key => {
@@ -789,6 +820,24 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.abilities = recomputed.abilities;
                 activeCharacter.skills = recomputed.skills;
                 activeCharacter.weapons = recomputed.weapons;
+                if (activeCharacter.trackingState?.itemQuantities) {
+                    const quantities = activeCharacter.trackingState.itemQuantities;
+                    activeCharacter.equipment.forEach(item => {
+                        const k = item.name.toLowerCase().trim();
+                        if (typeof quantities[k] === "number") {
+                            item.quantity = quantities[k];
+                        }
+                    });
+                    (activeCharacter.weapons || []).forEach(w => {
+                        const wk = `weapon:${w.name.toLowerCase().trim()}`;
+                        const k = w.name.toLowerCase().trim();
+                        if (typeof quantities[wk] === "number") {
+                            w.quantity = quantities[wk];
+                        } else if (typeof quantities[k] === "number") {
+                            w.quantity = quantities[k];
+                        }
+                    });
+                }
                 activeCharacter.actions = recomputed.actions;
                 activeCharacter.features = recomputed.features;
                 activeCharacter.proficiencies = recomputed.proficiencies;
@@ -797,6 +846,64 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             }
         }
         syncSheetVitalsAndStatsToDom();
+    }
+
+    function setItemQuantity(itemName: string, newQuantity: number, scope?: "equipment" | "weapon") {
+        if (!activeCharacter) return;
+        const cleanName = itemName.toLowerCase().trim();
+        const qty = Math.max(0, Math.round(newQuantity));
+
+        if (!activeCharacter.trackingState) {
+            activeCharacter.trackingState = {};
+        }
+        if (!activeCharacter.trackingState.itemQuantities) {
+            activeCharacter.trackingState.itemQuantities = {};
+        }
+        activeCharacter.trackingState.itemQuantities[cleanName] = qty;
+        activeCharacter.trackingState.itemQuantities[`weapon:${cleanName}`] = qty;
+
+        activeCharacter.equipment.forEach(item => {
+            if (item.name.toLowerCase().trim() === cleanName) {
+                item.quantity = qty;
+            }
+        });
+
+        (activeCharacter.weapons || []).forEach(weapon => {
+            if (weapon.name.toLowerCase().trim() === cleanName) {
+                weapon.quantity = qty;
+            }
+        });
+
+        if (activeRawDndBeyondPayload) {
+            const rawInv = (activeRawDndBeyondPayload.data || activeRawDndBeyondPayload).inventory;
+            if (Array.isArray(rawInv)) {
+                rawInv.forEach((rawItem: any) => {
+                    if ((rawItem.definition?.name || "").toLowerCase().trim() === cleanName) {
+                        rawItem.quantity = qty;
+                    }
+                });
+            }
+        }
+
+        sheet.querySelectorAll<HTMLInputElement>(`.item-qty-input`).forEach(input => {
+            const encodedItemName = input.getAttribute("data-item-name");
+            const encodedWeaponName = input.getAttribute("data-weapon-name");
+            if (encodedItemName && decodeURIComponent(encodedItemName).toLowerCase().trim() === cleanName) {
+                input.value = String(qty);
+            }
+            if (encodedWeaponName && decodeURIComponent(encodedWeaponName).toLowerCase().trim() === cleanName) {
+                input.value = String(qty);
+            }
+        });
+
+        const modalInput = sheet.querySelector<HTMLInputElement>("#modal-item-quantity-input");
+        const modalTitle = sheet.querySelector<HTMLElement>("#modal-item-name")?.textContent?.toLowerCase().trim();
+        if (modalInput && modalTitle === cleanName) {
+            modalInput.value = String(qty);
+        }
+
+        persistTrackerSnapshot();
+        scheduleDebouncedAutoSave();
     }
 
     function updateAbilityBaseScore(abilityIndex: number, newBaseScore: number) {
@@ -846,7 +953,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     }
 
     function applyPersistedEquipStates(
-        states: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>
+        states: Array<{ scope: "item" | "weapon" | "weapon-mastery" | "attunement"; itemName: string; equipped: boolean }>
     ) {
         if (!states?.length || !activeCharacter) return;
 
@@ -863,12 +970,20 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (stateMap.has(key)) {
                 item.equipped = !!stateMap.get(key);
             }
+            const attuneKey = `attunement:${item.name.toLowerCase()}`;
+            if (stateMap.has(attuneKey)) {
+                item.attuned = !!stateMap.get(attuneKey);
+            }
         });
 
         (activeCharacter.weapons || []).forEach(weapon => {
             const key = `weapon:${weapon.name.toLowerCase()}`;
             if (stateMap.has(key)) {
                 weapon.equipped = !!stateMap.get(key);
+            }
+            const attuneKey = `attunement:${weapon.name.toLowerCase()}`;
+            if (stateMap.has(attuneKey)) {
+                weapon.attuned = !!stateMap.get(attuneKey);
             }
 
             if (weapon.mastery?.name) {
@@ -883,7 +998,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     }
 
     async function persistEquipState(
-        scope: "item" | "weapon" | "weapon-mastery",
+        scope: "item" | "weapon" | "weapon-mastery" | "attunement",
         encodedName: string,
         rawDefinitionId: string | null,
         equipped: boolean
@@ -1156,6 +1271,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         renderSavedCharacterList: () => { },
         setCharacterActionsVisibility: () => { },
         updateAbilityBaseScore,
+        setItemQuantity,
         syncSheetStats: syncSheetVitalsAndStatsToDom,
         recalculateFromRawPayload,
         isFieldLocked,

@@ -1820,4 +1820,153 @@ describe('Frontend View Templates', () => {
         expect(renderedWeaponsHtml).not.toContain('weapon-badge magic');
         expect(renderedWeaponsHtml).not.toContain('Magic</span>');
     });
+
+    it('renders and toggles attunement buttons for items and weapons requiring attunement', async () => {
+        const { checkItemRequiresAttunement, applyMagicalItemBonuses } = await import('../../../src/views/characterSheet/services/magicItemBonuses');
+        const { renderEquipment } = await import('../../../src/views/characterSheet/components/equipment');
+        const { renderWeapons } = await import('../../../src/views/characterSheet/components/weapons');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        // Check attunement detection
+        expect(checkItemRequiresAttunement({ name: 'Ring of Protection', description: 'Requires attunement' })).toBe(true);
+        expect(checkItemRequiresAttunement({ name: 'Backpack', attuned: false })).toBe(false);
+        expect(checkItemRequiresAttunement({ name: 'Custom Ring', requiresAttunement: true })).toBe(true);
+
+        const charClone = JSON.parse(JSON.stringify(darvellData));
+        // Give character an attuned Cloak of Protection (+1 AC, +1 Saves, requires attunement)
+        charClone.equipment.push({
+            id: 9991,
+            name: 'Cloak of Protection',
+            type: 'Wondrous item',
+            quantity: 1,
+            equipped: true,
+            attuned: true,
+            requiresAttunement: true,
+            description: 'Requires attunement. You gain a +1 bonus to AC and saving throws.'
+        });
+
+        // And an unattuned Ring of Protection
+        charClone.equipment.push({
+            id: 9992,
+            name: 'Ring of Protection',
+            type: 'Ring',
+            quantity: 1,
+            equipped: true,
+            attuned: false,
+            requiresAttunement: true,
+            description: 'Requires attunement. You gain a +1 bonus to AC and saving throws.'
+        });
+
+        // And a non-attunement Wand of Magic Missiles
+        charClone.equipment.push({
+            id: 9993,
+            name: 'Wand of Magic Missiles',
+            type: 'Wand',
+            quantity: 1,
+            equipped: true,
+            attuned: false,
+            requiresAttunement: false,
+            description: 'This wand has 7 charges.'
+        });
+
+        const equipHtml = renderEquipment(charClone);
+        // Cloak of Protection should have attuned button
+        expect(equipHtml).toContain('data-item-name="Cloak%20of%20Protection"');
+        expect(equipHtml).toContain('attune-toggle-btn attuned');
+        expect(equipHtml).toContain('Attuned');
+
+        // Ring of Protection should have unattuned button
+        expect(equipHtml).toContain('data-item-name="Ring%20of%20Protection"');
+        expect(equipHtml).toContain('attune-toggle-btn unattuned');
+        expect(equipHtml).toContain('Unattuned');
+
+        // Wand of Magic Missiles should NOT have attune toggle button
+        expect(equipHtml).not.toContain('data-item-name="Wand%20of%20Magic%20Missiles" class="item-badge attune-toggle-btn');
+
+        // Test weapons attunement rendering
+        charClone.weapons = [
+            {
+                id: 8881,
+                name: 'Moonblade',
+                category: 'Martial Weapon (Melee)',
+                damage: '1d8 + 3',
+                damageType: 'Slashing',
+                damageDie: '1d8',
+                attackBonus: '+5',
+                range: 'Reach 5 ft.',
+                properties: ['Finesse', 'Versatile'],
+                equipped: true,
+                attuned: true,
+                requiresAttunement: true,
+                description: 'Requires attunement by an elf or half-elf of neutral good alignment.'
+            },
+            {
+                id: 8882,
+                name: 'Dagger',
+                category: 'Simple Weapon (Melee)',
+                damage: '1d4 + 2',
+                damageType: 'Piercing',
+                damageDie: '1d4',
+                attackBonus: '+4',
+                range: '20/60 ft.',
+                properties: ['Finesse', 'Light', 'Thrown'],
+                equipped: true,
+                attuned: false,
+                requiresAttunement: false
+            }
+        ];
+
+        const wepHtml = renderWeapons(charClone);
+        expect(wepHtml).toContain('data-weapon-name="Moonblade"');
+        expect(wepHtml).toContain('attune-toggle-btn attuned');
+        expect(wepHtml).not.toContain('data-weapon-name="Dagger" class="weapon-badge attune-toggle-btn');
+
+        // Check bonus application when attuned vs unattuned
+        const baseAc = charClone.vitals.armorClass;
+        applyMagicalItemBonuses(charClone);
+        // Cloak of Protection is attuned (+1 AC), Ring of Protection is unattuned (+0 AC)
+        expect(charClone.vitals.armorClass).toBe(baseAc + 1);
+
+        // Now unattune the Cloak and re-apply bonuses
+        charClone.equipment.find((i: any) => i.name === 'Cloak of Protection').attuned = false;
+        charClone.vitals.armorClass = baseAc;
+        applyMagicalItemBonuses(charClone);
+        expect(charClone.vitals.armorClass).toBe(baseAc);
+    });
+
+    it('renders editable quantity steppers for equipment and weapons and in item modal', async () => {
+        const { renderEquipment } = await import('../../../src/views/characterSheet/components/equipment');
+        const { renderWeapons } = await import('../../../src/views/characterSheet/components/weapons');
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        const charClone = JSON.parse(JSON.stringify(darvellData));
+        charClone.equipment.push({
+            id: 701,
+            name: 'Potion of Healing',
+            type: 'Potion',
+            quantity: 5,
+            equipped: false,
+            attuned: false
+        });
+
+        // Test equipment list renders quantity stepper
+        const equipHtml = renderEquipment(charClone);
+        expect(equipHtml).toContain('class="item-qty-stepper"');
+        expect(equipHtml).toContain('class="item-qty-input"');
+        expect(equipHtml).toContain('value="5"');
+        expect(equipHtml).toContain('data-item-name="Potion%20of%20Healing"');
+
+        // Test weapons list renders quantity stepper
+        const wepHtml = renderWeapons(charClone);
+        expect(wepHtml).toContain('class="item-qty-stepper weapon-qty-stepper"');
+        expect(wepHtml).toContain('class="item-qty-input"');
+
+        // Test item modal renders quantity stepper
+        const modalHtml = renderModals();
+        expect(modalHtml).toContain('id="modal-item-qty-stepper"');
+        expect(modalHtml).toContain('id="modal-item-qty-dec"');
+        expect(modalHtml).toContain('id="modal-item-qty-inc"');
+        expect(modalHtml).toContain('id="modal-item-quantity-input"');
+    });
 });

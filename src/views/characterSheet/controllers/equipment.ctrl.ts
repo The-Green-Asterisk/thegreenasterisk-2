@@ -65,9 +65,103 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
         });
     });
 
+    // Item attune toggle buttons
+    const itemAttuneButtons = ctx.sheet.querySelectorAll<HTMLButtonElement>('.attune-toggle-btn[data-attune-scope="item"]');
+    itemAttuneButtons.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const encodedItemName = btn.getAttribute("data-item-name") || "";
+            const rawItemId = btn.getAttribute("data-item-id");
+            if (!encodedItemName) return;
+            const itemName = decodeURIComponent(encodedItemName).toLowerCase();
+            const nextState = btn.getAttribute("aria-pressed") !== "true";
+
+            character.equipment.forEach(item => {
+                if (item.name.toLowerCase() === itemName) {
+                    item.attuned = nextState;
+                }
+            });
+
+            const affectedItemRows = ctx.sheet.querySelectorAll<HTMLElement>(".clickable-item-card");
+            affectedItemRows.forEach(row => {
+                const rowItemName = decodeURIComponent(row.getAttribute("data-item-name") || "").toLowerCase();
+                if (rowItemName !== itemName) return;
+
+                const toggleBtn = row.querySelector<HTMLButtonElement>(".item-badge.attune-toggle-btn");
+                if (toggleBtn) {
+                    toggleBtn.setAttribute("aria-pressed", nextState ? "true" : "false");
+                    toggleBtn.classList.toggle("attuned", nextState);
+                    toggleBtn.classList.toggle("unattuned", !nextState);
+                    toggleBtn.setAttribute("title", `Toggle attunement (Click to ${nextState ? 'unattune' : 'attune'})`);
+                    toggleBtn.innerHTML = `<i class="fa-solid ${nextState ? 'fa-link' : 'fa-link-slash'}"></i> ${nextState ? "Attuned" : "Unattuned"}`;
+                }
+            });
+
+            void ctx.persistEquipState("attunement", encodedItemName, rawItemId, nextState);
+            ctx.syncSheetStats();
+        });
+
+        btn.addEventListener("keydown", (e) => {
+            e.stopPropagation();
+        });
+    });
+
     // Open Manage Weapons/Items modal
     const openManageEquipmentBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-equipment-btn");
     openManageEquipmentBtn?.addEventListener("click", () => {
         void ctx.openManageItemsModal("all");
+    });
+
+    // Equipment quantity steppers & inputs
+    const equipQtySteppers = ctx.sheet.querySelectorAll<HTMLElement>('.equipment-row .item-qty-stepper');
+    equipQtySteppers.forEach(stepper => {
+        const encodedName = stepper.getAttribute("data-item-name");
+        if (!encodedName) return;
+        const decodedName = decodeURIComponent(encodedName);
+
+        const input = stepper.querySelector<HTMLInputElement>(".item-qty-input");
+        const decBtn = stepper.querySelector<HTMLButtonElement>(".qty-dec");
+        const incBtn = stepper.querySelector<HTMLButtonElement>(".qty-inc");
+
+        stepper.addEventListener("click", (e) => {
+            e.stopPropagation();
+        });
+
+        decBtn?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const current = Number(input?.value || "1");
+            const next = Math.max(0, current - 1);
+            if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, next, "equipment");
+        });
+
+        incBtn?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const current = Number(input?.value || "1");
+            const next = current + 1;
+            if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, next, "equipment");
+        });
+
+        input?.addEventListener("click", (e) => {
+            e.stopPropagation();
+        });
+
+        input?.addEventListener("input", (e) => {
+            e.stopPropagation();
+            const val = parseInt(input.value, 10);
+            if (!Number.isNaN(val) && val >= 0) {
+                if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, val, "equipment");
+            }
+        });
+
+        input?.addEventListener("blur", () => {
+            if (input.value === "" || isNaN(Number(input.value)) || Number(input.value) < 0) {
+                input.value = "0";
+                if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, 0, "equipment");
+            }
+        });
     });
 }

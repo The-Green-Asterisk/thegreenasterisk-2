@@ -72,6 +72,7 @@ export interface EquipmentItem {
     quantity: number;
     equipped: boolean;
     attuned?: boolean;
+    requiresAttunement?: boolean;
     type: string;
     filterType?: string;
     rarity?: string;
@@ -87,6 +88,8 @@ export interface WeaponItem {
     name: string;
     quantity: number;
     equipped: boolean;
+    attuned?: boolean;
+    requiresAttunement?: boolean;
     category: string; // e.g. "Simple Melee", "Martial Ranged", etc.
     damage: string; // e.g. "1d4 + 3 Piercing"
     damageType: string; // e.g. "Piercing"
@@ -149,6 +152,7 @@ export interface CharacterData {
         exhaustionLevel?: number;
         allowedSpellsByLevel?: Record<number, number>;
         featureChoices?: Record<string, string>;
+        itemQuantities?: Record<string, number>;
         deathSaves?: {
             successes: number;
             failures: number;
@@ -496,7 +500,7 @@ export const darvellData: CharacterData = {
         }
     ] as FeatureItem[],
     equipment: [
-        { name: "Ring of Mind Shielding", quantity: 1, equipped: true, attuned: true, type: "Wondrous Item", notes: "Immune to telepathic mind reading; soul enters ring if slain." },
+        { name: "Ring of Mind Shielding", quantity: 1, equipped: true, attuned: true, requiresAttunement: true, type: "Wondrous Item", notes: "Immune to telepathic mind reading; soul enters ring if slain." },
         { name: "Leather Armor", quantity: 1, equipped: true, type: "Light Armor", isMagic: false, rarity: "Common", notes: "AC 11 + Dex modifier (+2) = 13 AC." },
         { name: "Dagger", quantity: 2, equipped: true, type: "Weapon", isMagic: false, rarity: "Common", notes: "1d4 Piercing, Finesse, Light, Thrown (20/60)." },
         { name: "Lyre", quantity: 1, equipped: false, type: "Musical Instrument", notes: "Spellcasting focus and instrument for Musician feat." },

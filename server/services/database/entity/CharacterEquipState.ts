@@ -10,7 +10,7 @@ export class CharacterEquipState {
     characterId!: string;
 
     @Column({ type: "varchar", length: 20 })
-    scope!: "item" | "weapon" | "weapon-mastery";
+    scope!: "item" | "weapon" | "weapon-mastery" | "attunement";
 
     @Column({ type: "varchar", length: 255 })
     itemName!: string;

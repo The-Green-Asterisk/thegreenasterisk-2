@@ -35,6 +35,7 @@ export interface CharacterSheetContext {
     renderSavedCharacterList: () => void;
     setCharacterActionsVisibility: () => void;
     updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => void;
+    setItemQuantity: (itemName: string, quantity: number, scope?: "equipment" | "weapon") => void;
     syncSheetStats: () => void;
     recalculateFromRawPayload?: () => void;
     toggleFieldLock?: (fieldKey: string) => boolean;
@@ -50,7 +51,7 @@ export interface CharacterSheetContext {
     beginNewSiteCharacter: () => void;
     refreshFromDndBeyondAndOverride: () => Promise<void>;
     persistEquipState: (
-        scope: "item" | "weapon" | "weapon-mastery",
+        scope: "item" | "weapon" | "weapon-mastery" | "attunement",
         encodedName: string,
         rawDefinitionId: string | null,
         equipped: boolean

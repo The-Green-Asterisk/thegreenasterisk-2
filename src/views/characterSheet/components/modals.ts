@@ -149,9 +149,13 @@ export function renderModals(): string {
                         <span class="meta-box-label"><i class="fa-solid fa-coins"></i> COST</span>
                         <span class="meta-box-val" id="modal-item-cost">—</span>
                     </div>
-                    <div class="meta-box">
+                    <div class="meta-box meta-box-quantity">
                         <span class="meta-box-label"><i class="fa-solid fa-boxes-stacked"></i> QUANTITY</span>
-                        <span class="meta-box-val" id="modal-item-quantity">1</span>
+                        <div class="modal-qty-stepper" id="modal-item-qty-stepper">
+                            <button type="button" class="modal-qty-btn" id="modal-item-qty-dec" aria-label="Decrease quantity" title="Decrease quantity">&minus;</button>
+                            <input type="number" id="modal-item-quantity-input" class="modal-qty-input" min="0" max="9999" value="1" aria-label="Item quantity" />
+                            <button type="button" class="modal-qty-btn" id="modal-item-qty-inc" aria-label="Increase quantity" title="Increase quantity">&plus;</button>
+                        </div>
                     </div>
                     <div class="meta-box">
                         <span class="meta-box-label"><i class="fa-solid fa-sparkles"></i> RARITY</span>
