@@ -1539,7 +1539,7 @@ export class CharacterCreatorController {
                                 return `
                                     <div class="skill-checkbox-card expertise-skill-card ${isExpert ? "selected" : ""}" data-skill-name="${sk.name}">
                                         <div class="skill-info">
-                                            <span class="card-check"><i class="fa-solid fa-star"></i></span>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                             <span class="skill-name">${sk.name}</span>
                                         </div>
                                         <span class="skill-stat-badge">${sk.stat.toUpperCase()}</span>

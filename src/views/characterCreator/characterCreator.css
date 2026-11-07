@@ -499,12 +499,23 @@ el-character-creator,
     font-size: 0.68rem;
     color: transparent;
     transition: all 0.15s ease;
+    flex-shrink: 0;
 }
 
-.select-card.selected .card-check {
+.select-card.selected .card-check,
+.skill-checkbox-card.selected .card-check,
+.skill-checkbox-card.locked .card-check,
+.item-check-row.selected .card-check,
+.selected .card-check {
     background: var(--ui-color);
     border-color: var(--ui-color);
     color: var(--text-on-accent);
+}
+
+.select-card:hover:not(.selected) .card-check,
+.skill-checkbox-card:hover:not(.selected):not(.locked) .card-check,
+.item-check-row:hover:not(.selected) .card-check {
+    border-color: var(--ui-color);
 }
 
 .card-tag {
@@ -1409,9 +1420,6 @@ el-character-creator,
     margin: 0.35rem 0 0 0;
 }
 
-.skill-checkbox-card.expertise-skill-card.selected .card-check {
-    color: #ffd700;
-}
 
 
 
