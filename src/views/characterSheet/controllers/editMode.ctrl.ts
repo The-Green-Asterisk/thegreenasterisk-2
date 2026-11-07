@@ -365,11 +365,11 @@ export function initEditModeController(ctx: CharacterSheetContext) {
                             }
                             const acVal = dynamicContainer.querySelector<HTMLElement>(".vital-ac .vital-val");
                             if (acVal && updatedChar) acVal.textContent = String(updatedChar.vitals.armorClass);
-                            const percVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-perception .vital-val");
+                            const percVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-perception .vital-val, .sense-passive-perception-val");
                             if (percVal && updatedChar) percVal.textContent = String(updatedChar.vitals.passivePerception);
-                            const invVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-investigation .vital-val");
+                            const invVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-investigation .vital-val, .sense-passive-investigation-val");
                             if (invVal && updatedChar) invVal.textContent = String(updatedChar.vitals.passiveInvestigation);
-                            const insVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-insight .vital-val");
+                            const insVal = dynamicContainer.querySelector<HTMLElement>(".vital-passive-insight .vital-val, .sense-passive-insight-val");
                             if (insVal && updatedChar) insVal.textContent = String(updatedChar.vitals.passiveInsight);
                         }
                     }

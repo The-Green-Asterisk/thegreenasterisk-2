@@ -3,6 +3,11 @@ import { getData, postData, putData } from "@services/request";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
+import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
+import { renderAbilityCards } from "./components/abilities";
+import { renderSkills } from "./components/skills";
+import { renderWeapons } from "./components/weapons";
+import { renderActions } from "./components/actions";
 import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
 import {
     CharacterSheetContext,
@@ -571,6 +576,13 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             }
             renderActiveCharacterView();
 
+            if (activeCharacter.spells?.length) {
+                void postData("/sync-character-spells", { spells: activeCharacter.spells }).catch(() => { });
+            }
+            if (activeCharacter.weapons?.length || activeCharacter.equipment?.length) {
+                void postData("/sync-character-items", { weapons: activeCharacter.weapons, equipment: activeCharacter.equipment }).catch(() => { });
+            }
+
             if (activeCharacter.source === "dndbeyond") {
                 const externalId =
                     response.savedCharacter?.externalCharacterId ||
@@ -681,71 +693,110 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         showStatus("Started a new site character. Edit fields and click Save Character.");
     }
 
-    function recalculateFromRawPayload() {
-        if (!activeCharacter || !activeRawDndBeyondPayload) return;
-        try {
-            const oldMaxHp = Number(activeCharacter.vitals.maxHp) || 0;
-            const recomputed = parseDndBeyondCharacter(
-                activeRawDndBeyondPayload,
-                String(activeCharacter.id || activeCharacterId || ""),
-                currentEquipOverrides,
-                activeCharacter.featureChoices
-            );
-            ensureBaseScoresOnCharacter(recomputed, activeRawDndBeyondPayload);
-            if (activeCharacter.lockedFields) {
-                applyLockedFieldsToRefreshedCharacter(recomputed, activeCharacter);
-            }
-            const maxHpDelta = (Number(recomputed.vitals.maxHp) || 0) - oldMaxHp;
-            activeCharacter.vitals.maxHp = recomputed.vitals.maxHp;
-            maxHp = recomputed.vitals.maxHp;
-            if (maxHpDelta !== 0) {
-                currentHp = Math.max(0, Math.min(maxHp, currentHp + maxHpDelta));
-                activeCharacter.vitals.currentHp = currentHp;
-            }
-            activeCharacter.vitals.armorClass = recomputed.vitals.armorClass;
-            activeCharacter.vitals.initiative = recomputed.vitals.initiative;
-            activeCharacter.vitals.speed = recomputed.vitals.speed;
-            activeCharacter.vitals.proficiencyBonus = recomputed.vitals.proficiencyBonus;
-            activeCharacter.vitals.passivePerception = recomputed.vitals.passivePerception;
-            activeCharacter.vitals.passiveInvestigation = recomputed.vitals.passiveInvestigation;
-            activeCharacter.vitals.passiveInsight = recomputed.vitals.passiveInsight;
-            activeCharacter.vitals.blindsight = recomputed.vitals.blindsight;
-            activeCharacter.vitals.darkvision = recomputed.vitals.darkvision;
-            activeCharacter.vitals.spellSaveDc = recomputed.vitals.spellSaveDc;
-            activeCharacter.vitals.spellAttackBonus = recomputed.vitals.spellAttackBonus;
-            activeCharacter.vitals.spellcastingAbility = recomputed.vitals.spellcastingAbility;
-            activeCharacter.abilities = recomputed.abilities;
-            activeCharacter.skills = recomputed.skills;
-            activeCharacter.weapons = recomputed.weapons;
-            activeCharacter.actions = recomputed.actions;
-            activeCharacter.features = recomputed.features;
-            activeCharacter.proficiencies = recomputed.proficiencies;
+    function syncSheetVitalsAndStatsToDom() {
+        const char = activeCharacter;
+        if (!char) return;
 
-            // Update Vitals cards in DOM if already rendered
-            const acEl = sheet.querySelector<HTMLElement>(".vital-ac .vital-val");
-            if (acEl) acEl.textContent = String(activeCharacter.vitals.armorClass);
-            const initEl = sheet.querySelector<HTMLElement>(".vital-init .vital-val");
-            if (initEl) {
-                initEl.textContent =
-                    activeCharacter.vitals.initiative >= 0
-                        ? `+${activeCharacter.vitals.initiative}`
-                        : String(activeCharacter.vitals.initiative);
-            }
-            const speedEl = sheet.querySelector<HTMLElement>(".vital-speed .vital-val");
-            if (speedEl) speedEl.textContent = activeCharacter.vitals.speed;
-            const dcEl = sheet.querySelector<HTMLElement>(".vital-dc .vital-val");
-            if (dcEl) dcEl.textContent = String(activeCharacter.vitals.spellSaveDc);
-            const atkEl = sheet.querySelector<HTMLElement>(".vital-attack .vital-val");
-            if (atkEl) atkEl.textContent = `+${activeCharacter.vitals.spellAttackBonus}`;
-            const percEl = sheet.querySelector<HTMLElement>(".vital-passive-perception .vital-val");
-            if (percEl) percEl.textContent = String(activeCharacter.vitals.passivePerception);
-            const invEl = sheet.querySelector<HTMLElement>(".vital-passive-investigation .vital-val");
-            if (invEl) invEl.textContent = String(activeCharacter.vitals.passiveInvestigation);
-            const insEl = sheet.querySelector<HTMLElement>(".vital-passive-insight .vital-val");
-            if (insEl) insEl.textContent = String(activeCharacter.vitals.passiveInsight);
-        } catch (err) {
-            console.warn("Could not recalculate character stats from raw payload:", err);
+        // Apply all magical item and weapon bonuses to activeCharacter
+        applyMagicalItemBonuses(char);
+
+        // Update Ability cards in DOM
+        const abilitiesContainer = sheet.querySelector<HTMLElement>(".abilities-container");
+        if (abilitiesContainer) {
+            abilitiesContainer.innerHTML = renderAbilityCards(char);
         }
+
+        // Update Vitals cards in DOM if already rendered
+        const acEl = sheet.querySelector<HTMLElement>(".vital-ac .vital-val");
+        if (acEl) acEl.textContent = String(char.vitals.armorClass);
+        const initEl = sheet.querySelector<HTMLElement>(".vital-init .vital-val");
+        if (initEl) {
+            initEl.textContent =
+                char.vitals.initiative >= 0
+                    ? `+${char.vitals.initiative}`
+                    : String(char.vitals.initiative);
+        }
+        const speedEl = sheet.querySelector<HTMLElement>(".vital-speed .vital-val");
+        if (speedEl) speedEl.textContent = char.vitals.speed;
+        const dcEl = sheet.querySelector<HTMLElement>(".vital-dc .vital-val");
+        if (dcEl) dcEl.textContent = String(char.vitals.spellSaveDc);
+        const atkEl = sheet.querySelector<HTMLElement>(".vital-attack .vital-val");
+        if (atkEl) atkEl.textContent = `+${char.vitals.spellAttackBonus}`;
+        const percEl = sheet.querySelector<HTMLElement>(".vital-passive-perception .vital-val, .sense-passive-perception-val");
+        if (percEl) percEl.textContent = String(char.vitals.passivePerception);
+        const invEl = sheet.querySelector<HTMLElement>(".vital-passive-investigation .vital-val, .sense-passive-investigation-val");
+        if (invEl) invEl.textContent = String(char.vitals.passiveInvestigation);
+        const insEl = sheet.querySelector<HTMLElement>(".vital-passive-insight .vital-val, .sense-passive-insight-val");
+        if (insEl) insEl.textContent = String(char.vitals.passiveInsight);
+
+        updateHpDisplay();
+
+        // Update Skills table if rendered
+        const skillsContainer = sheet.querySelector<HTMLElement>("#tab-skills .skills-container");
+        if (skillsContainer) {
+            skillsContainer.innerHTML = renderSkills(char);
+            initSkillsController(ctx);
+        }
+
+        // Update Weapons grids
+        sheet.querySelectorAll<HTMLElement>(".weapons-grid").forEach(grid => {
+            grid.innerHTML = renderWeapons(char);
+        });
+        initWeaponsController(ctx);
+
+        // Update Actions tab weapon attacks
+        const actionsContainer = sheet.querySelector<HTMLElement>("#tab-actions .actions-container");
+        if (actionsContainer) {
+            actionsContainer.innerHTML = renderActions(char);
+            initActionsController(ctx);
+        }
+    }
+
+    function recalculateFromRawPayload() {
+        if (!activeCharacter) return;
+        if (activeRawDndBeyondPayload) {
+            try {
+                const oldMaxHp = Number(activeCharacter.vitals.maxHp) || 0;
+                const recomputed = parseDndBeyondCharacter(
+                    activeRawDndBeyondPayload,
+                    String(activeCharacter.id || activeCharacterId || ""),
+                    currentEquipOverrides,
+                    activeCharacter.featureChoices
+                );
+                ensureBaseScoresOnCharacter(recomputed, activeRawDndBeyondPayload);
+                if (activeCharacter.lockedFields) {
+                    applyLockedFieldsToRefreshedCharacter(recomputed, activeCharacter);
+                }
+                const maxHpDelta = (Number(recomputed.vitals.maxHp) || 0) - oldMaxHp;
+                activeCharacter.vitals.maxHp = recomputed.vitals.maxHp;
+                maxHp = recomputed.vitals.maxHp;
+                if (maxHpDelta !== 0) {
+                    currentHp = Math.max(0, Math.min(maxHp, currentHp + maxHpDelta));
+                    activeCharacter.vitals.currentHp = currentHp;
+                }
+                activeCharacter.vitals.armorClass = recomputed.vitals.armorClass;
+                activeCharacter.vitals.initiative = recomputed.vitals.initiative;
+                activeCharacter.vitals.speed = recomputed.vitals.speed;
+                activeCharacter.vitals.proficiencyBonus = recomputed.vitals.proficiencyBonus;
+                activeCharacter.vitals.passivePerception = recomputed.vitals.passivePerception;
+                activeCharacter.vitals.passiveInvestigation = recomputed.vitals.passiveInvestigation;
+                activeCharacter.vitals.passiveInsight = recomputed.vitals.passiveInsight;
+                activeCharacter.vitals.blindsight = recomputed.vitals.blindsight;
+                activeCharacter.vitals.darkvision = recomputed.vitals.darkvision;
+                activeCharacter.vitals.spellSaveDc = recomputed.vitals.spellSaveDc;
+                activeCharacter.vitals.spellAttackBonus = recomputed.vitals.spellAttackBonus;
+                activeCharacter.vitals.spellcastingAbility = recomputed.vitals.spellcastingAbility;
+                activeCharacter.abilities = recomputed.abilities;
+                activeCharacter.skills = recomputed.skills;
+                activeCharacter.weapons = recomputed.weapons;
+                activeCharacter.actions = recomputed.actions;
+                activeCharacter.features = recomputed.features;
+                activeCharacter.proficiencies = recomputed.proficiencies;
+            } catch (err) {
+                console.warn("Could not recalculate character stats from raw payload:", err);
+            }
+        }
+        syncSheetVitalsAndStatsToDom();
     }
 
     function updateAbilityBaseScore(abilityIndex: number, newBaseScore: number) {
@@ -770,42 +821,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
             recalculateFromRawPayload();
         } else {
-            const oldBase = typeof ability.baseScore === "number"
-                ? ability.baseScore
-                : (ability.score - (ability.bonus || 0));
-            const bonus = typeof ability.bonus === "number"
-                ? ability.bonus
-                : (ability.score - oldBase);
             ability.baseScore = newBaseScore;
-            ability.bonus = bonus;
-            ability.score = newBaseScore + bonus;
-            ability.modifier = Math.floor((ability.score - 10) / 2);
-
-            const profBonus =
-                activeCharacter.vitals.proficiencyBonus ||
-                Math.floor(((activeCharacter.level || 1) - 1) / 4) + 2;
-            ability.save = ability.modifier + (ability.proficientSave ? profBonus : 0);
-
-            // Update skills tied to this ability
-            activeCharacter.skills.forEach(s => {
-                if (s.stat === ability.abbr) {
-                    let b = ability.modifier;
-                    if (s.proficiency === "expertise") b += profBonus * 2;
-                    else if (s.proficiency === "proficient") b += profBonus;
-                    s.bonus = b;
-                }
-            });
-
-            // Update vitals
-            if (ability.abbr === "DEX") {
-                activeCharacter.vitals.initiative = ability.modifier;
-            }
-            const spellAbilityAbbr = activeCharacter.vitals.spellcastingAbility?.slice(0, 3)?.toUpperCase();
-            if (spellAbilityAbbr === ability.abbr) {
-                activeCharacter.vitals.spellSaveDc = 8 + profBonus + ability.modifier;
-                activeCharacter.vitals.spellAttackBonus = profBonus + ability.modifier;
-                activeCharacter.vitals.spellcastingAbility = `${ability.name} (${ability.modifier >= 0 ? `+${ability.modifier}` : ability.modifier})`;
-            }
+            syncSheetVitalsAndStatsToDom();
         }
     }
 
@@ -1029,6 +1046,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (parsed.spells?.length) {
                 void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });
             }
+            if (parsed.weapons?.length || parsed.equipment?.length) {
+                void postData("/sync-character-items", { weapons: parsed.weapons, equipment: parsed.equipment }).catch(() => { });
+            }
             activeCharacterId = extractedId;
             activeCharacter = parsed;
             activeCharacter.source = "dndbeyond";
@@ -1136,6 +1156,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         renderSavedCharacterList: () => { },
         setCharacterActionsVisibility: () => { },
         updateAbilityBaseScore,
+        syncSheetStats: syncSheetVitalsAndStatsToDom,
         recalculateFromRawPayload,
         isFieldLocked,
         toggleFieldLock,
@@ -1159,6 +1180,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         closeCustomSpellModal: () => { },
         openManageSpellsModal: async () => { },
         closeManageSpellsModal: () => { },
+        openManageItemsModal: async () => { },
+        closeManageItemsModal: () => { },
         openConditionsModal: async () => { },
         closeConditionsModal: () => { },
         openConditionDetailModal: async () => { },

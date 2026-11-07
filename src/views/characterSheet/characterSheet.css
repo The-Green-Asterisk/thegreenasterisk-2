@@ -1567,58 +1567,27 @@ el-character-sheet .content-slate section {
     color: var(--badge-prof-text);
 }
 
-/* 8. Passive Senses: The Sensory Eye Lens */
-.vital-card.vital-passive-perception,
-.vital-card.vital-passive-investigation,
-.vital-card.vital-passive-insight {
+/* 8. Senses Boxes: Passive Senses & Special Senses */
+.vital-card.vital-passive-senses {
     --card-glow: var(--badge-perc-glow);
 }
 
-.vital-card.vital-passive-perception .vital-card-inner,
-.vital-card.vital-passive-investigation .vital-card-inner,
-.vital-card.vital-passive-insight .vital-card-inner {
-    padding: 0.85rem 0.85rem;
-}
-
-.vital-card.vital-passive-perception .vital-icon {
-    color: var(--badge-perc-icon);
-    background: var(--badge-perc-icon-bg);
-    box-shadow: 0 0 10px var(--badge-perc-glow);
-}
-
-.vital-card.vital-passive-investigation .vital-icon {
-    color: var(--badge-inv-icon);
-    background: var(--badge-inv-icon-bg);
-    box-shadow: 0 0 10px var(--badge-inv-glow);
-}
-
-.vital-card.vital-passive-insight .vital-icon {
-    color: var(--badge-ins-icon);
-    background: var(--badge-ins-icon-bg);
-    box-shadow: 0 0 10px var(--badge-ins-glow);
-}
-
-.vital-card.vital-passive-perception .vital-val {
-    color: var(--badge-perc-text);
-}
-
-.vital-card.vital-passive-investigation .vital-val {
-    color: var(--badge-inv-text);
-}
-
-.vital-card.vital-passive-insight .vital-val {
-    color: var(--badge-ins-text);
-}
-
-/* 9. Special Senses: Tactical Chamfered Datapad */
 .vital-card.vital-special-senses {
     --card-glow: var(--badge-senses-glow);
 }
 
+.vital-card.vital-passive-senses .vital-card-inner,
 .vital-card.vital-special-senses .vital-card-inner {
     align-items: stretch;
     justify-content: flex-start;
-    padding: 1.75rem 1.5rem;
+    padding: 1.5rem 1.25rem;
+}
+
+.vital-card.vital-passive-senses .vital-icon {
+    align-self: center;
+    color: var(--badge-perc-icon);
+    background: var(--badge-perc-icon-bg);
+    box-shadow: 0 0 10px var(--badge-perc-glow);
 }
 
 .vital-card.vital-special-senses .vital-icon {
@@ -1626,6 +1595,12 @@ el-character-sheet .content-slate section {
     color: var(--badge-senses-icon);
     background: var(--badge-senses-icon-bg);
     box-shadow: 0 0 10px var(--badge-senses-glow);
+}
+
+.vital-passive-senses .vital-label {
+    margin-bottom: 0.35rem;
+    text-align: center;
+    color: var(--badge-perc-text);
 }
 
 .vital-special-senses .vital-label {
@@ -3148,6 +3123,10 @@ el-character-sheet .content-slate section {
         grid-column: span 2;
     }
 
+    .vital-card.vital-passive-senses {
+        grid-column: 2;
+    }
+
     .abilities-container {
         grid-template-columns: repeat(6, 1fr);
     }
@@ -4226,6 +4205,12 @@ el-character-sheet .content-slate section.sheet-hero,
     border-top: 1px solid var(--border-soft, rgba(0, 0, 0, 0.1));
 }
 
+#item-modal-container,
+.item-modal-backdrop,
+#spell-modal-container,
+#action-modal-container,
+.action-modal-backdrop,
+#custom-spell-modal-container,
 .condition-detail-backdrop {
     z-index: 10050;
 }
@@ -4647,6 +4632,62 @@ el-character-sheet .content-slate section.sheet-hero,
     border-color: #10b981;
     color: #ecfdf5;
     transform: translateY(-1px);
+}
+
+.manage-weapons-btn,
+.manage-equipment-btn {
+    align-self: center;
+    height: 36px;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.manage-weapons-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.28) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.55);
+    color: #fde68a;
+}
+
+.manage-weapons-btn:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.32) 0%, rgba(217, 119, 6, 0.42) 100%);
+    border-color: #f59e0b;
+    color: #fffbeb;
+    transform: translateY(-1px);
+}
+
+.manage-equipment-btn {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(8, 145, 178, 0.28) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.55);
+    color: #a5f3fc;
+}
+
+.manage-equipment-btn:hover {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.32) 0%, rgba(8, 145, 178, 0.42) 100%);
+    border-color: #06b6d4;
+    color: #ecfeff;
+    transform: translateY(-1px);
+}
+
+.equipment-header-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .manage-spells-modal-dialog {

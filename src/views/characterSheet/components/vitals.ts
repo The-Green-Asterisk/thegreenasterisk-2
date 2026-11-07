@@ -103,6 +103,12 @@ export function renderVitalsSection(data: CharacterData): string {
         innerPath: "M 7,18 L 18,7 L 82,7 L 93,18 L 93,102 L 82,113 L 18,113 L 7,102 Z"
     });
 
+    const passiveSensesSvg = renderBadgeSvg({
+        id: "perc",
+        outerPath: "M 3,16 L 16,3 L 84,3 L 97,16 L 97,104 L 84,117 L 16,117 L 3,104 Z",
+        innerPath: "M 7,18 L 18,7 L 82,7 L 93,18 L 93,102 L 82,113 L 18,113 L 7,102 Z"
+    });
+
     const hpSvg = renderBadgeSvg({
         id: "hp",
         viewBox: "0 0 200 100",
@@ -274,33 +280,16 @@ export function renderVitalsSection(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="vital-card vital-passive-perception">
-                ${passiveEyeSvg("perc")}
+            <div class="vital-card vital-passive-senses">
+                ${passiveSensesSvg}
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-eye"></i></div>
-                    <div class="vital-val">${data.vitals.passivePerception}</div>
-                    <div class="vital-label">PASSIVE PERCEPTION</div>
-                    <div class="vital-subnote">Awareness</div>
-                </div>
-            </div>
-
-            <div class="vital-card vital-passive-investigation">
-                ${passiveEyeSvg("inv")}
-                <div class="vital-card-inner">
-                    <div class="vital-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
-                    <div class="vital-val">${data.vitals.passiveInvestigation}</div>
-                    <div class="vital-label">PASSIVE INVESTIGATION</div>
-                    <div class="vital-subnote">Clues & details</div>
-                </div>
-            </div>
-
-            <div class="vital-card vital-passive-insight">
-                ${passiveEyeSvg("ins")}
-                <div class="vital-card-inner">
-                    <div class="vital-icon"><i class="fa-solid fa-brain"></i></div>
-                    <div class="vital-val">${data.vitals.passiveInsight}</div>
-                    <div class="vital-label">PASSIVE INSIGHT</div>
-                    <div class="vital-subnote">Read people</div>
+                    <div class="vital-label">PASSIVE SENSES</div>
+                    <div class="special-senses-list">
+                        <div class="special-sense-row vital-passive-perception"><span>Perception</span><strong class="vital-val sense-passive-perception-val">${data.vitals.passivePerception}</strong></div>
+                        <div class="special-sense-row vital-passive-investigation"><span>Investigation</span><strong class="vital-val sense-passive-investigation-val">${data.vitals.passiveInvestigation}</strong></div>
+                        <div class="special-sense-row vital-passive-insight"><span>Insight</span><strong class="vital-val sense-passive-insight-val">${data.vitals.passiveInsight}</strong></div>
+                    </div>
                 </div>
             </div>
 
