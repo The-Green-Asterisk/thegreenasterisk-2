@@ -306,6 +306,7 @@ export default class BaseEl {
 setTimeout(() => {
     // these functions will run after the page is built and displayed so that
     // any programmatic changes can be made in the page's controller
+    if (typeof document === 'undefined') return;
 
     let ids = new Set<string>();
     document.querySelectorAll('[id]').forEach((el) => {

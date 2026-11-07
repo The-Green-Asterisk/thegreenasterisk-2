@@ -1096,156 +1096,6 @@ export class CharacterCreatorController {
                 </div>
 
                 ${this.renderClassProgression(currentClass)}
-
-                ${currentClass.weaponMasteryCount > 0 ? `
-                    <div class="creator-detail-box">
-                        <h4>Weapon Masteries (Choose up to ${currentClass.weaponMasteryCount})</h4>
-                        <p class="card-body">Your martial training unlocks tactical weapon mastery properties (Push, Vex, Nick, Topple, Cleave, Graze, Sap, Slow).</p>
-                        <div class="skills-select-grid">
-                            ${BASE_WEAPONS_2024.filter((w) => currentClass.weaponProficiencies.some((p) => p.includes("Martial") || w.category.includes("Simple"))).map((w) => {
-                                const isSelected = this.state.weaponMasteries.includes(w.name);
-                                return `
-                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}">
-                                        <div class="skill-info">
-                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                            <span class="skill-name">${w.name}</span>
-                                        </div>
-                                        <span class="skill-stat-badge" style="color: var(--ui-text);">${w.mastery}</span>
-                                    </div>
-                                `;
-                            }).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${this.state.level >= 3 && currentClass.subclasses.length > 0 ? `
-                    <div class="creator-detail-box">
-                        <h4>Subclass Selection (Level 3)</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                            ${currentClass.subclasses.map((sub) => `
-                                <div class="select-card subclass-card ${this.state.subclassId === sub.id ? "selected" : ""}" data-subclass-id="${sub.id}">
-                                    <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
-                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                    </div>
-                                    <p class="card-body">${sub.description}</p>
-                                </div>
-                            `).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${((this.state.classId === "fighter" && this.state.level >= 1) || (this.state.classId === "paladin" && this.state.level >= 2) || (this.state.classId === "ranger" && this.state.level >= 2)) ? `
-                    <div class="creator-detail-box">
-                        <h4>Fighting Style (Choose 1)</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-                            ${FIGHTING_STYLES.map((fs) => `
-                                <div class="select-card fighting-style-card ${this.state.fightingStyle === fs.id ? "selected" : ""}" data-fighting-style-id="${fs.id}">
-                                    <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${fs.name}</h5>
-                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                    </div>
-                                    <p class="card-body">${fs.description}</p>
-                                </div>
-                            `).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${this.state.classId === "cleric" && this.state.level >= 1 ? `
-                    <div class="creator-detail-box">
-                        <h4>Divine Order</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
-                            ${DIVINE_ORDERS.map((ord) => `
-                                <div class="select-card divine-order-card ${this.state.divineOrder === ord.id ? "selected" : ""}" data-divine-order-id="${ord.id}">
-                                    <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${ord.name}</h5>
-                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                    </div>
-                                    <p class="card-body">${ord.description}</p>
-                                </div>
-                            `).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${this.state.classId === "druid" && this.state.level >= 1 ? `
-                    <div class="creator-detail-box">
-                        <h4>Primal Order</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
-                            ${PRIMAL_ORDERS.map((ord) => `
-                                <div class="select-card primal-order-card ${this.state.primalOrder === ord.id ? "selected" : ""}" data-primal-order-id="${ord.id}">
-                                    <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${ord.name}</h5>
-                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                    </div>
-                                    <p class="card-body">${ord.description}</p>
-                                </div>
-                            `).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${this.state.classId === "sorcerer" && this.state.level >= 2 ? `
-                    <div class="creator-detail-box">
-                        <h4>Metamagic (Choose up to ${this.getMaxMetamagicCount()})</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-                            ${METAMAGIC_OPTIONS.map((meta) => {
-                                const isSelected = this.state.metamagic.includes(meta.id);
-                                return `
-                                    <div class="select-card metamagic-card ${isSelected ? "selected" : ""}" data-metamagic-id="${meta.id}">
-                                        <div class="card-title-row">
-                                            <h5 class="card-title" style="font-size: 0.95rem;">${meta.name}</h5>
-                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                        </div>
-                                        <p class="card-body">${meta.description}</p>
-                                    </div>
-                                `;
-                            }).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${this.state.classId === "warlock" && this.state.level >= 1 ? `
-                    <div class="creator-detail-box">
-                        <h4>Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || this.state.level >= inv.minLevel).map((inv) => {
-                                const isSelected = this.state.invocations.includes(inv.id);
-                                return `
-                                    <div class="select-card invocation-card ${isSelected ? "selected" : ""}" data-invocation-id="${inv.id}">
-                                        <div class="card-title-row">
-                                            <h5 class="card-title" style="font-size: 0.95rem;">${inv.name}</h5>
-                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                        </div>
-                                        ${inv.minLevel ? `<span class="card-tag">Min Level: ${inv.minLevel}</span>` : ""}
-                                        <p class="card-body">${inv.description}</p>
-                                    </div>
-                                `;
-                            }).join("")}
-                        </div>
-                    </div>
-                ` : ""}
-
-                ${this.state.classId === "fighter" && this.state.subclassId === "battle-master" && this.state.level >= 3 ? `
-                    <div class="creator-detail-box">
-                        <h4>Battle Master Maneuvers (Choose up to ${this.getMaxManeuversCount()})</h4>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-                            ${BATTLE_MASTER_MANEUVERS.map((man) => {
-                                const isSelected = this.state.maneuvers.includes(man.id);
-                                return `
-                                    <div class="select-card maneuver-card ${isSelected ? "selected" : ""}" data-maneuver-id="${man.id}">
-                                        <div class="card-title-row">
-                                            <h5 class="card-title" style="font-size: 0.95rem;">${man.name}</h5>
-                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                        </div>
-                                        <p class="card-body">${man.description}</p>
-                                    </div>
-                                `;
-                            }).join("")}
-                        </div>
-                    </div>
-                ` : ""}
             </div>
         `;
     }
@@ -1316,9 +1166,230 @@ export class CharacterCreatorController {
         return "";
     }
 
+    private renderLevelChoices(cls: ClassDefinition, lvl: number): string {
+        const choices: string[] = [];
+
+        // Level 1 choices
+        if (lvl === 1) {
+            // Weapon Masteries
+            if (cls.weaponMasteryCount > 0) {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Weapon Masteries (Choose up to ${cls.weaponMasteryCount})</h5>
+                        <p class="card-body">Your martial training unlocks tactical weapon mastery properties (Push, Vex, Nick, Topple, Cleave, Graze, Sap, Slow).</p>
+                        <div class="skills-select-grid">
+                            ${BASE_WEAPONS_2024.filter((w) => cls.weaponProficiencies.some((p) => p.includes("Martial") || w.category.includes("Simple"))).map((w) => {
+                                const isSelected = this.state.weaponMasteries.includes(w.name);
+                                return `
+                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}">
+                                        <div class="skill-info">
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                            <span class="skill-name">${w.name}</span>
+                                        </div>
+                                        <span class="skill-stat-badge" style="color: var(--ui-text);">${w.mastery}</span>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Fighting Style for Fighter
+            if (cls.id === "fighter") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Fighting Style (Choose 1)</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                            ${FIGHTING_STYLES.map((fs) => `
+                                <div class="select-card fighting-style-card ${this.state.fightingStyle === fs.id ? "selected" : ""}" data-fighting-style-id="${fs.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${fs.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${fs.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Divine Order for Cleric
+            if (cls.id === "cleric") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Divine Order</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${DIVINE_ORDERS.map((ord) => `
+                                <div class="select-card divine-order-card ${this.state.divineOrder === ord.id ? "selected" : ""}" data-divine-order-id="${ord.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${ord.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${ord.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Primal Order for Druid
+            if (cls.id === "druid") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-leaf"></i> Primal Order</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${PRIMAL_ORDERS.map((ord) => `
+                                <div class="select-card primal-order-card ${this.state.primalOrder === ord.id ? "selected" : ""}" data-primal-order-id="${ord.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${ord.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${ord.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 2 choices
+        if (lvl === 2) {
+            // Fighting Style for Paladin & Ranger
+            if (cls.id === "paladin" || cls.id === "ranger") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Fighting Style (Choose 1)</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                            ${FIGHTING_STYLES.map((fs) => `
+                                <div class="select-card fighting-style-card ${this.state.fightingStyle === fs.id ? "selected" : ""}" data-fighting-style-id="${fs.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${fs.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${fs.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Metamagic for Sorcerer
+            if (cls.id === "sorcerer") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-wand-sparkles"></i> Metamagic (Choose up to ${this.getMaxMetamagicCount()})</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                            ${METAMAGIC_OPTIONS.map((meta) => {
+                                const isSelected = this.state.metamagic.includes(meta.id);
+                                return `
+                                    <div class="select-card metamagic-card ${isSelected ? "selected" : ""}" data-metamagic-id="${meta.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${meta.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        <p class="card-body">${meta.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Eldritch Invocations for Warlock
+            if (cls.id === "warlock") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || this.state.level >= inv.minLevel).map((inv) => {
+                                const isSelected = this.state.invocations.includes(inv.id);
+                                return `
+                                    <div class="select-card invocation-card ${isSelected ? "selected" : ""}" data-invocation-id="${inv.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${inv.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        ${inv.minLevel ? `<span class="card-tag">Min Level: ${inv.minLevel}</span>` : ""}
+                                        <p class="card-body">${inv.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 3 choices
+        if (lvl === 3) {
+            // Subclass Selection
+            if (cls.subclasses && cls.subclasses.length > 0) {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> Subclass Selection (Level 3)</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                            ${cls.subclasses.map((sub) => `
+                                <div class="select-card subclass-card ${this.state.subclassId === sub.id ? "selected" : ""}" data-subclass-id="${sub.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${sub.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Battle Master Maneuvers
+            if (cls.id === "fighter" && this.state.subclassId === "battle-master") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-dice-d20"></i> Battle Master Maneuvers (Choose up to ${this.getMaxManeuversCount()})</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${BATTLE_MASTER_MANEUVERS.map((man) => {
+                                const isSelected = this.state.maneuvers.includes(man.id);
+                                return `
+                                    <div class="select-card maneuver-card ${isSelected ? "selected" : ""}" data-maneuver-id="${man.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${man.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        <p class="card-body">${man.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // ASI / Feat levels note
+        const asiLevels = [4, 8, 12, 16, 19];
+        if (cls.id === "fighter") asiLevels.push(6, 14);
+        if (cls.id === "rogue") asiLevels.push(10);
+        if (asiLevels.includes(lvl)) {
+            choices.push(`
+                <div class="level-info-note">
+                    <i class="fa-solid fa-circle-info"></i> Ability Score Improvements and Feats for Level ${lvl} are customized on <strong>Step 5: Ability Scores</strong>.
+                </div>
+            `);
+        }
+
+        return choices.join("");
+    }
+
     private renderClassProgression(cls: ClassDefinition): string {
         const charLevel = this.state.level;
-        const rows: string[] = [];
+        const boxes: string[] = [];
 
         for (let lvl = 1; lvl <= 20; lvl++) {
             if (this.progressionFilter === "unlocked" && lvl > charLevel) {
@@ -1338,66 +1409,66 @@ export class CharacterCreatorController {
                 }
             }
 
-            rows.push(`
-                <div class="progression-row ${isUnlocked ? "unlocked" : "locked"}">
-                    <div class="progression-lvl-col">
-                        <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}">
-                            ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Lvl ${lvl}
-                        </span>
-                        <span class="progression-pb-tag">PB +${pb}</span>
+            const choicesHtml = this.renderLevelChoices(cls, lvl);
+
+            boxes.push(`
+                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-level="${lvl}">
+                    <div class="level-card-header">
+                        <div class="level-header-title">
+                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}">
+                                ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Level ${lvl}
+                            </span>
+                            <h4 class="level-title-text">${cls.name} Level ${lvl} Abilities</h4>
+                        </div>
+                        <div class="level-header-meta">
+                            <span class="progression-pb-tag">PB +${pb}</span>
+                            ${statBadge ? `<span class="progression-stat-badge"><i class="fa-solid fa-bolt"></i> ${statBadge}</span>` : ""}
+                            <span class="progression-status-pill ${isUnlocked ? "status-unlocked" : "status-locked"}">
+                                ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Unlocks at Level ${lvl}`}
+                            </span>
+                        </div>
                     </div>
 
-                    <div class="progression-content-col">
-                        <div class="progression-features-list">
+                    ${featuresAtLvl.length > 0 ? `
+                        <div class="level-abilities-grid">
                             ${featuresAtLvl.map((f: ClassLevelFeature) => `
-                                <div class="progression-feature-item">
-                                    <div class="progression-feature-header">
-                                        <strong class="progression-feature-name">${f.name}${f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</strong>
+                                <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
                                         ${this.getFeatureTagHtml(f.name, lvl)}
                                     </div>
-                                    <p class="progression-feature-desc">${f.description}</p>
+                                    <p class="card-body">${f.description}</p>
                                 </div>
                             `).join("")}
                         </div>
+                    ` : ""}
 
-                        ${statBadge ? `
-                            <div class="progression-stat-badge">
-                                <i class="fa-solid fa-bolt"></i> ${statBadge}
-                            </div>
-                        ` : ""}
-                    </div>
-
-                    <div class="progression-status-col">
-                        <span class="progression-status-pill ${isUnlocked ? "status-unlocked" : "status-locked"}">
-                            ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Level ${lvl}`}
-                        </span>
-                    </div>
+                    ${choicesHtml}
                 </div>
             `);
         }
 
         return `
-            <div class="creator-detail-box class-progression-box">
-                <div class="progression-box-header">
+            <div class="creator-detail-box class-progression-box progression-main-header">
+                <div class="progression-box-header" style="margin: 0;">
                     <div class="progression-header-text">
-                        <h4><i class="fa-solid fa-list-check"></i> ${cls.name} Level Progression (Levels 1–20)</h4>
-                        <p class="card-body">All class features, spell slots, and improvements gained at each level. Features active at your current level (Level ${charLevel}) are marked Active.</p>
+                        <h4 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text);">
+                            <i class="fa-solid fa-layer-group"></i> ${cls.name} Level Progression (Levels 1–20)
+                        </h4>
+                        <p class="card-body" style="margin: 0.25rem 0 0;">
+                            New abilities, features, and choices gained at each level for the ${cls.name} class. Features active at your current level (Level ${charLevel}) are marked Active.
+                        </p>
                     </div>
                     <div class="progression-header-actions">
                         <div class="progression-filter-group">
                             <button type="button" class="btn btn-sm ${this.progressionFilter === "all" ? "btn-primary active" : "btn-outline"} prog-filter-btn" data-prog-filter="all">All Levels (1–20)</button>
                             <button type="button" class="btn btn-sm ${this.progressionFilter === "unlocked" ? "btn-primary active" : "btn-outline"} prog-filter-btn" data-prog-filter="unlocked">Active (1–${charLevel})</button>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline prog-expand-btn" id="progression-toggle-expand-btn">
-                            <i class="fa-solid ${this.progressionExpanded ? "fa-compress" : "fa-expand"}"></i> ${this.progressionExpanded ? "Compact View" : "Expand All"}
-                        </button>
                     </div>
                 </div>
-
-                <div class="progression-timeline ${this.progressionExpanded ? "expanded" : ""}">
-                    ${rows.join("")}
-                </div>
             </div>
+
+            ${boxes.join("")}
         `;
     }
 

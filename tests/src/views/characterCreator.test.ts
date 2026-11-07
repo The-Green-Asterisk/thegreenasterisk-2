@@ -624,4 +624,39 @@ describe("CharacterCreatorController", () => {
         expect(container.innerHTML).toContain("Subclass Selection (Level 3)");
         expect(container.innerHTML).not.toContain("Subclass Selection (Level 10)");
     });
+
+    it("renders level boxes for all levels including abilities without player choices", () => {
+        const ctrl = new CharacterCreatorController();
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 5;
+        ctrl.renderStep(3);
+
+        const container = document.getElementById("creator-step-panels")!;
+
+        // Level 2 box has no player choices, but displays Action Surge and Tactical Mind
+        const lvl2Box = container.querySelector('.level-progression-box[data-level="2"]');
+        expect(lvl2Box).not.toBeNull();
+        expect(lvl2Box!.innerHTML).toContain("Action Surge");
+        expect(lvl2Box!.innerHTML).toContain("Tactical Mind");
+
+        // Level 5 box displays Extra Attack and Tactical Shift
+        const lvl5Box = container.querySelector('.level-progression-box[data-level="5"]');
+        expect(lvl5Box).not.toBeNull();
+        expect(lvl5Box!.innerHTML).toContain("Extra Attack");
+        expect(lvl5Box!.innerHTML).toContain("Tactical Shift");
+
+        // Level 1 box displays abilities and Weapon Masteries choice box
+        const lvl1Box = container.querySelector('.level-progression-box[data-level="1"]');
+        expect(lvl1Box).not.toBeNull();
+        expect(lvl1Box!.innerHTML).toContain("Second Wind");
+        expect(lvl1Box!.innerHTML).toContain("Weapon Masteries");
+
+        // Level 3 box contains Subclass Selection
+        const lvl3Box = container.querySelector('.level-progression-box[data-level="3"]');
+        expect(lvl3Box).not.toBeNull();
+        expect(lvl3Box!.innerHTML).toContain("Subclass Selection (Level 3)");
+
+        // No scrolling list container
+        expect(container.querySelector(".progression-timeline")).toBeNull();
+    });
 });
