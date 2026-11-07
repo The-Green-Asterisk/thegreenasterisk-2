@@ -4750,21 +4750,40 @@ export class CharacterCreatorController {
             // Class Resources
             const resourcesPayload: any[] = [];
             if (cls.id === "barbarian") {
-                resourcesPayload.push({ name: "Rage", total: 2, resetOn: "long", currentUsed: 0 });
+                const rageTotal = this.state.level >= 17 ? 6 : this.state.level >= 12 ? 5 : this.state.level >= 6 ? 4 : this.state.level >= 3 ? 3 : 2;
+                resourcesPayload.push({ name: "Rage", total: rageTotal, resetOn: "long", currentUsed: 0 });
             } else if (cls.id === "bard") {
-                resourcesPayload.push({ name: "Bardic Inspiration", total: Math.max(1, this.getAbilityModifier("cha")), resetOn: "long", dieOrType: "d6", currentUsed: 0 });
-            } else if (cls.id === "cleric") {
-                resourcesPayload.push({ name: "Channel Divinity", total: 2, resetOn: "short", currentUsed: 0 });
-            } else if (cls.id === "druid") {
-                resourcesPayload.push({ name: "Wild Shape", total: 2, resetOn: "short", currentUsed: 0 });
+                const bardicDie = this.state.level >= 15 ? "d12" : this.state.level >= 10 ? "d10" : this.state.level >= 5 ? "d8" : "d6";
+                const bardicReset = this.state.level >= 5 ? "short" : "long";
+                resourcesPayload.push({ name: `Bardic Inspiration (${bardicDie})`, total: Math.max(1, this.getAbilityModifier("cha")), resetOn: bardicReset, dieOrType: bardicDie, currentUsed: 0 });
+            } else if (cls.id === "cleric" && this.state.level >= 2) {
+                const cdTotal = this.state.level >= 18 ? 4 : this.state.level >= 6 ? 3 : 2;
+                resourcesPayload.push({ name: "Channel Divinity", total: cdTotal, resetOn: "short", currentUsed: 0 });
+            } else if (cls.id === "druid" && this.state.level >= 2) {
+                const wsTotal = this.state.level >= 20 ? 99 : this.state.level >= 17 ? 4 : this.state.level >= 6 ? 3 : 2;
+                resourcesPayload.push({ name: "Wild Shape", total: wsTotal, resetOn: "short", currentUsed: 0 });
             } else if (cls.id === "fighter") {
-                resourcesPayload.push({ name: "Second Wind", total: 2, resetOn: "short", dieOrType: "1d10", currentUsed: 0 });
-            } else if (cls.id === "monk") {
+                const swTotal = this.state.level >= 10 ? 4 : this.state.level >= 4 ? 3 : 2;
+                resourcesPayload.push({ name: "Second Wind", total: swTotal, resetOn: "short", dieOrType: "1d10", currentUsed: 0 });
+                if (this.state.level >= 2) {
+                    resourcesPayload.push({ name: "Action Surge", total: this.state.level >= 17 ? 2 : 1, resetOn: "short", currentUsed: 0 });
+                }
+                if (this.state.level >= 9) {
+                    const indomTotal = this.state.level >= 17 ? 3 : this.state.level >= 13 ? 2 : 1;
+                    resourcesPayload.push({ name: "Indomitable", total: indomTotal, resetOn: "long", currentUsed: 0 });
+                }
+            } else if (cls.id === "monk" && this.state.level >= 2) {
                 resourcesPayload.push({ name: "Focus Points", total: this.state.level, resetOn: "short", currentUsed: 0 });
             } else if (cls.id === "paladin") {
                 resourcesPayload.push({ name: "Lay on Hands", total: 5 * this.state.level, resetOn: "long", currentUsed: 0 });
+                if (this.state.level >= 3) {
+                    resourcesPayload.push({ name: "Channel Divinity", total: this.state.level >= 11 ? 3 : 2, resetOn: "short", currentUsed: 0 });
+                }
             } else if (cls.id === "sorcerer") {
                 resourcesPayload.push({ name: "Innate Sorcery", total: 2, resetOn: "long", currentUsed: 0 });
+                if (this.state.level >= 2) {
+                    resourcesPayload.push({ name: "Sorcery Points", total: this.state.level, resetOn: "long", currentUsed: 0 });
+                }
             }
 
             // Passive scores
@@ -4817,6 +4836,26 @@ export class CharacterCreatorController {
                         }
                     });
                 }
+            } else if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
+                const thirdCasterEffLvl = Math.ceil(this.state.level / 3);
+                const wizardDef = this.classes.find((c) => c.id === "wizard");
+                const slotsRow = wizardDef?.spellcasting?.spellSlotsByLevel?.[Math.max(0, Math.min(19, thirdCasterEffLvl - 1))] || [];
+                slotsRow.forEach((total: number, idx: number) => {
+                    if (total > 0) {
+                        const slotLvl = idx + 1;
+                        spellSlotsPayload[`level${slotLvl}`] = {
+                            level: slotLvl,
+                            total,
+                            label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
+                        };
+                    }
+                });
+            } else if (this.state.originFeatId.startsWith("magic-initiate")) {
+                spellSlotsPayload.level1 = {
+                    level: 1,
+                    total: 1,
+                    label: "1st Level"
+                };
             }
 
             const maxHp = this.getMaxHp();
@@ -4849,9 +4888,9 @@ export class CharacterCreatorController {
                     darkvision: species.darkvision || "None",
                     hitDice: `${this.state.level}d${cls.hitDie}`,
                     heroicInspiration: false,
-                    spellSaveDc: cls.spellcasting ? 8 + pb + this.getAbilityModifier(cls.spellcasting.ability) : 10,
-                    spellAttackBonus: cls.spellcasting ? pb + this.getAbilityModifier(cls.spellcasting.ability) : 0,
-                    spellcastingAbility: cls.spellcasting ? cls.spellcasting.ability : "none",
+                    spellSaveDc: this.getSpellSaveDc() ?? 10,
+                    spellAttackBonus: this.getSpellAttackModifier() ?? 0,
+                    spellcastingAbility: this.getSpellcastingAbility() ?? "none",
                     deathSaves: { successes: 0, failures: 0, isStable: false }
                 },
                 abilities: abilitiesPayload,

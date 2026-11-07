@@ -2327,6 +2327,95 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
         character.classResources = [];
     }
 
+    // Auto-heal missing or truncated spellSlots based on character.classes
+    if (Array.isArray(character.classes) && character.classes.length > 0) {
+        const FULL_CASTER_SLOTS: number[][] = [
+            [2, 0, 0, 0, 0, 0, 0, 0, 0], // 1
+            [3, 0, 0, 0, 0, 0, 0, 0, 0], // 2
+            [4, 2, 0, 0, 0, 0, 0, 0, 0], // 3
+            [4, 3, 0, 0, 0, 0, 0, 0, 0], // 4
+            [4, 3, 2, 0, 0, 0, 0, 0, 0], // 5
+            [4, 3, 3, 0, 0, 0, 0, 0, 0], // 6
+            [4, 3, 3, 1, 0, 0, 0, 0, 0], // 7
+            [4, 3, 3, 2, 0, 0, 0, 0, 0], // 8
+            [4, 3, 3, 3, 1, 0, 0, 0, 0], // 9
+            [4, 3, 3, 3, 2, 0, 0, 0, 0], // 10
+            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 11
+            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 12
+            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 13
+            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 14
+            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 15
+            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 16
+            [4, 3, 3, 3, 2, 1, 1, 1, 1], // 17
+            [4, 3, 3, 3, 3, 1, 1, 1, 1], // 18
+            [4, 3, 3, 3, 3, 2, 1, 1, 1], // 19
+            [4, 3, 3, 3, 3, 2, 2, 1, 1]  // 20
+        ];
+        const WARLOCK_PACT_SLOTS: Array<{ count: number; level: number }> = [
+            { count: 1, level: 1 }, { count: 2, level: 1 }, { count: 2, level: 2 }, { count: 2, level: 2 },
+            { count: 2, level: 3 }, { count: 2, level: 3 }, { count: 2, level: 4 }, { count: 2, level: 4 },
+            { count: 2, level: 5 }, { count: 2, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 },
+            { count: 3, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 },
+            { count: 4, level: 5 }, { count: 4, level: 5 }, { count: 4, level: 5 }, { count: 4, level: 5 }
+        ];
+        const getOrd = (n: number) => (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th");
+
+        let effectiveCasterLevel = 0;
+        let warlockLevel = 0;
+        for (const cls of character.classes) {
+            const cName = String(cls?.name || "").toLowerCase().trim();
+            const cSub = String(cls?.subclass || "").toLowerCase().trim();
+            const cLvl = Math.max(1, Math.min(20, Number(cls?.level) || 1));
+            if (["bard", "cleric", "druid", "sorcerer", "wizard"].includes(cName)) {
+                effectiveCasterLevel += cLvl;
+            } else if (["paladin", "ranger", "artificer"].includes(cName)) {
+                effectiveCasterLevel += Math.ceil(cLvl / 2);
+            } else if (
+                (cName === "fighter" && cSub.includes("eldritch knight")) ||
+                (cName === "rogue" && cSub.includes("arcane trickster"))
+            ) {
+                if (cLvl >= 3) effectiveCasterLevel += Math.ceil(cLvl / 3);
+            } else if (cName === "warlock") {
+                warlockLevel += cLvl;
+            }
+        }
+
+        if (!character.spellSlots || typeof character.spellSlots !== "object") {
+            character.spellSlots = {};
+        }
+
+        if (effectiveCasterLevel > 0) {
+            const row = FULL_CASTER_SLOTS[Math.max(0, Math.min(19, effectiveCasterLevel - 1))] || [];
+            row.forEach((total, idx) => {
+                if (total > 0) {
+                    const slotLvl = idx + 1;
+                    const key = `level${slotLvl}`;
+                    const existing = character.spellSlots[key];
+                    if (!existing || typeof existing.total !== "number" || existing.total < total) {
+                        character.spellSlots[key] = {
+                            total,
+                            label: `${slotLvl}${getOrd(slotLvl)} Level`
+                        };
+                    }
+                }
+            });
+        }
+
+        if (warlockLevel > 0) {
+            const pact = WARLOCK_PACT_SLOTS[Math.max(0, Math.min(19, warlockLevel - 1))];
+            if (pact && pact.count > 0) {
+                const existingPact = character.spellSlots.pact;
+                if (!existingPact || existingPact.total < pact.count || existingPact.level !== pact.level) {
+                    character.spellSlots.pact = {
+                        level: pact.level,
+                        total: pact.count,
+                        label: `Pact Magic (${pact.level}${getOrd(pact.level)} Level)`
+                    };
+                }
+            }
+        }
+    }
+
     // Check if raw actions provides maxUses
     let rawWildShapeUses: number | undefined;
     if (raw && typeof raw === "object" && raw.actions) {

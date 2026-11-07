@@ -214,5 +214,85 @@ describe('CharacterController', () => {
             expect(body.character.features[0].name).toBe('Second Wind');
             expect(body.character.savingThrowNotes).toContain('Advantage against being charmed');
         });
+
+        it('auto-heals missing or truncated spell slots for higher-level spellcasters (e.g., Lyra Silverleaf tga-l0x4pabp467d)', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 1 } as any);
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+            const mockUpdate = vi.fn().mockResolvedValue({ affected: 1 });
+            const lyraCharacter = {
+                id: 5,
+                name: 'Lyra Silverleaf',
+                siteCharacterId: 'tga-l0x4pabp467d',
+                source: 'site',
+                level: 6,
+                race: 'Elf',
+                background: 'Hermit',
+                alignment: 'Neutral Good',
+                payload: JSON.stringify({
+                    name: 'Lyra Silverleaf',
+                    level: 6,
+                    classes: [{ name: 'Druid', level: 6, subclass: 'Circle of the Moon' }],
+                    spellSlots: {
+                        level1: { total: 2, label: '1st Level' }
+                    },
+                    classResources: [
+                        { name: 'Wild Shape', total: 2, resetOn: 'short' }
+                    ]
+                }),
+                vitals: {
+                    currentHp: 45,
+                    maxHp: 45,
+                    tempHp: 0,
+                    armorClass: 15,
+                    initiative: 2,
+                    speed: '30 ft.',
+                    proficiencyBonus: 3,
+                    passivePerception: 16,
+                    passiveInvestigation: 11,
+                    passiveInsight: 16,
+                    darkvision: 'Darkvision 60 ft.',
+                    hitDice: '6d8',
+                    heroicInspiration: false,
+                    spellSaveDc: 15,
+                    spellAttackBonus: 7,
+                    spellcastingAbility: 'wis',
+                    deathSuccesses: 0,
+                    deathFailures: 0,
+                    isStable: false
+                },
+                classes: [{ name: 'Druid', level: 6, subclass: 'Circle of the Moon' }],
+                abilities: [{ name: 'Wisdom', abbr: 'WIS', score: 18, baseScore: 17, bonus: 1, modifier: 4, save: 7, proficientSave: true }],
+                skills: [],
+                inventory: [],
+                spells: [],
+                features: [],
+                resources: [{ name: 'Wild Shape', total: 2, currentUsed: 0, resetOn: 'short' }],
+                decisions: []
+            };
+
+            const mockFindOne = vi.fn().mockResolvedValue(lyraCharacter);
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                findOne: mockFindOne,
+                find: vi.fn().mockResolvedValue([]),
+                update: mockUpdate
+            } as any);
+
+            const req = { url: '/data/get-saved-character?siteCharacterId=tga-l0x4pabp467d', method: 'GET' };
+            const result = await CharacterController.getSavedCharacter(
+                req as http.IncomingMessage,
+                mockRes as http.ServerResponse
+            );
+
+            expect(result.status).toBe(200);
+            const body = JSON.parse(result.response);
+            expect(body.character.spellSlots.level1).toEqual({ level: 1, total: 4, label: '1st Level' });
+            expect(body.character.spellSlots.level2).toEqual({ level: 2, total: 3, label: '2nd Level' });
+            expect(body.character.spellSlots.level3).toEqual({ level: 3, total: 3, label: '3rd Level' });
+            expect(body.character.classResources.find((r: any) => r.name === 'Wild Shape')?.total).toBe(3);
+            expect(mockUpdate).toHaveBeenCalledWith(5, expect.objectContaining({
+                payload: expect.stringContaining('"level3":{"level":3,"total":3,"label":"3rd Level"}')
+            }));
+        });
     });
 });
