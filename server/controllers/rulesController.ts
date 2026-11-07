@@ -59,6 +59,24 @@ export default class RulesController extends BaseController {
                     source: "2024 Core Rules"
                 }));
                 await classRepo.save(classEntities);
+            } else if (typeof classRepo.find === "function" && typeof classRepo.save === "function") {
+                const existingClasses = await classRepo.find();
+                const toUpdate: RuleClass[] = [];
+                for (const rc of existingClasses) {
+                    if (rc.isCustom) continue;
+                    const seedCls = SEED_CLASSES.find((sc) => sc.id === rc.slug);
+                    if (!seedCls) continue;
+                    const desiredSubclassesJson = JSON.stringify(seedCls.subclasses || []);
+                    const desiredFeaturesJson = JSON.stringify(seedCls.features || []);
+                    if (rc.subclassesJson !== desiredSubclassesJson || rc.featuresJson !== desiredFeaturesJson) {
+                        rc.subclassesJson = desiredSubclassesJson;
+                        rc.featuresJson = desiredFeaturesJson;
+                        toUpdate.push(rc);
+                    }
+                }
+                if (toUpdate.length > 0) {
+                    await classRepo.save(toUpdate);
+                }
             }
 
             const speciesCount = await speciesRepo.count();
@@ -170,22 +188,38 @@ export default class RulesController extends BaseController {
                 featRepo.find({ order: { name: "ASC" } })
             ]);
 
-            const classes = dbClasses.map((rc) => ({
-                id: rc.slug,
-                name: rc.name,
-                description: rc.description,
-                hitDie: rc.hitDie,
-                primaryAbilities: this.safeParse(rc.primaryAbilitiesJson, []),
-                savingThrows: this.safeParse(rc.savingThrowsJson, []),
-                armorProficiencies: this.safeParse(rc.armorProficienciesJson, []),
-                weaponProficiencies: this.safeParse(rc.weaponProficienciesJson, []),
-                weaponMasteryCount: rc.weaponMasteryCount,
-                skillChoices: this.safeParse(rc.skillChoicesJson, { count: 2, from: [] }),
-                spellcasting: rc.spellcastingJson ? this.safeParse(rc.spellcastingJson, undefined) : undefined,
-                features: this.safeParse(rc.featuresJson, []),
-                subclasses: this.safeParse(rc.subclassesJson, []),
-                startingEquipmentOptions: rc.startingEquipmentJson ? this.safeParse(rc.startingEquipmentJson, []) : []
-            }));
+            const classes = dbClasses.map((rc) => {
+                const seedCls = SEED_CLASSES.find((sc) => sc.id === rc.slug);
+                const rawSubs = this.safeParse(rc.subclassesJson, []);
+                const subclasses = Array.isArray(rawSubs)
+                    ? rawSubs.map((sub: any) => {
+                          const seedSub = seedCls?.subclasses?.find((ss: any) => ss.id === sub.id || ss.name === sub.name);
+                          return {
+                              ...sub,
+                              features:
+                                  Array.isArray(sub.features) && sub.features.length > 0
+                                      ? sub.features
+                                      : (seedSub?.features || [])
+                          };
+                      })
+                    : (seedCls?.subclasses || []);
+                return {
+                    id: rc.slug,
+                    name: rc.name,
+                    description: rc.description,
+                    hitDie: rc.hitDie,
+                    primaryAbilities: this.safeParse(rc.primaryAbilitiesJson, []),
+                    savingThrows: this.safeParse(rc.savingThrowsJson, []),
+                    armorProficiencies: this.safeParse(rc.armorProficienciesJson, []),
+                    weaponProficiencies: this.safeParse(rc.weaponProficienciesJson, []),
+                    weaponMasteryCount: rc.weaponMasteryCount,
+                    skillChoices: this.safeParse(rc.skillChoicesJson, { count: 2, from: [] }),
+                    spellcasting: rc.spellcastingJson ? this.safeParse(rc.spellcastingJson, undefined) : undefined,
+                    features: this.safeParse(rc.featuresJson, []),
+                    subclasses,
+                    startingEquipmentOptions: rc.startingEquipmentJson ? this.safeParse(rc.startingEquipmentJson, []) : []
+                };
+            });
 
             const species = dbSpecies.map((rs) => ({
                 id: rs.slug,

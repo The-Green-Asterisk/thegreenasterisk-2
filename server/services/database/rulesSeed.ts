@@ -2499,11 +2499,6 @@ export const SEED_CLASSES = [
             },
             {
                 "level": 10,
-                "name": "Subclass Feature",
-                "description": "Gain a feature granted by your chosen Monk tradition."
-            },
-            {
-                "level": 10,
                 "name": "Unarmored Movement (+20 ft)",
                 "description": "Your Unarmored Movement speed bonus increases to +20 ft."
             },
@@ -2511,6 +2506,11 @@ export const SEED_CLASSES = [
                 "level": 11,
                 "name": "Martial Arts (d10)",
                 "description": "Your Martial Arts unarmed strike die increases to 1d10."
+            },
+            {
+                "level": 11,
+                "name": "Subclass Feature",
+                "description": "Gain a feature granted by your chosen Monk tradition."
             },
             {
                 "level": 12,
@@ -2529,8 +2529,8 @@ export const SEED_CLASSES = [
             },
             {
                 "level": 14,
-                "name": "Subclass Feature",
-                "description": "Gain a feature granted by your chosen Monk tradition."
+                "name": "Unarmored Movement (+25 ft)",
+                "description": "Your Unarmored Movement speed bonus increases to +25 ft."
             },
             {
                 "level": 15,
@@ -4514,11 +4514,6 @@ export const SEED_CLASSES = [
                 "level": 10,
                 "name": "Metamagic (Additional Option)",
                 "description": "Gain 1 additional Metamagic option of your choice."
-            },
-            {
-                "level": 10,
-                "name": "Subclass Feature",
-                "description": "Gain a feature granted by your chosen Sorcerer origin."
             },
             {
                 "level": 11,

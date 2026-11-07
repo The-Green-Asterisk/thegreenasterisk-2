@@ -1272,4 +1272,53 @@ describe("CharacterCreatorController", () => {
         defenseCard.click();
         expect(ctrl.state.subclassFeatureChoices["ranger-15-hunter"]).toBe("uncanny-dodge");
     });
+
+    it("replaces generic Subclass Feature placeholders with concrete subclass features across all 12 classes and 48 subclasses", () => {
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+        const root = document.getElementById("creator-step-panels")!;
+        ctrl.state.level = 20;
+        ctrl.progressionExpanded = true;
+
+        // First specifically verify Druid Circle of the Moon at Level 6
+        ctrl.state.classId = "druid";
+        ctrl.state.subclassId = "moon";
+        ctrl.renderStep(3);
+        const lvl6Row = root.querySelector('.progression-row[data-level="6"]') as HTMLElement;
+        expect(lvl6Row).toBeTruthy();
+        expect(lvl6Row.textContent).toContain("Improved Circle Forms (Circle of the Moon)");
+        expect(lvl6Row.textContent).toContain("Moonlight Step (Circle of the Moon)");
+        expect(lvl6Row.textContent).not.toContain("Gain a feature granted by your chosen Druid circle");
+        expect(lvl6Row.textContent).not.toContain("Subclass Feature");
+
+        // Verify across all 12 classes and 48 subclasses that no generic placeholder remains
+        for (const cls of ctrl.classes) {
+            ctrl.state.classId = cls.id;
+            for (const sub of cls.subclasses) {
+                ctrl.state.subclassId = sub.id;
+                ctrl.renderStep(3);
+                const progText = root.textContent || "";
+                expect(progText).not.toContain("Gain a feature granted by");
+                expect(progText).not.toContain("Gain a subclass feature");
+                expect(progText).not.toContain("Gain your sacred oath capstone");
+                for (const sf of sub.features || []) {
+                    const row = root.querySelector(`.progression-row[data-level="${sf.level}"]`) as HTMLElement;
+                    expect(row).toBeTruthy();
+                    expect(row.textContent).toContain(`${sf.name} (${sub.name})`);
+                }
+            }
+        }
+
+        // Also verify fallback when DB classes lack sub.features
+        ctrl.classes = ctrl.classes.map((c: any) => ({
+            ...c,
+            subclasses: c.subclasses.map((s: any) => ({ id: s.id, name: s.name, description: s.description }))
+        }));
+        ctrl.state.classId = "druid";
+        ctrl.state.subclassId = "moon";
+        ctrl.renderStep(3);
+        const strippedLvl6Row = root.querySelector('.progression-row[data-level="6"]') as HTMLElement;
+        expect(strippedLvl6Row.textContent).toContain("Improved Circle Forms (Circle of the Moon)");
+        expect(strippedLvl6Row.textContent).toContain("Moonlight Step (Circle of the Moon)");
+        expect(strippedLvl6Row.textContent).not.toContain("Gain a feature granted by");
+    });
 });

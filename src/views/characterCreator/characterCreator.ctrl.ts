@@ -234,7 +234,35 @@ export class CharacterCreatorController {
         try {
             const rules = await getData<any>("/get-rules");
             if (rules) {
-                if (Array.isArray(rules.classes) && rules.classes.length > 0) this.classes = rules.classes;
+                if (Array.isArray(rules.classes) && rules.classes.length > 0) {
+                    this.classes = rules.classes.map((rc: any) => {
+                        const fallbackCls = CLASSES_2024.find((c) => c.id === rc.id || c.name === rc.name);
+                        const rawSubs =
+                            Array.isArray(rc.subclasses) && rc.subclasses.length > 0
+                                ? rc.subclasses
+                                : (fallbackCls?.subclasses || []);
+                        const enrichedSubs = rawSubs.map((sub: any) => {
+                            const fallbackSub = fallbackCls?.subclasses?.find(
+                                (s) => s.id === sub.id || s.name === sub.name
+                            );
+                            return {
+                                ...sub,
+                                features:
+                                    Array.isArray(sub.features) && sub.features.length > 0
+                                        ? sub.features
+                                        : (fallbackSub?.features || [])
+                            };
+                        });
+                        return {
+                            ...rc,
+                            features:
+                                fallbackCls?.features && fallbackCls.features.length > 0
+                                    ? fallbackCls.features
+                                    : (rc.features || []),
+                            subclasses: enrichedSubs
+                        };
+                    });
+                }
                 if (Array.isArray(rules.species) && rules.species.length > 0) this.species = rules.species;
                 if (Array.isArray(rules.backgrounds) && rules.backgrounds.length > 0) this.backgrounds = rules.backgrounds;
                 if (Array.isArray(rules.originFeats) && rules.originFeats.length > 0) this.originFeats = rules.originFeats;
@@ -1442,12 +1470,12 @@ export class CharacterCreatorController {
         return s[(v - 20) % 10] || s[v] || s[0];
     }
 
-    private getFeatureTagHtml(featureName: string, level: number): string {
+    private getFeatureTagHtml(featureName: string, level: number, isSubclassFeature = false): string {
         const lower = featureName.toLowerCase();
         if (lower.includes("ability score improvement")) {
             return `<span class="progression-feature-tag asi"><i class="fa-solid fa-arrow-up-right-dots"></i> ASI / Feat</span>`;
         }
-        if (lower.includes("subclass")) {
+        if (isSubclassFeature || lower.includes("subclass")) {
             return `<span class="progression-feature-tag subclass"><i class="fa-solid fa-shield-halved"></i> Subclass</span>`;
         }
         if (lower.includes("epic boon")) {
@@ -2426,6 +2454,28 @@ export class CharacterCreatorController {
         const unlockedBoxes: string[] = [];
         const lockedBoxes: string[] = [];
 
+        const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
+        const activeSubId = this.state.subclassId || cls.subclasses?.[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
+        const sub = activeSubId
+            ? (cls.subclasses?.find((s: any) => s.id === activeSubId) || fallbackCls?.subclasses?.find((s) => s.id === activeSubId))
+            : undefined;
+        const fallbackSub = activeSubId ? fallbackCls?.subclasses?.find((s) => s.id === activeSubId) : undefined;
+        const resolvedSubFeatures = (sub?.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
+        const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
+
+        const isSubclassPlaceholder = (f: ClassLevelFeature): boolean => {
+            const lowerName = f.name.toLowerCase();
+            const lowerDesc = (f.description || "").toLowerCase();
+            return (
+                lowerName === "subclass feature" ||
+                lowerName === "subclass capstone" ||
+                lowerName.endsWith(" subclass") ||
+                lowerDesc.startsWith("gain a feature granted by") ||
+                lowerDesc.startsWith("gain a subclass") ||
+                lowerDesc.startsWith("gain your sacred oath")
+            );
+        };
+
         for (let lvl = 1; lvl <= 20; lvl++) {
             if (this.progressionFilter === "unlocked" && lvl > charLevel) {
                 continue;
@@ -2433,38 +2483,29 @@ export class CharacterCreatorController {
 
             const isUnlocked = lvl <= charLevel;
             const isHidden = !isUnlocked && !this.progressionExpanded;
-            let featuresAtLvl = cls.features.filter((f: ClassLevelFeature) => f.level === lvl);
+            let featuresAtLvl: Array<ClassLevelFeature & { isSubclassFeature?: boolean }> = resolvedClsFeatures
+                .filter((f: ClassLevelFeature) => f.level === lvl)
+                .map((f: ClassLevelFeature) => ({ ...f }));
             const pb = Math.floor((lvl - 1) / 4) + 2;
             const statBadge = this.getClassLevelStatBadge(cls, lvl);
 
             let subAnnotation = "";
-            const sub = this.state.subclassId ? cls.subclasses?.find((s: any) => s.id === this.state.subclassId) : undefined;
-            if (sub && featuresAtLvl.some((f: ClassLevelFeature) => f.name.toLowerCase().includes("subclass"))) {
+            if (sub && featuresAtLvl.some((f) => f.name.toLowerCase().includes("subclass"))) {
                 subAnnotation = ` (${sub.name})`;
             }
 
-            const subFeaturesAtLvl = sub?.features?.filter((f: any) => f.level === lvl) || [];
+            const subFeaturesAtLvl = resolvedSubFeatures.filter((f: any) => f.level === lvl);
             if (subFeaturesAtLvl.length > 0) {
-                const hasPlaceholder = featuresAtLvl.some((f: ClassLevelFeature) => f.name.toLowerCase() === "subclass feature");
-                if (hasPlaceholder) {
-                    featuresAtLvl = [
-                        ...featuresAtLvl.filter((f: ClassLevelFeature) => f.name.toLowerCase() !== "subclass feature"),
-                        ...subFeaturesAtLvl.map((sf: any) => ({
-                            level: sf.level,
-                            name: sf.name,
-                            description: sf.description
-                        }))
-                    ];
-                } else {
-                    featuresAtLvl = [
-                        ...featuresAtLvl,
-                        ...subFeaturesAtLvl.map((sf: any) => ({
-                            level: sf.level,
-                            name: sf.name,
-                            description: sf.description
-                        }))
-                    ];
-                }
+                const subFeatureCards = subFeaturesAtLvl.map((sf: any) => ({
+                    level: sf.level,
+                    name: sub ? `${sf.name} (${sub.name})` : sf.name,
+                    description: sf.description,
+                    isSubclassFeature: true
+                }));
+                featuresAtLvl = [
+                    ...featuresAtLvl.filter((f) => !isSubclassPlaceholder(f)),
+                    ...subFeatureCards
+                ];
             }
 
             const choicesHtml = this.renderLevelChoices(cls, lvl);
@@ -2489,11 +2530,11 @@ export class CharacterCreatorController {
 
                     ${featuresAtLvl.length > 0 ? `
                         <div class="level-abilities-grid">
-                            ${featuresAtLvl.map((f: ClassLevelFeature) => `
+                            ${featuresAtLvl.map((f) => `
                                 <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
                                     <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
-                                        ${this.getFeatureTagHtml(f.name, lvl)}
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
+                                        ${this.getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature))}
                                     </div>
                                     <p class="card-body">${f.description}</p>
                                 </div>
@@ -4163,7 +4204,18 @@ export class CharacterCreatorController {
                     description: t.description
                 });
             });
-            cls.features.filter((f) => f.level <= this.state.level).forEach((f) => {
+            const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
+            const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
+            resolvedClsFeatures.filter((f) => {
+                if (f.level > this.state.level) return false;
+                if (this.state.subclassId && this.state.level >= 3) {
+                    const lowerName = f.name.toLowerCase();
+                    if (lowerName === "subclass feature" || lowerName === "subclass capstone" || lowerName.endsWith(" subclass")) {
+                        return false;
+                    }
+                }
+                return true;
+            }).forEach((f) => {
                 featuresPayload.push({
                     name: f.name,
                     source: cls.name,
@@ -4183,7 +4235,8 @@ export class CharacterCreatorController {
 
             // Subclass features
             if (this.state.subclassId) {
-                const sub = cls.subclasses.find((s) => s.id === this.state.subclassId);
+                const sub = cls.subclasses.find((s) => s.id === this.state.subclassId) || fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
+                const fallbackSub = fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
                 if (sub) {
                     featuresPayload.push({
                         name: `Subclass: ${sub.name}`,
@@ -4191,8 +4244,9 @@ export class CharacterCreatorController {
                         type: "Subclass",
                         description: sub.description
                     });
-                    if (sub.features && sub.features.length > 0) {
-                        sub.features
+                    const subFeatures = (sub.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
+                    if (subFeatures.length > 0) {
+                        subFeatures
                             .filter((sf) => sf.level <= this.state.level)
                             .forEach((sf) => {
                                 featuresPayload.push({
