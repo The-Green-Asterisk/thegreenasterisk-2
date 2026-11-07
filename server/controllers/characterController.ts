@@ -302,35 +302,20 @@ export default class CharacterController extends BaseController {
 
         try {
             const repo = AppDataSource.getRepository(SavedCharacter);
-            const queryRelations = {
-                user: true,
-                vitals: true,
-                classes: true,
-                abilities: true,
-                skills: true,
-                inventory: true,
-                spells: true,
-                features: true,
-                resources: true,
-                decisions: true
-            };
             const record = siteCharacterId
                 ? await repo.findOne({
                     where: { siteCharacterId, user: { id: currentUser.id } },
-                    relations: queryRelations,
-                    relationLoadStrategy: "query"
+                    relations: { user: true }
                 })
                 : externalCharacterId
                     ? await repo.findOne({
                         where: { externalCharacterId, user: { id: currentUser.id } },
                         order: { updatedAt: "DESC" },
-                        relations: queryRelations,
-                        relationLoadStrategy: "query"
+                        relations: { user: true }
                     })
                     : await repo.findOne({
                         where: { id: savedId, user: { id: currentUser.id } },
-                        relations: queryRelations,
-                        relationLoadStrategy: "query"
+                        relations: { user: true }
                     });
 
             if (!record) {
@@ -338,6 +323,30 @@ export default class CharacterController extends BaseController {
                     response: JSON.stringify({ error: "Saved character not found." }),
                     status: 404
                 };
+            }
+
+            if (record.vitals === undefined && record.abilities === undefined) {
+                const whereSavedChar = { savedCharacter: { id: record.id } };
+                const [vitals, classes, abilities, skills, inventory, spells, features, resources, decisions] = await Promise.all([
+                    AppDataSource.getRepository(CharacterVitals).findOne({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterClass).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterAbility).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterSkill).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterInventoryItem).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterSpell).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterFeature).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterResource).find({ where: whereSavedChar }),
+                    AppDataSource.getRepository(CharacterFeatureDecision).find({ where: whereSavedChar })
+                ]);
+                record.vitals = vitals || undefined;
+                record.classes = classes;
+                record.abilities = abilities;
+                record.skills = skills;
+                record.inventory = inventory;
+                record.spells = spells;
+                record.features = features;
+                record.resources = resources;
+                record.decisions = decisions;
             }
 
             const parsed = this.tryParsePayload(record.payload);

@@ -6,7 +6,7 @@ export class CharacterVitals {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @OneToOne(() => SavedCharacter, { onDelete: "CASCADE" })
+    @OneToOne(() => SavedCharacter, (char) => char.vitals, { onDelete: "CASCADE" })
     @JoinColumn({ name: "savedCharacterId", foreignKeyConstraintName: "FK_character_vitals_saved_character" })
     savedCharacter!: SavedCharacter;
 

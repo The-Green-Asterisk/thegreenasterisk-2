@@ -187,7 +187,8 @@ describe('CharacterController', () => {
 
             const mockFindOne = vi.fn().mockResolvedValue(fakeRelationalCharacter);
             vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
-                findOne: mockFindOne
+                findOne: mockFindOne,
+                find: vi.fn().mockResolvedValue([])
             } as any);
 
             const req = { url: '/data/get-saved-character?siteCharacterId=tga-sante001', method: 'GET' };
@@ -198,7 +199,7 @@ describe('CharacterController', () => {
 
             expect(result.status).toBe(200);
             expect(mockFindOne).toHaveBeenCalledWith(expect.objectContaining({
-                relationLoadStrategy: 'query'
+                relations: { user: true }
             }));
             const body = JSON.parse(result.response);
             expect(body.character.name).toBe('San Te');
