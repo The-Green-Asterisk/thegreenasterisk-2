@@ -203,4 +203,92 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.baseAbilities.int).toBe(8);
         expect(ctrl.getAvailablePoints()).toBe(0);
     });
+
+    it("enforces Strength requirements on armor and reduces speed by 10 ft when unmet", () => {
+        ctrl.state.speciesId = "human"; // base speed 30 ft
+        ctrl.state.selectedArmor = "None";
+        ctrl.state.baseAbilities.str = 10;
+        ctrl.state.bgStatA = "dex";
+        ctrl.state.bgStatB = "con";
+        expect(ctrl.getEffectiveAbilityScore("str")).toBe(10);
+        expect(ctrl.getSpeed()).toBe(30);
+
+        // Chain Mail requires STR 13
+        ctrl.state.selectedArmor = "Chain Mail";
+        const req = ctrl.getArmorStatRequirement("Chain Mail");
+        expect(req).toEqual({
+            required: 13,
+            current: 10,
+            met: false
+        });
+        // Speed is reduced by 10 ft
+        expect(ctrl.getSpeed()).toBe(20);
+
+        // If Strength increases to 13 (via base stat)
+        ctrl.state.baseAbilities.str = 13;
+        expect(ctrl.getArmorStatRequirement("Chain Mail")?.met).toBe(true);
+        expect(ctrl.getSpeed()).toBe(30);
+
+        // Splint Armor requires STR 15: STR 13 should fail
+        ctrl.state.selectedArmor = "Splint Armor";
+        expect(ctrl.getArmorStatRequirement("Splint Armor")?.met).toBe(false);
+        expect(ctrl.getSpeed()).toBe(20);
+
+        // Leather Armor has no strength requirement
+        ctrl.state.selectedArmor = "Leather Armor";
+        expect(ctrl.getArmorStatRequirement("Leather Armor")).toBeNull();
+        expect(ctrl.getSpeed()).toBe(30);
+    });
+
+    it("evaluates 2024 Heavy weapon stat requirements (STR 13 for melee, DEX 13 for ranged)", () => {
+        ctrl.state.baseAbilities.str = 12;
+        ctrl.state.baseAbilities.dex = 14;
+        ctrl.state.bgStatA = "con";
+        ctrl.state.bgStatB = "wis";
+
+        // Greatsword is Melee Heavy -> requires STR 13
+        const gsReq = ctrl.getWeaponStatRequirement("Greatsword");
+        expect(gsReq).toEqual({
+            stat: "str",
+            required: 13,
+            current: 12,
+            met: false
+        });
+
+        // Longbow is Ranged Heavy -> requires DEX 13
+        const lbReq = ctrl.getWeaponStatRequirement("Longbow");
+        expect(lbReq).toEqual({
+            stat: "dex",
+            required: 13,
+            current: 14,
+            met: true
+        });
+
+        // Heavy Crossbow is Ranged Heavy -> requires DEX 13
+        const hxbReq = ctrl.getWeaponStatRequirement("Heavy Crossbow");
+        expect(hxbReq?.stat).toBe("dex");
+        expect(hxbReq?.met).toBe(true);
+
+        // Non-heavy weapon (Shortsword) has no heavy stat requirement
+        expect(ctrl.getWeaponStatRequirement("Shortsword")).toBeNull();
+        expect(ctrl.getWeaponStatRequirement("Dagger")).toBeNull();
+    });
+
+    it("correctly identifies armor, shield, and weapon proficiencies by class", () => {
+        // Fighter has All Armor, Shields, and Martial Weapons
+        ctrl.state.classId = "fighter";
+        expect(ctrl.isProficientWithArmor("Chain Mail")).toBe(true);
+        expect(ctrl.isProficientWithArmor("Leather Armor")).toBe(true);
+        expect(ctrl.isProficientWithShield()).toBe(true);
+        expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(true);
+        expect(ctrl.isProficientWithWeapon("Dagger")).toBe(true);
+
+        // Wizard has no armor proficiencies and only simple weapons
+        ctrl.state.classId = "wizard";
+        expect(ctrl.isProficientWithArmor("Chain Mail")).toBe(false);
+        expect(ctrl.isProficientWithArmor("Leather Armor")).toBe(false);
+        expect(ctrl.isProficientWithShield()).toBe(false);
+        expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(false);
+        expect(ctrl.isProficientWithWeapon("Dagger")).toBe(true); // Simple Melee
+    });
 });

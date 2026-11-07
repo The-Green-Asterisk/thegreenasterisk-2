@@ -385,7 +385,98 @@ export class CharacterCreatorController {
         if ((this.state.classId === "barbarian" || this.state.classId === "monk") && this.state.level >= 5) {
             speed += 10;
         }
+        // Heavy Armor Strength requirement penalty: -10 ft if Strength is lower than required
+        if (this.state.selectedArmor && this.state.selectedArmor !== "None") {
+            const armor = BASE_ARMOR_2024.find((a) => a.name === this.state.selectedArmor);
+            if (armor?.strengthRequired) {
+                const effectiveStr = this.getEffectiveAbilityScore("str");
+                if (effectiveStr < armor.strengthRequired) {
+                    speed = Math.max(5, speed - 10);
+                }
+            }
+        }
         return speed;
+    }
+
+    public isProficientWithArmor(armorName: string): boolean {
+        if (!armorName || armorName === "None") return true;
+        const armor = BASE_ARMOR_2024.find((a) => a.name === armorName);
+        if (!armor) return true;
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (!cls) return true;
+        const profs = cls.armorProficiencies;
+        if (profs.includes("All Armor")) return true;
+        return profs.some((p) => p.toLowerCase().includes(armor.category.toLowerCase()));
+    }
+
+    public isProficientWithShield(): boolean {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (!cls) return true;
+        return cls.armorProficiencies.includes("Shields") || cls.armorProficiencies.includes("All Armor");
+    }
+
+    public isProficientWithWeapon(weaponName: string): boolean {
+        const weapon = BASE_WEAPONS_2024.find((w) => w.name === weaponName);
+        if (!weapon) return true;
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (!cls) return true;
+        const profs = cls.weaponProficiencies;
+        if (profs.includes("Martial Weapons") || profs.includes("Simple Weapons, Martial Weapons")) return true;
+        if (weapon.category.startsWith("Simple") && profs.some((p) => p.includes("Simple"))) return true;
+        if (cls.id === "rogue" && (weapon.properties.includes("Finesse") || weapon.properties.includes("Light"))) return true;
+        if (cls.id === "monk" && weapon.properties.includes("Light")) return true;
+        return false;
+    }
+
+    public getWeaponStatRequirement(weaponName: string): { stat: "str" | "dex"; required: number; current: number; met: boolean } | null {
+        const weapon = BASE_WEAPONS_2024.find((w) => w.name === weaponName);
+        if (!weapon || !weapon.properties.includes("Heavy")) return null;
+        const isRanged = weapon.category.includes("Ranged");
+        const stat: "str" | "dex" = isRanged ? "dex" : "str";
+        const current = this.getEffectiveAbilityScore(stat);
+        return {
+            stat,
+            required: 13,
+            current,
+            met: current >= 13
+        };
+    }
+
+    public getArmorStatRequirement(armorName: string): { required: number; current: number; met: boolean } | null {
+        if (!armorName || armorName === "None") return null;
+        const armor = BASE_ARMOR_2024.find((a) => a.name === armorName);
+        if (!armor?.strengthRequired) return null;
+        const current = this.getEffectiveAbilityScore("str");
+        return {
+            required: armor.strengthRequired,
+            current,
+            met: current >= armor.strengthRequired
+        };
+    }
+
+    public initClassDefaultEquipment(cls: any) {
+        const effectiveStr = this.getEffectiveAbilityScore("str");
+        if (cls.armorProficiencies.length === 0) {
+            this.state.selectedArmor = "None";
+            this.state.hasShield = false;
+        } else if (cls.armorProficiencies.includes("All Armor")) {
+            this.state.selectedArmor = effectiveStr >= 13 ? "Chain Mail" : "Scale Mail";
+            this.state.hasShield = true;
+        } else if (cls.armorProficiencies.includes("Medium Armor")) {
+            this.state.selectedArmor = "Scale Mail";
+            this.state.hasShield = cls.armorProficiencies.includes("Shields");
+        } else if (cls.armorProficiencies.includes("Light Armor")) {
+            this.state.selectedArmor = "Leather Armor";
+            this.state.hasShield = false;
+        }
+
+        const opt = cls.startingEquipmentOptions?.[0];
+        if (opt) {
+            const matched = BASE_WEAPONS_2024.filter((w) => opt.items.some((it: string) => it.toLowerCase().includes(w.name.toLowerCase()))).map((w) => w.name);
+            if (matched.length > 0) {
+                this.state.selectedWeapons = matched;
+            }
+        }
     }
 
     public updateLiveSummary() {
@@ -845,43 +936,116 @@ export class CharacterCreatorController {
 
     private renderStep7Equipment(): string {
         const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+        const effectiveStr = this.getEffectiveAbilityScore("str");
+        const effectiveDex = this.getEffectiveAbilityScore("dex");
+        const selectedArmorDef = BASE_ARMOR_2024.find((a) => a.name === this.state.selectedArmor);
+        const armorStatReq = this.getArmorStatRequirement(this.state.selectedArmor);
+        const isArmorProficient = this.isProficientWithArmor(this.state.selectedArmor);
+        const isShieldProficient = this.isProficientWithShield();
+
         return `
             <div class="step-panel active">
                 <div class="panel-header">
                     <h3 class="panel-title">Starting Equipment & Armor</h3>
-                    <p class="panel-desc">Select starting weapons, armor, and gear.</p>
+                    <p class="panel-desc">Select starting weapons, armor, and gear. Stat requirements and class proficiencies are evaluated live.</p>
                 </div>
+
+                ${cls.startingEquipmentOptions.length > 0 ? `
+                    <div class="starting-packages-section">
+                        <h4 class="starting-packages-title"><i class="fa-solid fa-box-open"></i> ${cls.name} Starting Equipment Kits</h4>
+                        <div class="starting-packages-grid">
+                            ${cls.startingEquipmentOptions.map((opt, idx) => `
+                                <div class="starting-package-card">
+                                    <div class="package-card-header">
+                                        <strong>Option ${String.fromCharCode(65 + idx)}: ${opt.name}</strong>
+                                        <button type="button" class="creator-nav-btn secondary-btn equip-package-btn" data-package-index="${idx}">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Equip Kit
+                                        </button>
+                                    </div>
+                                    <ul class="package-items-list">
+                                        ${opt.items.map((it) => `<li>${it}</li>`).join("")}
+                                    </ul>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                ` : ""}
 
                 <div class="creator-form-grid">
                     <div class="creator-form-group">
-                        <label class="creator-label">Armor</label>
+                        <label class="creator-label" for="char-armor-select">Armor</label>
                         <select id="char-armor-select" class="creator-select">
                             <option value="None" ${this.state.selectedArmor === "None" ? "selected" : ""}>None (Unarmored: 10 + Dex)</option>
-                            ${BASE_ARMOR_2024.map((a) => `
-                                <option value="${a.name}" ${this.state.selectedArmor === a.name ? "selected" : ""}>
-                                    ${a.name} (${a.category}, AC ${a.baseAc})
-                                </option>
-                            `).join("")}
+                            ${BASE_ARMOR_2024.map((a) => {
+                                const reqStr = a.strengthRequired ? ` • Req STR ${a.strengthRequired}` : "";
+                                const reqWarning = a.strengthRequired && effectiveStr < a.strengthRequired ? " [⚠️ -10ft Speed]" : "";
+                                const profWarning = !this.isProficientWithArmor(a.name) ? " [⚠️ Non-Proficient]" : "";
+                                return `
+                                    <option value="${a.name}" ${this.state.selectedArmor === a.name ? "selected" : ""}>
+                                        ${a.name} (${a.category}, AC ${a.baseAc}${reqStr})${reqWarning}${profWarning}
+                                    </option>
+                                `;
+                            }).join("")}
                         </select>
+                        ${armorStatReq && !armorStatReq.met ? `
+                            <div class="equipment-stat-alert warning">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <div>
+                                    <strong>Strength Requirement Not Met:</strong> ${this.state.selectedArmor} requires <strong>Strength ${armorStatReq.required}</strong>, but your Strength is <strong>${armorStatReq.current}</strong>. Your movement speed is reduced by 10 ft (current Speed: <strong>${this.getSpeed()} ft.</strong>).
+                                </div>
+                            </div>
+                        ` : armorStatReq && armorStatReq.met ? `
+                            <div class="equipment-stat-alert success">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <div>Meets Strength requirement (STR ${armorStatReq.current} ≥ ${armorStatReq.required}).</div>
+                            </div>
+                        ` : ""}
+                        ${!isArmorProficient ? `
+                            <div class="equipment-stat-alert danger">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <div><strong>Non-Proficient Armor:</strong> ${cls.name} lacks proficiency with ${selectedArmorDef?.category} armor. (Imposes Disadvantage on STR/DEX rolls and blocks spellcasting).</div>
+                            </div>
+                        ` : ""}
                     </div>
 
-                    <div class="creator-form-group" style="justify-content: center;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 1rem;">
+                    <div class="creator-form-group" style="justify-content: flex-start;">
+                        <label class="creator-label">Shield</label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding-top: 0.5rem;">
                             <input type="checkbox" id="char-shield-checkbox" ${this.state.hasShield ? "checked" : ""} />
                             <strong>Equip Shield (+2 AC)</strong>
                         </label>
+                        ${this.state.hasShield && !isShieldProficient ? `
+                            <div class="equipment-stat-alert danger">
+                                <i class="fa-solid fa-shield"></i>
+                                <div><strong>Non-Proficient Shield:</strong> ${cls.name} lacks shield proficiency.</div>
+                            </div>
+                        ` : ""}
                     </div>
                 </div>
 
                 <div class="creator-detail-box" style="margin-top: 1rem;">
                     <h4>Select Weapons</h4>
+                    <p style="margin: 0.25rem 0 0.85rem 0; font-size: 0.84rem; color: var(--text-muted);">
+                        In 2024 D&D rules, Heavy melee weapons require STR 13 and Heavy ranged weapons require DEX 13; lacking the required score imposes Disadvantage on attack rolls.
+                    </p>
                     <div class="item-select-list">
                         ${BASE_WEAPONS_2024.map((w) => {
                             const isSelected = this.state.selectedWeapons.includes(w.name);
+                            const statReq = this.getWeaponStatRequirement(w.name);
+                            const isProf = this.isProficientWithWeapon(w.name);
+
                             return `
                                 <div class="item-check-row weapon-row ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}">
                                     <div class="item-row-left">
-                                        <div class="item-row-title">${w.name} (${w.category})</div>
+                                        <div class="item-row-title">
+                                            ${w.name} (${w.category})
+                                            ${statReq ? (
+                                                statReq.met
+                                                    ? `<span class="stat-req-pill met"><i class="fa-solid fa-check"></i> Req: ${statReq.stat.toUpperCase()} 13 ✓</span>`
+                                                    : `<span class="stat-req-pill unmet" title="Attacks made with Disadvantage without ${statReq.stat.toUpperCase()} 13"><i class="fa-solid fa-triangle-exclamation"></i> Req: ${statReq.stat.toUpperCase()} 13 (Disadvantage: you have ${statReq.current})</span>`
+                                            ) : ""}
+                                            ${!isProf ? `<span class="stat-req-pill non-prof"><i class="fa-solid fa-ban"></i> Non-Proficient</span>` : ""}
+                                        </div>
                                         <div class="item-row-meta">Damage: ${w.damageDie} ${w.damageType} • Mastery: ${w.mastery}</div>
                                         <div class="item-row-desc">${w.properties.join(", ") || "None"}</div>
                                     </div>
@@ -1118,6 +1282,9 @@ export class CharacterCreatorController {
                     const cls = CLASSES_2024.find((c) => c.id === cId);
                     this.state.subclassId = cls?.subclasses?.[0]?.id || "";
                     this.state.weaponMasteries = [];
+                    if (cls) {
+                        this.initClassDefaultEquipment(cls);
+                    }
                     this.renderStep(3);
                     this.updateLiveSummary();
                 });
@@ -1305,15 +1472,47 @@ export class CharacterCreatorController {
                 });
             });
         } else if (step === 7) {
+            // Equip starting equipment package buttons
+            document.querySelectorAll(".equip-package-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const idx = Number(btn.getAttribute("data-package-index"));
+                    const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+                    const opt = cls.startingEquipmentOptions[idx];
+                    if (opt) {
+                        const foundArmor = BASE_ARMOR_2024.find((a) =>
+                            opt.items.some((it) => it.toLowerCase().includes(a.name.toLowerCase()))
+                        );
+                        if (foundArmor) {
+                            this.state.selectedArmor = foundArmor.name;
+                        } else if (opt.items.some((it) => it.toLowerCase().includes("leather armor"))) {
+                            this.state.selectedArmor = "Leather Armor";
+                        } else if (cls.armorProficiencies.length === 0) {
+                            this.state.selectedArmor = "None";
+                        }
+                        this.state.hasShield = opt.items.some((it) => it.toLowerCase().includes("shield"));
+                        const matchedWeapons = BASE_WEAPONS_2024.filter((w) =>
+                            opt.items.some((it) => it.toLowerCase().includes(w.name.toLowerCase()))
+                        ).map((w) => w.name);
+                        if (matchedWeapons.length > 0) {
+                            this.state.selectedWeapons = matchedWeapons;
+                        }
+                        this.renderStep(7);
+                        this.updateLiveSummary();
+                    }
+                });
+            });
+
             const armorSelect = document.getElementById("char-armor-select") as HTMLSelectElement;
             armorSelect?.addEventListener("change", (e) => {
                 this.state.selectedArmor = (e.target as HTMLSelectElement).value;
+                this.renderStep(7);
                 this.updateLiveSummary();
             });
 
             const shieldCheck = document.getElementById("char-shield-checkbox") as HTMLInputElement;
             shieldCheck?.addEventListener("change", (e) => {
                 this.state.hasShield = (e.target as HTMLInputElement).checked;
+                this.renderStep(7);
                 this.updateLiveSummary();
             });
 
