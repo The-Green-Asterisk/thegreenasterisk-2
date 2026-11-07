@@ -768,4 +768,58 @@ describe("CharacterCreatorController", () => {
         expect(container.querySelectorAll(".progression-row.unlocked").length).toBe(20);
         expect(container.querySelectorAll(".progression-row.locked").length).toBe(0);
     });
+
+    it("clearly indicates when a starting equipment kit is equipped", () => {
+        const ctrl = new CharacterCreatorController();
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+
+        ctrl.state.classId = "fighter";
+        ctrl.renderStep(7);
+
+        const container = document.getElementById("creator-step-panels")!;
+        const packageCards = container.querySelectorAll(".starting-package-card");
+        expect(packageCards.length).toBeGreaterThanOrEqual(2);
+
+        // Initially Option A is equipped for Fighter
+        expect(ctrl.isKitEquipped(0)).toBe(true);
+        expect(packageCards[0].classList.contains("equipped")).toBe(true);
+        expect(packageCards[0].querySelector(".package-equipped-badge")?.textContent).toContain("Equipped");
+        const btnA = packageCards[0].querySelector(".equip-package-btn") as HTMLButtonElement;
+        expect(btnA.textContent).toContain("Equipped");
+        expect(btnA.classList.contains("equipped")).toBe(true);
+
+        // Option B is not equipped
+        expect(ctrl.isKitEquipped(1)).toBe(false);
+        expect(packageCards[1].classList.contains("equipped")).toBe(false);
+        const btnB = packageCards[1].querySelector(".equip-package-btn") as HTMLButtonElement;
+        expect(btnB.textContent).toContain("Equip Kit");
+        expect(btnB.classList.contains("equipped")).toBe(false);
+
+        // Banner indicates Option A is equipped
+        const banner = container.querySelector(".kit-equipped-banner");
+        expect(banner).not.toBeNull();
+        expect(banner!.textContent).toContain("Option A");
+
+        // Click Option B to equip it
+        btnB.click();
+
+        // Now Option B is equipped and Option A is not
+        expect(ctrl.isKitEquipped(1)).toBe(true);
+        expect(ctrl.isKitEquipped(0)).toBe(false);
+
+        const updatedCards = container.querySelectorAll(".starting-package-card");
+        expect(updatedCards[1].classList.contains("equipped")).toBe(true);
+        expect(updatedCards[1].querySelector(".equip-package-btn")?.textContent).toContain("Equipped");
+        expect(updatedCards[0].classList.contains("equipped")).toBe(false);
+        expect(updatedCards[0].querySelector(".equip-package-btn")?.textContent).toContain("Equip Kit");
+
+        // Equipment state updated to Option B
+        expect(ctrl.state.selectedArmor).toBe("Leather Armor");
+        expect(ctrl.state.hasShield).toBe(false);
+        expect(ctrl.state.selectedWeapons).toContain("Longbow");
+
+        // Banner now indicates Option B is equipped
+        const updatedBanner = container.querySelector(".kit-equipped-banner");
+        expect(updatedBanner!.textContent).toContain("Option B");
+    });
 });

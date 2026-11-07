@@ -71,6 +71,7 @@ export interface CreatorState {
     selectedWeapons: string[];
     selectedArmor: string;
     hasShield: boolean;
+    equippedKitIndex?: number;
     selectedCantrips: string[];
     selectedSpellsLevel1: string[];
 }
@@ -139,6 +140,7 @@ export class CharacterCreatorController {
         selectedWeapons: ["Longsword", "Light Crossbow"],
         selectedArmor: "Chain Mail",
         hasShield: true,
+        equippedKitIndex: 0,
         selectedCantrips: [],
         selectedSpellsLevel1: []
     };
@@ -773,6 +775,32 @@ export class CharacterCreatorController {
                 this.state.selectedWeapons = matched;
             }
         }
+        this.state.equippedKitIndex = 0;
+    }
+
+    public isKitEquipped(idx: number): boolean {
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+        const opt = cls.startingEquipmentOptions?.[idx];
+        if (!opt) return false;
+
+        if (this.state.equippedKitIndex !== undefined) {
+            return this.state.equippedKitIndex === idx;
+        }
+
+        // Fallback: check if the character's current armor & weapons match this kit
+        const foundArmor = BASE_ARMOR_2024.find((a) =>
+            opt.items.some((it) => it.toLowerCase().includes(a.name.toLowerCase()))
+        );
+        const expectedArmor = foundArmor ? foundArmor.name : (cls.armorProficiencies.length === 0 ? "None" : "Leather Armor");
+        const expectedShield = opt.items.some((it) => it.toLowerCase().includes("shield"));
+        const matchedWeapons = BASE_WEAPONS_2024.filter((w) =>
+            opt.items.some((it) => it.toLowerCase().includes(w.name.toLowerCase()))
+        ).map((w) => w.name);
+
+        if (this.state.selectedArmor !== expectedArmor) return false;
+        if (this.state.hasShield !== expectedShield) return false;
+        if (matchedWeapons.length > 0 && !matchedWeapons.every((w) => this.state.selectedWeapons.includes(w))) return false;
+        return true;
     }
 
     public getMaxCantrips(): number {
@@ -1905,21 +1933,42 @@ export class CharacterCreatorController {
 
                 ${cls.startingEquipmentOptions.length > 0 ? `
                     <div class="starting-packages-section">
-                        <h4 class="starting-packages-title"><i class="fa-solid fa-box-open"></i> ${cls.name} Starting Equipment Kits</h4>
+                        <div class="starting-packages-header-row">
+                            <h4 class="starting-packages-title"><i class="fa-solid fa-box-open"></i> ${cls.name} Starting Equipment Kits</h4>
+                            ${(() => {
+                                const eqIdx = cls.startingEquipmentOptions.findIndex((_, i) => this.isKitEquipped(i));
+                                if (eqIdx >= 0) {
+                                    const eqOpt = cls.startingEquipmentOptions[eqIdx];
+                                    return `
+                                        <div class="kit-equipped-banner">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            <span><strong>Option ${String.fromCharCode(65 + eqIdx)}: ${eqOpt.name}</strong> is equipped</span>
+                                        </div>
+                                    `;
+                                }
+                                return "";
+                            })()}
+                        </div>
                         <div class="starting-packages-grid">
-                            ${cls.startingEquipmentOptions.map((opt, idx) => `
-                                <div class="starting-package-card">
-                                    <div class="package-card-header">
-                                        <strong>Option ${String.fromCharCode(65 + idx)}: ${opt.name}</strong>
-                                        <button type="button" class="creator-nav-btn secondary-btn equip-package-btn" data-package-index="${idx}">
-                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Equip Kit
-                                        </button>
+                            ${cls.startingEquipmentOptions.map((opt, idx) => {
+                                const isEquipped = this.isKitEquipped(idx);
+                                return `
+                                    <div class="starting-package-card ${isEquipped ? "equipped" : ""}" data-package-index="${idx}">
+                                        <div class="package-card-header">
+                                            <div class="package-card-title-group">
+                                                <strong>Option ${String.fromCharCode(65 + idx)}: ${opt.name}</strong>
+                                                ${isEquipped ? `<span class="package-equipped-badge"><i class="fa-solid fa-check"></i> Equipped</span>` : ""}
+                                            </div>
+                                            <button type="button" class="creator-nav-btn secondary-btn equip-package-btn ${isEquipped ? "equipped" : ""}" data-package-index="${idx}">
+                                                ${isEquipped ? `<i class="fa-solid fa-circle-check"></i> Equipped` : `<i class="fa-solid fa-wand-magic-sparkles"></i> Equip Kit`}
+                                            </button>
+                                        </div>
+                                        <ul class="package-items-list">
+                                            ${opt.items.map((it) => `<li>${it}</li>`).join("")}
+                                        </ul>
                                     </div>
-                                    <ul class="package-items-list">
-                                        ${opt.items.map((it) => `<li>${it}</li>`).join("")}
-                                    </ul>
-                                </div>
-                            `).join("")}
+                                `;
+                            }).join("")}
                         </div>
                     </div>
                 ` : ""}
@@ -2769,11 +2818,13 @@ export class CharacterCreatorController {
         } else if (step === 7) {
             // Equip starting equipment package buttons
             document.querySelectorAll(".equip-package-btn").forEach((btn) => {
-                btn.addEventListener("click", () => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
                     const idx = Number(btn.getAttribute("data-package-index"));
                     const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
                     const opt = cls.startingEquipmentOptions[idx];
                     if (opt) {
+                        this.state.equippedKitIndex = idx;
                         const foundArmor = BASE_ARMOR_2024.find((a) =>
                             opt.items.some((it) => it.toLowerCase().includes(a.name.toLowerCase()))
                         );
@@ -2797,9 +2848,19 @@ export class CharacterCreatorController {
                 });
             });
 
+            document.querySelectorAll(".starting-package-card").forEach((card) => {
+                card.addEventListener("click", (e) => {
+                    const btn = card.querySelector(".equip-package-btn");
+                    if (btn && e.target !== btn && !(btn as HTMLElement).contains(e.target as Node)) {
+                        (btn as HTMLButtonElement).click();
+                    }
+                });
+            });
+
             const armorSelect = document.getElementById("char-armor-select") as HTMLSelectElement;
             armorSelect?.addEventListener("change", (e) => {
                 this.state.selectedArmor = (e.target as HTMLSelectElement).value;
+                this.state.equippedKitIndex = undefined;
                 this.renderStep(7);
                 this.updateLiveSummary();
             });
@@ -2807,6 +2868,7 @@ export class CharacterCreatorController {
             const shieldCheck = document.getElementById("char-shield-checkbox") as HTMLInputElement;
             shieldCheck?.addEventListener("change", (e) => {
                 this.state.hasShield = (e.target as HTMLInputElement).checked;
+                this.state.equippedKitIndex = undefined;
                 this.renderStep(7);
                 this.updateLiveSummary();
             });
@@ -2819,7 +2881,9 @@ export class CharacterCreatorController {
                     } else {
                         this.state.selectedWeapons.push(wName);
                     }
+                    this.state.equippedKitIndex = undefined;
                     this.renderStep(7);
+                    this.updateLiveSummary();
                 });
             });
         } else if (step === 8) {

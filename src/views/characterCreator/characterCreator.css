@@ -1023,8 +1023,17 @@ el-character-creator,
     margin-bottom: 1.25rem;
 }
 
+.starting-packages-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
 .starting-packages-title {
-    margin: 0 0 0.85rem 0;
+    margin: 0;
     font-size: 1rem;
     font-weight: 800;
     color: var(--text);
@@ -1035,6 +1044,23 @@ el-character-creator,
 
 .starting-packages-title i {
     color: var(--ui-accent);
+}
+
+.kit-equipped-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: rgba(var(--ui-accent-rgb, 41, 112, 27), 0.12);
+    border: 1px solid rgba(var(--ui-accent-rgb, 41, 112, 27), 0.35);
+    border-radius: var(--radius);
+    color: var(--ui-accent);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.kit-equipped-banner i {
+    font-size: 0.95rem;
 }
 
 .starting-packages-grid {
@@ -1053,11 +1079,19 @@ el-character-creator,
     justify-content: space-between;
     gap: 0.6rem;
     transition: var(--transition);
+    cursor: pointer;
+    position: relative;
 }
 
 .starting-package-card:hover {
     border-color: var(--ui-accent);
     box-shadow: var(--shadow-sm);
+}
+
+.starting-package-card.equipped {
+    border-color: var(--ui-accent);
+    background: rgba(var(--ui-accent-rgb, 41, 112, 27), 0.05);
+    box-shadow: 0 0 0 2px rgba(var(--ui-accent-rgb, 41, 112, 27), 0.35);
 }
 
 .package-card-header {
@@ -1067,9 +1101,29 @@ el-character-creator,
     gap: 0.5rem;
 }
 
+.package-card-title-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
 .package-card-header strong {
     font-size: 0.88rem;
     color: var(--text);
+}
+
+.package-equipped-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: var(--ui-accent);
+    padding: 0.1rem 0.5rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
 }
 
 .package-card-header .equip-package-btn {
@@ -1077,6 +1131,15 @@ el-character-creator,
     font-size: 0.78rem;
     white-space: nowrap;
     border-radius: 4px;
+    transition: var(--transition);
+}
+
+.package-card-header .equip-package-btn.equipped {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(var(--ui-accent-rgb, 41, 112, 27), 0.25);
 }
 
 .package-items-list {
