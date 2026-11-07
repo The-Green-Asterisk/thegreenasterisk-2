@@ -10,27 +10,40 @@ import {
     BATTLE_MASTER_MANEUVERS,
     BackgroundDefinition,
     BLESSED_STRIKES_OPTIONS,
+    BRUTAL_STRIKE_OPTIONS,
     CLASS_SPELL_PRIORITIES,
     CLASSES_2024,
     ClassDefinition,
     ClassLevelFeature,
     DIVINE_ORDERS,
+    DRACONIC_ANCESTOR_ELEMENTS,
     DRUID_LAND_BIOMES,
     ELDRITCH_INVOCATIONS,
     ELEMENTAL_FURY_OPTIONS,
+    ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
+    FIENDISH_RESILIENCE_DAMAGE_TYPES,
     FIGHTING_STYLES,
     GENERAL_FEATS_2024,
     GeneralFeatDefinition,
     HUNTER_DEFENSIVE_TACTICS,
+    HUNTER_PREY_OPTIONS,
     METAMAGIC_OPTIONS,
     ORIGIN_FEATS_2024,
     OriginFeatDefinition,
+    PRIMAL_COMPANION_TYPES,
     PRIMAL_ORDERS,
+    ROGUE_CUNNING_STRIKES,
+    ROGUE_DEVIOUS_STRIKES,
     RuleSpellDefinition,
     SPECIES_2024,
     SpeciesDefinition,
     SPELLS_2024,
-    WEAPON_MASTERIES
+    TACTICAL_MASTER_PROPERTIES,
+    WEAPON_MASTERIES,
+    WILD_HEART_RAGES,
+    WILD_HEART_TOTEMIC_ATTUNEMENTS,
+    WIZARD_SCHOLAR_SKILLS,
+    ZEALOT_DIVINE_FURIES
 } from "../../rules/dnd5e_2024";
 
 export interface AsiChoice {
@@ -143,11 +156,24 @@ export class CharacterCreatorController {
         invocations: [],
         maneuvers: [],
         subclassFeatureChoices: {
+            "wizard-2-scholar": "arcana",
+            "barbarian-3-wild-heart": "bear",
+            "barbarian-3-zealot": "radiant",
+            "monk-3-elements": "fire",
+            "ranger-3-hunter": "colossus-slayer",
+            "ranger-3-beast-master": "land",
+            "sorcerer-3-draconic": "gold",
+            "rogue-5-cunning-strike": "trip",
             "druid-6-land": "arid",
+            "barbarian-6-wild-heart": "elephant",
+            "ranger-6-hunter": "multiattack-defense",
             "druid-7": "potent-spellcasting",
             "cleric-7": "potent-spellcasting",
-            "barbarian-6-wild-heart": "elephant",
-            "ranger-6-hunter": "multiattack-defense"
+            "barbarian-9-brutal-strike": "forceful-blow",
+            "fighter-9-tactical-master": "push",
+            "warlock-10-fiend": "fire",
+            "barbarian-14-wild-heart": "falcon",
+            "rogue-14-devious-strike": "knock-out"
         },
         classSkills: ["Athletics", "Perception"],
         expertiseSkills: [],
@@ -1562,6 +1588,27 @@ export class CharacterCreatorController {
                     </div>
                 `);
             }
+
+            // Wizard Scholar (Level 2)
+            if (cls.id === "wizard") {
+                const currentChoice = this.state.subclassFeatureChoices?.["wizard-2-scholar"] || "arcana";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-graduation-cap"></i> Scholar Academic Skill</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${WIZARD_SCHOLAR_SKILLS.map((sk) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === sk.id ? "selected" : ""}" data-feature-key="wizard-2-scholar" data-feature-choice="${sk.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${sk.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${sk.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
         }
 
         // Level 3 choices
@@ -1604,6 +1651,156 @@ export class CharacterCreatorController {
                                     </div>
                                 `;
                             }).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Barbarian Wild Heart: Rage of the Wilds
+            if (cls.id === "barbarian" && this.state.subclassId === "wild-heart") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-wild-heart"] || "bear";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Rage of the Wilds</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${WILD_HEART_RAGES.map((r) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === r.id ? "selected" : ""}" data-feature-key="barbarian-3-wild-heart" data-feature-choice="${r.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${r.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${r.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Barbarian Zealot: Divine Fury
+            if (cls.id === "barbarian" && this.state.subclassId === "zealot") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-zealot"] || "radiant";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Divine Fury Energy</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ZEALOT_DIVINE_FURIES.map((z) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === z.id ? "selected" : ""}" data-feature-key="barbarian-3-zealot" data-feature-choice="${z.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${z.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${z.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Monk Warrior of Elements: Elemental Attunement
+            if (cls.id === "monk" && this.state.subclassId === "elements") {
+                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-elements"] || "fire";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-fire"></i> Elemental Attunement</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ELEMENTS_ATTUNEMENT_DAMAGE_TYPES.map((e) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === e.id ? "selected" : ""}" data-feature-key="monk-3-elements" data-feature-choice="${e.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${e.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${e.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Ranger Beast Master: Primal Companion
+            if (cls.id === "ranger" && this.state.subclassId === "beast-master") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-beast-master"] || "land";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Primal Companion</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${PRIMAL_COMPANION_TYPES.map((p) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === p.id ? "selected" : ""}" data-feature-key="ranger-3-beast-master" data-feature-choice="${p.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${p.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${p.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Ranger Hunter: Hunter's Prey
+            if (cls.id === "ranger" && this.state.subclassId === "hunter") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-hunter"] || "colossus-slayer";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Hunter's Prey</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${HUNTER_PREY_OPTIONS.map((h) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === h.id ? "selected" : ""}" data-feature-key="ranger-3-hunter" data-feature-choice="${h.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${h.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${h.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Sorcerer Draconic: Draconic Ancestor
+            if (cls.id === "sorcerer" && this.state.subclassId === "draconic") {
+                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] || "gold";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-dragon"></i> Draconic Ancestor</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${DRACONIC_ANCESTOR_ELEMENTS.map((d) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === d.id ? "selected" : ""}" data-feature-key="sorcerer-3-draconic" data-feature-choice="${d.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${d.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${d.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 5 choices
+        if (lvl === 5) {
+            // Rogue Cunning Strike
+            if (cls.id === "rogue") {
+                const currentChoice = this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] || "trip";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-bolt"></i> Cunning Strike Primary Focus</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ROGUE_CUNNING_STRIKES.map((c) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === c.id ? "selected" : ""}" data-feature-key="rogue-5-cunning-strike" data-feature-choice="${c.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${c.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${c.description}</p>
+                                </div>
+                            `).join("")}
                         </div>
                     </div>
                 `);
@@ -1713,6 +1910,120 @@ export class CharacterCreatorController {
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                     </div>
                                     <p class="card-body">${opt.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 9 choices
+        if (lvl === 9) {
+            // Barbarian Brutal Strike
+            if (cls.id === "barbarian") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-9-brutal-strike"] || "forceful-blow";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-gavel"></i> Brutal Strike Primary Tactic</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${BRUTAL_STRIKE_OPTIONS.map((b) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === b.id ? "selected" : ""}" data-feature-key="barbarian-9-brutal-strike" data-feature-choice="${b.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${b.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${b.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Fighter Tactical Master
+            if (cls.id === "fighter") {
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-9-tactical-master"] || "push";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Tactical Master Primary Swap</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${TACTICAL_MASTER_PROPERTIES.map((t) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === t.id ? "selected" : ""}" data-feature-key="fighter-9-tactical-master" data-feature-choice="${t.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${t.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${t.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 10 choices
+        if (lvl === 10) {
+            // Warlock Fiend Patron: Fiendish Resilience
+            if (cls.id === "warlock" && this.state.subclassId === "fiend") {
+                const currentChoice = this.state.subclassFeatureChoices?.["warlock-10-fiend"] || "fire";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-shield-virus"></i> Fiendish Resilience Damage Resistance</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                            ${FIENDISH_RESILIENCE_DAMAGE_TYPES.map((f) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === f.id ? "selected" : ""}" data-feature-key="warlock-10-fiend" data-feature-choice="${f.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${f.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${f.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 14 choices
+        if (lvl === 14) {
+            // Barbarian Wild Heart: Totemic Attunement
+            if (cls.id === "barbarian" && this.state.subclassId === "wild-heart") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-14-wild-heart"] || "falcon";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-feather"></i> Totemic Attunement</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${WILD_HEART_TOTEMIC_ATTUNEMENTS.map((t) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === t.id ? "selected" : ""}" data-feature-key="barbarian-14-wild-heart" data-feature-choice="${t.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${t.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${t.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Rogue Devious Strikes
+            if (cls.id === "rogue") {
+                const currentChoice = this.state.subclassFeatureChoices?.["rogue-14-devious-strike"] || "knock-out";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-skull"></i> Devious Strike Primary Focus</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ROGUE_DEVIOUS_STRIKES.map((d) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === d.id ? "selected" : ""}" data-feature-key="rogue-14-devious-strike" data-feature-choice="${d.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${d.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${d.description}</p>
                                 </div>
                             `).join("")}
                         </div>
@@ -2608,11 +2919,24 @@ export class CharacterCreatorController {
                         ${this.state.fightingStyle ? `<div class="review-row"><span class="label">Fighting Style:</span><strong>${FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle)?.name || this.state.fightingStyle}</strong></div>` : ""}
                         ${this.state.divineOrder ? `<div class="review-row"><span class="label">Divine Order:</span><strong>${DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder)?.name || this.state.divineOrder}</strong></div>` : ""}
                         ${this.state.primalOrder ? `<div class="review-row"><span class="label">Primal Order:</span><strong>${PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder)?.name || this.state.primalOrder}</strong></div>` : ""}
-                        ${this.state.subclassFeatureChoices?.["druid-6-land"] && this.state.classId === "druid" && this.state.subclassId === "land" ? `<div class="review-row"><span class="label">Land Biome:</span><strong>${DRUID_LAND_BIOMES.find((b) => b.id === this.state.subclassFeatureChoices["druid-6-land"])?.name || this.state.subclassFeatureChoices["druid-6-land"]}</strong></div>` : ""}
-                        ${this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" ? `<div class="review-row"><span class="label">Aspect of the Beast:</span><strong>${BARBARIAN_ASPECTS.find((a) => a.id === this.state.subclassFeatureChoices["barbarian-6-wild-heart"])?.name || this.state.subclassFeatureChoices["barbarian-6-wild-heart"]}</strong></div>` : ""}
-                        ${this.state.subclassFeatureChoices?.["ranger-6-hunter"] && this.state.classId === "ranger" && this.state.subclassId === "hunter" ? `<div class="review-row"><span class="label">Defensive Tactics:</span><strong>${HUNTER_DEFENSIVE_TACTICS.find((t) => t.id === this.state.subclassFeatureChoices["ranger-6-hunter"])?.name || this.state.subclassFeatureChoices["ranger-6-hunter"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["wizard-2-scholar"] && this.state.classId === "wizard" && this.state.level >= 2 ? `<div class="review-row"><span class="label">Scholar:</span><strong>${WIZARD_SCHOLAR_SKILLS.find((s) => s.id === this.state.subclassFeatureChoices["wizard-2-scholar"])?.name || this.state.subclassFeatureChoices["wizard-2-scholar"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["barbarian-3-wild-heart"] && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Rage of the Wilds:</span><strong>${WILD_HEART_RAGES.find((r) => r.id === this.state.subclassFeatureChoices["barbarian-3-wild-heart"])?.name || this.state.subclassFeatureChoices["barbarian-3-wild-heart"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["barbarian-3-zealot"] && this.state.classId === "barbarian" && this.state.subclassId === "zealot" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Divine Fury:</span><strong>${ZEALOT_DIVINE_FURIES.find((z) => z.id === this.state.subclassFeatureChoices["barbarian-3-zealot"])?.name || this.state.subclassFeatureChoices["barbarian-3-zealot"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["monk-3-elements"] && this.state.classId === "monk" && this.state.subclassId === "elements" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Elemental Attunement:</span><strong>${ELEMENTS_ATTUNEMENT_DAMAGE_TYPES.find((e) => e.id === this.state.subclassFeatureChoices["monk-3-elements"])?.name || this.state.subclassFeatureChoices["monk-3-elements"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["ranger-3-beast-master"] && this.state.classId === "ranger" && this.state.subclassId === "beast-master" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Primal Companion:</span><strong>${PRIMAL_COMPANION_TYPES.find((p) => p.id === this.state.subclassFeatureChoices["ranger-3-beast-master"])?.name || this.state.subclassFeatureChoices["ranger-3-beast-master"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["ranger-3-hunter"] && this.state.classId === "ranger" && this.state.subclassId === "hunter" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Hunter's Prey:</span><strong>${HUNTER_PREY_OPTIONS.find((h) => h.id === this.state.subclassFeatureChoices["ranger-3-hunter"])?.name || this.state.subclassFeatureChoices["ranger-3-hunter"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] && this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Draconic Ancestor:</span><strong>${DRACONIC_ANCESTOR_ELEMENTS.find((d) => d.id === this.state.subclassFeatureChoices["sorcerer-3-draconic"])?.name || this.state.subclassFeatureChoices["sorcerer-3-draconic"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] && this.state.classId === "rogue" && this.state.level >= 5 ? `<div class="review-row"><span class="label">Cunning Strike:</span><strong>${ROGUE_CUNNING_STRIKES.find((c) => c.id === this.state.subclassFeatureChoices["rogue-5-cunning-strike"])?.name || this.state.subclassFeatureChoices["rogue-5-cunning-strike"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["druid-6-land"] && this.state.classId === "druid" && this.state.subclassId === "land" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Land Biome:</span><strong>${DRUID_LAND_BIOMES.find((b) => b.id === this.state.subclassFeatureChoices["druid-6-land"])?.name || this.state.subclassFeatureChoices["druid-6-land"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Aspect of the Beast:</span><strong>${BARBARIAN_ASPECTS.find((a) => a.id === this.state.subclassFeatureChoices["barbarian-6-wild-heart"])?.name || this.state.subclassFeatureChoices["barbarian-6-wild-heart"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["ranger-6-hunter"] && this.state.classId === "ranger" && this.state.subclassId === "hunter" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Defensive Tactics:</span><strong>${HUNTER_DEFENSIVE_TACTICS.find((t) => t.id === this.state.subclassFeatureChoices["ranger-6-hunter"])?.name || this.state.subclassFeatureChoices["ranger-6-hunter"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["druid-7"] && this.state.classId === "druid" && this.state.level >= 7 ? `<div class="review-row"><span class="label">Elemental Fury:</span><strong>${ELEMENTAL_FURY_OPTIONS.find((o) => o.id === this.state.subclassFeatureChoices["druid-7"])?.name || this.state.subclassFeatureChoices["druid-7"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["cleric-7"] && this.state.classId === "cleric" && this.state.level >= 7 ? `<div class="review-row"><span class="label">Blessed Strikes:</span><strong>${BLESSED_STRIKES_OPTIONS.find((o) => o.id === this.state.subclassFeatureChoices["cleric-7"])?.name || this.state.subclassFeatureChoices["cleric-7"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["barbarian-9-brutal-strike"] && this.state.classId === "barbarian" && this.state.level >= 9 ? `<div class="review-row"><span class="label">Brutal Strike:</span><strong>${BRUTAL_STRIKE_OPTIONS.find((b) => b.id === this.state.subclassFeatureChoices["barbarian-9-brutal-strike"])?.name || this.state.subclassFeatureChoices["barbarian-9-brutal-strike"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["fighter-9-tactical-master"] && this.state.classId === "fighter" && this.state.level >= 9 ? `<div class="review-row"><span class="label">Tactical Master:</span><strong>${TACTICAL_MASTER_PROPERTIES.find((t) => t.id === this.state.subclassFeatureChoices["fighter-9-tactical-master"])?.name || this.state.subclassFeatureChoices["fighter-9-tactical-master"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["warlock-10-fiend"] && this.state.classId === "warlock" && this.state.subclassId === "fiend" && this.state.level >= 10 ? `<div class="review-row"><span class="label">Fiendish Resilience:</span><strong>${FIENDISH_RESILIENCE_DAMAGE_TYPES.find((f) => f.id === this.state.subclassFeatureChoices["warlock-10-fiend"])?.name || this.state.subclassFeatureChoices["warlock-10-fiend"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["barbarian-14-wild-heart"] && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 14 ? `<div class="review-row"><span class="label">Totemic Attunement:</span><strong>${WILD_HEART_TOTEMIC_ATTUNEMENTS.find((t) => t.id === this.state.subclassFeatureChoices["barbarian-14-wild-heart"])?.name || this.state.subclassFeatureChoices["barbarian-14-wild-heart"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["rogue-14-devious-strike"] && this.state.classId === "rogue" && this.state.level >= 14 ? `<div class="review-row"><span class="label">Devious Strike:</span><strong>${ROGUE_DEVIOUS_STRIKES.find((d) => d.id === this.state.subclassFeatureChoices["rogue-14-devious-strike"])?.name || this.state.subclassFeatureChoices["rogue-14-devious-strike"]}</strong></div>` : ""}
                         ${this.state.metamagic.length > 0 ? `<div class="review-row"><span class="label">Metamagic:</span><strong>${this.state.metamagic.map((m) => METAMAGIC_OPTIONS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
                         ${this.state.invocations.length > 0 ? `<div class="review-row"><span class="label">Invocations:</span><strong>${this.state.invocations.map((i) => ELDRITCH_INVOCATIONS.find((o) => o.id === i)?.name || i).join(", ")}</strong></div>` : ""}
                         ${this.state.maneuvers.length > 0 ? `<div class="review-row"><span class="label">Maneuvers:</span><strong>${this.state.maneuvers.map((m) => BATTLE_MASTER_MANEUVERS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
@@ -3548,6 +3872,149 @@ export class CharacterCreatorController {
                                 source: "Hunter",
                                 type: "Subclass Choice",
                                 level: 6,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "wizard-2-scholar" && this.state.classId === "wizard" && this.state.level >= 2) {
+                        const opt = WIZARD_SCHOLAR_SKILLS.find((s) => s.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Scholar: ${opt.name}`,
+                                source: "Wizard",
+                                type: "Class Choice",
+                                level: 2,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "barbarian-3-wild-heart" && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 3) {
+                        const opt = WILD_HEART_RAGES.find((r) => r.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Rage of the Wilds: ${opt.name}`,
+                                source: "Path of the Wild Heart",
+                                type: "Subclass Choice",
+                                level: 3,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "barbarian-3-zealot" && this.state.classId === "barbarian" && this.state.subclassId === "zealot" && this.state.level >= 3) {
+                        const opt = ZEALOT_DIVINE_FURIES.find((z) => z.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Divine Fury: ${opt.name}`,
+                                source: "Path of the Zealot",
+                                type: "Subclass Choice",
+                                level: 3,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "monk-3-elements" && this.state.classId === "monk" && this.state.subclassId === "elements" && this.state.level >= 3) {
+                        const opt = ELEMENTS_ATTUNEMENT_DAMAGE_TYPES.find((e) => e.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Elemental Attunement: ${opt.name}`,
+                                source: "Warrior of the Elements",
+                                type: "Subclass Choice",
+                                level: 3,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "ranger-3-beast-master" && this.state.classId === "ranger" && this.state.subclassId === "beast-master" && this.state.level >= 3) {
+                        const opt = PRIMAL_COMPANION_TYPES.find((p) => p.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Primal Companion: ${opt.name}`,
+                                source: "Beast Master",
+                                type: "Subclass Choice",
+                                level: 3,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "ranger-3-hunter" && this.state.classId === "ranger" && this.state.subclassId === "hunter" && this.state.level >= 3) {
+                        const opt = HUNTER_PREY_OPTIONS.find((h) => h.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Hunter's Prey: ${opt.name}`,
+                                source: "Hunter",
+                                type: "Subclass Choice",
+                                level: 3,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "sorcerer-3-draconic" && this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && this.state.level >= 3) {
+                        const opt = DRACONIC_ANCESTOR_ELEMENTS.find((d) => d.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Draconic Ancestor: ${opt.name}`,
+                                source: "Draconic Sorcery",
+                                type: "Subclass Choice",
+                                level: 3,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "rogue-5-cunning-strike" && this.state.classId === "rogue" && this.state.level >= 5) {
+                        const opt = ROGUE_CUNNING_STRIKES.find((c) => c.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Cunning Strike: ${opt.name}`,
+                                source: "Rogue",
+                                type: "Class Choice",
+                                level: 5,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "barbarian-9-brutal-strike" && this.state.classId === "barbarian" && this.state.level >= 9) {
+                        const opt = BRUTAL_STRIKE_OPTIONS.find((b) => b.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Brutal Strike: ${opt.name}`,
+                                source: "Barbarian",
+                                type: "Class Choice",
+                                level: 9,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "fighter-9-tactical-master" && this.state.classId === "fighter" && this.state.level >= 9) {
+                        const opt = TACTICAL_MASTER_PROPERTIES.find((t) => t.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Tactical Master: ${opt.name}`,
+                                source: "Fighter",
+                                type: "Class Choice",
+                                level: 9,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "warlock-10-fiend" && this.state.classId === "warlock" && this.state.subclassId === "fiend" && this.state.level >= 10) {
+                        const opt = FIENDISH_RESILIENCE_DAMAGE_TYPES.find((f) => f.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Fiendish Resilience: ${opt.name}`,
+                                source: "Fiend Patron",
+                                type: "Subclass Choice",
+                                level: 10,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "barbarian-14-wild-heart" && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 14) {
+                        const opt = WILD_HEART_TOTEMIC_ATTUNEMENTS.find((t) => t.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Totemic Attunement: ${opt.name}`,
+                                source: "Path of the Wild Heart",
+                                type: "Subclass Choice",
+                                level: 14,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "rogue-14-devious-strike" && this.state.classId === "rogue" && this.state.level >= 14) {
+                        const opt = ROGUE_DEVIOUS_STRIKES.find((d) => d.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Devious Strike: ${opt.name}`,
+                                source: "Rogue",
+                                type: "Class Choice",
+                                level: 14,
                                 description: opt.description
                             });
                         }

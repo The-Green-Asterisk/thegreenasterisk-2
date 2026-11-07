@@ -341,3 +341,215 @@ export const HUNTER_DEFENSIVE_TACTICS: FeatureOption[] = [
         description: "When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you for the rest of the turn."
     }
 ];
+
+export const WILD_HEART_RAGES: FeatureOption[] = [
+    {
+        id: "bear",
+        name: "Bear Heart",
+        description: "While raging, you have resistance to all damage types except Psychic damage."
+    },
+    {
+        id: "eagle",
+        name: "Eagle Heart",
+        description: "While raging, you can take the Dash and Disengage actions as a Bonus Action on your turn, and opportunity attacks against you have Disadvantage."
+    },
+    {
+        id: "wolf",
+        name: "Wolf Heart",
+        description: "While raging, your allies have Advantage on melee attack rolls against any enemy within 5 feet of you."
+    }
+];
+
+export const WILD_HEART_TOTEMIC_ATTUNEMENTS: FeatureOption[] = [
+    {
+        id: "falcon",
+        name: "Falcon",
+        description: "While raging, you gain a Flying Speed equal to your Walking Speed if you aren't wearing armor."
+    },
+    {
+        id: "lion",
+        name: "Lion",
+        description: "While raging, whenever an enemy within 5 feet of you makes an attack against a target other than you, you can use your Reaction to make a melee attack roll against that enemy."
+    },
+    {
+        id: "ram",
+        name: "Ram",
+        description: "While raging, whenever you hit a Large or smaller creature with a melee weapon attack on your turn, you can knock the creature Prone."
+    }
+];
+
+export const ZEALOT_DIVINE_FURIES: FeatureOption[] = [
+    {
+        id: "radiant",
+        name: "Radiant Fury",
+        description: "The first creature you hit on each of your turns with a weapon attack takes extra damage equal to 1d6 + half your Barbarian level as Radiant damage."
+    },
+    {
+        id: "necrotic",
+        name: "Necrotic Fury",
+        description: "The first creature you hit on each of your turns with a weapon attack takes extra damage equal to 1d6 + half your Barbarian level as Necrotic damage."
+    }
+];
+
+export const BRUTAL_STRIKE_OPTIONS: FeatureOption[] = [
+    {
+        id: "forceful-blow",
+        name: "Forceful Blow",
+        description: "The target is pushed up to 15 feet straight away from you, and you can move up to half your walking speed toward it without provoking opportunity attacks."
+    },
+    {
+        id: "hamstring-blow",
+        name: "Hamstring Blow",
+        description: "The target's speed is reduced by 15 feet until the start of your next turn."
+    }
+];
+
+export const TACTICAL_MASTER_PROPERTIES: FeatureOption[] = [
+    {
+        id: "push",
+        name: "Push",
+        description: "You can push a target you hit up to 10 feet away from you (substituting for weapon's mastery property)."
+    },
+    {
+        id: "sap",
+        name: "Sap",
+        description: "The target has Disadvantage on its next attack roll before the start of your next turn."
+    },
+    {
+        id: "slow",
+        name: "Slow",
+        description: "The target's speed is reduced by 10 feet until the start of your next turn."
+    }
+];
+
+export const ELEMENTS_ATTUNEMENT_DAMAGE_TYPES: FeatureOption[] = [
+    {
+        id: "acid",
+        name: "Acid Attunement",
+        description: "Your unarmed strikes reach an extra 10 feet and can deal Acid damage."
+    },
+    {
+        id: "cold",
+        name: "Cold Attunement",
+        description: "Your unarmed strikes reach an extra 10 feet and can deal Cold damage."
+    },
+    {
+        id: "fire",
+        name: "Fire Attunement",
+        description: "Your unarmed strikes reach an extra 10 feet and can deal Fire damage."
+    },
+    {
+        id: "lightning",
+        name: "Lightning Attunement",
+        description: "Your unarmed strikes reach an extra 10 feet and can deal Lightning damage."
+    },
+    {
+        id: "thunder",
+        name: "Thunder Attunement",
+        description: "Your unarmed strikes reach an extra 10 feet and can deal Thunder damage."
+    }
+];
+
+export const HUNTER_PREY_OPTIONS: FeatureOption[] = [
+    {
+        id: "colossus-slayer",
+        name: "Colossus Slayer",
+        description: "Once per turn when you hit a creature with a weapon attack, it takes an extra 1d8 damage if it's below its maximum hit points."
+    },
+    {
+        id: "horde-breaker",
+        name: "Horde Breaker",
+        description: "Once on each of your turns when you make a weapon attack, you can make another attack with the same weapon against a different creature that is within 5 feet of the original target."
+    }
+];
+
+export const PRIMAL_COMPANION_TYPES: FeatureOption[] = [
+    {
+        id: "land",
+        name: "Beast of the Land",
+        description: "A medium predatory beast with Maul (charge damage and knockdown prone) and 40 ft. walking + 40 ft. climbing speed."
+    },
+    {
+        id: "sea",
+        name: "Beast of the Sea",
+        description: "An amphibious beast with Binding Strike (grapples on hit) and 60 ft. swimming speed + water breathing."
+    },
+    {
+        id: "sky",
+        name: "Beast of the Sky",
+        description: "A small flying avian beast with Flyby and 60 ft. flying speed for scouting and aerial strikes."
+    }
+];
+
+export const ROGUE_CUNNING_STRIKES: FeatureOption[] = [
+    {
+        id: "poison",
+        name: "Poison (Cost: 1d6)",
+        description: "The target must succeed on a Con saving throw or be Poisoned for 1 minute."
+    },
+    {
+        id: "trip",
+        name: "Trip (Cost: 1d6)",
+        description: "If the target is Large or smaller, it must succeed on a Dex saving throw or fall Prone."
+    },
+    {
+        id: "withdraw",
+        name: "Withdraw (Cost: 1d6)",
+        description: "Immediately after the attack, you can move up to half your walking speed without provoking opportunity attacks."
+    }
+];
+
+export const ROGUE_DEVIOUS_STRIKES: FeatureOption[] = [
+    {
+        id: "daze",
+        name: "Daze (Cost: 2d6)",
+        description: "The target must succeed on a Con saving throw or can only take an action or bonus action on its next turn."
+    },
+    {
+        id: "knock-out",
+        name: "Knock Out (Cost: 6d6)",
+        description: "The target must succeed on a Con saving throw or fall Unconscious for 1 minute or until it takes damage."
+    },
+    {
+        id: "obscure",
+        name: "Obscure (Cost: 3d6)",
+        description: "The target is blinded until the end of its next turn unless it succeeds on a Dex saving throw."
+    }
+];
+
+export const DRACONIC_ANCESTOR_ELEMENTS: FeatureOption[] = [
+    { id: "black", name: "Black (Acid)", description: "Dragon ancestor attuned to Acid. Resistance to Acid at level 6 and bonus damage with acid spells." },
+    { id: "blue", name: "Blue (Lightning)", description: "Dragon ancestor attuned to Lightning. Resistance to Lightning at level 6 and bonus damage with lightning spells." },
+    { id: "brass", name: "Brass (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells." },
+    { id: "bronze", name: "Bronze (Lightning)", description: "Dragon ancestor attuned to Lightning. Resistance to Lightning at level 6 and bonus damage with lightning spells." },
+    { id: "copper", name: "Copper (Acid)", description: "Dragon ancestor attuned to Acid. Resistance to Acid at level 6 and bonus damage with acid spells." },
+    { id: "gold", name: "Gold (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells." },
+    { id: "green", name: "Green (Poison)", description: "Dragon ancestor attuned to Poison. Resistance to Poison at level 6 and bonus damage with poison spells." },
+    { id: "red", name: "Red (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells." },
+    { id: "silver", name: "Silver (Cold)", description: "Dragon ancestor attuned to Cold. Resistance to Cold at level 6 and bonus damage with cold spells." },
+    { id: "white", name: "White (Cold)", description: "Dragon ancestor attuned to Cold. Resistance to Cold at level 6 and bonus damage with cold spells." }
+];
+
+export const FIENDISH_RESILIENCE_DAMAGE_TYPES: FeatureOption[] = [
+    { id: "acid", name: "Acid", description: "Gain resistance to Acid damage until you finish a Short or Long Rest." },
+    { id: "bludgeoning", name: "Bludgeoning", description: "Gain resistance to Bludgeoning damage until you finish a Short or Long Rest." },
+    { id: "cold", name: "Cold", description: "Gain resistance to Cold damage until you finish a Short or Long Rest." },
+    { id: "fire", name: "Fire", description: "Gain resistance to Fire damage until you finish a Short or Long Rest." },
+    { id: "force", name: "Force", description: "Gain resistance to Force damage until you finish a Short or Long Rest." },
+    { id: "lightning", name: "Lightning", description: "Gain resistance to Lightning damage until you finish a Short or Long Rest." },
+    { id: "necrotic", name: "Necrotic", description: "Gain resistance to Necrotic damage until you finish a Short or Long Rest." },
+    { id: "piercing", name: "Piercing", description: "Gain resistance to Piercing damage until you finish a Short or Long Rest." },
+    { id: "poison", name: "Poison", description: "Gain resistance to Poison damage until you finish a Short or Long Rest." },
+    { id: "psychic", name: "Psychic", description: "Gain resistance to Psychic damage until you finish a Short or Long Rest." },
+    { id: "radiant", name: "Radiant", description: "Gain resistance to Radiant damage until you finish a Short or Long Rest." },
+    { id: "slashing", name: "Slashing", description: "Gain resistance to Slashing damage until you finish a Short or Long Rest." },
+    { id: "thunder", name: "Thunder", description: "Gain resistance to Thunder damage until you finish a Short or Long Rest." }
+];
+
+export const WIZARD_SCHOLAR_SKILLS: FeatureOption[] = [
+    { id: "arcana", name: "Arcana (Expertise)", description: "Double proficiency bonus on Intelligence (Arcana) checks." },
+    { id: "history", name: "History (Expertise)", description: "Double proficiency bonus on Intelligence (History) checks." },
+    { id: "investigation", name: "Investigation (Expertise)", description: "Double proficiency bonus on Intelligence (Investigation) checks." },
+    { id: "nature", name: "Nature (Expertise)", description: "Double proficiency bonus on Intelligence (Nature) checks." },
+    { id: "religion", name: "Religion (Expertise)", description: "Double proficiency bonus on Intelligence (Religion) checks." }
+];

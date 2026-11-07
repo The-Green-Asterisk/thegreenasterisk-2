@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { CLASSES_2024 } from "../../../src/rules/dnd5e_2024";
 import { CharacterCreatorController } from "../../../src/views/characterCreator/characterCreator.ctrl";
 
 describe("CharacterCreatorController", () => {
@@ -974,5 +975,150 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getArmorClass()).toBe(16);
         // HP: Hit die 6 + 1(Con) + 3*(4+1) + 4(Draconic Resilience) = 7 + 15 + 4 = 26 HP
         expect(ctrl.getMaxHp()).toBe(26);
+    });
+
+    it("verifies all 12 classes have populated subclass features for all 48 subclasses", () => {
+        expect(CLASSES_2024.length).toBe(12);
+        let totalSubclasses = 0;
+        CLASSES_2024.forEach((cls) => {
+            expect(cls.subclasses.length).toBe(4);
+            cls.subclasses.forEach((sub) => {
+                totalSubclasses++;
+                expect(sub.features.length).toBeGreaterThanOrEqual(4);
+                sub.features.forEach((f) => {
+                    expect(f.name).toBeTruthy();
+                    expect(f.description).toBeTruthy();
+                    expect(f.level).toBeGreaterThanOrEqual(3);
+                });
+            });
+        });
+        expect(totalSubclasses).toBe(48);
+    });
+
+    it("renders and selects branching class and subclass feature choices across classes and levels", () => {
+        const ctrl = new CharacterCreatorController();
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+        const root = document.getElementById("creator-step-panels")!;
+
+        // 1. Wizard Scholar at Level 2
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 2;
+        ctrl.renderStep(3);
+        let scholarCard = root.querySelector('.subclass-feature-card[data-feature-key="wizard-2-scholar"][data-feature-choice="history"]') as HTMLElement;
+        expect(scholarCard).toBeTruthy();
+        scholarCard.click();
+        expect(ctrl.state.subclassFeatureChoices["wizard-2-scholar"]).toBe("history");
+
+        // 2. Barbarian Wild Heart Rage of the Wilds at Level 3
+        ctrl.state.classId = "barbarian";
+        ctrl.state.subclassId = "wild-heart";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let rageCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-3-wild-heart"][data-feature-choice="eagle"]') as HTMLElement;
+        expect(rageCard).toBeTruthy();
+        rageCard.click();
+        expect(ctrl.state.subclassFeatureChoices["barbarian-3-wild-heart"]).toBe("eagle");
+
+        // 3. Barbarian Zealot Divine Fury at Level 3
+        ctrl.state.subclassId = "zealot";
+        ctrl.renderStep(3);
+        let zealotCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-3-zealot"][data-feature-choice="necrotic"]') as HTMLElement;
+        expect(zealotCard).toBeTruthy();
+        zealotCard.click();
+        expect(ctrl.state.subclassFeatureChoices["barbarian-3-zealot"]).toBe("necrotic");
+
+        // 4. Monk Warrior of Elements Attunement at Level 3
+        ctrl.state.classId = "monk";
+        ctrl.state.subclassId = "elements";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let elemCard = root.querySelector('.subclass-feature-card[data-feature-key="monk-3-elements"][data-feature-choice="cold"]') as HTMLElement;
+        expect(elemCard).toBeTruthy();
+        elemCard.click();
+        expect(ctrl.state.subclassFeatureChoices["monk-3-elements"]).toBe("cold");
+
+        // 5. Ranger Beast Master Primal Companion at Level 3
+        ctrl.state.classId = "ranger";
+        ctrl.state.subclassId = "beast-master";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let compCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-beast-master"][data-feature-choice="sky"]') as HTMLElement;
+        expect(compCard).toBeTruthy();
+        compCard.click();
+        expect(ctrl.state.subclassFeatureChoices["ranger-3-beast-master"]).toBe("sky");
+
+        // 6. Ranger Hunter Hunter's Prey at Level 3
+        ctrl.state.subclassId = "hunter";
+        ctrl.renderStep(3);
+        let preyCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-hunter"][data-feature-choice="horde-breaker"]') as HTMLElement;
+        expect(preyCard).toBeTruthy();
+        preyCard.click();
+        expect(ctrl.state.subclassFeatureChoices["ranger-3-hunter"]).toBe("horde-breaker");
+
+        // 7. Sorcerer Draconic Ancestor at Level 3
+        ctrl.state.classId = "sorcerer";
+        ctrl.state.subclassId = "draconic";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let dragonCard = root.querySelector('.subclass-feature-card[data-feature-key="sorcerer-3-draconic"][data-feature-choice="silver"]') as HTMLElement;
+        expect(dragonCard).toBeTruthy();
+        dragonCard.click();
+        expect(ctrl.state.subclassFeatureChoices["sorcerer-3-draconic"]).toBe("silver");
+
+        // 8. Rogue Cunning Strike at Level 5
+        ctrl.state.classId = "rogue";
+        ctrl.state.level = 5;
+        ctrl.renderStep(3);
+        let cunningCard = root.querySelector('.subclass-feature-card[data-feature-key="rogue-5-cunning-strike"][data-feature-choice="poison"]') as HTMLElement;
+        expect(cunningCard).toBeTruthy();
+        cunningCard.click();
+        expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBe("poison");
+
+        // 9. Barbarian Brutal Strike at Level 9
+        ctrl.state.classId = "barbarian";
+        ctrl.state.level = 9;
+        ctrl.renderStep(3);
+        let brutalCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-9-brutal-strike"][data-feature-choice="hamstring-blow"]') as HTMLElement;
+        expect(brutalCard).toBeTruthy();
+        brutalCard.click();
+        expect(ctrl.state.subclassFeatureChoices["barbarian-9-brutal-strike"]).toBe("hamstring-blow");
+
+        // 10. Fighter Tactical Master at Level 9
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 9;
+        ctrl.renderStep(3);
+        let tacticalCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-9-tactical-master"][data-feature-choice="slow"]') as HTMLElement;
+        expect(tacticalCard).toBeTruthy();
+        tacticalCard.click();
+        expect(ctrl.state.subclassFeatureChoices["fighter-9-tactical-master"]).toBe("slow");
+
+        // 11. Warlock Fiendish Resilience at Level 10
+        ctrl.state.classId = "warlock";
+        ctrl.state.subclassId = "fiend";
+        ctrl.state.level = 10;
+        ctrl.renderStep(3);
+        let fiendCard = root.querySelector('.subclass-feature-card[data-feature-key="warlock-10-fiend"][data-feature-choice="radiant"]') as HTMLElement;
+        expect(fiendCard).toBeTruthy();
+        fiendCard.click();
+        expect(ctrl.state.subclassFeatureChoices["warlock-10-fiend"]).toBe("radiant");
+
+        // 12. Barbarian Totemic Attunement at Level 14
+        ctrl.state.classId = "barbarian";
+        ctrl.state.subclassId = "wild-heart";
+        ctrl.state.level = 14;
+        ctrl.renderStep(3);
+        let totemCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-14-wild-heart"][data-feature-choice="lion"]') as HTMLElement;
+        expect(totemCard).toBeTruthy();
+        totemCard.click();
+        expect(ctrl.state.subclassFeatureChoices["barbarian-14-wild-heart"]).toBe("lion");
+
+        // 13. Rogue Devious Strike at Level 14
+        ctrl.state.classId = "rogue";
+        ctrl.state.level = 14;
+        ctrl.renderStep(3);
+        let deviousCard = root.querySelector('.subclass-feature-card[data-feature-key="rogue-14-devious-strike"][data-feature-choice="daze"]') as HTMLElement;
+        expect(deviousCard).toBeTruthy();
+        deviousCard.click();
+        expect(ctrl.state.subclassFeatureChoices["rogue-14-devious-strike"]).toBe("daze");
     });
 });

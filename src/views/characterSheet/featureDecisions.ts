@@ -123,6 +123,102 @@ export const HUNTER_DEFENSIVE_TACTIC_OPTIONS: FeatureChoiceOption[] = [
     { value: "defensive-tactic:escape-the-horde", label: "Escape the Horde (Opportunity Attacks have Disadvantage)" }
 ];
 
+export const WILD_HEART_RAGE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "wild-heart-rage:bear", label: "Bear (Resistance to all damage except Force)" },
+    { value: "wild-heart-rage:eagle", label: "Eagle (Dash & Disengage as Bonus Action)" },
+    { value: "wild-heart-rage:wolf", label: "Wolf (Melee Advantage for Allies within 5 ft)" }
+];
+
+export const ZEALOT_DIVINE_FURY_OPTIONS: FeatureChoiceOption[] = [
+    { value: "divine-fury:radiant", label: "Radiant (1d6 + half Barbarian level Radiant damage)" },
+    { value: "divine-fury:necrotic", label: "Necrotic (1d6 + half Barbarian level Necrotic damage)" }
+];
+
+export const ELEMENTS_ATTUNEMENT_OPTIONS: FeatureChoiceOption[] = [
+    { value: "elemental-attunement:fire", label: "Fire (Reach + Fire Damage)" },
+    { value: "elemental-attunement:cold", label: "Cold (Reach + Cold Damage)" },
+    { value: "elemental-attunement:acid", label: "Acid (Reach + Acid Damage)" },
+    { value: "elemental-attunement:lightning", label: "Lightning (Reach + Lightning Damage)" },
+    { value: "elemental-attunement:thunder", label: "Thunder (Reach + Thunder Damage)" }
+];
+
+export const HUNTER_PREY_OPTIONS: FeatureChoiceOption[] = [
+    { value: "hunter-prey:colossus-slayer", label: "Colossus Slayer (+1d8 damage to injured target)" },
+    { value: "hunter-prey:horde-breaker", label: "Horde Breaker (Extra attack against adjacent creature)" }
+];
+
+export const PRIMAL_COMPANION_OPTIONS: FeatureChoiceOption[] = [
+    { value: "primal-companion:land", label: "Beast of the Land (Maul & Charge)" },
+    { value: "primal-companion:sea", label: "Beast of the Sea (Amphibious & Binding Strike)" },
+    { value: "primal-companion:sky", label: "Beast of the Sky (Flyby & Shred)" }
+];
+
+export const DRACONIC_ANCESTOR_OPTIONS: FeatureChoiceOption[] = [
+    { value: "draconic-ancestor:gold", label: "Gold (Fire)" },
+    { value: "draconic-ancestor:red", label: "Red (Fire)" },
+    { value: "draconic-ancestor:brass", label: "Brass (Fire)" },
+    { value: "draconic-ancestor:blue", label: "Blue (Lightning)" },
+    { value: "draconic-ancestor:bronze", label: "Bronze (Lightning)" },
+    { value: "draconic-ancestor:silver", label: "Silver (Cold)" },
+    { value: "draconic-ancestor:white", label: "White (Cold)" },
+    { value: "draconic-ancestor:black", label: "Black (Acid)" },
+    { value: "draconic-ancestor:copper", label: "Copper (Acid)" },
+    { value: "draconic-ancestor:green", label: "Green (Poison)" }
+];
+
+export const CUNNING_STRIKE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "cunning-strike:poison", label: "Poison (Con Save or Poisoned 1 min)" },
+    { value: "cunning-strike:trip", label: "Trip (Dex Save or Prone)" },
+    { value: "cunning-strike:withdraw", label: "Withdraw (Move half speed without OA)" }
+];
+
+export const BRUTAL_STRIKE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "brutal-strike:forceful-blow", label: "Forceful Blow (Push 15 ft + Follow 10 ft)" },
+    { value: "brutal-strike:hamstring-blow", label: "Hamstring Blow (Reduce Speed by 15 ft)" }
+];
+
+export const TACTICAL_MASTER_OPTIONS: FeatureChoiceOption[] = [
+    { value: "tactical-master:push", label: "Push (Push target 10 ft away)" },
+    { value: "tactical-master:sap", label: "Sap (Disadvantage on target's next attack)" },
+    { value: "tactical-master:slow", label: "Slow (Reduce target Speed by 10 ft)" }
+];
+
+export const FIENDISH_RESILIENCE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "fiendish-resilience:fire", label: "Fire Resistance" },
+    { value: "fiendish-resilience:cold", label: "Cold Resistance" },
+    { value: "fiendish-resilience:lightning", label: "Lightning Resistance" },
+    { value: "fiendish-resilience:acid", label: "Acid Resistance" },
+    { value: "fiendish-resilience:poison", label: "Poison Resistance" },
+    { value: "fiendish-resilience:necrotic", label: "Necrotic Resistance" },
+    { value: "fiendish-resilience:radiant", label: "Radiant Resistance" },
+    { value: "fiendish-resilience:psychic", label: "Psychic Resistance" },
+    { value: "fiendish-resilience:force", label: "Force Resistance" },
+    { value: "fiendish-resilience:thunder", label: "Thunder Resistance" },
+    { value: "fiendish-resilience:bludgeoning", label: "Bludgeoning Resistance" },
+    { value: "fiendish-resilience:piercing", label: "Piercing Resistance" },
+    { value: "fiendish-resilience:slashing", label: "Slashing Resistance" }
+];
+
+export const TOTEMIC_ATTUNEMENT_OPTIONS: FeatureChoiceOption[] = [
+    { value: "totemic-attunement:falcon", label: "Falcon (Flying Speed = Walking Speed)" },
+    { value: "totemic-attunement:lion", label: "Lion (Disadvantage on Attacks against Allies)" },
+    { value: "totemic-attunement:ram", label: "Ram (Knock Target Prone on Hit)" }
+];
+
+export const DEVIOUS_STRIKE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "devious-strike:daze", label: "Daze (Con Save or Dazed 1 turn)" },
+    { value: "devious-strike:knock-out", label: "Knock Out (Con Save or Unconscious 1 min)" },
+    { value: "devious-strike:obscure", label: "Obscure (Dex Save or Blinded 1 turn)" }
+];
+
+export const WIZARD_SCHOLAR_OPTIONS: FeatureChoiceOption[] = [
+    { value: "scholar:arcana", label: "Arcana (INT Expertise)" },
+    { value: "scholar:history", label: "History (INT Expertise)" },
+    { value: "scholar:investigation", label: "Investigation (INT Expertise)" },
+    { value: "scholar:nature", label: "Nature (INT Expertise)" },
+    { value: "scholar:religion", label: "Religion (INT Expertise)" }
+];
+
 function slugifyKey(input: string): string {
     return String(input || "")
         .toLowerCase()
@@ -1262,6 +1358,191 @@ export function extractFeaturesAndApplyDecisions(
                 "Defensive Tactics",
                 defaultTactic,
                 HUNTER_DEFENSIVE_TACTIC_OPTIONS,
+                []
+            );
+        }
+
+        // Scholar (Wizard 2)
+        if (nameLower.includes("scholar") && (nameLower.includes("academic") || nameLower.includes("arcana") || nameLower.includes("history") || nameLower.includes("investigation") || nameLower.includes("religion") || nameLower.includes("nature"))) {
+            let defaultSkill = "scholar:arcana";
+            if (nameLower.includes("history")) defaultSkill = "scholar:history";
+            else if (nameLower.includes("investigation")) defaultSkill = "scholar:investigation";
+            else if (nameLower.includes("nature")) defaultSkill = "scholar:nature";
+            else if (nameLower.includes("religion")) defaultSkill = "scholar:religion";
+            registerDecision(
+                "scholar:0",
+                "Scholar Academic Skill",
+                defaultSkill,
+                WIZARD_SCHOLAR_OPTIONS,
+                []
+            );
+        }
+
+        // Rage of the Wilds (Barbarian 3)
+        if (nameLower.includes("rage of the wilds") || (nameLower.includes("wild heart") && (nameLower.includes("bear") || nameLower.includes("eagle") || nameLower.includes("wolf")))) {
+            let defaultRage = "wild-heart-rage:bear";
+            if (nameLower.includes("eagle")) defaultRage = "wild-heart-rage:eagle";
+            else if (nameLower.includes("wolf")) defaultRage = "wild-heart-rage:wolf";
+            registerDecision(
+                "wild-heart-rage:0",
+                "Rage of the Wilds",
+                defaultRage,
+                WILD_HEART_RAGE_OPTIONS,
+                []
+            );
+        }
+
+        // Divine Fury (Barbarian Zealot 3)
+        if (nameLower.includes("divine fury")) {
+            const defaultFury = nameLower.includes("necrotic")
+                ? "divine-fury:necrotic"
+                : "divine-fury:radiant";
+            registerDecision(
+                "divine-fury:0",
+                "Divine Fury",
+                defaultFury,
+                ZEALOT_DIVINE_FURY_OPTIONS,
+                []
+            );
+        }
+
+        // Elemental Attunement (Monk Elements 3)
+        if (nameLower.includes("elemental attunement") || nameLower.includes("warrior of the elements")) {
+            let defaultElem = "elemental-attunement:fire";
+            if (nameLower.includes("cold")) defaultElem = "elemental-attunement:cold";
+            else if (nameLower.includes("acid")) defaultElem = "elemental-attunement:acid";
+            else if (nameLower.includes("lightning")) defaultElem = "elemental-attunement:lightning";
+            else if (nameLower.includes("thunder")) defaultElem = "elemental-attunement:thunder";
+            registerDecision(
+                "elemental-attunement:0",
+                "Elemental Attunement",
+                defaultElem,
+                ELEMENTS_ATTUNEMENT_OPTIONS,
+                []
+            );
+        }
+
+        // Primal Companion (Ranger Beast Master 3)
+        if (nameLower.includes("primal companion") || nameLower.includes("beast master")) {
+            let defaultComp = "primal-companion:land";
+            if (nameLower.includes("sea")) defaultComp = "primal-companion:sea";
+            else if (nameLower.includes("sky")) defaultComp = "primal-companion:sky";
+            registerDecision(
+                "primal-companion:0",
+                "Primal Companion",
+                defaultComp,
+                PRIMAL_COMPANION_OPTIONS,
+                []
+            );
+        }
+
+        // Hunter's Prey (Ranger Hunter 3)
+        if (nameLower.includes("hunter's prey") || nameLower.includes("colossus slayer") || nameLower.includes("horde breaker")) {
+            const defaultPrey = nameLower.includes("horde")
+                ? "hunter-prey:horde-breaker"
+                : "hunter-prey:colossus-slayer";
+            registerDecision(
+                "hunter-prey:0",
+                "Hunter's Prey",
+                defaultPrey,
+                HUNTER_PREY_OPTIONS,
+                []
+            );
+        }
+
+        // Draconic Ancestor (Sorcerer Draconic 3)
+        if (nameLower.includes("draconic ancestor") || nameLower.includes("dragon ancestor")) {
+            let defaultAnc = "draconic-ancestor:gold";
+            const anc = DRACONIC_ANCESTOR_OPTIONS.find(o => nameLower.includes(o.label.split(" ")[0].toLowerCase()));
+            if (anc) defaultAnc = anc.value;
+            registerDecision(
+                "draconic-ancestor:0",
+                "Draconic Ancestor",
+                defaultAnc,
+                DRACONIC_ANCESTOR_OPTIONS,
+                []
+            );
+        }
+
+        // Cunning Strike (Rogue 5)
+        if (nameLower.includes("cunning strike")) {
+            let defaultCunning = "cunning-strike:trip";
+            if (nameLower.includes("poison")) defaultCunning = "cunning-strike:poison";
+            else if (nameLower.includes("withdraw")) defaultCunning = "cunning-strike:withdraw";
+            registerDecision(
+                "cunning-strike:0",
+                "Cunning Strike",
+                defaultCunning,
+                CUNNING_STRIKE_OPTIONS,
+                []
+            );
+        }
+
+        // Brutal Strike (Barbarian 9)
+        if (nameLower.includes("brutal strike")) {
+            let defaultBrutal = "brutal-strike:forceful-blow";
+            if (nameLower.includes("hamstring")) defaultBrutal = "brutal-strike:hamstring-blow";
+            registerDecision(
+                "brutal-strike:0",
+                "Brutal Strike",
+                defaultBrutal,
+                BRUTAL_STRIKE_OPTIONS,
+                []
+            );
+        }
+
+        // Tactical Master (Fighter 9)
+        if (nameLower.includes("tactical master")) {
+            let defaultMaster = "tactical-master:push";
+            if (nameLower.includes("sap")) defaultMaster = "tactical-master:sap";
+            else if (nameLower.includes("slow")) defaultMaster = "tactical-master:slow";
+            registerDecision(
+                "tactical-master:0",
+                "Tactical Master",
+                defaultMaster,
+                TACTICAL_MASTER_OPTIONS,
+                []
+            );
+        }
+
+        // Fiendish Resilience (Warlock Fiend 10)
+        if (nameLower.includes("fiendish resilience")) {
+            let defaultRes = "fiendish-resilience:fire";
+            const res = FIENDISH_RESILIENCE_OPTIONS.find(o => nameLower.includes(o.label.split(" ")[0].toLowerCase()));
+            if (res) defaultRes = res.value;
+            registerDecision(
+                "fiendish-resilience:0",
+                "Fiendish Resilience",
+                defaultRes,
+                FIENDISH_RESILIENCE_OPTIONS,
+                []
+            );
+        }
+
+        // Totemic Attunement (Barbarian Wild Heart 14)
+        if (nameLower.includes("totemic attunement")) {
+            let defaultTotem = "totemic-attunement:falcon";
+            if (nameLower.includes("lion")) defaultTotem = "totemic-attunement:lion";
+            else if (nameLower.includes("ram")) defaultTotem = "totemic-attunement:ram";
+            registerDecision(
+                "totemic-attunement:0",
+                "Totemic Attunement",
+                defaultTotem,
+                TOTEMIC_ATTUNEMENT_OPTIONS,
+                []
+            );
+        }
+
+        // Devious Strike (Rogue 14)
+        if (nameLower.includes("devious strike")) {
+            let defaultDevious = "devious-strike:knock-out";
+            if (nameLower.includes("daze")) defaultDevious = "devious-strike:daze";
+            else if (nameLower.includes("obscure")) defaultDevious = "devious-strike:obscure";
+            registerDecision(
+                "devious-strike:0",
+                "Devious Strike",
+                defaultDevious,
+                DEVIOUS_STRIKE_OPTIONS,
                 []
             );
         }

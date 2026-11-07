@@ -92,10 +92,51 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Primal Champion", description: "Your Strength and Constitution scores increase by 4, up to a maximum of 25." }
         ],
         subclasses: [
-            { id: "berserker", name: "Path of the Berserker", description: "Frenzy extra damage, Mindless Rage immune to Charmed/Frightened.", features: [] },
-            { id: "wild-heart", name: "Path of the Wild Heart", description: "Aspects of Bear, Eagle, or Wolf augment your Rage.", features: [] },
-            { id: "world-tree", name: "Path of the World Tree", description: "Vitality of the Tree gives temporary hit points and teleportation branches.", features: [] },
-            { id: "zealot", name: "Path of the Zealot", description: "Divine fury infuses weapon strikes with radiant or necrotic energy.", features: [] }
+            {
+                id: "berserker",
+                name: "Path of the Berserker",
+                description: "Frenzy extra damage, Mindless Rage immune to Charmed/Frightened.",
+                features: [
+                    { level: 3, name: "Frenzy", description: "While raging, make an attack as a Bonus Action and deal extra Frenzy damage (1d6, scaling with level) on hit." },
+                    { level: 6, name: "Mindless Rage", description: "You are immune to Charmed and Frightened while raging, and entering Rage immediately suspends both conditions." },
+                    { level: 10, name: "Retaliation", description: "When you take damage from a creature within 5 feet of you, you can use a Reaction to make a melee attack against that creature." },
+                    { level: 14, name: "Intimidating Presence", description: "Bonus Action to unleash a terrifying roar; creatures within 30 feet become Frightened on a failed Wisdom saving throw." }
+                ]
+            },
+            {
+                id: "wild-heart",
+                name: "Path of the Wild Heart",
+                description: "Aspects of Bear, Eagle, or Wolf augment your Rage.",
+                features: [
+                    { level: 3, name: "Rage of the Wilds", description: "Choose Bear (resistance to all damage except Force), Eagle (Dash and Disengage as Bonus Action), or Wolf (allies have Advantage on melee attacks against enemies within 5 ft) when entering Rage." },
+                    { level: 6, name: "Aspect of the Beast", description: "Choose an animal aspect: Elephant (Athletics Advantage, doubled carrying capacity), Owl (Darkvision 60 ft, Perception Advantage), Panther (Climb speed equal to Speed), Pike (Swim speed equal to Speed), or Spider (Climb speed equal to Speed with spider climb)." },
+                    { level: 10, name: "Nature Speaker", description: "You can cast Commune with Nature as a ritual without expending a spell slot." },
+                    { level: 14, name: "Totemic Attunement", description: "Choose Falcon (gain a flying speed equal to your walking speed while raging), Lion (enemies within 5 ft have Disadvantage on attacks against targets other than you), or Ram (melee attacks knock Large or smaller creatures prone)." }
+                ]
+            },
+            {
+                id: "world-tree",
+                name: "Path of the World Tree",
+                description: "Vitality of the Tree gives temporary hit points and teleportation branches.",
+                features: [
+                    { level: 3, name: "Vitality of the Tree", description: "When you enter Rage and at the start of each of your turns while raging, grant temporary hit points equal to your Barbarian level to yourself or an ally within 10 feet." },
+                    { level: 6, name: "Branches of the Tree", description: "Reaction when a creature ends its turn within 30 feet to teleport it to an unoccupied space within 5 feet of you and reduce its speed to 0 until the end of the turn." },
+                    { level: 10, name: "Battering Roots", description: "Tendrils of the World Tree extend your melee reach by 10 feet when using Heavy or Versatile weapons, and you can apply Push or Topple on hit." },
+                    { level: 14, name: "Travel Along the Tree", description: "As a Bonus Action while raging, teleport up to 60 feet to an unoccupied space you can see, bringing along up to 6 willing creatures within 10 feet." }
+                ]
+            },
+            {
+                id: "zealot",
+                name: "Path of the Zealot",
+                description: "Divine fury infuses weapon strikes with radiant or necrotic energy.",
+                features: [
+                    { level: 3, name: "Divine Fury", description: "The first creature you hit on each of your turns with a weapon attack while raging takes extra 1d6 + half Barbarian level Radiant or Necrotic damage." },
+                    { level: 3, name: "Warrior of the Gods", description: "Spells that restore you to life (such as Revivify or Raise Dead) do not consume material components." },
+                    { level: 6, name: "Fanatical Focus", description: "If you fail a saving throw while raging, you can reroll it and must use the new roll. Usable once per Rage." },
+                    { level: 10, name: "Zealous Presence", description: "Bonus Action to inspire up to 10 allies within 60 feet, granting them Advantage on attack rolls and saving throws until the start of your next turn." },
+                    { level: 14, name: "Rage of the Gods", description: "When reduced to 0 HP while raging, you do not drop unconscious and can continue fighting until your Rage ends." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Greataxe & Handaxes", items: ["Greataxe", "Handaxe (2)", "Explorer's Pack", "15 GP"] },
@@ -153,10 +194,50 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Words of Creation", description: "Always have Power Word Heal and Power Word Kill prepared; can target two creatures with them simultaneously." }
         ],
         subclasses: [
-            { id: "lore", name: "College of Lore", description: "Cutting Words, 3 bonus proficiencies, Magical Discoveries.", features: [] },
-            { id: "dance", name: "College of Dance", description: "Unarmored Defense, Dazzling Footwork, Agile Strikes.", features: [] },
-            { id: "glamour", name: "College of Glamour", description: "Mantle of Inspiration, Enthralling Performance, Mantle of Majesty.", features: [] },
-            { id: "valor", name: "College of Valor", description: "Combat Inspiration, martial weapon proficiencies, Extra Attack.", features: [] }
+            {
+                id: "dance",
+                name: "College of Dance",
+                description: "Unarmored Defense, Dazzling Footwork, Agile Strikes.",
+                features: [
+                    { level: 3, name: "Dazzling Footwork", description: "While not wearing armor or wielding a shield, your AC equals 10 + Dex modifier + Cha modifier. Unarmed strikes use your Bardic Inspiration die for damage, and granting Bardic Inspiration allows you to Dash and make an unarmed strike." },
+                    { level: 6, name: "Inspiring Movement", description: "Reaction when an enemy ends its turn within 5 feet to move up to half your Speed without provoking opportunity attacks and allow an ally within 30 feet to move half their Speed." },
+                    { level: 6, name: "Tandem Footwork", description: "When rolling Initiative, expend one use of Bardic Inspiration to add the die roll to your Initiative and the Initiative of allies within 60 feet." },
+                    { level: 14, name: "Leading Escape", description: "Reaction when you or an ally within 5 feet must make a Dexterity saving throw to expend Bardic Inspiration and gain the benefits of Evasion." }
+                ]
+            },
+            {
+                id: "glamour",
+                name: "College of Glamour",
+                description: "Mantle of Inspiration, Enthralling Performance, Mantle of Majesty.",
+                features: [
+                    { level: 3, name: "Beguiling Magic", description: "Whenever you cast an Enchantment or Illusion spell, you can immediately cast Charm Person or Command without expending a spell slot." },
+                    { level: 3, name: "Mantle of Inspiration", description: "Bonus Action to expend one Bardic Inspiration die and grant temporary hit points equal to 2x the die roll to allies within 60 feet, who can then move without opportunity attacks." },
+                    { level: 6, name: "Mantle of Majesty", description: "Bonus Action to cast Command without expending a spell slot once per turn for 1 minute; charmed creatures automatically fail the saving throw." },
+                    { level: 14, name: "Unbreakable Majesty", description: "Bonus Action to radiate majestic presence: attackers must make a Charisma saving throw or miss their attack, and target has Disadvantage on saving throws against your spells." }
+                ]
+            },
+            {
+                id: "lore",
+                name: "College of Lore",
+                description: "Cutting Words, 3 bonus proficiencies, Magical Discoveries.",
+                features: [
+                    { level: 3, name: "Bonus Proficiencies", description: "You gain proficiency in three skills of your choice." },
+                    { level: 3, name: "Cutting Words", description: "Reaction when an enemy within 60 feet makes an attack roll, ability check, or damage roll to expend one Bardic Inspiration die and subtract the result from the roll." },
+                    { level: 6, name: "Magical Discoveries", description: "Learn two spells of any class of a level you can cast. They count as prepared Bard spells and use Charisma." },
+                    { level: 14, name: "Peerless Skill", description: "When you make an ability check or attack roll and fail, expend one Bardic Inspiration die and add the number rolled to the total." }
+                ]
+            },
+            {
+                id: "valor",
+                name: "College of Valor",
+                description: "Combat Inspiration, martial weapon proficiencies, Extra Attack.",
+                features: [
+                    { level: 3, name: "Combat Inspiration", description: "Allies can add your Bardic Inspiration die to weapon damage rolls or to Armor Class against an incoming attack." },
+                    { level: 3, name: "Martial Training", description: "You gain proficiency with Martial weapons, Medium armor, and Shields. You can use a simple or martial weapon as a spellcasting focus for Bard spells." },
+                    { level: 6, name: "Extra Attack", description: "You can attack twice instead of once whenever you take the Attack action. You can replace one attack with a cantrip that has a casting time of 1 action." },
+                    { level: 14, name: "Battle Magic", description: "When you use an action to cast a spell, you can make one weapon attack as a Bonus Action." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Rapier & Entertainer's Pack", items: ["Rapier", "Leather Armor", "Dagger", "Entertainer's Pack", "Musical Instrument", "18 GP"] },
@@ -210,10 +291,50 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Greater Divine Intervention", description: "Divine Intervention can now duplicate the Wish spell without risking losing the ability. Recharges in 2d4 Long Rests." }
         ],
         subclasses: [
-            { id: "life", name: "Life Domain", description: "Disciple of Life boosts healing spells, Preserve Life Channel Divinity.", features: [] },
-            { id: "light", name: "Light Domain", description: "Warding Flare imposes disadvantage, Radiance of the Dawn radiant blast.", features: [] },
-            { id: "trickery", name: "Trickery Domain", description: "Invoke Duplicity illusion clone, Blessing of the Trickster stealth.", features: [] },
-            { id: "war", name: "War Domain", description: "War Priest bonus action attack, Guided Strike +10 to hit.", features: [] }
+            {
+                id: "life",
+                name: "Life Domain",
+                description: "Disciple of Life boosts healing spells, Preserve Life Channel Divinity.",
+                features: [
+                    { level: 3, name: "Disciple of Life", description: "Whenever you cast a spell that restores hit points, the target regains additional hit points equal to 2 + the spell's level." },
+                    { level: 3, name: "Preserve Life", description: "Channel Divinity to restore hit points equal to 5 times your Cleric level, divided among injured allies within 30 feet, restoring up to half their maximum HP." },
+                    { level: 6, name: "Blessed Healer", description: "Whenever you cast a spell of level 1 or higher that restores hit points to another creature, you regain hit points equal to 2 + the spell's level." },
+                    { level: 17, name: "Supreme Healing", description: "When you would normally roll one or more dice to restore hit points with a spell, you instead use the highest number possible for each die." }
+                ]
+            },
+            {
+                id: "light",
+                name: "Light Domain",
+                description: "Warding Flare imposes disadvantage, Radiance of the Dawn radiant blast.",
+                features: [
+                    { level: 3, name: "Radiance of the Dawn", description: "Channel Divinity to dispel magical darkness within 30 feet and deal 2d10 + Cleric level radiant damage to hostiles in the area (Con save halves)." },
+                    { level: 3, name: "Warding Flare", description: "Reaction when attacked by a creature within 30 feet to impose Disadvantage on the attack roll with a flash of light." },
+                    { level: 6, name: "Improved Warding Flare", description: "You can use your Warding Flare feature when a creature within 30 feet attacks an ally you can see." },
+                    { level: 17, name: "Corona of Light", description: "Action to emit an aura of sunlight for 1 minute: enemies within 60 feet have Disadvantage on saving throws against spells that deal radiant or fire damage." }
+                ]
+            },
+            {
+                id: "trickery",
+                name: "Trickery Domain",
+                description: "Invoke Duplicity illusion clone, Blessing of the Trickster stealth.",
+                features: [
+                    { level: 3, name: "Blessing of the Trickster", description: "Action to touch a willing creature and grant it Advantage on Dexterity (Stealth) checks for 1 hour." },
+                    { level: 3, name: "Invoke Duplicity", description: "Bonus Action to expend Channel Divinity and create an illusionary duplicate of yourself within 30 feet. You can cast spells through it and gain Advantage on attack rolls against creatures within 5 feet of it." },
+                    { level: 6, name: "Trickster's Transposition", description: "Bonus Action to magically swap places with your illusionary duplicate, teleporting up to 30 feet." },
+                    { level: 17, name: "Improved Duplicity", description: "You can create up to four illusionary duplicates, and allies gain Advantage on attack rolls while near any duplicate." }
+                ]
+            },
+            {
+                id: "war",
+                name: "War Domain",
+                description: "War Priest bonus action attack, Guided Strike +10 to hit.",
+                features: [
+                    { level: 3, name: "Guided Strike", description: "Channel Divinity to gain a +10 bonus to an attack roll made by you or an ally within 30 feet." },
+                    { level: 3, name: "War Priest", description: "Whenever you take the Attack action, you can make an additional weapon attack as a Bonus Action Wisdom modifier times per Long Rest." },
+                    { level: 6, name: "War God's Blessing", description: "You can expend a use of Channel Divinity to cast Shield of Faith or Spiritual Weapon without expending a spell slot." },
+                    { level: 17, name: "Avatar of Battle", description: "You gain resistance to Bludgeoning, Piercing, and Slashing damage from nonmagical attacks." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Mace, Chain Shirt & Shield", items: ["Mace", "Chain Shirt", "Shield", "Holy Symbol", "Priest's Pack", "7 GP"] },
@@ -369,10 +490,57 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Three Extra Attacks", description: "You can attack four times whenever you take the Attack action." }
         ],
         subclasses: [
-            { id: "champion", name: "Champion", description: "Improved Critical (19-20), Remarkable Athlete, Heroic Warrior inspiration.", features: [] },
-            { id: "battle-master", name: "Battle Master", description: "Maneuvers and Superiority Dice (d8s) to trip, disarm, or rally allies.", features: [] },
-            { id: "eldritch-knight", name: "Eldritch Knight", description: "Arcane spellcasting (Wizard spells), Weapon Bond, War Magic.", features: [] },
-            { id: "psi-warrior", name: "Psi Warrior", description: "Psionic Power energy dice for telekinetic strikes and protective barriers.", features: [] }
+            {
+                id: "battle-master",
+                name: "Battle Master",
+                description: "Maneuvers and Superiority Dice (d8s) to trip, disarm, or rally allies.",
+                features: [
+                    { level: 3, name: "Combat Superiority", description: "You learn 3 tactical Maneuvers fueled by four Superiority Dice (d8s). Maneuvers add tactical effects to attacks and checks and recharge on a Short or Long Rest." },
+                    { level: 3, name: "Student of War", description: "You gain proficiency with one type of artisan's tools and one skill of your choice." },
+                    { level: 7, name: "Know Your Enemy", description: "Bonus Action to discern an enemy's damage resistances, damage immunities, damage vulnerabilities, or Armor Class." },
+                    { level: 10, name: "Improved Combat Superiority", description: "Your Superiority Dice turn into d10s." },
+                    { level: 15, name: "Relentless", description: "When you roll Initiative and have no Superiority Dice remaining, you regain one Superiority Die." },
+                    { level: 18, name: "Ultimate Combat Superiority", description: "Your Superiority Dice turn into d12s." }
+                ]
+            },
+            {
+                id: "champion",
+                name: "Champion",
+                description: "Improved Critical (19-20), Remarkable Athlete, Heroic Warrior inspiration.",
+                features: [
+                    { level: 3, name: "Improved Critical", description: "Your weapon attacks score a critical hit on a roll of 19 or 20 on the d20." },
+                    { level: 3, name: "Remarkable Athlete", description: "You gain Advantage on Initiative rolls and Strength (Athletics) checks, and your running jump distance increases." },
+                    { level: 7, name: "Additional Fighting Style", description: "You gain a second Fighting Style feat of your choice." },
+                    { level: 10, name: "Heroic Warrior", description: "Whenever you start your turn in combat without Heroic Inspiration, you gain Heroic Inspiration." },
+                    { level: 15, name: "Superior Critical", description: "Your weapon attacks score a critical hit on a roll of 18, 19, or 20 on the d20." },
+                    { level: 18, name: "Survivor", description: "At the start of each of your turns, you regain hit points equal to 5 + your Constitution modifier if you have no more than half of your hit points left." }
+                ]
+            },
+            {
+                id: "eldritch-knight",
+                name: "Eldritch Knight",
+                description: "Arcane spellcasting (Wizard spells), Weapon Bond, War Magic.",
+                features: [
+                    { level: 3, name: "Spellcasting", description: "Cast wizard spells using Intelligence. Prepare spells from any school of magic and cast cantrips." },
+                    { level: 3, name: "Weapon Bond", description: "Bond with up to two weapons. You cannot be disarmed of them, and you can summon them to your hand as a Bonus Action." },
+                    { level: 7, name: "War Magic", description: "When you take the Attack action, you can replace one of your attacks with a wizard cantrip." },
+                    { level: 10, name: "Eldritch Strike", description: "When you hit a creature with a weapon attack, that creature has Disadvantage on the next saving throw it makes against a spell you cast before the end of your next turn." },
+                    { level: 15, name: "Arcane Charge", description: "When you use your Action Surge, you can teleport up to 30 feet to an unoccupied space you can see before or after the extra action." },
+                    { level: 18, name: "Improved War Magic", description: "When you take the Attack action, you can replace two of your attacks with a 1st- or 2nd-level wizard spell." }
+                ]
+            },
+            {
+                id: "psi-warrior",
+                name: "Psi Warrior",
+                description: "Psionic Power energy dice for telekinetic strikes and protective barriers.",
+                features: [
+                    { level: 3, name: "Psionic Power", description: "Harbor a pool of Psionic Energy dice (equal to 2x your PB) to power Protective Field (reduce damage), Psionic Strike (deal extra force damage), and Telekinetic Movement (move objects/allies)." },
+                    { level: 7, name: "Telekinetic Adept", description: "Psi-Powered Leap grants a flying speed equal to twice your walking speed; Telekinetic Thrust knocks prone or shoves enemies up to 10 feet on hit." },
+                    { level: 10, name: "Guarded Mind", description: "You gain resistance to Psychic damage, and you can expend a Psionic Energy die to end the Charmed or Frightened condition on yourself." },
+                    { level: 15, name: "Bulwark of Force", description: "Bonus Action to shield yourself and allies within 30 feet with half cover for 1 minute." },
+                    { level: 18, name: "Telekinetic Master", description: "Cast Telekinesis once per Long Rest without expending a spell slot, and make a weapon attack as a Bonus Action while concentrating on it." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Chain Mail, Longsword & Shield", items: ["Chain Mail", "Longsword", "Shield", "Crossbow, Light", "Crossbow Bolts (20)", "Dungeoneer's Pack", "9 GP"] },
@@ -431,10 +599,52 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Body and Mind", description: "Your Dexterity and Wisdom scores increase by 4, up to a maximum of 25." }
         ],
         subclasses: [
-            { id: "open-hand", name: "Warrior of the Open Hand", description: "Open Hand Technique (knock prone, push 15 ft, prevent reactions), Wholeness of Body.", features: [] },
-            { id: "shadow", name: "Warrior of Shadow", description: "Shadow Arts (Darkness spell, darkvision), Shadow Step teleportation.", features: [] },
-            { id: "mercy", name: "Warrior of Mercy", description: "Hands of Harm and Hands of Healing using Focus Points.", features: [] },
-            { id: "elements", name: "Warrior of Elements", description: "Elemental attunement reach, elemental bursts of fire, thunder, acid, or cold.", features: [] }
+            {
+                id: "open-hand",
+                name: "Warrior of the Open Hand",
+                description: "Open Hand Technique (knock prone, push 15 ft, prevent reactions), Wholeness of Body.",
+                features: [
+                    { level: 3, name: "Open Hand Technique", description: "Whenever you hit a creature with an attack granted by Flurry of Blows, you can impose Addle (cannot take Reactions), Push (push 15 feet away), or Topple (knock Prone)." },
+                    { level: 6, name: "Wholeness of Body", description: "Bonus Action to regain hit points equal to your Martial Arts die + Wisdom modifier. You can use this a number of times equal to your Wisdom modifier per Long Rest." },
+                    { level: 11, name: "Fleet Step", description: "Whenever you take a Bonus Action other than Step of the Wind, you can immediately use Step of the Wind as part of that same Bonus Action." },
+                    { level: 17, name: "Quivering Palm", description: "Spend 4 Focus Points when hitting with an unarmed strike to set up lethal vibrations. Use an action to force a Constitution saving throw: takes 10d12 force damage or drops to 0 HP on failure." }
+                ]
+            },
+            {
+                id: "shadow",
+                name: "Warrior of Shadow",
+                description: "Shadow Arts (Darkness spell, darkvision), Shadow Step teleportation.",
+                features: [
+                    { level: 3, name: "Shadow Arts", description: "You gain Darkvision out to 60 feet (or extend it by 60 feet) and can cast Darkness by spending 1 Focus Point, which you can see through." },
+                    { level: 6, name: "Shadow Step", description: "While in dim light or darkness, Bonus Action to teleport up to 60 feet to an unoccupied space also in dim light or darkness. You gain Advantage on the next melee attack roll you make before the end of your turn." },
+                    { level: 11, name: "Improved Shadow Step", description: "When you use Shadow Step, you can make an unarmed strike immediately after teleporting without expending an action." },
+                    { level: 17, name: "Cloak of Shadows", description: "Action while in dim light or darkness to become invisible and partially incorporeal, gaining resistance to all damage types except Force damage." }
+                ]
+            },
+            {
+                id: "mercy",
+                name: "Warrior of Mercy",
+                description: "Hands of Harm and Hands of Healing using Focus Points.",
+                features: [
+                    { level: 3, name: "Hand of Healing", description: "Spend 1 Focus Point to touch a creature and restore HP equal to your Martial Arts die + Wisdom modifier. Can replace one attack in Flurry of Blows without spending an extra point." },
+                    { level: 3, name: "Hand of Harm", description: "Spend 1 Focus Point when hitting with an unarmed strike to deal extra Necrotic damage equal to your Martial Arts die + Wisdom modifier." },
+                    { level: 3, name: "Implements of Mercy", description: "Gain proficiency in Insight, Medicine, and Herbalism kit." },
+                    { level: 6, name: "Physician's Touch", description: "Hand of Healing also cures Blinded, Deafened, Paralyzed, Poisoned, or Stunned conditions. Hand of Harm inflicts the Poisoned condition until end of next turn." },
+                    { level: 11, name: "Flurry of Healing and Harm", description: "You can use Hand of Healing and Hand of Harm without spending Focus Points when using Flurry of Blows." },
+                    { level: 17, name: "Hand of Ultimate Mercy", description: "Action and 5 Focus Points to touch a creature that died within 24 hours and return it to life with HP equal to 4d10 + Wisdom modifier." }
+                ]
+            },
+            {
+                id: "elements",
+                name: "Warrior of Elements",
+                description: "Elemental attunement reach, elemental bursts of fire, thunder, acid, or cold.",
+                features: [
+                    { level: 3, name: "Elemental Attunement", description: "Spend 1 Focus Point as a Bonus Action to manifest elemental energy for 10 minutes: reach increases by 10 feet, and your unarmed strikes can deal Acid, Cold, Fire, Lightning, or Thunder damage." },
+                    { level: 6, name: "Manipulate Elements", description: "Action to unleash an Elemental Burst in a 20-foot sphere within 120 feet dealing damage equal to 3 rolls of your Martial Arts die (Dex save halves)." },
+                    { level: 11, name: "Elemental Stride", description: "While Elemental Attunement is active, you gain a flying speed and swimming speed equal to your walking speed." },
+                    { level: 17, name: "Soul of Elements", description: "While Elemental Attunement is active, you gain resistance to Acid, Cold, Fire, Lightning, or Thunder damage, and your Elemental Burst deals extra damage." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Spear, 5 Daggers & Explorer's Pack", items: ["Spear", "Dagger (5)", "Explorer's Pack", "11 GP"] },
@@ -490,10 +700,53 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Subclass Capstone", description: "Gain your Sacred Oath's avatar transformation feature." }
         ],
         subclasses: [
-            { id: "devotion", name: "Oath of Devotion", description: "Sacred Weapon illuminates blade with Charisma bonus to hit, Aura of Devotion.", features: [] },
-            { id: "ancients", name: "Oath of the Ancients", description: "Nature's Wrath ensnares foes, Aura of Warding resists spell damage.", features: [] },
-            { id: "vengeance", name: "Oath of Vengeance", description: "Vow of Enmity grants Advantage against a single foe, Relentless Avenger.", features: [] },
-            { id: "glory", name: "Oath of Glory", description: "Peerless Athlete, Inspiring Smite grants temporary hit points to allies.", features: [] }
+            {
+                id: "devotion",
+                name: "Oath of Devotion",
+                description: "Sacred Weapon illuminates blade with Charisma bonus to hit, Aura of Devotion.",
+                features: [
+                    { level: 3, name: "Sacred Weapon", description: "Channel Divinity as a Bonus Action to imbue one weapon you hold with positive energy: add your Charisma modifier to attack rolls and emit bright light." },
+                    { level: 3, name: "Turn the Unholy", description: "Channel Divinity to force each fiend or undead within 30 feet that can see or hear you to make a Wisdom saving throw or be Turned." },
+                    { level: 7, name: "Aura of Devotion", description: "You and allies within 10 feet of you cannot be Charmed while you are conscious." },
+                    { level: 15, name: "Smite of Protection", description: "Whenever you cast a Smite spell, you and your allies within 30 feet gain half cover until the start of your next turn." },
+                    { level: 20, name: "Holy Nimbus", description: "Action to emit an aura of sunlight for 10 minutes: fiends and undead take 10 radiant damage at start of their turns, and you have Advantage on saving throws against their spells and abilities." }
+                ]
+            },
+            {
+                id: "ancients",
+                name: "Oath of the Ancients",
+                description: "Nature's Wrath ensnares foes, Aura of Warding resists spell damage.",
+                features: [
+                    { level: 3, name: "Nature's Wrath", description: "Channel Divinity as an Action to cause spectral vines to reach out and Restrain a creature within 30 feet on a failed Strength saving throw." },
+                    { level: 3, name: "Turn the Faithless", description: "Channel Divinity to force each fey or fiend within 30 feet to make a Wisdom saving throw or be Turned." },
+                    { level: 7, name: "Aura of Warding", description: "You and allies within 10 feet of you have resistance to damage from spells." },
+                    { level: 15, name: "Undying Sentinel", description: "When reduced to 0 HP and not killed outright, drop to 1 HP instead once per Long Rest; you suffer none of the drawbacks of old age." },
+                    { level: 20, name: "Elder Champion", description: "Action to assume the form of an ancient force of primeval nature: regenerate 10 HP at start of turn, cast paladin spells with 1 action as Bonus Actions, and enemies within 10 ft have Disadvantage on saves against your spells." }
+                ]
+            },
+            {
+                id: "vengeance",
+                name: "Oath of Vengeance",
+                description: "Vow of Enmity grants Advantage against a single foe, Relentless Avenger.",
+                features: [
+                    { level: 3, name: "Vow of Enmity", description: "Channel Divinity as a Bonus Action to utter a vow of enmity against a creature within 30 feet, gaining Advantage on attack rolls against it for 1 minute or until it dies." },
+                    { level: 7, name: "Relentless Avenger", description: "When you hit a creature with an Opportunity Attack, your speed increases and you can move up to half your Speed as part of the same reaction without provoking opportunity attacks." },
+                    { level: 15, name: "Soul of Vengeance", description: "When the creature marked by your Vow of Enmity makes an attack, you can use your Reaction to make a melee weapon attack against that creature if it is within range." },
+                    { level: 20, name: "Avenging Angel", description: "Action to transform into an angelic avenger for 10 minutes: sprout wings gaining a flying speed of 60 feet, and radiate a terrifying aura causing enemies within 30 feet to become Frightened on a failed Wisdom save." }
+                ]
+            },
+            {
+                id: "glory",
+                name: "Oath of Glory",
+                description: "Peerless Athlete, Inspiring Smite grants temporary hit points to allies.",
+                features: [
+                    { level: 3, name: "Peerless Athlete", description: "Channel Divinity as a Bonus Action to gain Advantage on Athletics and Acrobatics checks, increase carrying capacity, and add 10 feet to jump distance for 10 minutes." },
+                    { level: 3, name: "Inspiring Smite", description: "Whenever you hit a creature with Divine Smite, Channel Divinity to grant temporary hit points equal to 2d8 + Paladin level distributed among allies within 30 feet." },
+                    { level: 7, name: "Aura of Alacrity", description: "Your speed increases by 10 feet. In addition, allies who start their turn within 10 feet of you gain a +10 foot bonus to speed until the end of that turn." },
+                    { level: 15, name: "Glorious Defense", description: "Reaction when you or an ally is attacked to grant a bonus to AC equal to your Charisma modifier. If the attack misses, you can immediately make a weapon attack against the attacker." },
+                    { level: 20, name: "Living Legend", description: "Action to transform for 1 minute: gain Advantage on all Charisma checks, turn one missed attack into a hit once per turn, and reroll a failed saving throw." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Chain Mail, Longsword & Shield", items: ["Chain Mail", "Longsword", "Shield", "Javelin (6)", "Holy Symbol", "Priest's Pack", "9 GP"] },
@@ -549,10 +802,53 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Foe Slayer", description: "The damage die of your Hunter's Mark increases from 1d6 to 1d10." }
         ],
         subclasses: [
-            { id: "gloom-stalker", name: "Gloom Stalker", description: "Dread Ambusher, Umbral Sight (extra darkvision and invisible to darkvision).", features: [] },
-            { id: "hunter", name: "Hunter", description: "Hunter's Prey (Colossus Slayer), Defensive Tactics.", features: [] },
-            { id: "beast-master", name: "Beast Master", description: "Primal Companion (Beast of the Land, Sea, or Sky).", features: [] },
-            { id: "fey-wanderer", name: "Fey Wanderer", description: "Dreadful Strikes psychic damage, Otherworldly Glamour adds Wisdom to Charisma checks.", features: [] }
+            {
+                id: "beast-master",
+                name: "Beast Master",
+                description: "Primal Companion (Beast of the Land, Sea, or Sky).",
+                features: [
+                    { level: 3, name: "Primal Companion", description: "You magically summon a primal beast (Beast of the Land, Sea, or Sky) that accompanies you on your adventures and fights alongside you." },
+                    { level: 7, name: "Exceptional Training", description: "Whenever you take a Bonus Action, you can command your beast to take the Dash, Disengage, Dodge, or Help action. Its attacks count as magical." },
+                    { level: 11, name: "Bestial Fury", description: "When you command your beast to take the Beast's Strike action, the beast can attack twice instead of once, and benefits from your Hunter's Mark." },
+                    { level: 15, name: "Share Spells", description: "When you cast a spell targeting yourself, you can also affect your beast companion if it is within 30 feet of you." }
+                ]
+            },
+            {
+                id: "fey-wanderer",
+                name: "Fey Wanderer",
+                description: "Dreadful Strikes psychic damage, Otherworldly Glamour adds Wisdom to Charisma checks.",
+                features: [
+                    { level: 3, name: "Dreadful Strikes", description: "Once per turn when you hit a creature with a weapon attack, you can deal an extra 1d4 psychic damage to that creature." },
+                    { level: 3, name: "Otherworldly Glamour", description: "Whenever you make a Charisma check, add your Wisdom modifier (minimum +1). Gain proficiency in Deception, Performance, or Persuasion." },
+                    { level: 7, name: "Beguiling Twist", description: "Advantage on saving throws against Charmed and Frightened conditions. Whenever an enemy or ally succeeds on such a save, use a Reaction to force a different enemy within 120 feet to make a Wisdom save against Charm or Fear." },
+                    { level: 11, name: "Fey Reinforcements", description: "Always have Summon Fey prepared; cast it once per Long Rest without expending a spell slot, and you can summon the fey without concentrating on it for 1 minute." },
+                    { level: 15, name: "Misty Wanderer", description: "Cast Misty Step without expending a spell slot a number of times equal to your Wisdom modifier per Long Rest, and you can bring along one willing creature within 5 feet." }
+                ]
+            },
+            {
+                id: "gloom-stalker",
+                name: "Gloom Stalker",
+                description: "Dread Ambusher, Umbral Sight (extra darkvision and invisible to darkvision).",
+                features: [
+                    { level: 3, name: "Dread Ambusher", description: "Add your Wisdom modifier to Initiative rolls. On the first turn of combat, your speed increases by 10 feet and you can make an extra attack dealing 2d6 psychic damage." },
+                    { level: 3, name: "Umbral Sight", description: "Gain Darkvision out to 60 feet (or extend it by 60 feet). While in darkness, you are invisible to any creature that relies on darkvision to see you." },
+                    { level: 7, name: "Iron Mind", description: "You gain proficiency in Wisdom saving throws. If you already have this proficiency, you instead gain proficiency in Intelligence or Charisma saving throws." },
+                    { level: 11, name: "Stalker's Flurry", description: "Once on each of your turns when you make a weapon attack, you can make an additional attack, or deal an extra 2d8 damage on hit." },
+                    { level: 15, name: "Shadowy Dodge", description: "Reaction when a creature attacks you to impose Disadvantage on the attack roll. If the attack misses, you can teleport up to 30 feet to an unoccupied space you can see." }
+                ]
+            },
+            {
+                id: "hunter",
+                name: "Hunter",
+                description: "Hunter's Prey (Colossus Slayer), Defensive Tactics.",
+                features: [
+                    { level: 3, name: "Hunter's Prey", description: "Choose Colossus Slayer (deal an extra 1d8 damage to an injured creature once per turn) or Horde Breaker (make an additional attack against a creature within 5 feet of your target)." },
+                    { level: 3, name: "Hunter's Lore", description: "When a creature is marked by your Hunter's Mark, you immediately learn that creature's damage immunities, damage resistances, and damage vulnerabilities." },
+                    { level: 7, name: "Defensive Tactics", description: "Choose Escape the Horde (opportunity attacks against you have Disadvantage) or Multiattack Defense (when hit by a creature, subsequent attacks from that creature have Disadvantage)." },
+                    { level: 11, name: "Superior Hunter's Prey", description: "Colossus Slayer now triggers on any hit against an injured creature, or Horde Breaker can target two additional creatures within 5 feet." },
+                    { level: 15, name: "Superior Hunter's Defense", description: "Gain Evasion (take no damage on successful Dex saves and half on failure) or Uncanny Dodge (halve damage from an incoming attack as a Reaction)." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Scale Mail, Shortswords & Longbow", items: ["Scale Mail", "Shortsword (2)", "Longbow", "Arrows (20)", "Explorer's Pack", "7 GP"] },
@@ -602,10 +898,54 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Stroke of Luck", description: "Turn a missed attack roll into a hit, or treat a failed d20 ability check as a 20 (once per Short or Long Rest)." }
         ],
         subclasses: [
-            { id: "thief", name: "Thief", description: "Fast Hands (Bonus Action use object or Sleight of Hand), Second-Story Work climbing speed.", features: [] },
-            { id: "assassin", name: "Assassin", description: "Assassinate (Advantage on un-acted targets, bonus damage), Infiltration Expertise.", features: [] },
-            { id: "soulknife", name: "Soulknife", description: "Psychic Blades, Psionic Power dice for skill checks and telepathic whispers.", features: [] },
-            { id: "arcane-trickster", name: "Arcane Trickster", description: "Mage Hand Legerdemain, Illusion and Enchantment arcane spellcasting.", features: [] }
+            {
+                id: "arcane-trickster",
+                name: "Arcane Trickster",
+                description: "Mage Hand Legerdemain, Illusion and Enchantment arcane spellcasting.",
+                features: [
+                    { level: 3, name: "Spellcasting", description: "Cast wizard spells using Intelligence. Prepare spells from enchantment, illusion, and other schools of magic, and cast cantrips including Mage Hand." },
+                    { level: 3, name: "Mage Hand Legerdemain", description: "Control an invisible Mage Hand as a Bonus Action: stow and retrieve objects from containers worn or carried by others, pick locks, and disarm traps at a range of 30 feet." },
+                    { level: 9, name: "Magical Ambush", description: "If you are hidden from a creature when you cast a spell on it, the creature has Disadvantage on any saving throw it makes against the spell this turn." },
+                    { level: 13, name: "Versatile Trickster", description: "Bonus Action to designate a creature within 5 feet of your Mage Hand; you gain Advantage on attack rolls against that creature until the end of the turn." },
+                    { level: 17, name: "Spell Thief", description: "Reaction when a creature casts a spell that targets you to force the caster to make a saving throw; on failure, you negate the spell's effect and can cast it yourself for 8 hours." }
+                ]
+            },
+            {
+                id: "assassin",
+                name: "Assassin",
+                description: "Assassinate (Advantage on un-acted targets, bonus damage), Infiltration Expertise.",
+                features: [
+                    { level: 3, name: "Assassinate", description: "You have Advantage on attack rolls against any creature that hasn't taken a turn in combat yet. If you hit a surprised creature, your Sneak Attack deals extra damage equal to your Rogue level." },
+                    { level: 3, name: "Assassin's Tools", description: "You gain proficiency with the Disguise Kit and the Poisoner's Kit." },
+                    { level: 9, name: "Infiltration Expertise", description: "You can flawlessly adopt a disguise and false identity, and mimic speech patterns and handwriting after 3 hours of observation." },
+                    { level: 13, name: "Envenomed Weapons", description: "When you use the Poison option of your Cunning Strike, you ignore the creature's resistance to poison damage, and it takes an extra 2d6 poison damage." },
+                    { level: 17, name: "Death Strike", description: "When you hit a creature that hasn't taken a turn in the combat yet with Sneak Attack, it must make a Constitution saving throw (DC 8 + Dex mod + PB) or the attack's damage is doubled." }
+                ]
+            },
+            {
+                id: "soulknife",
+                name: "Soulknife",
+                description: "Psychic Blades, Psionic Power dice for skill checks and telepathic whispers.",
+                features: [
+                    { level: 3, name: "Psychic Blades", description: "Manifest shimmering blades of psychic energy dealing 1d6 psychic damage + Dex modifier with the Finesse and Thrown properties. Make an additional attack with a second psychic blade for 1d4 damage as a Bonus Action." },
+                    { level: 3, name: "Psionic Power", description: "Harbor a pool of Psionic Energy dice (equal to 2x PB) to fuel Psi-Bolstered Knack (add die to failed skill checks) and Psychic Whispers (telepathic communication)." },
+                    { level: 9, name: "Soul Blades", description: "Homing Strikes: spend a Psionic Energy die to turn a missed attack into a hit. Psychic Teleportation: throw a psychic blade up to 10x the die roll and teleport to that space." },
+                    { level: 13, name: "Psychic Veil", description: "Action to cloak yourself in psychic energy, becoming Invisible for 1 hour once per Long Rest or by expending a Psionic Energy die." },
+                    { level: 17, name: "Mind Rend", description: "When you hit a creature with Sneak Attack using a Psychic Blade, spend 3 Sneak Attack dice to force a Wisdom saving throw or stun the target for 1 minute." }
+                ]
+            },
+            {
+                id: "thief",
+                name: "Thief",
+                description: "Fast Hands (Bonus Action use object or Sleight of Hand), Second-Story Work climbing speed.",
+                features: [
+                    { level: 3, name: "Fast Hands", description: "Bonus Action to make a Dexterity (Sleight of Hand) check, use Thieves' Tools to disarm a trap or open a lock, or take the Utilize action." },
+                    { level: 3, name: "Second-Story Work", description: "Climbing no longer costs you extra movement, and your jump distance increases by a number of feet equal to your Dexterity modifier." },
+                    { level: 9, name: "Supreme Sneak", description: "You have Advantage on Dexterity (Stealth) checks if you move no more than half your speed on the same turn." },
+                    { level: 13, name: "Use Magic Device", description: "You can attune to up to four magic items at once, and you ignore all class, race, and spell requirements on the use of magic items." },
+                    { level: 17, name: "Thief's Reflexes", description: "You can take two turns during the first round of any combat (one on your normal initiative and another at initiative minus 10)." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Leather Armor, 2 Daggers, Shortsword & Thieves' Tools", items: ["Leather Armor", "Shortsword", "Dagger (2)", "Thieves' Tools", "Burglar's Pack", "18 GP"] },
@@ -661,10 +1001,55 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Arcane Apotheosis", description: "While Innate Sorcery is active, you can use one Metamagic option on each of your turns without spending Sorcery Points." }
         ],
         subclasses: [
-            { id: "draconic", name: "Draconic Sorcery", description: "Draconic Resilience (AC 10 + Dex + Cha, +1 HP per level), Elemental Affinity.", features: [] },
-            { id: "wild-magic", name: "Wild Magic Sorcery", description: "Wild Magic Surge, Tides of Chaos Advantage.", features: [] },
-            { id: "aberrant", name: "Aberrant Sorcery", description: "Psionic Spells, Telepathic Speech, Psionic Sorcery.", features: [] },
-            { id: "clockwork", name: "Clockwork Sorcery", description: "Clockwork Magic, Restore Balance cancels Advantage/Disadvantage.", features: [] }
+            {
+                id: "aberrant",
+                name: "Aberrant Sorcery",
+                description: "Psionic Spells, Telepathic Speech, Psionic Sorcery.",
+                features: [
+                    { level: 3, name: "Psionic Spells", description: "You learn bonus psionic spells (such as Mind Sliver, Dissonant Whispers, Arms of Hadar). You can swap them for Divination or Enchantment spells from Sorcerer, Warlock, or Wizard." },
+                    { level: 3, name: "Telepathic Speech", description: "Bonus Action to form a telepathic link with a creature within 30 feet for miles equal to your Charisma modifier." },
+                    { level: 6, name: "Psionic Sorcery", description: "Cast any spell from your Psionic Spells feature by expending a number of Sorcery Points equal to the spell's level without verbal, somatic, or material components." },
+                    { level: 6, name: "Psychic Defenses", description: "You gain resistance to Psychic damage, and you have Advantage on saving throws against being Charmed or Frightened." },
+                    { level: 14, name: "Revelation in Flesh", description: "Bonus Action and 1 or more Sorcery Points to alter your form: gain a flying speed, swimming speed, squeeze through narrow spaces, or see invisible creatures." },
+                    { level: 18, name: "Warping Implosion", description: "Action and 5 Sorcery Points to teleport up to 120 feet and leave behind a gravitational vortex dealing 3d10 force damage and pulling enemies toward the center." }
+                ]
+            },
+            {
+                id: "clockwork",
+                name: "Clockwork Sorcery",
+                description: "Clockwork Magic, Restore Balance cancels Advantage/Disadvantage.",
+                features: [
+                    { level: 3, name: "Clockwork Spells", description: "You learn bonus spells of cosmic order (such as Aid, Lesser Restoration, Protection from Evil and Good). You can swap them for Abjuration or Transmutation spells." },
+                    { level: 3, name: "Restore Balance", description: "Reaction when a creature within 60 feet rolls with Advantage or Disadvantage to cancel that roll's modifier PB times per Long Rest." },
+                    { level: 6, name: "Bastion of Law", description: "Action to spend 1 to 5 Sorcery Points to create a protective ward of d8s around yourself or an ally that reduces incoming damage." },
+                    { level: 14, name: "Trance of Order", description: "Bonus Action and 5 Sorcery Points to enter a state of clockwork perfection: attack rolls against you cannot have Advantage, and d20 rolls of 9 or lower count as a 10." },
+                    { level: 18, name: "Clockwork Cavalcade", description: "Action and 7 Sorcery Points to summon spirits of order in a 30-foot cube: restore up to 100 hit points divided among creatures, repair objects, and end spells of 6th level or lower." }
+                ]
+            },
+            {
+                id: "draconic",
+                name: "Draconic Sorcery",
+                description: "Draconic Resilience (AC 10 + Dex + Cha, +1 HP per level), Elemental Affinity.",
+                features: [
+                    { level: 3, name: "Draconic Resilience", description: "Parts of your skin are covered by dragon scales. Your AC equals 10 + Dex modifier + Cha modifier while unarmored, and your HP maximum increases by 1 for each Sorcerer level." },
+                    { level: 3, name: "Draconic Ancestor", description: "Choose a dragon ancestor (Black/Copper: Acid, Blue/Bronze: Lightning, Brass/Gold/Red: Fire, Green: Poison, Silver/White: Cold) which determines your elemental affinity." },
+                    { level: 6, name: "Elemental Affinity", description: "Add your Charisma modifier to one damage roll of any spell that deals damage associated with your dragon ancestor. In addition, spend 1 Sorcery Point to gain 1 hour resistance to that damage type." },
+                    { level: 14, name: "Dragon Wings", description: "Bonus Action to sprout draconic wings from your back, gaining a flying speed equal to your walking speed." },
+                    { level: 18, name: "Dragon Companion", description: "Action and 5 Sorcery Points to summon a draconic avatar that fights alongside you and unleashes breath attacks." }
+                ]
+            },
+            {
+                id: "wild-magic",
+                name: "Wild Magic Sorcery",
+                description: "Wild Magic Surge, Tides of Chaos Advantage.",
+                features: [
+                    { level: 3, name: "Wild Magic Surge", description: "Whenever you cast a Sorcerer spell of level 1 or higher, the DM can have you roll a d20. On a 1, roll on the Wild Magic Surge table to create a random magical effect." },
+                    { level: 3, name: "Tides of Chaos", description: "Gain Advantage on one attack roll, ability check, or saving throw. Recharges on a Long Rest or after triggering a Wild Magic Surge." },
+                    { level: 6, name: "Bend Luck", description: "Reaction and 2 Sorcery Points to add or subtract 1d4 from another creature's attack roll, ability check, or saving throw." },
+                    { level: 14, name: "Controlled Chaos", description: "Whenever you roll on the Wild Magic Surge table, you can roll twice and use either number." },
+                    { level: 18, name: "Spell Bombardment", description: "When you roll the maximum damage on a spell die, roll one of the dice again and add its damage to the total." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Light Crossbow, 2 Daggers & Arcane Focus", items: ["Crossbow, Light", "Crossbow Bolts (20)", "Dagger (2)", "Arcane Focus (Orb)", "Dungeoneer's Pack", "28 GP"] },
@@ -747,10 +1132,51 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Eldritch Master", description: "Spend 1 minute entreating your patron to regain all expended pact magic spell slots once per Long Rest." }
         ],
         subclasses: [
-            { id: "fiend", name: "Fiend Patron", description: "Dark One's Blessing (temporary HP on kill), Dark One's Own Luck (add 1d10 to ability check/save).", features: [] },
-            { id: "archfey", name: "Archfey Patron", description: "Misty Escape (teleport when taking damage), Steps of the Fey enhancements.", features: [] },
-            { id: "celestial", name: "Celestial Patron", description: "Healing Light (pool of d6 healing dice), Radiant Soul bonus radiant/fire damage.", features: [] },
-            { id: "great-old-one", name: "Great Old One Patron", description: "Awakened Mind (telepathic communication), Psychic Spells, Thought Shield.", features: [] }
+            {
+                id: "archfey",
+                name: "Archfey Patron",
+                description: "Misty Escape (teleport when taking damage), Steps of the Fey enhancements.",
+                features: [
+                    { level: 3, name: "Steps of the Fey", description: "You always have Misty Step prepared, and you can cast it without expending a spell slot PB times per Long Rest with enhanced effects (Taunting Step or Refreshing Step)." },
+                    { level: 6, name: "Misty Escape", description: "Reaction upon taking damage to cast Misty Step and turn Invisible until the start of your next turn." },
+                    { level: 10, name: "Beguiling Defenses", description: "You are immune to the Charmed condition. In addition, when a creature attempts to charm you, you can turn the charm back upon that creature." },
+                    { level: 14, name: "Bewitching Cast", description: "Whenever you cast an Enchantment or Illusion spell with a casting time of 1 action, you can cast Misty Step as part of that same action without expending a spell slot." }
+                ]
+            },
+            {
+                id: "celestial",
+                name: "Celestial Patron",
+                description: "Healing Light (pool of d6 healing dice), Radiant Soul bonus radiant/fire damage.",
+                features: [
+                    { level: 3, name: "Healing Light", description: "Harbor a pool of d6 healing dice equal to 1 + your Warlock level. Bonus Action to heal a creature within 60 feet by expending dice (up to your Charisma modifier at once)." },
+                    { level: 6, name: "Radiant Soul", description: "You gain resistance to Radiant damage. In addition, add your Charisma modifier to one radiant or fire damage roll of any spell you cast." },
+                    { level: 10, name: "Celestial Resilience", description: "Whenever you finish a Short or Long Rest, you gain temporary hit points equal to your Warlock level + Charisma modifier, and up to five allies gain temp HP." },
+                    { level: 14, name: "Searing Vengeance", description: "When you would drop to 0 HP, burst with radiant light: regain half your hit points, stand up, and deal 2d8 + Charisma modifier radiant damage and Blind hostiles within 30 feet." }
+                ]
+            },
+            {
+                id: "fiend",
+                name: "Fiend Patron",
+                description: "Dark One's Blessing (temporary HP on kill), Dark One's Own Luck (add 1d10 to ability check/save).",
+                features: [
+                    { level: 3, name: "Dark One's Blessing", description: "When you reduce an enemy to 0 hit points, you gain temporary hit points equal to your Charisma modifier + your Warlock level (minimum 1)." },
+                    { level: 6, name: "Dark One's Own Luck", description: "When you make an ability check or a saving throw, you can add 1d10 to your roll once per Short or Long Rest." },
+                    { level: 10, name: "Fiendish Resilience", description: "Choose one damage type whenever you finish a Short or Long Rest. You gain resistance to that damage type until you choose a different one." },
+                    { level: 14, name: "Hurl Through Hell", description: "When you hit a creature with an attack, you can banish it through the Lower Planes. At the end of your next turn, it returns and takes 10d10 psychic damage." }
+                ]
+            },
+            {
+                id: "great-old-one",
+                name: "Great Old One Patron",
+                description: "Awakened Mind (telepathic communication), Psychic Spells, Thought Shield.",
+                features: [
+                    { level: 3, name: "Awakened Mind", description: "You can telepathically speak to any creature you can see within 30 feet, and the creature can respond telepathically in a language it knows." },
+                    { level: 3, name: "Psychic Spells", description: "Whenever you cast a warlock spell that deals damage, you can change the damage type to Psychic, and you can cast enchantment or illusion spells without verbal or somatic components." },
+                    { level: 6, name: "Clairvoyant Combat", description: "Gain Advantage on attack rolls against a creature you have telepathic contact with, and it has Disadvantage on attack rolls against you." },
+                    { level: 10, name: "Thought Shield", description: "Your thoughts cannot be read, and you gain resistance to Psychic damage. When an enemy deals psychic damage to you, it takes the same amount of damage." },
+                    { level: 14, name: "Create Thrall", description: "Action to touch an Incapacitated humanoid to charm it indefinitely. You communicate telepathically across any distance while on the same plane." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Leather Armor, Sickle & Arcane Focus", items: ["Leather Armor", "Sickle", "Dagger (2)", "Arcane Focus (Wand)", "Scholar's Pack", "15 GP"] },
@@ -803,10 +1229,50 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 20, name: "Signature Spells", description: "Choose two 3rd-level wizard spells as signature spells. They are always prepared, and you can cast each once per Short or Long Rest without a spell slot." }
         ],
         subclasses: [
-            { id: "evoker", name: "Evoker", description: "Sculpt Spells protects allies from area-of-effect spells, Potent Cantrip.", features: [] },
-            { id: "abjurer", name: "Abjurer", description: "Arcane Ward absorbs damage equal to 2x Wizard level + Int modifier, Project Ward.", features: [] },
-            { id: "diviner", name: "Diviner", description: "Portent rolls 2 d20s at the end of a Long Rest to replace any d20 roll.", features: [] },
-            { id: "illusionist", name: "Illusionist", description: "Improved Minor Illusion, Malleable Illusions reshape active illusions.", features: [] }
+            {
+                id: "abjurer",
+                name: "Abjurer",
+                description: "Arcane Ward absorbs damage equal to 2x Wizard level + Int modifier, Project Ward.",
+                features: [
+                    { level: 3, name: "Arcane Ward", description: "Whenever you cast an Abjuration spell with a spell slot, you create a protective ward that has HP equal to twice your Wizard level + your Intelligence modifier, absorbing damage taken." },
+                    { level: 6, name: "Projected Ward", description: "When a creature that you can see within 30 feet takes damage, you can use your Reaction to intercept that damage with your Arcane Ward." },
+                    { level: 10, name: "Spell Breaker", description: "You always have Counterspell and Dispel Magic prepared. In addition, you can cast Counterspell or Dispel Magic as a Bonus Action." },
+                    { level: 14, name: "Spell Resistance", description: "You have Advantage on saving throws against spells, and you have resistance against damage from spells." }
+                ]
+            },
+            {
+                id: "diviner",
+                name: "Diviner",
+                description: "Portent rolls 2 d20s at the end of a Long Rest to replace any d20 roll.",
+                features: [
+                    { level: 3, name: "Portent", description: "When you finish a Long Rest, roll two d20s and record the numbers. You can replace any attack roll, saving throw, or ability check made by you or a creature you can see with one of the foretold rolls." },
+                    { level: 6, name: "Expert Divination", description: "Casting a Divination spell of 2nd level or higher regains an expended spell slot of a lower level." },
+                    { level: 10, name: "The Third Eye", description: "Action to gain one magical sight benefit until incapacitated or taking a rest: Darkvision 60 ft, Ethereal Sight, Greater Comprehension, or See Invisibility." },
+                    { level: 14, name: "Greater Portent", description: "The visions in your dreams intensify. You roll three d20s for your Portent feature instead of two." }
+                ]
+            },
+            {
+                id: "evoker",
+                name: "Evoker",
+                description: "Sculpt Spells protects allies from area-of-effect spells, Potent Cantrip.",
+                features: [
+                    { level: 3, name: "Sculpt Spells", description: "When you cast an Evocation spell that affects other creatures you can see, you can choose a number of them equal to 1 + the spell's level. The chosen creatures automatically succeed on their saving throws and take no damage." },
+                    { level: 6, name: "Potent Cantrip", description: "Your damaging cantrips affect even creatures that avoid the brunt of the effect: creature takes half damage on a successful save or missed attack." },
+                    { level: 10, name: "Empowered Evocation", description: "You can add your Intelligence modifier to one damage roll of any wizard evocation spell you cast." },
+                    { level: 14, name: "Overchannel", description: "When you cast a wizard spell of 1st through 5th level that deals damage, you can maximize the damage dice of the spell. Subsequent uses before a Long Rest deal necrotic damage to you." }
+                ]
+            },
+            {
+                id: "illusionist",
+                name: "Illusionist",
+                description: "Improved Minor Illusion, Malleable Illusions reshape active illusions.",
+                features: [
+                    { level: 3, name: "Improved Minor Illusion", description: "You learn the Minor Illusion cantrip. You can cast it as a Bonus Action and can create both a sound and an image with a single casting." },
+                    { level: 6, name: "Malleable Illusions", description: "When you cast an illusion spell with a duration of 1 minute or longer, you can use your action to change the nature of that illusion." },
+                    { level: 10, name: "Illusory Self", description: "Reaction when a creature makes an attack roll against you to interpose an illusory duplicate, causing the attack to miss automatically once per Short or Long Rest." },
+                    { level: 14, name: "Illusory Reality", description: "Bonus Action to make one inanimate, nonmagical object that is part of an illusion you cast real for 1 minute." }
+                ]
+            }
         ],
         startingEquipmentOptions: [
             { name: "Quarterstaff, Spellbook & Scholar's Pack", items: ["Quarterstaff", "Spellbook", "Arcane Focus (Orb)", "Scholar's Pack", "5 GP"] },
