@@ -702,4 +702,70 @@ describe("CharacterCreatorController", () => {
         // No scrolling list container
         expect(container.querySelector(".progression-timeline")).toBeNull();
     });
+
+    it("hides locked higher levels under a load more link and reveals them with show less link", () => {
+        const ctrl = new CharacterCreatorController();
+        document.body.innerHTML = '<div id="creator-step-panels"></div>';
+
+        // Fighter at level 3
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 3;
+        ctrl.progressionExpanded = false;
+        ctrl.renderStep(3);
+
+        const container = document.getElementById("creator-step-panels")!;
+
+        // Unlocked rows: Levels 1, 2, 3
+        const unlockedRows = container.querySelectorAll(".progression-row.unlocked");
+        expect(unlockedRows.length).toBe(3);
+        unlockedRows.forEach((row) => {
+            expect(row.classList.contains("hidden")).toBe(false);
+        });
+
+        // Locked rows: Levels 4 to 20 should be hidden by default
+        const lockedRows = container.querySelectorAll(".progression-row.locked");
+        expect(lockedRows.length).toBe(17);
+        const hiddenLockedRows = container.querySelectorAll(".progression-row.locked.hidden");
+        expect(hiddenLockedRows.length).toBe(17);
+
+        // Load more link should be present with "Load more"
+        const loadMoreLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
+        expect(loadMoreLink).not.toBeNull();
+        expect(loadMoreLink.textContent).toContain("Load more");
+
+        // Click the load more link
+        loadMoreLink.click();
+
+        // Now progression should be expanded
+        expect(ctrl.progressionExpanded).toBe(true);
+        const visibleLockedRows = container.querySelectorAll(".progression-row.locked:not(.hidden)");
+        expect(visibleLockedRows.length).toBe(17);
+
+        // Link should now display "Show less"
+        const showLessLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
+        expect(showLessLink).not.toBeNull();
+        expect(showLessLink.textContent).toContain("Show less");
+
+        // Bottom show less link should also be present when expanded
+        const bottomShowLess = container.querySelector("#progression-show-less-bottom-link") as HTMLAnchorElement;
+        expect(bottomShowLess).not.toBeNull();
+        expect(bottomShowLess.textContent).toContain("Show less");
+
+        // Click show less
+        showLessLink.click();
+
+        // Locked rows should be re-hidden and link returns to "Load more"
+        expect(ctrl.progressionExpanded).toBe(false);
+        const rehiddenLockedRows = container.querySelectorAll(".progression-row.locked.hidden");
+        expect(rehiddenLockedRows.length).toBe(17);
+        const reloadedLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
+        expect(reloadedLink.textContent).toContain("Load more");
+
+        // If character level is 20, all levels unlocked, no load more link rendered
+        ctrl.state.level = 20;
+        ctrl.renderStep(3);
+        expect(container.querySelector("#progression-load-more-link")).toBeNull();
+        expect(container.querySelectorAll(".progression-row.unlocked").length).toBe(20);
+        expect(container.querySelectorAll(".progression-row.locked").length).toBe(0);
+    });
 });

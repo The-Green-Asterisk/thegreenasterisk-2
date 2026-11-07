@@ -1437,7 +1437,8 @@ export class CharacterCreatorController {
 
     private renderClassProgression(cls: ClassDefinition): string {
         const charLevel = this.state.level;
-        const boxes: string[] = [];
+        const unlockedBoxes: string[] = [];
+        const lockedBoxes: string[] = [];
 
         for (let lvl = 1; lvl <= 20; lvl++) {
             if (this.progressionFilter === "unlocked" && lvl > charLevel) {
@@ -1445,6 +1446,7 @@ export class CharacterCreatorController {
             }
 
             const isUnlocked = lvl <= charLevel;
+            const isHidden = !isUnlocked && !this.progressionExpanded;
             const featuresAtLvl = cls.features.filter((f: ClassLevelFeature) => f.level === lvl);
             const pb = Math.floor((lvl - 1) / 4) + 2;
             const statBadge = this.getClassLevelStatBadge(cls, lvl);
@@ -1459,8 +1461,8 @@ export class CharacterCreatorController {
 
             const choicesHtml = this.renderLevelChoices(cls, lvl);
 
-            boxes.push(`
-                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-level="${lvl}">
+            const boxHtml = `
+                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}${isHidden ? " hidden" : ""}" data-level="${lvl}">
                     <div class="level-card-header">
                         <div class="level-header-title">
                             <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}">
@@ -1493,7 +1495,44 @@ export class CharacterCreatorController {
 
                     ${choicesHtml}
                 </div>
-            `);
+            `;
+
+            if (isUnlocked) {
+                unlockedBoxes.push(boxHtml);
+            } else {
+                lockedBoxes.push(boxHtml);
+            }
+        }
+
+        const hasLocked = lockedBoxes.length > 0;
+        let toggleLinkTop = "";
+        let toggleLinkBottom = "";
+
+        if (hasLocked) {
+            if (!this.progressionExpanded) {
+                toggleLinkTop = `
+                    <div class="progression-load-more-container">
+                        <a href="javascript:void(0)" class="progression-toggle-link load-more" id="progression-load-more-link" role="button">
+                            <i class="fa-solid fa-chevron-down"></i> Load more
+                        </a>
+                    </div>
+                `;
+            } else {
+                toggleLinkTop = `
+                    <div class="progression-load-more-container">
+                        <a href="javascript:void(0)" class="progression-toggle-link show-less" id="progression-load-more-link" role="button">
+                            <i class="fa-solid fa-chevron-up"></i> Show less
+                        </a>
+                    </div>
+                `;
+                toggleLinkBottom = `
+                    <div class="progression-load-more-container progression-load-more-bottom">
+                        <a href="javascript:void(0)" class="progression-toggle-link show-less" id="progression-show-less-bottom-link" role="button">
+                            <i class="fa-solid fa-chevron-up"></i> Show less
+                        </a>
+                    </div>
+                `;
+            }
         }
 
         return `
@@ -1507,16 +1546,13 @@ export class CharacterCreatorController {
                             New abilities, features, and choices gained at each level for the ${cls.name} class. Features active at your current level (Level ${charLevel}) are marked Active.
                         </p>
                     </div>
-                    <div class="progression-header-actions">
-                        <div class="progression-filter-group">
-                            <button type="button" class="btn btn-sm ${this.progressionFilter === "all" ? "btn-primary active" : "btn-outline"} prog-filter-btn" data-prog-filter="all">All Levels (1–20)</button>
-                            <button type="button" class="btn btn-sm ${this.progressionFilter === "unlocked" ? "btn-primary active" : "btn-outline"} prog-filter-btn" data-prog-filter="unlocked">Active (1–${charLevel})</button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            ${boxes.join("")}
+            ${unlockedBoxes.join("")}
+            ${toggleLinkTop}
+            ${lockedBoxes.join("")}
+            ${toggleLinkBottom}
         `;
     }
 
@@ -2478,6 +2514,21 @@ export class CharacterCreatorController {
                     const filter = (btn.getAttribute("data-prog-filter") || "all") as "all" | "unlocked";
                     this.progressionFilter = filter;
                     this.renderStep(3);
+                });
+            });
+
+            document.querySelectorAll(".progression-toggle-link").forEach((link) => {
+                link.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    const wasExpanded = this.progressionExpanded;
+                    this.progressionExpanded = !this.progressionExpanded;
+                    this.renderStep(3);
+                    if (wasExpanded) {
+                        const toggleLink = document.getElementById("progression-load-more-link");
+                        if (toggleLink && typeof toggleLink.scrollIntoView === "function") {
+                            toggleLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                        }
+                    }
                 });
             });
 

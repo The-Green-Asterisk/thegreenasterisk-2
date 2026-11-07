@@ -1546,6 +1546,40 @@ el-character-creator,
     opacity: 0.88;
 }
 
+.level-progression-box.locked.hidden {
+    display: none !important;
+}
+
+/* Level Progression Load More / Show Less Link */
+.progression-load-more-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1.25rem 0;
+    padding: 0.5rem;
+}
+
+.progression-toggle-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary, #0ea5e9);
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    transition: all 0.15s ease;
+}
+
+.progression-toggle-link:hover {
+    color: var(--primary-hover, #0284c7);
+    background: rgba(14, 165, 233, 0.08);
+}
+
 .level-card-header {
     display: flex;
     align-items: center;
