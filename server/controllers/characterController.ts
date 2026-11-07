@@ -969,6 +969,41 @@ export default class CharacterController extends BaseController {
             }, {} as Record<string, string>)
             : (fallbackPayload?.featureChoices || {});
 
+        const actions = Array.isArray(fallbackPayload?.actions) && fallbackPayload.actions.length > 0
+            ? fallbackPayload.actions
+            : [
+                ...weapons.map((w: any) => ({
+                    name: w.name,
+                    type: "Action" as const,
+                    rangeOrReach: w.range || "5 ft.",
+                    hitOrDc: `${w.attackBonus || "+0"} to hit`,
+                    damageOrEffect: w.damage || "1d4",
+                    notes: w.mastery?.name ? `Mastery: ${w.mastery.name}` : (Array.isArray(w.properties) ? w.properties.join(", ") : "")
+                })),
+                {
+                    name: "Unarmed Strike",
+                    type: "Action" as const,
+                    rangeOrReach: "Reach 5 ft.",
+                    hitOrDc: `+${(abilities.find((a: any) => a.abbr === "STR")?.modifier ?? 0) + (vitals?.proficiencyBonus ?? 2)} to hit`,
+                    damageOrEffect: `${Math.max(1, 1 + (abilities.find((a: any) => a.abbr === "STR")?.modifier ?? 0))} Bludgeoning`,
+                    notes: "Damage, Grapple, or Shove (DC " + (8 + (abilities.find((a: any) => a.abbr === "STR")?.modifier ?? 0) + (vitals?.proficiencyBonus ?? 2)) + ")"
+                }
+            ];
+
+        const proficiencies = fallbackPayload?.proficiencies && typeof fallbackPayload.proficiencies === "object"
+            ? {
+                armor: Array.isArray(fallbackPayload.proficiencies.armor) ? fallbackPayload.proficiencies.armor : [],
+                weapons: Array.isArray(fallbackPayload.proficiencies.weapons) ? fallbackPayload.proficiencies.weapons : [],
+                tools: Array.isArray(fallbackPayload.proficiencies.tools) ? fallbackPayload.proficiencies.tools : [],
+                languages: Array.isArray(fallbackPayload.proficiencies.languages) ? fallbackPayload.proficiencies.languages : ["Common"]
+            }
+            : {
+                armor: [],
+                weapons: [],
+                tools: fallbackPayload?.creatorState?.bgTool ? [fallbackPayload.creatorState.bgTool] : [],
+                languages: ["Common"]
+            };
+
         return {
             ...(fallbackPayload && typeof fallbackPayload === "object" ? fallbackPayload : {}),
             name: record.name,
@@ -987,6 +1022,9 @@ export default class CharacterController extends BaseController {
             equipment,
             spells,
             features,
+            actions,
+            proficiencies,
+            spellSlots: fallbackPayload?.spellSlots || {},
             classResources,
             featureChoices
         };

@@ -622,6 +622,17 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeRawDndBeyondPayload = undefined;
             currentEquipOverrides = [];
             activeCharacter = response.character;
+            if (!Array.isArray(activeCharacter.actions)) activeCharacter.actions = [];
+            if (!Array.isArray(activeCharacter.spells)) activeCharacter.spells = [];
+            if (!Array.isArray(activeCharacter.weapons)) activeCharacter.weapons = [];
+            if (!Array.isArray(activeCharacter.equipment)) activeCharacter.equipment = [];
+            if (!Array.isArray(activeCharacter.features)) activeCharacter.features = [];
+            if (!Array.isArray(activeCharacter.skills)) activeCharacter.skills = [];
+            if (!Array.isArray(activeCharacter.abilities)) activeCharacter.abilities = [];
+            if (!activeCharacter.spellSlots || typeof activeCharacter.spellSlots !== "object") activeCharacter.spellSlots = {};
+            if (!activeCharacter.proficiencies || typeof activeCharacter.proficiencies !== "object") {
+                activeCharacter.proficiencies = { armor: [], weapons: [], tools: [], languages: ["Common"] };
+            }
             ensureClassResourcesOnCharacter(activeCharacter);
             ensureSavingThrowNotesOnCharacter(activeCharacter);
             ensureFeatureDecisionsOnCharacterData(activeCharacter);

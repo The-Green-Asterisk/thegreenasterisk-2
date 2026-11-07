@@ -2,7 +2,7 @@ import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
 
 export function renderFeatures(data: CharacterData): string {
-    return data.features
+    return (data.features || [])
         .map((f, fIdx) => {
             const decisionsHtml =
                 Array.isArray(f.decisions) && f.decisions.length > 0

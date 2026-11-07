@@ -4772,6 +4772,53 @@ export class CharacterCreatorController {
             const invSkill = skillsPayload.find((s) => s.name === "Investigation");
             const insSkill = skillsPayload.find((s) => s.name === "Insight");
 
+            const actionsPayload: any[] = [
+                ...weaponsPayload.map((w) => ({
+                    name: w.name,
+                    type: "Action",
+                    rangeOrReach: w.range || "5 ft.",
+                    hitOrDc: `${w.attackBonus} to hit`,
+                    damageOrEffect: w.damage,
+                    notes: w.mastery?.unlocked ? `Mastery: ${w.mastery.name}` : (w.properties || []).join(", ")
+                })),
+                {
+                    name: "Unarmed Strike",
+                    type: "Action",
+                    rangeOrReach: "Reach 5 ft.",
+                    hitOrDc: `+${this.getAbilityModifier("str") + pb} to hit`,
+                    damageOrEffect: `${Math.max(1, 1 + this.getAbilityModifier("str"))} Bludgeoning`,
+                    notes: `Damage, Grapple, or Shove (DC ${8 + this.getAbilityModifier("str") + pb})`
+                }
+            ];
+
+            const spellSlotsPayload: Record<string, any> = {};
+            if (cls.spellcasting) {
+                const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
+                const slotsRow = cls.spellcasting.spellSlotsByLevel?.[lvlIdx] || [];
+                if (cls.spellcasting.type === "pact") {
+                    const count = slotsRow.find((s: number) => s > 0) || 0;
+                    const pactLvl = slotsRow.findIndex((s: number) => s > 0) + 1;
+                    if (count > 0 && pactLvl > 0) {
+                        spellSlotsPayload.pact = {
+                            level: pactLvl,
+                            total: count,
+                            label: `Pact Magic (${pactLvl}${this.getOrdinalSuffix(pactLvl)} Level)`
+                        };
+                    }
+                } else {
+                    slotsRow.forEach((total: number, idx: number) => {
+                        if (total > 0) {
+                            const slotLvl = idx + 1;
+                            spellSlotsPayload[`level${slotLvl}`] = {
+                                level: slotLvl,
+                                total,
+                                label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
+                            };
+                        }
+                    });
+                }
+            }
+
             const maxHp = this.getMaxHp();
             const characterPayload: any = {
                 name: this.state.name,
@@ -4800,7 +4847,7 @@ export class CharacterCreatorController {
                     passiveInvestigation: 10 + (invSkill?.bonus || 0),
                     passiveInsight: 10 + (insSkill?.bonus || 0),
                     darkvision: species.darkvision || "None",
-                    hitDice: `1d${cls.hitDie}`,
+                    hitDice: `${this.state.level}d${cls.hitDie}`,
                     heroicInspiration: false,
                     spellSaveDc: cls.spellcasting ? 8 + pb + this.getAbilityModifier(cls.spellcasting.ability) : 10,
                     spellAttackBonus: cls.spellcasting ? pb + this.getAbilityModifier(cls.spellcasting.ability) : 0,
@@ -4813,10 +4860,15 @@ export class CharacterCreatorController {
                 equipment: equipmentPayload,
                 spells: spellsPayload,
                 features: featuresPayload,
+                actions: actionsPayload,
+                proficiencies: {
+                    armor: cls.armorProficiencies || [],
+                    weapons: cls.weaponProficiencies || [],
+                    tools: this.state.bgTool ? [this.state.bgTool] : [],
+                    languages: ["Common"]
+                },
                 classResources: resourcesPayload,
-                spellSlots: cls.spellcasting ? {
-                    level1: { total: 2, label: "1st Level" }
-                } : {},
+                spellSlots: spellSlotsPayload,
                 creatorState: {
                     ...this.state
                 },

@@ -3,7 +3,7 @@ import { linkifyConditionAndSpellTags } from "./markupLinks";
 import { checkItemRequiresAttunement, isMundaneEquipment } from "../services/magicItemBonuses";
 
 export function renderEquipment(data: CharacterData): string {
-    return data.equipment.map(item => {
+    return (data.equipment || []).map(item => {
         const equippedBadge = `
             <button
                 type="button"
