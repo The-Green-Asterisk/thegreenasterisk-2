@@ -8,6 +8,7 @@ import {
     BASE_WEAPONS_2024,
     BATTLE_MASTER_MANEUVERS,
     BackgroundDefinition,
+    CLASS_SPELL_PRIORITIES,
     CLASSES_2024,
     ClassDefinition,
     ClassLevelFeature,
@@ -919,6 +920,109 @@ export class CharacterCreatorController {
         if (this.state.selectedSpellsLevel1.length > maxPrepared) {
             this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.slice(0, maxPrepared);
         }
+    }
+
+    public getSmartAutoFillSpells(): { cantrips: string[]; prepared: string[] } {
+        const available = this.getAvailableSpells();
+        const maxCantrips = this.getMaxCantrips();
+        const maxPrepared = this.getMaxPreparedSpells();
+        const maxLevel = this.getMaxSpellLevel();
+
+        let classKey = (this.state.classId || "wizard").toLowerCase();
+        if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") {
+            classKey = "wizard";
+        }
+        const priorities = CLASS_SPELL_PRIORITIES[classKey] || CLASS_SPELL_PRIORITIES["wizard"];
+
+        // 1. Smart Cantrips: rank by class priorities, then alphabetical
+        const cantripRank = (sp: RuleSpellDefinition) => {
+            const idx = priorities.cantrips.indexOf(sp.name);
+            return idx >= 0 ? idx : 999;
+        };
+        const sortedCantrips = [...available.cantrips].sort((a, b) => {
+            const rA = cantripRank(a);
+            const rB = cantripRank(b);
+            if (rA !== rB) return rA - rB;
+            return a.name.localeCompare(b.name);
+        });
+        const selectedCantrips = sortedCantrips.slice(0, maxCantrips).map((c) => c.name);
+
+        // 2. Smart Prepared Spells: ensure coverage across available spell levels, prioritizing staples
+        const leveledRank = (sp: RuleSpellDefinition) => {
+            const idx = priorities.leveled.indexOf(sp.name);
+            return idx >= 0 ? idx : 999;
+        };
+
+        // Group available leveled spells by level
+        const byLevel: Record<number, RuleSpellDefinition[]> = {};
+        for (let lvl = 1; lvl <= maxLevel; lvl++) {
+            byLevel[lvl] = available.leveledSpells
+                .filter((s) => s.level === lvl)
+                .sort((a, b) => {
+                    const rA = leveledRank(a);
+                    const rB = leveledRank(b);
+                    if (rA !== rB) return rA - rB;
+                    return a.name.localeCompare(b.name);
+                });
+        }
+
+        const selectedPreparedSet = new Set<string>();
+
+        if (maxLevel === 1) {
+            // Level 1 only: take top priorities
+            const topLvl1 = (byLevel[1] || []).slice(0, maxPrepared);
+            topLvl1.forEach((s) => selectedPreparedSet.add(s.name));
+        } else {
+            // Multi-level: distribute across levels from maxLevel down to 1
+            // Pass 1: Ensure top staples from each spell level (favoring highest levels)
+            for (let lvl = maxLevel; lvl >= 1; lvl--) {
+                const spellsAtLvl = byLevel[lvl] || [];
+                const quota = lvl === maxLevel ? 2 : 1;
+                for (let i = 0; i < Math.min(quota, spellsAtLvl.length); i++) {
+                    if (selectedPreparedSet.size < maxPrepared) {
+                        selectedPreparedSet.add(spellsAtLvl[i].name);
+                    }
+                }
+            }
+
+            // Pass 2: Round-robin fill starting from highest levels down to 1
+            let addedInPass = true;
+            while (selectedPreparedSet.size < maxPrepared && addedInPass) {
+                addedInPass = false;
+                for (let lvl = maxLevel; lvl >= 1; lvl--) {
+                    const spellsAtLvl = byLevel[lvl] || [];
+                    for (const s of spellsAtLvl) {
+                        if (!selectedPreparedSet.has(s.name) && selectedPreparedSet.size < maxPrepared) {
+                            selectedPreparedSet.add(s.name);
+                            addedInPass = true;
+                            break;
+                        }
+                    }
+                    if (selectedPreparedSet.size >= maxPrepared) break;
+                }
+            }
+        }
+
+        // If still under maxPrepared, fill with any remaining available spells
+        if (selectedPreparedSet.size < maxPrepared) {
+            const allSorted = [...available.leveledSpells].sort((a, b) => {
+                if (b.level !== a.level) return b.level - a.level;
+                const rA = leveledRank(a);
+                const rB = leveledRank(b);
+                if (rA !== rB) return rA - rB;
+                return a.name.localeCompare(b.name);
+            });
+            for (const s of allSorted) {
+                if (!selectedPreparedSet.has(s.name) && selectedPreparedSet.size < maxPrepared) {
+                    selectedPreparedSet.add(s.name);
+                }
+            }
+        }
+
+        return {
+            cantrips: selectedCantrips,
+            prepared: Array.from(selectedPreparedSet)
+        };
     }
 
     public getSpellcastingAbility(): AbilityName | null {
@@ -2915,12 +3019,9 @@ export class CharacterCreatorController {
             // Auto-Fill spells button
             const autoBtn = document.querySelector(".auto-spells-btn");
             autoBtn?.addEventListener("click", () => {
-                const available = this.getAvailableSpells();
-                const maxCantrips = this.getMaxCantrips();
-                const maxPrepared = this.getMaxPreparedSpells();
-
-                this.state.selectedCantrips = available.cantrips.slice(0, maxCantrips).map((c) => c.name);
-                this.state.selectedSpellsLevel1 = available.leveledSpells.slice(0, maxPrepared).map((s) => s.name);
+                const smart = this.getSmartAutoFillSpells();
+                this.state.selectedCantrips = smart.cantrips;
+                this.state.selectedSpellsLevel1 = smart.prepared;
                 this.spellsWarningDismissed = false;
                 this.hideAlert();
                 this.renderStep(8);

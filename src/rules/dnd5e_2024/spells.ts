@@ -1589,3 +1589,135 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         description: "The mightiest spell a mortal creature can cast. By simply speaking aloud, you can alter the very foundations of reality in accord with your desires. The basic use is to duplicate any other spell of 8th level or lower without needing to meet requirements."
     }
 ];
+
+export interface ClassSpellPriorities {
+    cantrips: string[];
+    leveled: string[];
+}
+
+export const CLASS_SPELL_PRIORITIES: Record<string, ClassSpellPriorities> = {
+    wizard: {
+        cantrips: [
+            "Fire Bolt", "Mage Hand", "Minor Illusion", "Ray of Frost",
+            "Blade Ward", "Prestidigitation", "Light", "Shocking Grasp", "Acid Splash"
+        ],
+        leveled: [
+            "Wish", "Meteor Swarm", "Time Stop",
+            "Antimagic Field", "Demiplane", "Dominate Monster",
+            "Teleport", "Plane Shift", "Finger of Death",
+            "Disintegrate", "Chain Lightning", "Sunbeam", "True Seeing",
+            "Wall of Force", "Hold Monster", "Bigby's Hand", "Cone of Cold", "Cloudkill",
+            "Dimension Door", "Polymorph", "Greater Invisibility", "Banishment", "Wall of Fire", "Ice Storm",
+            "Counterspell", "Fireball", "Haste", "Dispel Magic", "Fly", "Hypnotic Pattern", "Lightning Bolt",
+            "Misty Step", "Mirror Image", "Hold Person", "Invisibility", "Web", "Scorching Ray", "Darkvision",
+            "Shield", "Mage Armor", "Magic Missile", "Detect Magic", "Thunderwave", "Burning Hands", "Charm Person", "Find Familiar"
+        ]
+    },
+    sorcerer: {
+        cantrips: [
+            "Fire Bolt", "Ray of Frost", "Shocking Grasp", "Minor Illusion",
+            "Blade Ward", "Light", "Acid Splash"
+        ],
+        leveled: [
+            "Meteor Swarm", "Wish", "Time Stop",
+            "Dominate Monster", "Sunburst",
+            "Finger of Death", "Plane Shift", "Fire Storm",
+            "Disintegrate", "Chain Lightning", "Sunbeam",
+            "Hold Monster", "Cone of Cold",
+            "Polymorph", "Dimension Door", "Wall of Fire", "Banishment",
+            "Fireball", "Counterspell", "Haste", "Fly", "Dispel Magic", "Lightning Bolt",
+            "Misty Step", "Mirror Image", "Scorching Ray", "Hold Person", "Invisibility", "Web", "Shatter",
+            "Shield", "Magic Missile", "Mage Armor", "Thunderwave", "Burning Hands"
+        ]
+    },
+    warlock: {
+        cantrips: [
+            "Eldritch Blast", "Mage Hand", "Minor Illusion", "Chill Touch",
+            "Poison Spray", "Blade Ward"
+        ],
+        leveled: [
+            "Foresight", "Power Word Kill",
+            "Dominate Monster", "Demiplane",
+            "Finger of Death", "Plane Shift",
+            "True Seeing",
+            "Hold Monster",
+            "Banishment", "Dimension Door",
+            "Counterspell", "Dispel Magic", "Fear", "Hypnotic Pattern",
+            "Misty Step", "Darkness", "Hold Person", "Invisibility", "Mirror Image", "Suggestion",
+            "Hellish Rebuke", "Charm Person"
+        ]
+    },
+    cleric: {
+        cantrips: [
+            "Sacred Flame", "Guidance", "Toll the Dead", "Spare the Dying",
+            "Thaumaturgy", "Light"
+        ],
+        leveled: [
+            "Mass Heal",
+            "Antimagic Field", "Sunburst",
+            "Fire Storm", "Plane Shift",
+            "Heal", "Sunbeam", "True Seeing",
+            "Greater Restoration", "Mass Cure Wounds", "Hold Monster",
+            "Banishment",
+            "Spirit Guardians", "Revivify", "Dispel Magic", "Mass Healing Word", "Daylight",
+            "Spiritual Weapon", "Aid", "Lesser Restoration", "Hold Person", "Silence",
+            "Healing Word", "Bless", "Guiding Bolt", "Cure Wounds", "Shield of Faith", "Sanctuary", "Detect Magic"
+        ]
+    },
+    druid: {
+        cantrips: [
+            "Druidcraft", "Produce Flame", "Shillelagh", "Guidance",
+            "Poison Spray", "Mending"
+        ],
+        leveled: [
+            "Foresight",
+            "Sunburst",
+            "Fire Storm", "Plane Shift",
+            "Heal", "Sunbeam",
+            "Greater Restoration", "Mass Cure Wounds",
+            "Polymorph", "Wall of Fire", "Ice Storm",
+            "Call Lightning", "Dispel Magic", "Daylight",
+            "Moonbeam", "Barkskin", "Pass without Trace", "Lesser Restoration", "Enhance Ability", "Flaming Sphere",
+            "Healing Word", "Entangle", "Faerie Fire", "Cure Wounds", "Detect Magic"
+        ]
+    },
+    bard: {
+        cantrips: [
+            "Vicious Mockery", "Message", "Minor Illusion", "Dancing Lights",
+            "Light", "Mending", "Blade Ward"
+        ],
+        leveled: [
+            "Power Word Kill", "Foresight",
+            "Dominate Monster",
+            "Teleport",
+            "True Seeing",
+            "Hold Monster", "Greater Restoration", "Mass Cure Wounds",
+            "Dimension Door", "Polymorph", "Greater Invisibility",
+            "Hypnotic Pattern", "Dispel Magic", "Fear",
+            "Hold Person", "Invisibility", "Enhance Ability", "Suggestion", "Silence", "Lesser Restoration", "Mirror Image",
+            "Healing Word", "Dissonant Whispers", "Charm Person", "Disguise Self", "Cure Wounds", "Detect Magic"
+        ]
+    },
+    paladin: {
+        cantrips: [
+            "Sacred Flame", "Guidance"
+        ],
+        leveled: [
+            "Banishment",
+            "Revivify", "Daylight", "Dispel Magic",
+            "Aid", "Lesser Restoration", "Silence",
+            "Divine Smite", "Bless", "Shield of Faith", "Cure Wounds", "Healing Word", "Sanctuary", "Detect Magic"
+        ]
+    },
+    ranger: {
+        cantrips: [
+            "Druidcraft", "Produce Flame"
+        ],
+        leveled: [
+            "Greater Invisibility",
+            "Revivify", "Daylight", "Dispel Magic",
+            "Pass without Trace", "Barkskin", "Lesser Restoration", "Silence", "Darkvision",
+            "Hunter's Mark", "Cure Wounds", "Entangle", "Faerie Fire", "Detect Magic"
+        ]
+    }
+};

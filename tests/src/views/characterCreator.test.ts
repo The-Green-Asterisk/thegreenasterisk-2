@@ -822,4 +822,48 @@ describe("CharacterCreatorController", () => {
         const updatedBanner = container.querySelector(".kit-equipped-banner");
         expect(updatedBanner!.textContent).toContain("Option B");
     });
+
+    it("smart auto-fills curated class staples and distributes across available spell levels", () => {
+        const ctrl = new CharacterCreatorController();
+
+        // Level 1 Wizard
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        const wiz1 = ctrl.getSmartAutoFillSpells();
+        expect(wiz1.cantrips.length).toBe(ctrl.getMaxCantrips()); // 3
+        expect(wiz1.cantrips).toEqual(["Fire Bolt", "Mage Hand", "Minor Illusion"]);
+        expect(wiz1.prepared.length).toBe(ctrl.getMaxPreparedSpells()); // 4
+        expect(wiz1.prepared).toContain("Shield");
+        expect(wiz1.prepared).toContain("Mage Armor");
+        expect(wiz1.prepared).toContain("Magic Missile");
+
+        // Level 5 Wizard (access to levels 1, 2, and 3)
+        ctrl.state.level = 5;
+        const wiz5 = ctrl.getSmartAutoFillSpells();
+        expect(wiz5.cantrips.length).toBe(ctrl.getMaxCantrips()); // 4
+        expect(wiz5.prepared.length).toBe(ctrl.getMaxPreparedSpells()); // 9
+        // Must contain high-level staples (Level 3)
+        expect(wiz5.prepared).toContain("Counterspell");
+        expect(wiz5.prepared).toContain("Fireball");
+        // Must contain mid-level staples (Level 2)
+        expect(wiz5.prepared).toContain("Misty Step");
+        // Must contain low-level staples (Level 1)
+        expect(wiz5.prepared).toContain("Shield");
+
+        // Level 1 Cleric
+        ctrl.state.classId = "cleric";
+        ctrl.state.level = 1;
+        const cleric1 = ctrl.getSmartAutoFillSpells();
+        expect(cleric1.cantrips).toContain("Sacred Flame");
+        expect(cleric1.cantrips).toContain("Guidance");
+        expect(cleric1.prepared).toContain("Healing Word");
+        expect(cleric1.prepared).toContain("Bless");
+
+        // Level 1 Warlock
+        ctrl.state.classId = "warlock";
+        ctrl.state.level = 1;
+        const warlock1 = ctrl.getSmartAutoFillSpells();
+        expect(warlock1.cantrips).toContain("Eldritch Blast");
+        expect(warlock1.prepared).toContain("Hellish Rebuke");
+    });
 });
