@@ -612,9 +612,11 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 throw new Error("Missing saved character payload.");
             }
 
+            activeRawDndBeyondPayload = undefined;
+            currentEquipOverrides = [];
             activeCharacter = response.character;
             ensureFeatureDecisionsOnCharacterData(activeCharacter);
-            ensureBaseScoresOnCharacter(activeCharacter, activeRawDndBeyondPayload);
+            ensureBaseScoresOnCharacter(activeCharacter, undefined);
             isEditMode = false;
             activeCharacter.savedCharacterId = response.savedCharacter?.id || activeCharacter.savedCharacterId;
             activeCharacter.siteCharacterId = response.savedCharacter?.siteCharacterId || activeCharacter.siteCharacterId;
@@ -737,6 +739,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             showStatus("You must be logged in to create a new character.", true);
             return;
         }
+        activeRawDndBeyondPayload = undefined;
+        currentEquipOverrides = [];
         activeCharacter = createEmptySiteCharacter();
         activeCharacterId = "";
         currentHp = activeCharacter.vitals.currentHp;
@@ -1173,15 +1177,33 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }
         showStatus(`Fetching D&D Beyond character #${extractedId}...`);
 
+        const currentActiveId = activeCharacter
+            ? ((activeCharacter as any).externalCharacterId ||
+               (activeCharacter.id && /^\d+$/.test(String(activeCharacter.id)) ? String(activeCharacter.id) : undefined) ||
+               activeCharacter.siteCharacterId ||
+               activeCharacterId)
+            : undefined;
+
+        const isSameCharacter = !!(
+            activeCharacter &&
+            (options?.refreshed ||
+             (currentActiveId && String(currentActiveId) === String(extractedId)) ||
+             (activeCharacter.id && String(activeCharacter.id) === String(extractedId)) ||
+             ((activeCharacter as any).externalCharacterId && String((activeCharacter as any).externalCharacterId) === String(extractedId)) ||
+             (activeCharacter.siteCharacterId && String(activeCharacter.siteCharacterId).toLowerCase() === String(extractedId).toLowerCase()))
+        );
+
         try {
             const rawData = await getData<any>(`/get-dndbeyond-character?id=${extractedId}`);
             activeRawDndBeyondPayload = rawData;
             currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
             ensureBaseScoresOnCharacter(parsed, rawData);
-            const sourceWithLocks = activeCharacter || (existingSaved as any)?.savedPayload;
-            if (sourceWithLocks?.lockedFields) {
-                applyLockedFieldsToRefreshedCharacter(parsed, sourceWithLocks);
+
+            if (isSameCharacter && activeCharacter?.lockedFields) {
+                applyLockedFieldsToRefreshedCharacter(parsed, activeCharacter);
+            } else {
+                delete parsed.lockedFields;
             }
             if (parsed.spells?.length) {
                 void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });

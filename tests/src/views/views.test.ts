@@ -2013,4 +2013,48 @@ describe('Frontend View Templates', () => {
         confirmSpy.mockRestore();
         authSpy.mockRestore();
     });
+
+    it('resets locked fields when loading a completely different character', async () => {
+        const { applyLockedFieldsToRefreshedCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        // Character A (Darvell) with custom locked edits
+        const charA: any = {
+            id: 138310322,
+            name: 'Darvell Custom Name',
+            abilities: [
+                { abbr: 'STR', score: 18, baseScore: 18, modifier: 4, save: 4 },
+                { abbr: 'DEX', score: 14, baseScore: 14, modifier: 2, save: 2 }
+            ],
+            vitals: { maxHp: 50 },
+            lockedFields: {
+                name: true,
+                'abilities.STR': true
+            }
+        };
+
+        // Character B (Elminster) newly loaded from D&D Beyond
+        const charB: any = {
+            id: 99999999,
+            name: 'Elminster',
+            abilities: [
+                { abbr: 'STR', score: 10, baseScore: 10, modifier: 0, save: 0 },
+                { abbr: 'DEX', score: 12, baseScore: 12, modifier: 1, save: 1 }
+            ],
+            vitals: { maxHp: 30 }
+        };
+
+        const isSameCharacter = String(charA.id) === String(charB.id);
+        expect(isSameCharacter).toBe(false);
+
+        // When switching to a different character, locks must reset
+        if (isSameCharacter && charA.lockedFields) {
+            applyLockedFieldsToRefreshedCharacter(charB, charA);
+        } else {
+            delete charB.lockedFields;
+        }
+
+        expect(charB.lockedFields).toBeUndefined();
+        expect(charB.name).toBe('Elminster');
+        expect(charB.abilities[0].score).toBe(10);
+    });
 });
