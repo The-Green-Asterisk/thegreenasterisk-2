@@ -1120,5 +1120,156 @@ describe("CharacterCreatorController", () => {
         expect(deviousCard).toBeTruthy();
         deviousCard.click();
         expect(ctrl.state.subclassFeatureChoices["rogue-14-devious-strike"]).toBe("daze");
+
+        // 14. Druid Circle of the Stars (Level 3 Starry Form & Level 6 Cosmic Omen)
+        ctrl.state.classId = "druid";
+        ctrl.state.subclassId = "stars";
+        ctrl.state.level = 6;
+        ctrl.renderStep(3);
+        let starryCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-stars"][data-feature-choice="dragon"]') as HTMLElement;
+        expect(starryCard).toBeTruthy();
+        starryCard.click();
+        expect(ctrl.state.subclassFeatureChoices["druid-3-stars"]).toBe("dragon");
+
+        let omenCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-6-stars"][data-feature-choice="woe"]') as HTMLElement;
+        expect(omenCard).toBeTruthy();
+        omenCard.click();
+        expect(ctrl.state.subclassFeatureChoices["druid-6-stars"]).toBe("woe");
+
+        // 15. Druid Circle of the Sea (Level 3 Wrath of the Sea)
+        ctrl.state.subclassId = "sea";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let seaCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-sea"][data-feature-choice="thunder"]') as HTMLElement;
+        expect(seaCard).toBeTruthy();
+        seaCard.click();
+        expect(ctrl.state.subclassFeatureChoices["druid-3-sea"]).toBe("thunder");
+
+        // 16. Druid Circle of the Moon (Level 3 Circle Forms Strike)
+        ctrl.state.subclassId = "moon";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let moonCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-moon"][data-feature-choice="physical"]') as HTMLElement;
+        expect(moonCard).toBeTruthy();
+        moonCard.click();
+        expect(ctrl.state.subclassFeatureChoices["druid-3-moon"]).toBe("physical");
+
+        // 17. Fighter Battle Master Student of War (Level 3)
+        ctrl.state.classId = "fighter";
+        ctrl.state.subclassId = "battle-master";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let studentCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-3-battle-master-student"][data-feature-choice="Insight"]') as HTMLElement;
+        expect(studentCard).toBeTruthy();
+        studentCard.click();
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBe("Insight");
+
+        // 18. Monk Warrior of Open Hand (Level 3 Open Hand Technique)
+        ctrl.state.classId = "monk";
+        ctrl.state.subclassId = "open-hand";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let openHandCard = root.querySelector('.subclass-feature-card[data-feature-key="monk-3-open-hand"][data-feature-choice="topple"]') as HTMLElement;
+        expect(openHandCard).toBeTruthy();
+        openHandCard.click();
+        expect(ctrl.state.subclassFeatureChoices["monk-3-open-hand"]).toBe("topple");
+
+        // 19. Ranger Fey Wanderer Otherworldly Glamour (Level 3)
+        ctrl.state.classId = "ranger";
+        ctrl.state.subclassId = "fey-wanderer";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let glamCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-fey-wanderer"][data-feature-choice="Performance"]') as HTMLElement;
+        expect(glamCard).toBeTruthy();
+        glamCard.click();
+        expect(ctrl.state.subclassFeatureChoices["ranger-3-fey-wanderer"]).toBe("Performance");
+
+        // 20. Warlock Archfey Steps of the Fey (Level 3)
+        ctrl.state.classId = "warlock";
+        ctrl.state.subclassId = "archfey";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        let stepCard = root.querySelector('.subclass-feature-card[data-feature-key="warlock-3-archfey"][data-feature-choice="refreshing-step"]') as HTMLElement;
+        expect(stepCard).toBeTruthy();
+        stepCard.click();
+        expect(ctrl.state.subclassFeatureChoices["warlock-3-archfey"]).toBe("refreshing-step");
+
+        // 21. Cleric War Domain War God's Blessing (Level 6)
+        ctrl.state.classId = "cleric";
+        ctrl.state.subclassId = "war";
+        ctrl.state.level = 6;
+        ctrl.renderStep(3);
+        let warCard = root.querySelector('.subclass-feature-card[data-feature-key="cleric-6-war"][data-feature-choice="spiritual-weapon"]') as HTMLElement;
+        expect(warCard).toBeTruthy();
+        warCard.click();
+        expect(ctrl.state.subclassFeatureChoices["cleric-6-war"]).toBe("spiritual-weapon");
+
+        // 22. Fighter Champion Additional Fighting Style (Level 7)
+        ctrl.state.classId = "fighter";
+        ctrl.state.subclassId = "champion";
+        ctrl.state.level = 7;
+        ctrl.renderStep(3);
+        let champCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-7-champion"][data-feature-choice="dueling"]') as HTMLElement;
+        expect(champCard).toBeTruthy();
+        champCard.click();
+        expect(ctrl.state.subclassFeatureChoices["fighter-7-champion"]).toBe("dueling");
+
+        // 23. Fighter Psi Warrior Telekinetic Thrust (Level 7)
+        ctrl.state.subclassId = "psi-warrior";
+        ctrl.state.level = 7;
+        ctrl.renderStep(3);
+        let psiCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-7-psi-warrior"][data-feature-choice="topple"]') as HTMLElement;
+        expect(psiCard).toBeTruthy();
+        psiCard.click();
+        expect(ctrl.state.subclassFeatureChoices["fighter-7-psi-warrior"]).toBe("topple");
+
+        // 24. Barbarian Path of the World Tree Battering Roots (Level 10)
+        ctrl.state.classId = "barbarian";
+        ctrl.state.subclassId = "world-tree";
+        ctrl.state.level = 10;
+        ctrl.renderStep(3);
+        let rootCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-10-world-tree"][data-feature-choice="topple"]') as HTMLElement;
+        expect(rootCard).toBeTruthy();
+        rootCard.click();
+        expect(ctrl.state.subclassFeatureChoices["barbarian-10-world-tree"]).toBe("topple");
+
+        // 25. Wizard Diviner The Third Eye (Level 10)
+        ctrl.state.classId = "wizard";
+        ctrl.state.subclassId = "diviner";
+        ctrl.state.level = 10;
+        ctrl.renderStep(3);
+        let eyeCard = root.querySelector('.subclass-feature-card[data-feature-key="wizard-10-diviner"][data-feature-choice="see-invisibility"]') as HTMLElement;
+        expect(eyeCard).toBeTruthy();
+        eyeCard.click();
+        expect(ctrl.state.subclassFeatureChoices["wizard-10-diviner"]).toBe("see-invisibility");
+
+        // 26. Barbarian Improved Brutal Strike (Level 13)
+        ctrl.state.classId = "barbarian";
+        ctrl.state.level = 13;
+        ctrl.renderStep(3);
+        let impBrutalCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-13-brutal-strike"][data-feature-choice="sundering-blow"]') as HTMLElement;
+        expect(impBrutalCard).toBeTruthy();
+        impBrutalCard.click();
+        expect(ctrl.state.subclassFeatureChoices["barbarian-13-brutal-strike"]).toBe("sundering-blow");
+
+        // 27. Sorcerer Aberrant Sorcery Revelation in Flesh (Level 14)
+        ctrl.state.classId = "sorcerer";
+        ctrl.state.subclassId = "aberrant";
+        ctrl.state.level = 14;
+        ctrl.renderStep(3);
+        let aberrantCard = root.querySelector('.subclass-feature-card[data-feature-key="sorcerer-14-aberrant"][data-feature-choice="viscous-body"]') as HTMLElement;
+        expect(aberrantCard).toBeTruthy();
+        aberrantCard.click();
+        expect(ctrl.state.subclassFeatureChoices["sorcerer-14-aberrant"]).toBe("viscous-body");
+
+        // 28. Ranger Hunter Superior Hunter's Defense (Level 15)
+        ctrl.state.classId = "ranger";
+        ctrl.state.subclassId = "hunter";
+        ctrl.state.level = 15;
+        ctrl.renderStep(3);
+        let defenseCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-15-hunter"][data-feature-choice="uncanny-dodge"]') as HTMLElement;
+        expect(defenseCard).toBeTruthy();
+        defenseCard.click();
+        expect(ctrl.state.subclassFeatureChoices["ranger-15-hunter"]).toBe("uncanny-dodge");
     });
 });

@@ -553,3 +553,220 @@ export const WIZARD_SCHOLAR_SKILLS: FeatureOption[] = [
     { id: "nature", name: "Nature (Expertise)", description: "Double proficiency bonus on Intelligence (Nature) checks." },
     { id: "religion", name: "Religion (Expertise)", description: "Double proficiency bonus on Intelligence (Religion) checks." }
 ];
+
+export const STARRY_FORM_CONSTELLATIONS: FeatureOption[] = [
+    {
+        id: "archer",
+        name: "Archer",
+        description: "Bonus Action to make a ranged spell attack (60 ft.) dealing 1d8 + Wisdom modifier Radiant damage."
+    },
+    {
+        id: "chalice",
+        name: "Chalice",
+        description: "Whenever you cast a spell that restores HP using a spell slot, you or another creature within 30 ft. regains 1d8 + Wisdom modifier HP."
+    },
+    {
+        id: "dragon",
+        name: "Dragon",
+        description: "When you make an Intelligence or Wisdom check, or a Constitution save to maintain Concentration, treat a d20 roll of 9 or lower as a 10."
+    }
+];
+
+export const COSMIC_OMEN_OPTIONS: FeatureOption[] = [
+    {
+        id: "weal",
+        name: "Weal (Good Omen)",
+        description: "Reaction when a creature within 30 ft. makes an attack roll, saving throw, or ability check to add 1d6 to the roll."
+    },
+    {
+        id: "woe",
+        name: "Woe (Bad Omen)",
+        description: "Reaction when a creature within 30 ft. makes an attack roll, saving throw, or ability check to subtract 1d6 from the roll."
+    }
+];
+
+export const SEA_WRATH_DAMAGE_TYPES: FeatureOption[] = [
+    {
+        id: "cold",
+        name: "Cold Wrath",
+        description: "Your Wrath of the Sea storm aura deals Cold damage to creatures in the tempest."
+    },
+    {
+        id: "thunder",
+        name: "Thunder Wrath",
+        description: "Your Wrath of the Sea storm aura deals Thunder damage and repels enemies in the tempest."
+    }
+];
+
+export const MOON_CIRCLE_FORMS_STRIKES: FeatureOption[] = [
+    {
+        id: "radiant",
+        name: "Radiant Strike",
+        description: "While transformed in Wild Shape, your beast natural attacks deal Radiant damage instead of normal physical damage."
+    },
+    {
+        id: "physical",
+        name: "Natural Physical Strike",
+        description: "While transformed in Wild Shape, your beast natural attacks deal their standard Bludgeoning, Piercing, or Slashing damage."
+    }
+];
+
+export const DIVINER_THIRD_EYE_OPTIONS: FeatureOption[] = [
+    {
+        id: "darkvision",
+        name: "Darkvision",
+        description: "You gain Darkvision out to a range of 60 feet until your next Short or Long Rest."
+    },
+    {
+        id: "ethereal-sight",
+        name: "Ethereal Sight",
+        description: "You can see into the Ethereal Plane within 60 feet of you until your next Short or Long Rest."
+    },
+    {
+        id: "greater-comprehension",
+        name: "Greater Comprehension",
+        description: "You can read any language until your next Short or Long Rest."
+    },
+    {
+        id: "see-invisibility",
+        name: "See Invisibility",
+        description: "You can see invisible creatures and objects within 10 feet of you that are in line of sight until your next Short or Long Rest."
+    }
+];
+
+export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: FeatureOption[] = [
+    { id: "archery", name: "Archery", description: "+2 bonus to attack rolls made with ranged weapons." },
+    { id: "defense", name: "Defense", description: "While wearing armor, gain a +1 bonus to Armor Class." },
+    { id: "dueling", name: "Dueling", description: "+2 bonus to damage rolls when wielding a melee weapon in one hand." },
+    { id: "great-weapon", name: "Great Weapon Fighting", description: "Treat rolls of 1 or 2 on damage dice for two-handed weapons as 3." },
+    { id: "protection", name: "Protection", description: "Reaction with shield to impose disadvantage on an attack against an adjacent ally." },
+    { id: "two-weapon", name: "Two-Weapon Fighting", description: "Add ability modifier to the damage of off-hand attacks." }
+];
+
+export const STUDENT_OF_WAR_SKILLS: FeatureOption[] = [
+    { id: "History", name: "History", description: "Gain proficiency in the Intelligence (History) skill." },
+    { id: "Insight", name: "Insight", description: "Gain proficiency in the Wisdom (Insight) skill." },
+    { id: "Medicine", name: "Medicine", description: "Gain proficiency in the Wisdom (Medicine) skill." },
+    { id: "Performance", name: "Performance", description: "Gain proficiency in the Charisma (Performance) skill." },
+    { id: "Persuasion", name: "Persuasion", description: "Gain proficiency in the Charisma (Persuasion) skill." }
+];
+
+export const PSI_WARRIOR_THRUST_OPTIONS: FeatureOption[] = [
+    {
+        id: "push",
+        name: "Telekinetic Push",
+        description: "Push the target up to 10 feet horizontally away from you on a failed Strength save."
+    },
+    {
+        id: "topple",
+        name: "Telekinetic Topple",
+        description: "Knock the target Prone on a failed Strength save."
+    }
+];
+
+export const BATTERING_ROOTS_OPTIONS: FeatureOption[] = [
+    {
+        id: "push",
+        name: "Battering Push",
+        description: "Push the target up to 10 feet away from you on hit."
+    },
+    {
+        id: "topple",
+        name: "Battering Topple",
+        description: "Knock the target Prone on hit on a failed Strength save."
+    }
+];
+
+export const IMPROVED_BRUTAL_STRIKE_OPTIONS: FeatureOption[] = [
+    {
+        id: "staggering-blow",
+        name: "Staggering Blow",
+        description: "Target has Disadvantage on saving throws and cannot make Opportunity Attacks until start of your next turn."
+    },
+    {
+        id: "sundering-blow",
+        name: "Sundering Blow",
+        description: "The next attack roll made against the target by an ally has a +5 bonus."
+    }
+];
+
+export const OPEN_HAND_TECHNIQUES: FeatureOption[] = [
+    {
+        id: "addle",
+        name: "Addle",
+        description: "Target cannot make Opportunity Attacks or take Reactions until the start of its next turn."
+    },
+    {
+        id: "push",
+        name: "Push",
+        description: "Target must succeed on a Strength saving throw or be pushed up to 15 feet away from you."
+    },
+    {
+        id: "topple",
+        name: "Topple",
+        description: "Target must succeed on a Dexterity saving throw or fall Prone."
+    }
+];
+
+export const WAR_GOD_BLESSING_OPTIONS: FeatureOption[] = [
+    {
+        id: "shield-of-faith",
+        name: "Shield of Faith",
+        description: "Channel Divinity to cast Shield of Faith without expending a spell slot."
+    },
+    {
+        id: "spiritual-weapon",
+        name: "Spiritual Weapon",
+        description: "Channel Divinity to cast Spiritual Weapon without expending a spell slot."
+    }
+];
+
+export const STEPS_OF_THE_FEY_OPTIONS: FeatureOption[] = [
+    {
+        id: "taunting-step",
+        name: "Taunting Step",
+        description: "Creatures within 5 ft. of your origin space have Disadvantage on attack rolls against anyone but you."
+    },
+    {
+        id: "refreshing-step",
+        name: "Refreshing Step",
+        description: "You or an ally within 10 ft. of your destination space gains temporary hit points equal to 1d10 + Charisma modifier."
+    }
+];
+
+export const FEY_WANDERER_GLAMOUR_SKILLS: FeatureOption[] = [
+    { id: "Deception", name: "Deception", description: "Gain proficiency in the Charisma (Deception) skill." },
+    { id: "Performance", name: "Performance", description: "Gain proficiency in the Charisma (Performance) skill." },
+    { id: "Persuasion", name: "Persuasion", description: "Gain proficiency in the Charisma (Persuasion) skill." }
+];
+
+export const HUNTER_SUPERIOR_DEFENSE_OPTIONS: FeatureOption[] = [
+    {
+        id: "evasion",
+        name: "Evasion",
+        description: "When subjected to an effect that allows a Dexterity saving throw for half damage, take no damage on success and half on failure."
+    },
+    {
+        id: "uncanny-dodge",
+        name: "Uncanny Dodge",
+        description: "Reaction when hit by an attacker you can see to halve the attack's damage against you."
+    }
+];
+
+export const ABERRANT_REVELATION_OPTIONS: FeatureOption[] = [
+    {
+        id: "flight",
+        name: "Aquatic / Aerial Flight",
+        description: "Gain a flying speed and swimming speed equal to your walking speed and hover."
+    },
+    {
+        id: "see-invis",
+        name: "See Invisibility",
+        description: "You can see invisible creatures within 60 feet that aren't in total cover."
+    },
+    {
+        id: "viscous-body",
+        name: "Viscous Body",
+        description: "Escape grapples easily and squeeze through spaces as narrow as 1 inch without squeezing penalties."
+    }
+];

@@ -219,6 +219,99 @@ export const WIZARD_SCHOLAR_OPTIONS: FeatureChoiceOption[] = [
     { value: "scholar:religion", label: "Religion (INT Expertise)" }
 ];
 
+export const STARRY_FORM_OPTIONS: FeatureChoiceOption[] = [
+    { value: "starry-form:archer", label: "Archer (Bonus Action 1d8 + WIS Radiant Ranged Attack)" },
+    { value: "starry-form:chalice", label: "Chalice (+1d8 + WIS HP to Another Creature on Healing)" },
+    { value: "starry-form:dragon", label: "Dragon (Minimum 10 on Int/Wis & Con Concentration Checks)" }
+];
+
+export const COSMIC_OMEN_OPTIONS: FeatureChoiceOption[] = [
+    { value: "cosmic-omen:weal", label: "Weal (Reaction: Add 1d6 to d20 Roll)" },
+    { value: "cosmic-omen:woe", label: "Woe (Reaction: Subtract 1d6 from d20 Roll)" }
+];
+
+export const SEA_WRATH_OPTIONS: FeatureChoiceOption[] = [
+    { value: "sea-wrath:cold", label: "Cold (Ocean Spray Freezing Cold Damage)" },
+    { value: "sea-wrath:thunder", label: "Thunder (Crashing Wave Deafening Thunder Damage)" }
+];
+
+export const MOON_CIRCLE_STRIKE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "moon-circle-strike:radiant", label: "Radiant (Moonlight Infused Strikes)" },
+    { value: "moon-circle-strike:physical", label: "Natural Physical Strike (Beast's Physical Strike)" }
+];
+
+export const DIVINER_THIRD_EYE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "third-eye:darkvision", label: "Darkvision (120 ft. Darkvision)" },
+    { value: "third-eye:ethereal-sight", label: "Ethereal Sight (See 60 ft. into the Ethereal Plane)" },
+    { value: "third-eye:greater-comprehension", label: "Greater Comprehension (Read Any Language)" },
+    { value: "third-eye:see-invisibility", label: "See Invisibility (See Invisible Creatures within 10 ft.)" }
+];
+
+export const CHAMPION_FIGHTING_STYLE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "champion-style:archery", label: "Archery (+2 Ranged Attack Rolls)" },
+    { value: "champion-style:defense", label: "Defense (+1 Armor Class)" },
+    { value: "champion-style:dueling", label: "Dueling (+2 One-Handed Melee Damage)" },
+    { value: "champion-style:great-weapon", label: "Great Weapon Fighting (Reroll 1 or 2 on Damage)" },
+    { value: "champion-style:protection", label: "Protection (Disadvantage to Enemy Attackers)" },
+    { value: "champion-style:two-weapon", label: "Two-Weapon Fighting (Add Ability Mod to Off-Hand)" }
+];
+
+export const STUDENT_OF_WAR_OPTIONS: FeatureChoiceOption[] = [
+    { value: "student-of-war:history", label: "History (INT Skill Proficiency)" },
+    { value: "student-of-war:insight", label: "Insight (WIS Skill Proficiency)" },
+    { value: "student-of-war:medicine", label: "Medicine (WIS Skill Proficiency)" },
+    { value: "student-of-war:performance", label: "Performance (CHA Skill Proficiency)" },
+    { value: "student-of-war:persuasion", label: "Persuasion (CHA Skill Proficiency)" }
+];
+
+export const PSI_WARRIOR_THRUST_OPTIONS: FeatureChoiceOption[] = [
+    { value: "psi-thrust:push", label: "Telekinetic Push (Push Target up to 10 ft.)" },
+    { value: "psi-thrust:topple", label: "Telekinetic Topple (Knock Target Prone)" }
+];
+
+export const BATTERING_ROOTS_OPTIONS: FeatureChoiceOption[] = [
+    { value: "battering-roots:push", label: "Battering Push (Push Target up to 10 ft.)" },
+    { value: "battering-roots:topple", label: "Battering Topple (Knock Target Prone)" }
+];
+
+export const IMPROVED_BRUTAL_STRIKE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "improved-brutal-strike:staggering-blow", label: "Staggering Blow (Target Disadvantage & Can't Take Reactions)" },
+    { value: "improved-brutal-strike:sundering-blow", label: "Sundering Blow (Next Ally Attack Has +5 to Hit)" }
+];
+
+export const OPEN_HAND_TECHNIQUE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "open-hand:addle", label: "Addle (Prevent Target from Taking Reactions)" },
+    { value: "open-hand:push", label: "Push (Push Target up to 15 ft.)" },
+    { value: "open-hand:topple", label: "Topple (Knock Target Prone)" }
+];
+
+export const WAR_GOD_BLESSING_OPTIONS: FeatureChoiceOption[] = [
+    { value: "war-god:shield-of-faith", label: "Shield of Faith (Bonus Action +2 AC Defense)" },
+    { value: "war-god:spiritual-weapon", label: "Spiritual Weapon (Bonus Action Force Damage Strike)" }
+];
+
+export const STEPS_OF_THE_FEY_OPTIONS: FeatureChoiceOption[] = [
+    { value: "steps-of-the-fey:taunting-step", label: "Taunting Step (Target Disadvantage on Other Attacks)" },
+    { value: "steps-of-the-fey:refreshing-step", label: "Refreshing Step (Grant Ally 1d10 + PB Temp HP)" }
+];
+
+export const FEY_WANDERER_GLAMOUR_OPTIONS: FeatureChoiceOption[] = [
+    { value: "fey-glamour:deception", label: "Deception (CHA Skill Proficiency)" },
+    { value: "fey-glamour:performance", label: "Performance (CHA Skill Proficiency)" },
+    { value: "fey-glamour:persuasion", label: "Persuasion (CHA Skill Proficiency)" }
+];
+
+export const HUNTER_SUPERIOR_DEFENSE_OPTIONS: FeatureChoiceOption[] = [
+    { value: "superior-defense:evasion", label: "Evasion (Half or No Damage on Dex Saves)" },
+    { value: "superior-defense:uncanny-dodge", label: "Uncanny Dodge (Halve Attack Damage as a Reaction)" }
+];
+
+export const ABERRANT_REVELATION_OPTIONS: FeatureChoiceOption[] = [
+    { value: "aberrant-revelation:flight", label: "Flight (Hovering Flight Speed = Walking Speed)" },
+    { value: "aberrant-revelation:see-invisibility", label: "See Invisibility (See Invisible Creatures 60 ft.)" },
+    { value: "aberrant-revelation:viscous-body", label: "Viscous Body (Escape Grapples & Squeeze 1-Inch Space)" }
+];
+
 function slugifyKey(input: string): string {
     return String(input || "")
         .toLowerCase()
@@ -1543,6 +1636,218 @@ export function extractFeaturesAndApplyDecisions(
                 "Devious Strike",
                 defaultDevious,
                 DEVIOUS_STRIKE_OPTIONS,
+                []
+            );
+        }
+
+        // Starry Form (Druid Stars 3)
+        if (nameLower.includes("starry form")) {
+            let defaultConstellation = "starry-form:archer";
+            if (nameLower.includes("chalice")) defaultConstellation = "starry-form:chalice";
+            else if (nameLower.includes("dragon")) defaultConstellation = "starry-form:dragon";
+            registerDecision(
+                "starry-form:0",
+                "Starry Form Primary Constellation",
+                defaultConstellation,
+                STARRY_FORM_OPTIONS,
+                []
+            );
+        }
+
+        // Cosmic Omen (Druid Stars 6)
+        if (nameLower.includes("cosmic omen")) {
+            const defaultOmen = nameLower.includes("woe") ? "cosmic-omen:woe" : "cosmic-omen:weal";
+            registerDecision(
+                "cosmic-omen:0",
+                "Cosmic Omen Starting Focus",
+                defaultOmen,
+                COSMIC_OMEN_OPTIONS,
+                []
+            );
+        }
+
+        // Wrath of the Sea (Druid Sea 3)
+        if (nameLower.includes("wrath of the sea")) {
+            const defaultDamage = nameLower.includes("thunder") ? "sea-wrath:thunder" : "sea-wrath:cold";
+            registerDecision(
+                "sea-wrath:0",
+                "Wrath of the Sea Damage",
+                defaultDamage,
+                SEA_WRATH_OPTIONS,
+                []
+            );
+        }
+
+        // Circle Forms Strike (Druid Moon 3)
+        if (nameLower.includes("circle forms") || nameLower.includes("circle forms strike")) {
+            const defaultStrike = nameLower.includes("physical") || nameLower.includes("natural") ? "moon-circle-strike:physical" : "moon-circle-strike:radiant";
+            registerDecision(
+                "moon-circle-strike:0",
+                "Circle Forms Strike Damage",
+                defaultStrike,
+                MOON_CIRCLE_STRIKE_OPTIONS,
+                []
+            );
+        }
+
+        // The Third Eye (Wizard Diviner 10)
+        if (nameLower.includes("third eye") || nameLower.includes("the third eye")) {
+            let defaultEye = "third-eye:darkvision";
+            if (nameLower.includes("ethereal")) defaultEye = "third-eye:ethereal-sight";
+            else if (nameLower.includes("comprehension")) defaultEye = "third-eye:greater-comprehension";
+            else if (nameLower.includes("invisibility")) defaultEye = "third-eye:see-invisibility";
+            registerDecision(
+                "third-eye:0",
+                "The Third Eye Primary Benefit",
+                defaultEye,
+                DIVINER_THIRD_EYE_OPTIONS,
+                []
+            );
+        }
+
+        // Additional Fighting Style (Fighter Champion 7)
+        if (nameLower.includes("additional fighting style") || (nameLower.includes("champion") && nameLower.includes("fighting style"))) {
+            let defaultStyle = "champion-style:defense";
+            if (nameLower.includes("archery")) defaultStyle = "champion-style:archery";
+            else if (nameLower.includes("dueling")) defaultStyle = "champion-style:dueling";
+            else if (nameLower.includes("great weapon")) defaultStyle = "champion-style:great-weapon";
+            else if (nameLower.includes("protection")) defaultStyle = "champion-style:protection";
+            else if (nameLower.includes("two-weapon")) defaultStyle = "champion-style:two-weapon";
+            registerDecision(
+                "champion-fighting-style:0",
+                "Additional Fighting Style",
+                defaultStyle,
+                CHAMPION_FIGHTING_STYLE_OPTIONS,
+                []
+            );
+        }
+
+        // Student of War (Fighter Battle Master 3)
+        if (nameLower.includes("student of war")) {
+            let defaultSkill = "student-of-war:history";
+            if (nameLower.includes("insight")) defaultSkill = "student-of-war:insight";
+            else if (nameLower.includes("medicine")) defaultSkill = "student-of-war:medicine";
+            else if (nameLower.includes("performance")) defaultSkill = "student-of-war:performance";
+            else if (nameLower.includes("persuasion")) defaultSkill = "student-of-war:persuasion";
+            registerDecision(
+                "student-of-war:0",
+                "Student of War Skill Proficiency",
+                defaultSkill,
+                STUDENT_OF_WAR_OPTIONS,
+                []
+            );
+        }
+
+        // Telekinetic Thrust (Fighter Psi Warrior 7)
+        if (nameLower.includes("telekinetic thrust")) {
+            const defaultThrust = nameLower.includes("topple") ? "psi-thrust:topple" : "psi-thrust:push";
+            registerDecision(
+                "psi-thrust:0",
+                "Telekinetic Thrust Maneuver",
+                defaultThrust,
+                PSI_WARRIOR_THRUST_OPTIONS,
+                []
+            );
+        }
+
+        // Battering Roots (Barbarian World Tree 10)
+        if (nameLower.includes("battering roots")) {
+            const defaultRoot = nameLower.includes("topple") ? "battering-roots:topple" : "battering-roots:push";
+            registerDecision(
+                "battering-roots:0",
+                "Battering Roots Mastery",
+                defaultRoot,
+                BATTERING_ROOTS_OPTIONS,
+                []
+            );
+        }
+
+        // Improved Brutal Strike (Barbarian 13)
+        if (nameLower.includes("improved brutal strike")) {
+            const defaultBlow = nameLower.includes("sundering") ? "improved-brutal-strike:sundering-blow" : "improved-brutal-strike:staggering-blow";
+            registerDecision(
+                "improved-brutal-strike:0",
+                "Improved Brutal Strike Mastery",
+                defaultBlow,
+                IMPROVED_BRUTAL_STRIKE_OPTIONS,
+                []
+            );
+        }
+
+        // Open Hand Technique (Monk Open Hand 3)
+        if (nameLower.includes("open hand technique")) {
+            let defaultTech = "open-hand:addle";
+            if (nameLower.includes("push")) defaultTech = "open-hand:push";
+            else if (nameLower.includes("topple")) defaultTech = "open-hand:topple";
+            registerDecision(
+                "open-hand:0",
+                "Open Hand Technique Primary Tactic",
+                defaultTech,
+                OPEN_HAND_TECHNIQUE_OPTIONS,
+                []
+            );
+        }
+
+        // War God's Blessing (Cleric War 6)
+        if (nameLower.includes("war god's blessing") || nameLower.includes("war god blessing")) {
+            const defaultBlessing = nameLower.includes("spiritual weapon") ? "war-god:spiritual-weapon" : "war-god:shield-of-faith";
+            registerDecision(
+                "war-god:0",
+                "War God's Blessing Preferred Spell",
+                defaultBlessing,
+                WAR_GOD_BLESSING_OPTIONS,
+                []
+            );
+        }
+
+        // Steps of the Fey (Warlock Archfey 3)
+        if (nameLower.includes("steps of the fey")) {
+            const defaultStep = nameLower.includes("refreshing") ? "steps-of-the-fey:refreshing-step" : "steps-of-the-fey:taunting-step";
+            registerDecision(
+                "steps-of-the-fey:0",
+                "Steps of the Fey Effect",
+                defaultStep,
+                STEPS_OF_THE_FEY_OPTIONS,
+                []
+            );
+        }
+
+        // Otherworldly Glamour (Ranger Fey Wanderer 3)
+        if (nameLower.includes("otherworldly glamour")) {
+            let defaultGlam = "fey-glamour:deception";
+            if (nameLower.includes("performance")) defaultGlam = "fey-glamour:performance";
+            else if (nameLower.includes("persuasion")) defaultGlam = "fey-glamour:persuasion";
+            registerDecision(
+                "fey-glamour:0",
+                "Otherworldly Glamour Bonus Skill",
+                defaultGlam,
+                FEY_WANDERER_GLAMOUR_OPTIONS,
+                []
+            );
+        }
+
+        // Superior Hunter's Defense (Ranger Hunter 15)
+        if (nameLower.includes("superior hunter's defense") || nameLower.includes("superior defense")) {
+            const defaultDef = nameLower.includes("uncanny") ? "superior-defense:uncanny-dodge" : "superior-defense:evasion";
+            registerDecision(
+                "superior-defense:0",
+                "Superior Hunter's Defense",
+                defaultDef,
+                HUNTER_SUPERIOR_DEFENSE_OPTIONS,
+                []
+            );
+        }
+
+        // Revelation in Flesh (Sorcerer Aberrant 14)
+        if (nameLower.includes("revelation in flesh")) {
+            let defaultRev = "aberrant-revelation:flight";
+            if (nameLower.includes("invisibility")) defaultRev = "aberrant-revelation:see-invisibility";
+            else if (nameLower.includes("viscous")) defaultRev = "aberrant-revelation:viscous-body";
+            registerDecision(
+                "aberrant-revelation:0",
+                "Revelation in Flesh Primary Adaptation",
+                defaultRev,
+                ABERRANT_REVELATION_OPTIONS,
                 []
             );
         }
