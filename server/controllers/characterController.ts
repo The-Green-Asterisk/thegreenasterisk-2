@@ -2,6 +2,15 @@ import http from "http";
 import AppDataSource from "services/database";
 import CharacterEquipState from "services/database/entity/CharacterEquipState";
 import SavedCharacter from "services/database/entity/SavedCharacter";
+import CharacterVitals from "services/database/entity/CharacterVitals";
+import CharacterClass from "services/database/entity/CharacterClass";
+import CharacterAbility from "services/database/entity/CharacterAbility";
+import CharacterSkill from "services/database/entity/CharacterSkill";
+import CharacterInventoryItem from "services/database/entity/CharacterInventoryItem";
+import CharacterSpell from "services/database/entity/CharacterSpell";
+import CharacterFeature from "services/database/entity/CharacterFeature";
+import CharacterResource from "services/database/entity/CharacterResource";
+import CharacterFeatureDecision from "services/database/entity/CharacterFeatureDecision";
 import cache from "../cache";
 import BaseController from "./baseController";
 import SessionController, { ReqAndUser } from "./sessionController";
@@ -233,9 +242,11 @@ export default class CharacterController extends BaseController {
                     externalCharacterId: record.externalCharacterId,
                     updatedAt: record.updatedAt,
                     createdAt: record.createdAt,
-                    level: typeof parsed?.level === "number" ? parsed.level : undefined,
+                    level: record.level || (typeof parsed?.level === "number" ? parsed.level : undefined),
+                    race: record.race || parsed?.race || parsed?.species || undefined,
+                    background: record.background || parsed?.background || undefined,
                     subtitle: typeof parsed?.subtitle === "string" ? parsed.subtitle : undefined,
-                    avatarUrl: typeof parsed?.avatarUrl === "string" ? parsed.avatarUrl : undefined
+                    avatarUrl: record.avatarUrl || (typeof parsed?.avatarUrl === "string" ? parsed.avatarUrl : undefined)
                 };
             });
 
@@ -282,20 +293,32 @@ export default class CharacterController extends BaseController {
 
         try {
             const repo = AppDataSource.getRepository(SavedCharacter);
+            const queryRelations = {
+                user: true,
+                vitals: true,
+                classes: true,
+                abilities: true,
+                skills: true,
+                inventory: true,
+                spells: true,
+                features: true,
+                resources: true,
+                decisions: true
+            };
             const record = siteCharacterId
                 ? await repo.findOne({
                     where: { siteCharacterId, user: { id: currentUser.id } },
-                    relations: { user: true }
+                    relations: queryRelations
                 })
                 : externalCharacterId
                     ? await repo.findOne({
                         where: { externalCharacterId, user: { id: currentUser.id } },
                         order: { updatedAt: "DESC" },
-                        relations: { user: true }
+                        relations: queryRelations
                     })
                     : await repo.findOne({
                         where: { id: savedId, user: { id: currentUser.id } },
-                        relations: { user: true }
+                        relations: queryRelations
                     });
 
             if (!record) {
@@ -306,10 +329,12 @@ export default class CharacterController extends BaseController {
             }
 
             const parsed = this.tryParsePayload(record.payload);
-            const character = {
-                ...(parsed && typeof parsed === "object" ? parsed : {}),
-                savedCharacterId: record.id
-            };
+            const character = (record.vitals || (record.abilities && record.abilities.length > 0))
+                ? this.hydrateFromRelationalEntities(record, parsed)
+                : {
+                    ...(parsed && typeof parsed === "object" ? parsed : {}),
+                    savedCharacterId: record.id
+                };
 
             // Auto-heal Wild Shape uses for Druids saved under outdated formulas
             if (character && Array.isArray(character.classes) && Array.isArray(character.classResources)) {
@@ -600,9 +625,16 @@ export default class CharacterController extends BaseController {
             record.siteCharacterId = siteCharacterIdFromBody || record.siteCharacterId || this.generateSiteCharacterId();
             record.source = source;
             record.externalCharacterId = externalCharacterId;
+            record.level = Number(payloadToSave.level) || (Array.isArray(payloadToSave.classes) && payloadToSave.classes[0]?.level) || 1;
+            record.race = payloadToSave.race || payloadToSave.species || null;
+            record.background = payloadToSave.background || null;
+            record.alignment = payloadToSave.alignment || null;
+            record.avatarUrl = payloadToSave.avatarUrl || null;
+            record.dndBeyondUrl = payloadToSave.dndBeyondUrl || null;
             record.payload = JSON.stringify(payloadToSave);
 
             const saved = await repo.save(record);
+            await this.syncCharacterRelationalEntities(saved, payloadToSave);
             const parsed = this.tryParsePayload(saved.payload) || payloadToSave;
 
             if (Array.isArray((inputCharacter as any).spells) && (inputCharacter as any).spells.length > 0) {
@@ -716,5 +748,411 @@ export default class CharacterController extends BaseController {
         const siteId = this.normalizeSiteCharacterId(rawId);
         if (siteId) return siteId;
         return this.normalizeDndBeyondCharacterId(rawId);
+    }
+
+    private static tryParseJson(str: string): any {
+        try {
+            return JSON.parse(str);
+        } catch {
+            return null;
+        }
+    }
+
+    private static hydrateFromRelationalEntities(record: SavedCharacter, fallbackPayload: any): any {
+        const vitals = record.vitals ? {
+            currentHp: record.vitals.currentHp,
+            maxHp: record.vitals.maxHp,
+            tempHp: record.vitals.tempHp,
+            armorClass: record.vitals.armorClass,
+            initiative: record.vitals.initiative,
+            speed: record.vitals.speed,
+            proficiencyBonus: record.vitals.proficiencyBonus,
+            passivePerception: record.vitals.passivePerception,
+            passiveInvestigation: record.vitals.passiveInvestigation,
+            passiveInsight: record.vitals.passiveInsight,
+            darkvision: record.vitals.darkvision,
+            blindsight: record.vitals.blindsight,
+            truesight: record.vitals.truesight,
+            tremorsense: record.vitals.tremorsense,
+            hitDice: record.vitals.hitDice,
+            heroicInspiration: record.vitals.heroicInspiration,
+            spellSaveDc: record.vitals.spellSaveDc,
+            spellAttackBonus: record.vitals.spellAttackBonus,
+            spellcastingAbility: record.vitals.spellcastingAbility,
+            deathSaves: {
+                successes: record.vitals.deathSuccesses,
+                failures: record.vitals.deathFailures,
+                isStable: record.vitals.isStable
+            },
+            savingThrowNotes: record.vitals.savingThrowNotes ? this.tryParseJson(record.vitals.savingThrowNotes) || [] : []
+        } : fallbackPayload?.vitals;
+
+        const classes = record.classes && record.classes.length > 0
+            ? record.classes.map(c => ({ name: c.name, level: c.level, subclass: c.subclass }))
+            : (fallbackPayload?.classes || []);
+
+        const abilities = record.abilities && record.abilities.length > 0
+            ? record.abilities.map(a => ({
+                name: a.name,
+                abbr: a.abbr,
+                score: a.score,
+                baseScore: a.baseScore,
+                bonus: a.bonus,
+                modifier: a.modifier,
+                save: a.save,
+                proficientSave: a.proficientSave,
+                notes: a.notes
+            }))
+            : (fallbackPayload?.abilities || []);
+
+        const skills = record.skills && record.skills.length > 0
+            ? record.skills.map(s => ({
+                name: s.name,
+                stat: s.stat,
+                bonus: s.bonus,
+                proficiency: s.proficiency
+            }))
+            : (fallbackPayload?.skills || []);
+
+        const weapons = record.inventory && record.inventory.length > 0
+            ? record.inventory
+                .filter(i => i.damage || i.category?.toLowerCase().includes("melee") || i.category?.toLowerCase().includes("ranged"))
+                .map(w => ({
+                    id: w.id,
+                    name: w.name,
+                    quantity: w.quantity,
+                    equipped: w.equipped,
+                    attuned: w.attuned,
+                    requiresAttunement: w.requiresAttunement,
+                    category: w.category,
+                    damage: w.damage || "",
+                    damageType: w.damageType || "",
+                    damageDie: w.damageDie || "",
+                    attackBonus: w.attackBonus || "",
+                    toHitModifier: w.toHitModifier ?? 0,
+                    range: w.range || "5 ft.",
+                    properties: w.propertiesJson ? this.tryParseJson(w.propertiesJson) || [] : [],
+                    mastery: w.masteryName ? {
+                        name: w.masteryName,
+                        description: w.masteryDescription,
+                        unlocked: w.masteryUnlocked ?? false
+                    } : undefined,
+                    isMagic: w.isMagic,
+                    rarity: w.rarity,
+                    description: w.description,
+                    notes: w.notes,
+                    grantedBy: w.grantedBy,
+                    imageUrl: w.imageUrl
+                }))
+            : (fallbackPayload?.weapons || []);
+
+        const equipment = record.inventory && record.inventory.length > 0
+            ? record.inventory
+                .filter(i => !(i.damage || i.category?.toLowerCase().includes("melee") || i.category?.toLowerCase().includes("ranged")))
+                .map(e => ({
+                    id: e.id,
+                    name: e.name,
+                    quantity: e.quantity,
+                    equipped: e.equipped,
+                    attuned: e.attuned,
+                    requiresAttunement: e.requiresAttunement,
+                    type: e.category,
+                    filterType: e.category,
+                    isMagic: e.isMagic,
+                    rarity: e.rarity,
+                    description: e.description,
+                    notes: e.notes,
+                    grantedBy: e.grantedBy,
+                    imageUrl: e.imageUrl
+                }))
+            : (fallbackPayload?.equipment || []);
+
+        const spells = record.spells && record.spells.length > 0
+            ? record.spells.map(sp => ({
+                id: sp.id,
+                name: sp.name,
+                level: sp.level,
+                school: sp.school,
+                source: sp.source,
+                prepared: sp.prepared,
+                alwaysPrepared: sp.alwaysPrepared,
+                castingTime: sp.castingTime,
+                range: sp.range,
+                duration: sp.duration,
+                components: sp.components,
+                concentration: sp.concentration,
+                ritual: sp.ritual,
+                description: sp.description || ""
+            }))
+            : (fallbackPayload?.spells || []);
+
+        const features = record.features && record.features.length > 0
+            ? record.features.map(f => ({
+                name: f.name,
+                source: f.source,
+                type: f.type,
+                description: f.description,
+                scaleValue: f.scaleValue,
+                limitedUse: f.limitedUse
+            }))
+            : (fallbackPayload?.features || []);
+
+        const classResources = record.resources && record.resources.length > 0
+            ? record.resources.map(r => ({
+                name: r.name,
+                total: r.total,
+                currentUsed: r.currentUsed,
+                resetOn: r.resetOn,
+                dieOrType: r.dieOrType,
+                key: r.resourceKey
+            }))
+            : (fallbackPayload?.classResources || []);
+
+        const featureChoices = record.decisions && record.decisions.length > 0
+            ? record.decisions.reduce((acc, d) => {
+                acc[d.decisionId] = d.selectedValue;
+                return acc;
+            }, {} as Record<string, string>)
+            : (fallbackPayload?.featureChoices || {});
+
+        return {
+            ...(fallbackPayload && typeof fallbackPayload === "object" ? fallbackPayload : {}),
+            name: record.name,
+            level: record.level || fallbackPayload?.level || 1,
+            race: record.race || fallbackPayload?.race || fallbackPayload?.species || "",
+            background: record.background || fallbackPayload?.background || "",
+            alignment: record.alignment || fallbackPayload?.alignment || "",
+            avatarUrl: record.avatarUrl || fallbackPayload?.avatarUrl || "",
+            dndBeyondUrl: record.dndBeyondUrl || fallbackPayload?.dndBeyondUrl || "",
+            vitals,
+            savingThrowNotes: vitals?.savingThrowNotes || fallbackPayload?.savingThrowNotes || [],
+            classes,
+            abilities,
+            skills,
+            weapons,
+            equipment,
+            spells,
+            features,
+            classResources,
+            featureChoices
+        };
+    }
+
+    private static async syncCharacterRelationalEntities(savedCharacter: SavedCharacter, data: any) {
+        if (!AppDataSource.isInitialized || !savedCharacter?.id) return;
+        try {
+            // 1. Update basic columns on SavedCharacter if needed
+            const charRepo = AppDataSource.getRepository(SavedCharacter);
+            savedCharacter.level = Number(data.level) || (Array.isArray(data.classes) && data.classes[0]?.level) || 1;
+            savedCharacter.race = data.race || data.species || savedCharacter.race;
+            savedCharacter.background = data.background || savedCharacter.background;
+            savedCharacter.alignment = data.alignment || savedCharacter.alignment;
+            savedCharacter.avatarUrl = data.avatarUrl || savedCharacter.avatarUrl;
+            savedCharacter.dndBeyondUrl = data.dndBeyondUrl || savedCharacter.dndBeyondUrl;
+            await charRepo.save(savedCharacter);
+
+            // 2. Character Vitals
+            if (data.vitals) {
+                const vitalsRepo = AppDataSource.getRepository(CharacterVitals);
+                let vitals = await vitalsRepo.findOne({ where: { savedCharacter: { id: savedCharacter.id } } });
+                if (!vitals) {
+                    vitals = vitalsRepo.create({ savedCharacter });
+                }
+                vitals.currentHp = Number(data.vitals.currentHp) || 10;
+                vitals.maxHp = Number(data.vitals.maxHp) || 10;
+                vitals.tempHp = Number(data.vitals.tempHp) || 0;
+                vitals.armorClass = Number(data.vitals.armorClass) || 10;
+                vitals.initiative = Number(data.vitals.initiative) || 0;
+                vitals.speed = String(data.vitals.speed || "30 ft.");
+                vitals.proficiencyBonus = Number(data.vitals.proficiencyBonus) || 2;
+                vitals.passivePerception = Number(data.vitals.passivePerception) || 10;
+                vitals.passiveInvestigation = Number(data.vitals.passiveInvestigation) || 10;
+                vitals.passiveInsight = Number(data.vitals.passiveInsight) || 10;
+                vitals.darkvision = String(data.vitals.darkvision || "None");
+                vitals.blindsight = data.vitals.blindsight;
+                vitals.truesight = data.vitals.truesight;
+                vitals.tremorsense = data.vitals.tremorsense;
+                vitals.hitDice = String(data.vitals.hitDice || "1d8");
+                vitals.heroicInspiration = Boolean(data.vitals.heroicInspiration);
+                vitals.spellSaveDc = Number(data.vitals.spellSaveDc) || 10;
+                vitals.spellAttackBonus = Number(data.vitals.spellAttackBonus) || 0;
+                vitals.spellcastingAbility = String(data.vitals.spellcastingAbility || "none");
+                vitals.deathSuccesses = Number(data.vitals.deathSaves?.successes) || 0;
+                vitals.deathFailures = Number(data.vitals.deathSaves?.failures) || 0;
+                vitals.isStable = Boolean(data.vitals.deathSaves?.isStable);
+                vitals.savingThrowNotes = data.savingThrowNotes ? JSON.stringify(data.savingThrowNotes) : (data.vitals.savingThrowNotes ? JSON.stringify(data.vitals.savingThrowNotes) : undefined);
+                await vitalsRepo.save(vitals);
+            }
+
+            // 3. Classes
+            if (Array.isArray(data.classes)) {
+                const classRepo = AppDataSource.getRepository(CharacterClass);
+                await classRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const classEntities = data.classes.map((c: any, idx: number) => classRepo.create({
+                    savedCharacter,
+                    name: c.name || "Adventurer",
+                    level: Number(c.level) || 1,
+                    subclass: c.subclass || undefined,
+                    isStartingClass: idx === 0
+                }));
+                if (classEntities.length > 0) await classRepo.save(classEntities);
+            }
+
+            // 4. Abilities
+            if (Array.isArray(data.abilities)) {
+                const abilityRepo = AppDataSource.getRepository(CharacterAbility);
+                await abilityRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const abilityEntities = data.abilities.map((a: any) => abilityRepo.create({
+                    savedCharacter,
+                    name: a.name || a.abbr,
+                    abbr: a.abbr || a.name,
+                    score: Number(a.score) || 10,
+                    baseScore: Number(a.baseScore ?? a.score) || 10,
+                    bonus: Number(a.bonus) || 0,
+                    modifier: Number(a.modifier) || 0,
+                    save: Number(a.save) || 0,
+                    proficientSave: Boolean(a.proficientSave),
+                    notes: a.notes || undefined
+                }));
+                if (abilityEntities.length > 0) await abilityRepo.save(abilityEntities);
+            }
+
+            // 5. Skills
+            if (Array.isArray(data.skills)) {
+                const skillRepo = AppDataSource.getRepository(CharacterSkill);
+                await skillRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const skillEntities = data.skills.map((s: any) => skillRepo.create({
+                    savedCharacter,
+                    name: s.name,
+                    stat: s.stat || "DEX",
+                    bonus: Number(s.bonus) || 0,
+                    proficiency: s.proficiency || "none"
+                }));
+                if (skillEntities.length > 0) await skillRepo.save(skillEntities);
+            }
+
+            // 6. Inventory Items (Weapons & Equipment)
+            const itemRepo = AppDataSource.getRepository(CharacterInventoryItem);
+            await itemRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+            const itemsToSave: any[] = [];
+            if (Array.isArray(data.weapons)) {
+                for (const w of data.weapons) {
+                    itemsToSave.push(itemRepo.create({
+                        savedCharacter,
+                        name: w.name,
+                        quantity: Number(w.quantity) || 1,
+                        equipped: Boolean(w.equipped),
+                        attuned: Boolean(w.attuned),
+                        requiresAttunement: Boolean(w.requiresAttunement),
+                        category: w.category || "Simple Melee",
+                        damage: w.damage || undefined,
+                        damageType: w.damageType || undefined,
+                        damageDie: w.damageDie || undefined,
+                        attackBonus: w.attackBonus || undefined,
+                        toHitModifier: w.toHitModifier !== undefined ? Number(w.toHitModifier) : undefined,
+                        range: w.range || undefined,
+                        propertiesJson: w.properties ? JSON.stringify(w.properties) : undefined,
+                        masteryName: w.mastery?.name || undefined,
+                        masteryUnlocked: w.mastery?.unlocked !== undefined ? Boolean(w.mastery.unlocked) : undefined,
+                        masteryDescription: w.mastery?.description || undefined,
+                        isMagic: Boolean(w.isMagic),
+                        rarity: w.rarity || undefined,
+                        description: w.description || undefined,
+                        notes: w.notes || undefined,
+                        grantedBy: w.grantedBy || undefined,
+                        imageUrl: w.imageUrl || undefined
+                    }));
+                }
+            }
+            if (Array.isArray(data.equipment)) {
+                for (const e of data.equipment) {
+                    itemsToSave.push(itemRepo.create({
+                        savedCharacter,
+                        name: e.name,
+                        quantity: Number(e.quantity) || 1,
+                        equipped: Boolean(e.equipped),
+                        attuned: Boolean(e.attuned),
+                        requiresAttunement: Boolean(e.requiresAttunement),
+                        category: e.type || e.filterType || "Gear",
+                        isMagic: Boolean(e.isMagic),
+                        rarity: e.rarity || undefined,
+                        description: e.description || undefined,
+                        notes: e.notes || undefined,
+                        grantedBy: e.grantedBy || undefined,
+                        imageUrl: e.imageUrl || undefined
+                    }));
+                }
+            }
+            if (itemsToSave.length > 0) await itemRepo.save(itemsToSave);
+
+            // 7. Spells
+            if (Array.isArray(data.spells)) {
+                const spellRepo = AppDataSource.getRepository(CharacterSpell);
+                await spellRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const spellEntities = data.spells.map((sp: any) => spellRepo.create({
+                    savedCharacter,
+                    name: sp.name,
+                    level: Number(sp.level) || 0,
+                    school: sp.school || "Evocation",
+                    source: sp.source || "Class",
+                    prepared: Boolean(sp.prepared),
+                    alwaysPrepared: Boolean(sp.alwaysPrepared),
+                    castingTime: sp.castingTime || "1 Action",
+                    range: sp.range || "Touch",
+                    duration: sp.duration || "Instantaneous",
+                    components: sp.components || "V, S",
+                    concentration: Boolean(sp.concentration),
+                    ritual: Boolean(sp.ritual),
+                    description: sp.description || undefined
+                }));
+                if (spellEntities.length > 0) await spellRepo.save(spellEntities);
+            }
+
+            // 8. Features
+            if (Array.isArray(data.features)) {
+                const featureRepo = AppDataSource.getRepository(CharacterFeature);
+                await featureRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const featureEntities = data.features.map((f: any) => featureRepo.create({
+                    savedCharacter,
+                    name: f.name,
+                    source: f.source || "Class",
+                    type: f.type || "Class",
+                    description: f.description || "",
+                    scaleValue: f.scaleValue || undefined,
+                    limitedUse: f.limitedUse || undefined
+                }));
+                if (featureEntities.length > 0) await featureRepo.save(featureEntities);
+            }
+
+            // 9. Resources
+            if (Array.isArray(data.classResources)) {
+                const resourceRepo = AppDataSource.getRepository(CharacterResource);
+                await resourceRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const resourceEntities = data.classResources.map((r: any) => resourceRepo.create({
+                    savedCharacter,
+                    name: r.name,
+                    total: Number(r.total) || 0,
+                    currentUsed: Number(r.currentUsed) || 0,
+                    resetOn: r.resetOn || "long",
+                    dieOrType: r.dieOrType || undefined,
+                    resourceKey: r.key || r.resourceKey || undefined
+                }));
+                if (resourceEntities.length > 0) await resourceRepo.save(resourceEntities);
+            }
+
+            // 10. Decisions
+            if (data.featureChoices && typeof data.featureChoices === "object") {
+                const decisionRepo = AppDataSource.getRepository(CharacterFeatureDecision);
+                await decisionRepo.delete({ savedCharacter: { id: savedCharacter.id } });
+                const decisionEntities = Object.entries(data.featureChoices).map(([decisionId, val]) => decisionRepo.create({
+                    savedCharacter,
+                    decisionId,
+                    selectedValue: String(val)
+                }));
+                if (decisionEntities.length > 0) await decisionRepo.save(decisionEntities);
+            }
+        } catch (err) {
+            console.warn("Could not sync relational character entities:", err);
+        }
     }
 }

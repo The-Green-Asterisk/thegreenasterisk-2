@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
 import characterSheet from '../../../src/views/characterSheet/characterSheet.ctrl';
 import characterSheetTemplate from '../../../src/views/characterSheet/characterSheet.template';
 import contactTemplate from '../../../src/views/contact/contact.template';
@@ -43,6 +44,16 @@ describe('Frontend View Templates', () => {
         expect(contact.querySelector('input[name="name"]')).not.toBeNull();
         expect(contact.querySelector('input[name="email"]')).not.toBeNull();
         expect(contact.querySelector('textarea[name="message"]')).not.toBeNull();
+    });
+
+    it('renders characterCreatorTemplate with wizard structure and stepper', () => {
+        const creator = characterCreatorTemplate();
+        expect(creator.tagName.toLowerCase()).toBe('el-character-creator');
+        expect(creator.querySelector('.creator-title')?.textContent).toContain('Character Creator');
+        expect(creator.querySelectorAll('.stepper-item').length).toBe(9);
+        expect(creator.querySelector('#creator-prev-btn')).not.toBeNull();
+        expect(creator.querySelector('#creator-next-btn')).not.toBeNull();
+        expect(creator.querySelector('#creator-submit-btn')).not.toBeNull();
     });
 
     it('renders characterSheetTemplate with empty sheet before any ID is loaded', () => {

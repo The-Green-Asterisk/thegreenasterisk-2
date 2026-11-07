@@ -65,12 +65,22 @@ export default class Routes extends RoutesBase {
     }
 
     ['character-sheet']() {
+        if (this.path[1] === 'creator') {
+            el.body.appendChild(views.characterCreatorTemplate());
+            views.characterCreator(this.query);
+            return;
+        }
         el.body.appendChild(views.characterSheetTemplate());
         const id = this.path[1] || (this.query.id as string) || (this.query.characterId as string);
         views.characterSheet(id || this.query);
     }
 
     ['character']() {
+        if (this.path[1] === 'creator') {
+            el.body.appendChild(views.characterCreatorTemplate());
+            views.characterCreator(this.query);
+            return;
+        }
         el.body.appendChild(views.characterSheetTemplate());
         const id = this.path[1] || (this.query.id as string) || (this.query.characterId as string);
         views.characterSheet(id || this.query);
