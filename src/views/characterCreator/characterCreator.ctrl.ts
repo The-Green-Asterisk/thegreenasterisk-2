@@ -8,6 +8,7 @@ import {
     BASE_WEAPONS_2024,
     CLASSES_2024,
     ORIGIN_FEATS_2024,
+    RuleSpellDefinition,
     SPECIES_2024,
     SPELLS_2024,
     WEAPON_MASTERIES
@@ -477,6 +478,146 @@ export class CharacterCreatorController {
                 this.state.selectedWeapons = matched;
             }
         }
+    }
+
+    public getMaxCantrips(): number {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (!cls) return 0;
+        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
+        let count = cls.spellcasting?.cantripsKnownByLevel?.[lvlIdx] || 0;
+
+        // Subclass third-casters at level 3+
+        if (this.state.level >= 3) {
+            if (this.state.classId === "fighter" && this.state.subclassId === "eldritch-knight") {
+                count += (this.state.level >= 10 ? 3 : 2);
+            } else if (this.state.classId === "rogue" && this.state.subclassId === "arcane-trickster") {
+                count += (this.state.level >= 10 ? 4 : 3);
+            }
+        }
+
+        // Origin Feat bonus: Magic Initiate grants 2 cantrips
+        if (this.state.originFeatId.startsWith("magic-initiate")) {
+            count += 2;
+        }
+
+        return count;
+    }
+
+    public getMaxPreparedSpells(): number {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (!cls) return 0;
+        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
+        let count = cls.spellcasting?.preparedSpellsByLevel?.[lvlIdx] || 0;
+
+        // Subclass third-casters at level 3+
+        if (this.state.level >= 3) {
+            const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
+            if (this.state.classId === "fighter" && this.state.subclassId === "eldritch-knight") {
+                count += thirdCasterSpells[lvlIdx];
+            } else if (this.state.classId === "rogue" && this.state.subclassId === "arcane-trickster") {
+                count += thirdCasterSpells[lvlIdx];
+            }
+        }
+
+        // Origin Feat bonus: Magic Initiate grants 1 prepared 1st-level spell
+        if (this.state.originFeatId.startsWith("magic-initiate")) {
+            count += 1;
+        }
+
+        return count;
+    }
+
+    public getAllowedSpellClasses(): string[] {
+        const list: string[] = [];
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (cls?.spellcasting) {
+            list.push(cls.name);
+        }
+        if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
+            if (!list.includes("Wizard")) list.push("Wizard");
+        }
+        if (this.state.originFeatId === "magic-initiate-cleric" && !list.includes("Cleric")) list.push("Cleric");
+        if (this.state.originFeatId === "magic-initiate-druid" && !list.includes("Druid")) list.push("Druid");
+        if (this.state.originFeatId === "magic-initiate-wizard" && !list.includes("Wizard")) list.push("Wizard");
+        return list;
+    }
+
+    public getAvailableSpells(): { cantrips: RuleSpellDefinition[]; spellsLvl1: RuleSpellDefinition[] } {
+        const allowed = this.getAllowedSpellClasses();
+        if (allowed.length === 0) {
+            return { cantrips: [], spellsLvl1: [] };
+        }
+        const cantrips = SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.some((c) => allowed.includes(c)));
+        const spellsLvl1 = SPELLS_2024.filter((sp) => sp.level === 1 && sp.classes.some((c) => allowed.includes(c)));
+        return { cantrips, spellsLvl1 };
+    }
+
+    public sanitizeSpellSelections() {
+        const allowed = this.getAllowedSpellClasses();
+        if (allowed.length === 0) {
+            this.state.selectedCantrips = [];
+            this.state.selectedSpellsLevel1 = [];
+            return;
+        }
+        const available = this.getAvailableSpells();
+        const validCantripNames = new Set(available.cantrips.map((c) => c.name));
+        const validLvl1Names = new Set(available.spellsLvl1.map((s) => s.name));
+
+        this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => validCantripNames.has(s));
+        this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => validLvl1Names.has(s));
+
+        const maxCantrips = this.getMaxCantrips();
+        if (this.state.selectedCantrips.length > maxCantrips) {
+            this.state.selectedCantrips = this.state.selectedCantrips.slice(0, maxCantrips);
+        }
+
+        const maxPrepared = this.getMaxPreparedSpells();
+        if (this.state.selectedSpellsLevel1.length > maxPrepared) {
+            this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.slice(0, maxPrepared);
+        }
+    }
+
+    public getSpellcastingAbility(): AbilityName | null {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (cls?.spellcasting) return cls.spellcasting.ability;
+        if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") return "int";
+        if (this.state.originFeatId === "magic-initiate-wizard") return "int";
+        if (this.state.originFeatId === "magic-initiate-cleric" || this.state.originFeatId === "magic-initiate-druid") return "wis";
+        return null;
+    }
+
+    public getSpellSaveDc(): number | null {
+        const ability = this.getSpellcastingAbility();
+        if (!ability) return null;
+        return 8 + this.getProficiencyBonus() + this.getAbilityModifier(ability);
+    }
+
+    public getSpellAttackModifier(): number | null {
+        const ability = this.getSpellcastingAbility();
+        if (!ability) return null;
+        return this.getProficiencyBonus() + this.getAbilityModifier(ability);
+    }
+
+    public getSpellSlotsSummary(): string {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (cls?.spellcasting) {
+            const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
+            const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
+            if (cls.spellcasting.type === "pact") {
+                const count = slotsRow.find((s) => s > 0) || 1;
+                const pactLvl = slotsRow.findIndex((s) => s > 0) + 1;
+                return `${count} x Lvl ${pactLvl} (Pact Magic)`;
+            }
+            const pairs: string[] = [];
+            slotsRow.forEach((c, idx) => {
+                if (c > 0) pairs.push(`${c} × Lvl ${idx + 1}`);
+            });
+            return pairs.join(", ") || "None";
+        }
+        if (this.state.originFeatId.startsWith("magic-initiate")) {
+            return "1 × Lvl 1 (1/Long Rest from Feat)";
+        }
+        return "None";
     }
 
     public updateLiveSummary() {
@@ -1060,66 +1201,176 @@ export class CharacterCreatorController {
     }
 
     private renderStep8Spells(): string {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
-        const isCaster = !!cls.spellcasting;
-        const cantrips = SPELLS_2024.filter((sp) => sp.level === 0 && (!isCaster || sp.classes.includes(cls.name)));
-        const spellsLvl1 = SPELLS_2024.filter((sp) => sp.level === 1 && (!isCaster || sp.classes.includes(cls.name)));
+        this.sanitizeSpellSelections();
 
-        if (!isCaster) {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+        const maxCantrips = this.getMaxCantrips();
+        const maxPrepared = this.getMaxPreparedSpells();
+        const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;
+
+        if (!hasSpellcasting) {
             return `
                 <div class="step-panel active">
                     <div class="panel-header">
-                        <h3 class="panel-title">Spells & Magic</h3>
-                        <p class="panel-desc">Your class (${cls.name}) does not have innate spellcasting at level 1.</p>
+                        <h3 class="panel-title">Spells & Magic (${cls.name})</h3>
+                        <p class="panel-desc">Your class does not have spellcasting features at Level ${this.state.level}.</p>
                     </div>
-                    <p class="card-body">You may continue to the Review step, or pick spells if granted by your Origin Feat (e.g. Magic Initiate) or racial lineages.</p>
+                    <div class="equipment-stat-alert warning">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <div>
+                            <strong>No Spellcasting:</strong> As a Level ${this.state.level} ${cls.name}, your character does not learn cantrips or prepare spell slots.
+                            <div style="margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted);">
+                                You may proceed to Step 9 (Review), or choose an Origin Feat like <em>Magic Initiate</em> in Step 4 to gain bonus spells.
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         }
 
+        const available = this.getAvailableSpells();
+        const ability = this.getSpellcastingAbility();
+        const abilityMod = ability ? this.getAbilityModifier(ability) : 0;
+        const saveDc = this.getSpellSaveDc();
+        const attackMod = this.getSpellAttackModifier();
+        const slotsSummary = this.getSpellSlotsSummary();
+
+        const cantripsChosen = this.state.selectedCantrips.length;
+        const spellsChosen = this.state.selectedSpellsLevel1.length;
+
         return `
             <div class="step-panel active">
                 <div class="panel-header">
-                    <h3 class="panel-title">Spells (${cls.name})</h3>
-                    <p class="panel-desc">Select cantrips and prepared 1st-level spells for your spellcaster.</p>
+                    <div class="spells-header-row">
+                        <div>
+                            <h3 class="panel-title">Spells (${cls.name})</h3>
+                            <p class="panel-desc">Select cantrips and prepared spells according to your class limits at Level ${this.state.level}.</p>
+                        </div>
+                        <div class="spells-actions-row">
+                            <button type="button" class="creator-nav-btn secondary-btn auto-spells-btn">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Fill
+                            </button>
+                            <button type="button" class="creator-nav-btn secondary-btn clear-spells-btn">
+                                <i class="fa-solid fa-rotate-left"></i> Reset
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="creator-detail-box">
-                    <h4>Cantrips (Level 0)</h4>
-                    <div class="item-select-list">
-                        ${cantrips.map((sp) => {
-                            const isSelected = this.state.selectedCantrips.includes(sp.name);
-                            return `
-                                <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""}" data-spell-name="${sp.name}">
-                                    <div class="item-row-left">
-                                        <div class="item-row-title">${sp.name} (${sp.school})</div>
-                                        <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
-                                        <div class="item-row-desc">${sp.description}</div>
-                                    </div>
-                                    <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                </div>
-                            `;
-                        }).join("")}
+                <div class="spellcaster-stats-banner">
+                    ${ability ? `
+                        <div class="stat-badge">
+                            <span class="label">Spell Ability</span>
+                            <strong>${ability.toUpperCase()} (${abilityMod >= 0 ? "+" : ""}${abilityMod})</strong>
+                        </div>
+                    ` : ""}
+                    ${saveDc != null ? `
+                        <div class="stat-badge">
+                            <span class="label">Spell Save DC</span>
+                            <strong>${saveDc}</strong>
+                        </div>
+                    ` : ""}
+                    ${attackMod != null ? `
+                        <div class="stat-badge">
+                            <span class="label">Spell Attack</span>
+                            <strong>${attackMod >= 0 ? "+" : ""}${attackMod}</strong>
+                        </div>
+                    ` : ""}
+                    <div class="stat-badge">
+                        <span class="label">Spell Slots</span>
+                        <strong>${slotsSummary}</strong>
                     </div>
                 </div>
 
                 <div class="creator-detail-box">
-                    <h4>1st-Level Spells</h4>
-                    <div class="item-select-list">
-                        ${spellsLvl1.map((sp) => {
-                            const isSelected = this.state.selectedSpellsLevel1.includes(sp.name);
-                            return `
-                                <div class="item-check-row spell1-row ${isSelected ? "selected" : ""}" data-spell-name="${sp.name}">
-                                    <div class="item-row-left">
-                                        <div class="item-row-title">${sp.name} (${sp.school})</div>
-                                        <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration} ${sp.concentration ? "• Concentration" : ""}</div>
-                                        <div class="item-row-desc">${sp.description}</div>
-                                    </div>
-                                    <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                </div>
-                            `;
-                        }).join("")}
+                    <div class="box-header-with-badge">
+                        <h4>Cantrips (Level 0)</h4>
+                        ${maxCantrips > 0 ? `
+                            <span class="spell-count-badge ${cantripsChosen === maxCantrips ? "maxed" : "info"}">
+                                <i class="fa-solid ${cantripsChosen === maxCantrips ? "fa-check" : "fa-sparkles"}"></i>
+                                ${cantripsChosen} / ${maxCantrips} Chosen
+                            </span>
+                        ` : `
+                            <span class="spell-count-badge zero">
+                                <i class="fa-solid fa-ban"></i> 0 Cantrips for ${cls.name}
+                            </span>
+                        `}
                     </div>
+
+                    ${maxCantrips === 0 ? `
+                        <p class="creator-empty-notice">
+                            <i class="fa-solid fa-circle-info"></i>
+                            ${cls.name} does not prepare cantrips at Level ${this.state.level}.
+                        </p>
+                    ` : `
+                        <div class="item-select-list">
+                            ${available.cantrips.map((sp) => {
+                                const isSelected = this.state.selectedCantrips.includes(sp.name);
+                                const isLimitReached = !isSelected && cantripsChosen >= maxCantrips;
+                                return `
+                                    <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
+                                         data-spell-name="${sp.name}"
+                                         ${isLimitReached ? 'title="Cantrip limit reached. Deselect one to choose this cantrip."' : ""}>
+                                        <div class="item-row-left">
+                                            <div class="item-row-title">
+                                                ${sp.name} (${sp.school})
+                                                ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
+                                            </div>
+                                            <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
+                                            <div class="item-row-desc">${sp.description}</div>
+                                        </div>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    `}
+                </div>
+
+                <div class="creator-detail-box" style="margin-top: 1rem;">
+                    <div class="box-header-with-badge">
+                        <h4>1st-Level Prepared Spells</h4>
+                        ${maxPrepared > 0 ? `
+                            <span class="spell-count-badge ${spellsChosen === maxPrepared ? "maxed" : "info"}">
+                                <i class="fa-solid ${spellsChosen === maxPrepared ? "fa-check" : "fa-book"}"></i>
+                                ${spellsChosen} / ${maxPrepared} Prepared
+                            </span>
+                        ` : `
+                            <span class="spell-count-badge zero">
+                                <i class="fa-solid fa-ban"></i> 0 Spells for ${cls.name}
+                            </span>
+                        `}
+                    </div>
+
+                    ${maxPrepared === 0 ? `
+                        <p class="creator-empty-notice">
+                            <i class="fa-solid fa-circle-info"></i>
+                            ${cls.name} does not prepare 1st-level spells at Level ${this.state.level}.
+                        </p>
+                    ` : `
+                        <div class="item-select-list">
+                            ${available.spellsLvl1.map((sp) => {
+                                const isSelected = this.state.selectedSpellsLevel1.includes(sp.name);
+                                const isLimitReached = !isSelected && spellsChosen >= maxPrepared;
+                                return `
+                                    <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
+                                         data-spell-name="${sp.name}"
+                                         ${isLimitReached ? 'title="Prepared spell limit reached. Deselect one to prepare this spell."' : ""}>
+                                        <div class="item-row-left">
+                                            <div class="item-row-title">
+                                                ${sp.name} (${sp.school})
+                                                ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
+                                                ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
+                                            </div>
+                                            <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration} ${sp.concentration ? "• Concentration" : ""}</div>
+                                            <div class="item-row-desc">${sp.description}</div>
+                                        </div>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    `}
                 </div>
             </div>
         `;
@@ -1130,6 +1381,7 @@ export class CharacterCreatorController {
         const cls = CLASSES_2024.find((c) => c.id === this.state.classId)?.name || "";
         const bg = BACKGROUNDS_2024.find((b) => b.id === this.state.backgroundId)?.name || "";
         const feat = ORIGIN_FEATS_2024.find((f) => f.id === this.state.originFeatId)?.name || "";
+        const spellAbility = this.getSpellcastingAbility();
 
         return `
             <div class="step-panel active">
@@ -1159,6 +1411,15 @@ export class CharacterCreatorController {
                         <div class="review-row"><span class="label">Speed:</span><strong>${this.getSpeed()} ft.</strong></div>
                         <div class="review-row"><span class="label">Proficiency Bonus:</span><strong>+${this.getProficiencyBonus()}</strong></div>
                     </div>
+
+                    <div class="review-section" style="grid-column: 1 / -1;">
+                        <h4>Magic & Spells</h4>
+                        <div class="review-row"><span class="label">Cantrips (${this.state.selectedCantrips.length}/${this.getMaxCantrips()}):</span><strong>${this.state.selectedCantrips.join(", ") || "None"}</strong></div>
+                        <div class="review-row"><span class="label">Prepared Spells (${this.state.selectedSpellsLevel1.length}/${this.getMaxPreparedSpells()}):</span><strong>${this.state.selectedSpellsLevel1.join(", ") || "None"}</strong></div>
+                        ${spellAbility ? `
+                            <div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>
+                        ` : ""}
+                    </div>
                 </div>
             </div>
         `;
@@ -1176,6 +1437,7 @@ export class CharacterCreatorController {
             levelInput?.addEventListener("input", (e) => {
                 const val = Math.max(1, Math.min(20, Number((e.target as HTMLInputElement).value) || 1));
                 this.state.level = val;
+                this.sanitizeSpellSelections();
                 this.updateLiveSummary();
             });
 
@@ -1285,6 +1547,7 @@ export class CharacterCreatorController {
                     if (cls) {
                         this.initClassDefaultEquipment(cls);
                     }
+                    this.sanitizeSpellSelections();
                     this.renderStep(3);
                     this.updateLiveSummary();
                 });
@@ -1293,6 +1556,7 @@ export class CharacterCreatorController {
             document.querySelectorAll(".subclass-card").forEach((card) => {
                 card.addEventListener("click", () => {
                     this.state.subclassId = card.getAttribute("data-subclass-id") || "";
+                    this.sanitizeSpellSelections();
                     this.renderStep(3);
                 });
             });
@@ -1322,6 +1586,7 @@ export class CharacterCreatorController {
                         this.state.bgStatB = bg.allowedAbilities[1];
                         this.state.bgStatC = bg.allowedAbilities[2] || bg.allowedAbilities[0];
                     }
+                    this.sanitizeSpellSelections();
                     this.renderStep(4);
                     this.updateLiveSummary();
                 });
@@ -1528,25 +1793,65 @@ export class CharacterCreatorController {
                 });
             });
         } else if (step === 8) {
+            this.sanitizeSpellSelections();
+
+            // Auto-Fill spells button
+            const autoBtn = document.querySelector(".auto-spells-btn");
+            autoBtn?.addEventListener("click", () => {
+                const available = this.getAvailableSpells();
+                const maxCantrips = this.getMaxCantrips();
+                const maxPrepared = this.getMaxPreparedSpells();
+
+                this.state.selectedCantrips = available.cantrips.slice(0, maxCantrips).map((c) => c.name);
+                this.state.selectedSpellsLevel1 = available.spellsLvl1.slice(0, maxPrepared).map((s) => s.name);
+                this.hideAlert();
+                this.renderStep(8);
+            });
+
+            // Reset spells button
+            const clearBtn = document.querySelector(".clear-spells-btn");
+            clearBtn?.addEventListener("click", () => {
+                this.state.selectedCantrips = [];
+                this.state.selectedSpellsLevel1 = [];
+                this.hideAlert();
+                this.renderStep(8);
+            });
+
+            // Cantrip toggles with strict limit enforcement
             document.querySelectorAll(".cantrip-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
+                    const maxCantrips = this.getMaxCantrips();
                     if (this.state.selectedCantrips.includes(spName)) {
                         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => s !== spName);
+                        this.hideAlert();
                     } else {
+                        if (this.state.selectedCantrips.length >= maxCantrips) {
+                            this.showAlert(`You can only choose ${maxCantrips} cantrip${maxCantrips === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
+                            return;
+                        }
                         this.state.selectedCantrips.push(spName);
+                        this.hideAlert();
                     }
                     this.renderStep(8);
                 });
             });
 
+            // 1st-level spell toggles with strict limit enforcement
             document.querySelectorAll(".spell1-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
+                    const maxPrepared = this.getMaxPreparedSpells();
                     if (this.state.selectedSpellsLevel1.includes(spName)) {
                         this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => s !== spName);
+                        this.hideAlert();
                     } else {
+                        if (this.state.selectedSpellsLevel1.length >= maxPrepared) {
+                            this.showAlert(`You can only prepare ${maxPrepared} 1st-level spell${maxPrepared === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
+                            return;
+                        }
                         this.state.selectedSpellsLevel1.push(spName);
+                        this.hideAlert();
                     }
                     this.renderStep(8);
                 });

@@ -85,6 +85,8 @@ export const characterCreatorTemplate = () => html`
                 <!-- Dynamically populated by characterCreator.ctrl.ts -->
             </div>
 
+            <p>Report bugs/feedback on our <a href="https://discord.gg/PwYVb5R7BF" target="_blank" rel="noopener noreferrer">Discord server</a> channel #help-desk.</p>
+
             <!-- Navigation Controls -->
             <footer class="creator-footer">
                 <button type="button" id="creator-prev-btn" class="creator-nav-btn secondary-btn" disabled>

@@ -291,4 +291,89 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(false);
         expect(ctrl.isProficientWithWeapon("Dagger")).toBe(true); // Simple Melee
     });
+
+    it("enforces class and level limitations for cantrips and prepared spells", () => {
+        // Level 1 Wizard: 3 cantrips, 4 prepared spells
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        ctrl.state.originFeatId = "alert";
+        expect(ctrl.getMaxCantrips()).toBe(3);
+        expect(ctrl.getMaxPreparedSpells()).toBe(4);
+
+        // Level 1 Sorcerer: 4 cantrips, 2 prepared spells
+        ctrl.state.classId = "sorcerer";
+        expect(ctrl.getMaxCantrips()).toBe(4);
+        expect(ctrl.getMaxPreparedSpells()).toBe(2);
+
+        // Level 1 Paladin: 0 cantrips, 2 prepared spells (2024 half caster rules)
+        ctrl.state.classId = "paladin";
+        expect(ctrl.getMaxCantrips()).toBe(0);
+        expect(ctrl.getMaxPreparedSpells()).toBe(2);
+
+        // Level 1 Fighter (non-caster): 0 cantrips, 0 prepared spells
+        ctrl.state.classId = "fighter";
+        expect(ctrl.getMaxCantrips()).toBe(0);
+        expect(ctrl.getMaxPreparedSpells()).toBe(0);
+
+        // Level scaling: Level 4 Wizard has 4 cantrips, 7 prepared spells
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 4;
+        expect(ctrl.getMaxCantrips()).toBe(4);
+        expect(ctrl.getMaxPreparedSpells()).toBe(7);
+
+        // Subclass: Level 3 Fighter Eldritch Knight gains 2 cantrips and 3 prepared spells
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 3;
+        ctrl.state.subclassId = "eldritch-knight";
+        expect(ctrl.getMaxCantrips()).toBe(2);
+        expect(ctrl.getMaxPreparedSpells()).toBe(3);
+
+        // Feat bonus: Magic Initiate grants +2 cantrips and +1 prepared spell
+        ctrl.state.classId = "fighter";
+        ctrl.state.subclassId = "champion";
+        ctrl.state.level = 1;
+        ctrl.state.originFeatId = "magic-initiate-wizard";
+        expect(ctrl.getMaxCantrips()).toBe(2);
+        expect(ctrl.getMaxPreparedSpells()).toBe(1);
+    });
+
+    it("sanitizes and truncates excess or invalid spell selections when class or level changes", () => {
+        // As a Level 1 Sorcerer, select 4 cantrips
+        ctrl.state.classId = "sorcerer";
+        ctrl.state.level = 1;
+        ctrl.state.originFeatId = "alert";
+        ctrl.state.selectedCantrips = ["Fire Bolt", "Light", "Minor Illusion", "Prestidigitation"];
+        ctrl.state.selectedSpellsLevel1 = ["Shield", "Magic Missile"];
+
+        // Switch to Bard (max 2 cantrips at Level 1, Fire Bolt is not on Bard list)
+        ctrl.state.classId = "bard";
+        ctrl.sanitizeSpellSelections();
+
+        expect(ctrl.state.selectedCantrips.length).toBeLessThanOrEqual(ctrl.getMaxCantrips());
+        expect(ctrl.state.selectedCantrips.includes("Fire Bolt")).toBe(false); // Not on Bard list
+
+        // Switch to non-caster Fighter without feat -> spells cleared to empty
+        ctrl.state.classId = "fighter";
+        ctrl.sanitizeSpellSelections();
+        expect(ctrl.state.selectedCantrips).toEqual([]);
+        expect(ctrl.state.selectedSpellsLevel1).toEqual([]);
+    });
+
+    it("calculates spell save DC and attack bonus correctly", () => {
+        ctrl.state.classId = "wizard"; // Int based
+        ctrl.state.level = 1; // PB = +2
+        ctrl.state.baseAbilities.int = 16; // +3 mod
+        ctrl.state.bgStatA = "int"; // +2 from background = 18 Int (+4 mod)
+        ctrl.state.bgStatB = "con";
+
+        expect(ctrl.getEffectiveAbilityScore("int")).toBe(18);
+        expect(ctrl.getAbilityModifier("int")).toBe(4);
+        expect(ctrl.getSpellcastingAbility()).toBe("int");
+
+        // Save DC = 8 + PB(2) + Int Mod(4) = 14
+        expect(ctrl.getSpellSaveDc()).toBe(14);
+
+        // Attack Bonus = PB(2) + Int Mod(4) = +6
+        expect(ctrl.getSpellAttackModifier()).toBe(6);
+    });
 });
