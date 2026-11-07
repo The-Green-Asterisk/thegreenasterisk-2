@@ -7,6 +7,7 @@ import LinkController from 'controllers/linkController';
 import PrDigestController from 'controllers/prDigestController';
 import ProfileController from 'controllers/profileController';
 import PushController from 'controllers/pushController';
+import RulesController from 'controllers/rulesController';
 import SessionController from 'controllers/sessionController';
 import SpellController from 'controllers/spellController';
 import StorageController from 'controllers/storageController';
@@ -342,6 +343,11 @@ export default class Routes {
     @Method('GET')
     private ['/get-conditions'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ConditionController.getConditions(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-rules'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return RulesController.getRules(req, res);
     }
 
     get response(): ResponsePromise {

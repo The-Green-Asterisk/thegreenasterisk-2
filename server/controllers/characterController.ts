@@ -16,6 +16,7 @@ import BaseController from "./baseController";
 import SessionController, { ReqAndUser } from "./sessionController";
 import SpellController from "./spellController";
 import ItemController from "./itemController";
+import RulesController from "./rulesController";
 
 export default class CharacterController extends BaseController {
     public static async getDndBeyondCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -69,6 +70,14 @@ export default class CharacterController extends BaseController {
 
             const data = await response.json();
             const payload = JSON.stringify(data);
+
+            // Dynamically capture rules (classes, subclasses, species, backgrounds, feats) from D&D Beyond loads
+            try {
+                const charData = (data as any)?.data || data;
+                await RulesController.upsertRulesFromDndBeyond(charData);
+            } catch (ruleErr) {
+                console.warn("Could not upsert rules from D&D Beyond character load:", ruleErr);
+            }
 
             // Cache for 10 minutes (600 seconds)
             cache.set(cacheKey, payload, 600);
@@ -646,6 +655,12 @@ export default class CharacterController extends BaseController {
                     payloadToSave.weapons || [],
                     payloadToSave.equipment || []
                 );
+            }
+
+            try {
+                await RulesController.upsertRulesFromCharacter(inputCharacter, payloadToSave);
+            } catch (ruleErr) {
+                console.warn("Could not upsert rules from character save:", ruleErr);
             }
 
             return {

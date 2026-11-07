@@ -7,6 +7,7 @@ import {
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
     BATTLE_MASTER_MANEUVERS,
+    BackgroundDefinition,
     CLASSES_2024,
     ClassDefinition,
     ClassLevelFeature,
@@ -14,11 +15,14 @@ import {
     ELDRITCH_INVOCATIONS,
     FIGHTING_STYLES,
     GENERAL_FEATS_2024,
+    GeneralFeatDefinition,
     METAMAGIC_OPTIONS,
     ORIGIN_FEATS_2024,
+    OriginFeatDefinition,
     PRIMAL_ORDERS,
     RuleSpellDefinition,
     SPECIES_2024,
+    SpeciesDefinition,
     SPELLS_2024,
     WEAPON_MASTERIES
 } from "../../rules/dnd5e_2024";
@@ -139,6 +143,12 @@ export class CharacterCreatorController {
         selectedSpellsLevel1: []
     };
 
+    public classes: ClassDefinition[] = [...CLASSES_2024];
+    public species: SpeciesDefinition[] = [...SPECIES_2024];
+    public backgrounds: BackgroundDefinition[] = [...BACKGROUNDS_2024];
+    public originFeats: OriginFeatDefinition[] = [...ORIGIN_FEATS_2024];
+    public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
+
     public activeSpellLevelFilter: number | "all" = "all";
     public spellSearchQuery: string = "";
     public progressionExpanded: boolean = false;
@@ -146,6 +156,18 @@ export class CharacterCreatorController {
 
     public async init(query?: any) {
         this.bindEvents();
+        try {
+            const rules = await getData<any>("/get-rules");
+            if (rules) {
+                if (Array.isArray(rules.classes) && rules.classes.length > 0) this.classes = rules.classes;
+                if (Array.isArray(rules.species) && rules.species.length > 0) this.species = rules.species;
+                if (Array.isArray(rules.backgrounds) && rules.backgrounds.length > 0) this.backgrounds = rules.backgrounds;
+                if (Array.isArray(rules.originFeats) && rules.originFeats.length > 0) this.originFeats = rules.originFeats;
+                if (Array.isArray(rules.generalFeats) && rules.generalFeats.length > 0) this.generalFeats = rules.generalFeats;
+            }
+        } catch (e) {
+            console.warn("Using offline / fallback rules:", e);
+        }
         const targetId = query?.id || query?.savedId || query?.characterId || query?.siteCharacterId;
         if (targetId) {
             await this.loadCharacter(targetId);
@@ -350,7 +372,7 @@ export class CharacterCreatorController {
         if (!this.state.asiChoices) this.state.asiChoices = {};
         for (const lvl of asiLevels) {
             if (!this.state.asiChoices[lvl]) {
-                const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+                const cls = this.classes.find((c) => c.id === this.state.classId);
                 const defaultStat: AbilityName = cls?.savingThrows[0] || "str";
                 this.state.asiChoices[lvl] = {
                     type: "single",
@@ -439,13 +461,13 @@ export class CharacterCreatorController {
                 if (char.avatarUrl) this.state.avatarUrl = char.avatarUrl;
 
                 const spName = (char.species || char.race || "").toLowerCase();
-                const matchedSp = SPECIES_2024.find((s) => s.name.toLowerCase() === spName || s.id === spName);
+                const matchedSp = this.species.find((s) => s.name.toLowerCase() === spName || s.id === spName);
                 if (matchedSp) this.state.speciesId = matchedSp.id;
 
                 if (Array.isArray(char.classes) && char.classes.length > 0) {
                     const primaryClass = char.classes[0];
                     const clsName = (primaryClass.name || "").toLowerCase();
-                    const matchedCls = CLASSES_2024.find((c) => c.name.toLowerCase() === clsName || c.id === clsName);
+                    const matchedCls = this.classes.find((c) => c.name.toLowerCase() === clsName || c.id === clsName);
                     if (matchedCls) {
                         this.state.classId = matchedCls.id;
                         if (primaryClass.subclass) {
@@ -458,7 +480,7 @@ export class CharacterCreatorController {
 
                 if (char.background) {
                     const bgName = char.background.toLowerCase();
-                    const matchedBg = BACKGROUNDS_2024.find((b) => b.name.toLowerCase() === bgName || b.id === bgName);
+                    const matchedBg = this.backgrounds.find((b) => b.name.toLowerCase() === bgName || b.id === bgName);
                     if (matchedBg) this.state.backgroundId = matchedBg.id;
                 }
 
@@ -542,7 +564,7 @@ export class CharacterCreatorController {
     }
 
     public getMaxHp(): number {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
         const conMod = this.getAbilityModifier("con");
         const hitDie = cls.hitDie;
         const level = this.state.level;
@@ -607,7 +629,7 @@ export class CharacterCreatorController {
     }
 
     public getSpeed(): number {
-        const species = SPECIES_2024.find((s) => s.id === this.state.speciesId);
+        const species = this.species.find((s) => s.id === this.state.speciesId);
         let speed = species?.speed || 30;
         if (this.state.speciesId === "elf" && this.state.lineageId === "wood-elf") {
             speed += 5;
@@ -632,7 +654,7 @@ export class CharacterCreatorController {
         if (!armorName || armorName === "None") return true;
         const armor = BASE_ARMOR_2024.find((a) => a.name === armorName);
         if (!armor) return true;
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (!cls) return true;
         const profs = cls.armorProficiencies;
         if (profs.includes("All Armor")) return true;
@@ -640,7 +662,7 @@ export class CharacterCreatorController {
     }
 
     public isProficientWithShield(): boolean {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (!cls) return true;
         return cls.armorProficiencies.includes("Shields") || cls.armorProficiencies.includes("All Armor");
     }
@@ -648,7 +670,7 @@ export class CharacterCreatorController {
     public isProficientWithWeapon(weaponName: string): boolean {
         const weapon = BASE_WEAPONS_2024.find((w) => w.name === weaponName);
         if (!weapon) return true;
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (!cls) return true;
         const profs = cls.weaponProficiencies;
         if (profs.includes("Martial Weapons") || profs.includes("Simple Weapons, Martial Weapons")) return true;
@@ -710,7 +732,7 @@ export class CharacterCreatorController {
     }
 
     public getMaxCantrips(): number {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (!cls) return 0;
         const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
         let count = cls.spellcasting?.cantripsKnownByLevel?.[lvlIdx] || 0;
@@ -733,7 +755,7 @@ export class CharacterCreatorController {
     }
 
     public getMaxPreparedSpells(): number {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (!cls) return 0;
         const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
         let count = cls.spellcasting?.preparedSpellsByLevel?.[lvlIdx] || 0;
@@ -758,7 +780,7 @@ export class CharacterCreatorController {
 
     public getAllowedSpellClasses(): string[] {
         const list: string[] = [];
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (cls?.spellcasting) {
             list.push(cls.name);
         }
@@ -772,7 +794,7 @@ export class CharacterCreatorController {
     }
 
     public getMaxSpellLevel(): number {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (!cls?.spellcasting) {
             if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
                 if (this.state.level >= 19) return 4;
@@ -828,7 +850,7 @@ export class CharacterCreatorController {
     }
 
     public getSpellcastingAbility(): AbilityName | null {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (cls?.spellcasting) return cls.spellcasting.ability;
         if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") return "int";
         if (this.state.originFeatId === "magic-initiate-wizard") return "int";
@@ -849,7 +871,7 @@ export class CharacterCreatorController {
     }
 
     public getSpellSlotsSummary(): string {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = this.classes.find((c) => c.id === this.state.classId);
         if (cls?.spellcasting) {
             const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
             const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
@@ -879,8 +901,8 @@ export class CharacterCreatorController {
         const speedEl = document.getElementById("summary-speed");
         const avatarEl = document.getElementById("summary-avatar-img") as HTMLImageElement;
 
-        const species = SPECIES_2024.find((s) => s.id === this.state.speciesId)?.name || "Species";
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId)?.name || "Class";
+        const species = this.species.find((s) => s.id === this.state.speciesId)?.name || "Species";
+        const cls = this.classes.find((c) => c.id === this.state.classId)?.name || "Class";
 
         if (nameEl) nameEl.textContent = this.state.name || "Unnamed Hero";
         if (metaEl) metaEl.textContent = `Level ${this.state.level} • ${species} • ${cls}`;
@@ -992,7 +1014,7 @@ export class CharacterCreatorController {
     }
 
     private renderStep2Species(): string {
-        const currentSpecies = SPECIES_2024.find((s) => s.id === this.state.speciesId) || SPECIES_2024[0];
+        const currentSpecies = this.species.find((s) => s.id === this.state.speciesId) || this.species[0];
         return `
             <div class="step-panel active">
                 <div class="panel-header">
@@ -1000,7 +1022,7 @@ export class CharacterCreatorController {
                     <p class="panel-desc">Select your species from the 10 core options in 5.5e. In the 2024 revision, ability score increases are tied to your background.</p>
                 </div>
                 <div class="card-select-grid">
-                    ${SPECIES_2024.map((sp) => `
+                    ${this.species.map((sp) => `
                         <div class="select-card species-card ${this.state.speciesId === sp.id ? "selected" : ""}" data-species-id="${sp.id}">
                             <div class="card-title-row">
                                 <h4 class="card-title">${sp.name}</h4>
@@ -1042,7 +1064,7 @@ export class CharacterCreatorController {
                             <div class="creator-form-group">
                                 <label class="creator-label">Versatile (Choose 1 Extra Origin Feat)</label>
                                 <select id="human-feat-select" class="creator-select">
-                                    ${ORIGIN_FEATS_2024.map((f) => `<option value="${f.id}" ${this.state.humanExtraFeatId === f.id ? "selected" : ""}>${f.name}</option>`).join("")}
+                                    ${this.originFeats.map((f) => `<option value="${f.id}" ${this.state.humanExtraFeatId === f.id ? "selected" : ""}>${f.name}</option>`).join("")}
                                 </select>
                             </div>
                         </div>
@@ -1053,7 +1075,7 @@ export class CharacterCreatorController {
     }
 
     private renderStep3Class(): string {
-        const currentClass = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+        const currentClass = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
         return `
             <div class="step-panel active">
                 <div class="panel-header">
@@ -1061,7 +1083,7 @@ export class CharacterCreatorController {
                     <p class="panel-desc">Select your character's class. Classes grant Hit Dice, proficiencies, weapon masteries, and starting features.</p>
                 </div>
                 <div class="card-select-grid">
-                    ${CLASSES_2024.map((cls) => `
+                    ${this.classes.map((cls) => `
                         <div class="select-card class-card ${this.state.classId === cls.id ? "selected" : ""}" data-class-id="${cls.id}">
                             <div class="card-title-row">
                                 <h4 class="card-title">${cls.name}</h4>
@@ -1380,8 +1402,8 @@ export class CharacterCreatorController {
     }
 
     private renderStep4Background(): string {
-        const currentBg = BACKGROUNDS_2024.find((b) => b.id === this.state.backgroundId) || BACKGROUNDS_2024[0];
-        const feat = ORIGIN_FEATS_2024.find((f) => f.id === currentBg.originFeatId) || ORIGIN_FEATS_2024[0];
+        const currentBg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
+        const feat = this.originFeats.find((f) => f.id === currentBg.originFeatId) || this.originFeats[0];
         const allowed = currentBg.allowedAbilities;
 
         return `
@@ -1391,7 +1413,7 @@ export class CharacterCreatorController {
                     <p class="panel-desc">In 5.5e, your background determines your Ability Score Increases (+2/+1 or +1/+1/+1), 2 skill proficiencies, 1 tool, and 1 Origin Feat.</p>
                 </div>
                 <div class="card-select-grid">
-                    ${BACKGROUNDS_2024.map((bg) => `
+                    ${this.backgrounds.map((bg) => `
                         <div class="select-card background-card ${this.state.backgroundId === bg.id ? "selected" : ""}" data-background-id="${bg.id}">
                             <div class="card-title-row">
                                 <h4 class="card-title">${bg.name}</h4>
@@ -1567,8 +1589,8 @@ export class CharacterCreatorController {
         const labels: Record<AbilityName, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
         const isEpicLevel = lvl >= 19;
         const availableFeats = isEpicLevel
-            ? GENERAL_FEATS_2024
-            : GENERAL_FEATS_2024.filter((f) => !f.isEpicBoon);
+            ? this.generalFeats
+            : this.generalFeats.filter((f) => !f.isEpicBoon);
 
         const currentFeat = availableFeats.find((f) => f.id === choice.featId) || availableFeats[0];
         const allowedFeatStats = currentFeat?.allowedStats || stats;
@@ -1645,8 +1667,8 @@ export class CharacterCreatorController {
     }
 
     private renderStep6Skills(): string {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
-        const bg = BACKGROUNDS_2024.find((b) => b.id === this.state.backgroundId) || BACKGROUNDS_2024[0];
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+        const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
         const bgSkills = bg.skills;
         const classAllowed = cls.skillChoices.from;
         const maxClassCount = cls.skillChoices.count;
@@ -1711,7 +1733,7 @@ export class CharacterCreatorController {
     }
 
     private renderStep7Equipment(): string {
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
         const effectiveStr = this.getEffectiveAbilityScore("str");
         const effectiveDex = this.getEffectiveAbilityScore("dex");
         const selectedArmorDef = BASE_ARMOR_2024.find((a) => a.name === this.state.selectedArmor);
@@ -1838,7 +1860,7 @@ export class CharacterCreatorController {
     private renderStep8Spells(): string {
         this.sanitizeSpellSelections();
 
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
         const maxCantrips = this.getMaxCantrips();
         const maxPrepared = this.getMaxPreparedSpells();
         const maxSpellLevel = this.getMaxSpellLevel();
@@ -2045,11 +2067,11 @@ export class CharacterCreatorController {
     }
 
     private renderStep9Review(): string {
-        const species = SPECIES_2024.find((s) => s.id === this.state.speciesId)?.name || "";
-        const currentClsDef = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const species = this.species.find((s) => s.id === this.state.speciesId)?.name || "";
+        const currentClsDef = this.classes.find((c) => c.id === this.state.classId);
         const cls = currentClsDef?.name || "";
-        const bg = BACKGROUNDS_2024.find((b) => b.id === this.state.backgroundId)?.name || "";
-        const feat = ORIGIN_FEATS_2024.find((f) => f.id === this.state.originFeatId)?.name || "";
+        const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId)?.name || "";
+        const feat = this.originFeats.find((f) => f.id === this.state.originFeatId)?.name || "";
         const spellAbility = this.getSpellcastingAbility();
 
         return `
@@ -2099,7 +2121,7 @@ export class CharacterCreatorController {
                                     if (!ch) return `<div>• Level ${lvl}: Standard Increase</div>`;
                                     if (ch.type === "single") return `<div>• Level ${lvl}: +2 ${ch.statA?.toUpperCase()}</div>`;
                                     if (ch.type === "dual") return `<div>• Level ${lvl}: +1 ${ch.statA?.toUpperCase()}, +1 ${ch.statB?.toUpperCase()}</div>`;
-                                    const fDef = GENERAL_FEATS_2024.find((f) => f.id === ch.featId);
+                                    const fDef = this.generalFeats.find((f) => f.id === ch.featId);
                                     return `<div>• Level ${lvl}: Feat (${fDef?.name || ch.featId}) [+1 ${ch.statA?.toUpperCase()}]</div>`;
                                 }).join("")}
                             </div>
@@ -2208,7 +2230,7 @@ export class CharacterCreatorController {
                 card.addEventListener("click", () => {
                     const spId = card.getAttribute("data-species-id") || "";
                     this.state.speciesId = spId;
-                    const sp = SPECIES_2024.find((s) => s.id === spId);
+                    const sp = this.species.find((s) => s.id === spId);
                     this.state.lineageId = sp?.lineages?.[0]?.id || "";
                     this.renderStep(2);
                     this.updateLiveSummary();
@@ -2238,7 +2260,7 @@ export class CharacterCreatorController {
                 card.addEventListener("click", () => {
                     const cId = card.getAttribute("data-class-id") || "";
                     this.state.classId = cId;
-                    const cls = CLASSES_2024.find((c) => c.id === cId);
+                    const cls = this.classes.find((c) => c.id === cId);
                     this.state.subclassId = cls?.subclasses?.[0]?.id || "";
                     this.state.weaponMasteries = [];
                     if (cls) {
@@ -2261,7 +2283,7 @@ export class CharacterCreatorController {
             document.querySelectorAll(".mastery-card").forEach((card) => {
                 card.addEventListener("click", () => {
                     const wName = card.getAttribute("data-weapon-name") || "";
-                    const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+                    const cls = this.classes.find((c) => c.id === this.state.classId);
                     const maxM = cls?.weaponMasteryCount || 0;
                     if (this.state.weaponMasteries.includes(wName)) {
                         this.state.weaponMasteries = this.state.weaponMasteries.filter((w) => w !== wName);
@@ -2350,7 +2372,7 @@ export class CharacterCreatorController {
                 card.addEventListener("click", () => {
                     const bgId = card.getAttribute("data-background-id") || "";
                     this.state.backgroundId = bgId;
-                    const bg = BACKGROUNDS_2024.find((b) => b.id === bgId);
+                    const bg = this.backgrounds.find((b) => b.id === bgId);
                     if (bg) {
                         this.state.originFeatId = bg.originFeatId;
                         this.state.bgStatA = bg.allowedAbilities[0];
@@ -2505,7 +2527,7 @@ export class CharacterCreatorController {
                         this.state.asiChoices[lvl].type = newType;
                         if (newType === "feat" && !this.state.asiChoices[lvl].featId) {
                             const isEpic = lvl >= 19;
-                            const feats = isEpic ? GENERAL_FEATS_2024 : GENERAL_FEATS_2024.filter((f) => !f.isEpicBoon);
+                            const feats = isEpic ? this.generalFeats : this.generalFeats.filter((f) => !f.isEpicBoon);
                             const defaultFeat = feats[0];
                             this.state.asiChoices[lvl].featId = defaultFeat?.id || "alert-general";
                             this.state.asiChoices[lvl].statA = defaultFeat?.allowedStats[0] || "str";
@@ -2538,7 +2560,7 @@ export class CharacterCreatorController {
                     this.ensureAsiChoices();
                     if (this.state.asiChoices[lvl]) {
                         this.state.asiChoices[lvl].featId = featId;
-                        const featDef = GENERAL_FEATS_2024.find((f) => f.id === featId);
+                        const featDef = this.generalFeats.find((f) => f.id === featId);
                         if (featDef && (!this.state.asiChoices[lvl].statA || !featDef.allowedStats.includes(this.state.asiChoices[lvl].statA!))) {
                             this.state.asiChoices[lvl].statA = featDef.allowedStats[0];
                         }
@@ -2551,7 +2573,7 @@ export class CharacterCreatorController {
             document.querySelectorAll(".skill-checkbox-card:not(.locked)").forEach((card) => {
                 card.addEventListener("click", () => {
                     const skName = card.getAttribute("data-skill-name") || "";
-                    const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+                    const cls = this.classes.find((c) => c.id === this.state.classId);
                     const maxCount = cls?.skillChoices.count || 2;
                     if (this.state.classSkills.includes(skName)) {
                         this.state.classSkills = this.state.classSkills.filter((s) => s !== skName);
@@ -2579,7 +2601,7 @@ export class CharacterCreatorController {
             document.querySelectorAll(".equip-package-btn").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     const idx = Number(btn.getAttribute("data-package-index"));
-                    const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
+                    const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
                     const opt = cls.startingEquipmentOptions[idx];
                     if (opt) {
                         const foundArmor = BASE_ARMOR_2024.find((a) =>
@@ -2737,9 +2759,9 @@ export class CharacterCreatorController {
         }
 
         try {
-            const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
-            const species = SPECIES_2024.find((s) => s.id === this.state.speciesId) || SPECIES_2024[0];
-            const bg = BACKGROUNDS_2024.find((b) => b.id === this.state.backgroundId) || BACKGROUNDS_2024[0];
+            const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+            const species = this.species.find((s) => s.id === this.state.speciesId) || this.species[0];
+            const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
             const pb = this.getProficiencyBonus();
 
             const abilityNames: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -2883,7 +2905,7 @@ export class CharacterCreatorController {
                     description: f.description
                 });
             });
-            const originFeat = ORIGIN_FEATS_2024.find((f) => f.id === this.state.originFeatId);
+            const originFeat = this.originFeats.find((f) => f.id === this.state.originFeatId);
             if (originFeat) {
                 featuresPayload.push({
                     name: originFeat.name,
@@ -2993,7 +3015,7 @@ export class CharacterCreatorController {
             for (const lvl of asiLevels) {
                 const choice = this.state.asiChoices[lvl];
                 if (choice?.type === "feat" && choice.featId) {
-                    const featDef = GENERAL_FEATS_2024.find((f) => f.id === choice.featId);
+                    const featDef = this.generalFeats.find((f) => f.id === choice.featId);
                     if (featDef) {
                         featuresPayload.push({
                             name: featDef.name,
