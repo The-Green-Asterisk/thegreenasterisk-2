@@ -336,6 +336,89 @@ export default class CharacterController extends BaseController {
         }
     }
 
+    public static async deleteSavedCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req as ReqAndUser);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify({ error: "Unauthorized" }),
+                status: 401
+            };
+        }
+
+        if (!AppDataSource.isInitialized) {
+            return {
+                response: JSON.stringify({ error: "Database not initialized." }),
+                status: 503
+            };
+        }
+
+        const query = this.parseUrlQuery(req.url);
+        let body: any = null;
+        try {
+            body = await this.readBody(req);
+        } catch {
+            // body may be empty on DELETE
+        }
+
+        const rawSavedId = query.id || body?.id || body?.savedId;
+        const savedId = rawSavedId !== undefined && rawSavedId !== null ? Number(rawSavedId) : undefined;
+        const siteCharacterId = typeof query.siteCharacterId === "string"
+            ? query.siteCharacterId.trim()
+            : (typeof body?.siteCharacterId === "string" ? body.siteCharacterId.trim() : undefined);
+
+        if ((savedId === undefined || Number.isNaN(savedId) || savedId <= 0) && !siteCharacterId) {
+            return {
+                response: JSON.stringify({ error: "A valid saved character ID or site character ID is required." }),
+                status: 400
+            };
+        }
+
+        try {
+            const repo = AppDataSource.getRepository(SavedCharacter);
+            const record = siteCharacterId
+                ? await repo.findOne({
+                    where: { siteCharacterId, user: { id: currentUser.id } },
+                    relations: { user: true }
+                })
+                : await repo.findOne({
+                    where: { id: savedId, user: { id: currentUser.id } },
+                    relations: { user: true }
+                });
+
+            if (!record) {
+                return {
+                    response: JSON.stringify({ error: "Saved character not found." }),
+                    status: 404
+                };
+            }
+
+            // Clean up any CharacterEquipState records for this character
+            try {
+                const equipRepo = AppDataSource.getRepository(CharacterEquipState);
+                const idsToClean = [String(record.id), record.siteCharacterId, record.externalCharacterId].filter(Boolean) as string[];
+                for (const cId of idsToClean) {
+                    await equipRepo.delete({ characterId: cId });
+                }
+            } catch (equipErr) {
+                console.warn("Could not clean up CharacterEquipState records for deleted character:", equipErr);
+            }
+
+            await repo.remove(record);
+
+            return {
+                response: JSON.stringify({ success: true, deletedId: record.id }),
+                header: "application/json",
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error deleting saved character:", error);
+            return {
+                response: JSON.stringify({ error: "Failed to delete saved character." }),
+                status: 500
+            };
+        }
+    }
+
     public static async saveCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
         const currentUser = SessionController.getUser(req as ReqAndUser);
         if (!currentUser) {

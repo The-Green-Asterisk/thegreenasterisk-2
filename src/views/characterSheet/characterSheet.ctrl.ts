@@ -1,5 +1,5 @@
 import el from "@elements";
-import { getData, postData, putData } from "@services/request";
+import { delData, getData, postData, putData } from "@services/request";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
@@ -569,6 +569,31 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
     async function loadSavedCharacterBySiteId(siteCharacterId: string) {
         return loadSavedCharacterRequest(`siteCharacterId=${encodeURIComponent(siteCharacterId)}`);
+    }
+
+    async function deleteSavedCharacter(savedCharacterId: number): Promise<boolean> {
+        showStatus("Deleting character...");
+        try {
+            const result = await delData<{ success?: boolean; error?: string }>(`/delete-saved-character?id=${savedCharacterId}`);
+            if (result && (result as any).error) {
+                throw new Error((result as any).error);
+            }
+            await fetchSavedCharacters();
+            if (activeCharacter?.savedCharacterId === savedCharacterId) {
+                activeCharacter = null;
+                activeCharacterId = undefined;
+                if (idInput) idInput.value = "";
+                renderActiveCharacterView();
+            } else if (ctx.renderSavedCharacterList) {
+                ctx.renderSavedCharacterList();
+            }
+            showStatus("Character deleted.", false);
+            return true;
+        } catch (error: any) {
+            console.error("Failed to delete character:", error);
+            showStatus(error?.message || "Failed to delete character.", true);
+            return false;
+        }
     }
 
     async function loadSavedCharacterRequest(query: string) {
@@ -1281,6 +1306,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         loadCharacter,
         loadSavedCharacter,
         loadSavedCharacterBySiteId,
+        deleteSavedCharacter,
         fetchSavedCharacters,
         beginNewSiteCharacter,
         refreshFromDndBeyondAndOverride,

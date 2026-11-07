@@ -47,6 +47,7 @@ export interface CharacterSheetContext {
     loadCharacter: (idOrUrl: string, options?: { forceOverwrite?: boolean; refreshed?: boolean }) => Promise<void>;
     loadSavedCharacter: (savedCharacterId: number) => Promise<void>;
     loadSavedCharacterBySiteId: (siteCharacterId: string) => Promise<void>;
+    deleteSavedCharacter: (savedCharacterId: number) => Promise<boolean>;
     fetchSavedCharacters: () => Promise<void>;
     beginNewSiteCharacter: () => void;
     refreshFromDndBeyondAndOverride: () => Promise<void>;

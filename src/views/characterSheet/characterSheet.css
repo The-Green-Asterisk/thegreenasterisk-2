@@ -284,6 +284,47 @@ el-character-sheet.is-edit-mode .clickable-item-card {
     gap: 0.8rem;
 }
 
+.saved-character-card-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0.6rem;
+}
+
+.saved-character-card-wrapper .saved-character-card {
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-character-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-soft);
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.saved-character-delete-btn:hover:not(:disabled) {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+    transform: translateY(-1px);
+}
+
+.saved-character-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .saved-character-card {
     width: 100%;
     background: var(--surface-alt);

@@ -1969,4 +1969,48 @@ describe('Frontend View Templates', () => {
         expect(modalHtml).toContain('id="modal-item-qty-inc"');
         expect(modalHtml).toContain('id="modal-item-quantity-input"');
     });
+
+    it('renders delete button for saved characters in loader bar', async () => {
+        const { initLoaderBarController } = await import('../../../src/views/characterSheet/controllers/loaderBar.ctrl');
+        const container = document.createElement('div');
+        const dynamicContainer = document.createElement('div');
+        container.appendChild(dynamicContainer);
+
+        const mockDeleteSavedCharacter = vi.fn().mockResolvedValue(true);
+        const mockSavedChars = [
+            {
+                id: 42,
+                name: 'Elminster',
+                subtitle: 'Level 20 Wizard',
+                updatedAt: new Date().toISOString()
+            }
+        ];
+
+        const mockCtx: any = {
+            sheet: container,
+            dynamicContainer,
+            prefer2024Rules: { value: true },
+            getSavedCharacters: () => mockSavedChars,
+            loadSavedCharacter: vi.fn(),
+            deleteSavedCharacter: mockDeleteSavedCharacter
+        };
+
+        const { default: el } = await import('../../../src/services/elements');
+        const authSpy = vi.spyOn(el, 'isAuth', 'get').mockReturnValue(true);
+
+        const ctrl = initLoaderBarController(mockCtx);
+        ctrl.renderSavedCharacterList();
+
+        const deleteBtn = dynamicContainer.querySelector<HTMLButtonElement>('.saved-character-delete-btn');
+        expect(deleteBtn).not.toBeNull();
+        expect(deleteBtn?.getAttribute('data-delete-character-id')).toBe('42');
+        expect(deleteBtn?.getAttribute('title')).toBe('Delete Elminster');
+
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        deleteBtn?.click();
+        expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Elminster'));
+        expect(mockDeleteSavedCharacter).toHaveBeenCalledWith(42);
+        confirmSpy.mockRestore();
+        authSpy.mockRestore();
+    });
 });

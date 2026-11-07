@@ -294,6 +294,11 @@ export default class Routes {
         return CharacterController.saveCharacter(req, res);
     }
 
+    @Method('DELETE')
+    private ['/delete-saved-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.deleteSavedCharacter(req, res);
+    }
+
     @Method('GET')
     private ['/get-spell'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return SpellController.getSpell(req, res);

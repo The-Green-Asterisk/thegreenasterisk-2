@@ -308,21 +308,33 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 ? new Date(character.updatedAt).toLocaleString()
                 : "Recently updated";
             return `
-                            <button
-                                type="button"
-                                class="saved-character-card"
-                                data-saved-character-id="${character.id}"
-                                data-site-character-id="${character.siteCharacterId || ""}"
-                                title="Load ${character.name}"
-                            >
-                                ${character.avatarUrl ? `<img src="${character.avatarUrl}" alt="${character.name}" class="saved-character-avatar" />` : '<div class="saved-character-avatar placeholder"><i class="fa-solid fa-user"></i></div>'}
-                                <div class="saved-character-card-body">
-                                    <strong>${character.name}</strong>
-                                    <span>${subtitle}</span>
-                                    ${character.siteCharacterId ? `<small>ID: ${character.siteCharacterId}</small>` : ''}
-                                    <small>Updated: ${updatedText}</small>
-                                </div>
-                            </button>
+                            <div class="saved-character-card-wrapper">
+                                <button
+                                    type="button"
+                                    class="saved-character-card"
+                                    data-saved-character-id="${character.id}"
+                                    data-site-character-id="${character.siteCharacterId || ""}"
+                                    title="Load ${character.name}"
+                                >
+                                    ${character.avatarUrl ? `<img src="${character.avatarUrl}" alt="${character.name}" class="saved-character-avatar" />` : '<div class="saved-character-avatar placeholder"><i class="fa-solid fa-user"></i></div>'}
+                                    <div class="saved-character-card-body">
+                                        <strong>${character.name}</strong>
+                                        <span>${subtitle}</span>
+                                        ${character.siteCharacterId ? `<small>ID: ${character.siteCharacterId}</small>` : ''}
+                                        <small>Updated: ${updatedText}</small>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="saved-character-delete-btn"
+                                    data-delete-character-id="${character.id}"
+                                    data-character-name="${character.name.replace(/"/g, '&quot;')}"
+                                    title="Delete ${character.name}"
+                                    aria-label="Delete ${character.name}"
+                                >
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
                         `;
         }).join("")}
                 </div>
@@ -334,6 +346,23 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 const id = Number(btn.getAttribute("data-saved-character-id"));
                 if (!Number.isNaN(id)) {
                     void ctx.loadSavedCharacter(id);
+                }
+            });
+        });
+
+        dynamicContainer.querySelectorAll<HTMLButtonElement>(".saved-character-delete-btn").forEach(delBtn => {
+            delBtn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const id = Number(delBtn.getAttribute("data-delete-character-id"));
+                const name = delBtn.getAttribute("data-character-name") || "this character";
+                if (!Number.isNaN(id) && ctx.deleteSavedCharacter) {
+                    const confirmed = window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`);
+                    if (confirmed) {
+                        delBtn.disabled = true;
+                        delBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                        await ctx.deleteSavedCharacter(id);
+                    }
                 }
             });
         });
