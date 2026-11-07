@@ -283,8 +283,11 @@ export class CharacterCreatorController {
             submitBtn.classList.toggle("hidden", step !== 9);
         }
 
-        this.renderStep(step);
+        this.renderStep(step, false);
         this.updateLiveSummary();
+        if (typeof window !== "undefined") {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
     }
 
     // Calculations
@@ -917,10 +920,10 @@ export class CharacterCreatorController {
     }
 
     // Step Renderers
-    public renderStep(step: number) {
+    public renderStep(step: number, preserveScroll: boolean = true) {
         const panelsContainer = document.getElementById("creator-step-panels");
         if (!panelsContainer) return;
-        panelsContainer.innerHTML = "";
+        const prevScrollY = typeof window !== "undefined" ? window.scrollY : 0;
 
         let panelHtml = "";
         switch (step) {
@@ -955,6 +958,10 @@ export class CharacterCreatorController {
 
         panelsContainer.innerHTML = panelHtml;
         this.attachStepEvents(step);
+
+        if (preserveScroll && typeof window !== "undefined" && window.scrollY !== prevScrollY) {
+            window.scrollTo({ top: prevScrollY, behavior: "instant" as any });
+        }
     }
 
     private renderStep1Identity(): string {
