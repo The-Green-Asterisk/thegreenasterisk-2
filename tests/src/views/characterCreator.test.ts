@@ -572,4 +572,45 @@ describe("CharacterCreatorController", () => {
         ctrl.state.level = 9;
         expect(ctrl.getMaxExpertiseCount()).toBe(2);
     });
+
+    it("renders class level progression (levels 1-20) in Step 3", () => {
+        // Document body mock for step rendering
+        document.body.innerHTML = '<div id="creator-step-panels"></div>';
+
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 5;
+        ctrl.renderStep(3);
+
+        const container = document.getElementById("creator-step-panels")!;
+        expect(container.innerHTML).toContain("class-progression-box");
+        expect(container.innerHTML).toContain("Fighter Level Progression (Levels 1–20)");
+
+        // Unlocked up to level 5, locked for levels 6 to 20
+        const unlockedRows = container.querySelectorAll(".progression-row.unlocked");
+        expect(unlockedRows.length).toBe(5);
+
+        const lockedRows = container.querySelectorAll(".progression-row.locked");
+        expect(lockedRows.length).toBe(15);
+
+        // Contains Level 1 Second Wind, Level 5 Extra Attack, Level 20 Three Extra Attacks
+        expect(container.innerHTML).toContain("Second Wind");
+        expect(container.innerHTML).toContain("Extra Attack");
+        expect(container.innerHTML).toContain("Three Extra Attacks");
+
+        // Filter to unlocked only
+        ctrl.progressionFilter = "unlocked";
+        ctrl.renderStep(3);
+        const filteredRows = container.querySelectorAll(".progression-row");
+        expect(filteredRows.length).toBe(5);
+
+        // Switch to Wizard
+        ctrl.state.classId = "wizard";
+        ctrl.progressionFilter = "all";
+        ctrl.state.level = 3;
+        ctrl.renderStep(3);
+        expect(container.innerHTML).toContain("Wizard Level Progression (Levels 1–20)");
+        expect(container.innerHTML).toContain("Spellbook");
+        expect(container.innerHTML).toContain("Arcane Recovery");
+        expect(container.innerHTML).toContain("Signature Spells");
+    });
 });

@@ -78,6 +78,20 @@ describe("5.5e (2024 Revision) Rules Datasets", () => {
         const paladin = CLASSES_2024.find((c) => c.id === "paladin");
         expect(paladin?.spellcasting?.ability).toBe("cha");
         expect(paladin?.spellcasting?.type).toBe("half");
+
+        // Verify all 12 classes have level 1 to 20 progression features
+        for (const cls of CLASSES_2024) {
+            expect(cls.features.length).toBeGreaterThanOrEqual(15);
+            expect(cls.features.some((f) => f.level === 1)).toBe(true);
+            expect(cls.features.some((f) => f.level === 20)).toBe(true);
+            const missingLevels: number[] = [];
+            for (let lvl = 1; lvl <= 20; lvl++) {
+                if (!cls.features.some((f) => f.level === lvl)) {
+                    missingLevels.push(lvl);
+                }
+            }
+            expect(missingLevels, `${cls.name} missing features for levels: ${missingLevels.join(", ")}`).toEqual([]);
+        }
     });
 
     it("defines the 8 Weapon Mastery properties and weapon catalogue", () => {

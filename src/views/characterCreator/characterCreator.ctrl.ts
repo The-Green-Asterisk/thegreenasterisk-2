@@ -8,6 +8,8 @@ import {
     BASE_WEAPONS_2024,
     BATTLE_MASTER_MANEUVERS,
     CLASSES_2024,
+    ClassDefinition,
+    ClassLevelFeature,
     DIVINE_ORDERS,
     ELDRITCH_INVOCATIONS,
     FIGHTING_STYLES,
@@ -139,6 +141,8 @@ export class CharacterCreatorController {
 
     public activeSpellLevelFilter: number | "all" = "all";
     public spellSearchQuery: string = "";
+    public progressionExpanded: boolean = false;
+    public progressionFilter: "all" | "unlocked" = "all";
 
     public async init(query?: any) {
         this.bindEvents();
@@ -1069,6 +1073,8 @@ export class CharacterCreatorController {
                     `).join("")}
                 </div>
 
+                ${this.renderClassProgression(currentClass)}
+
                 ${currentClass.weaponMasteryCount > 0 ? `
                     <div class="creator-detail-box">
                         <h4>Weapon Masteries (Choose up to ${currentClass.weaponMasteryCount})</h4>
@@ -1218,6 +1224,157 @@ export class CharacterCreatorController {
                         </div>
                     </div>
                 ` : ""}
+            </div>
+        `;
+    }
+
+    private getClassLevelStatBadge(cls: ClassDefinition, lvl: number): string {
+        const parts: string[] = [];
+        if (cls.id === "barbarian") {
+            const rages = lvl >= 17 ? "6 Rages" : lvl >= 12 ? "5 Rages" : lvl >= 6 ? "4 Rages" : lvl >= 3 ? "3 Rages" : "2 Rages";
+            const rageDmg = lvl >= 16 ? "+4" : lvl >= 9 ? "+3" : "+2";
+            parts.push(`${rages} • Rage Dmg ${rageDmg}`);
+        } else if (cls.id === "fighter") {
+            const attacks = lvl >= 20 ? "4 Attacks" : lvl >= 11 ? "3 Attacks" : lvl >= 5 ? "2 Attacks" : "1 Attack";
+            const masteries = lvl >= 16 ? "6 Masteries" : lvl >= 10 ? "5 Masteries" : lvl >= 4 ? "4 Masteries" : "3 Masteries";
+            parts.push(`${attacks} • ${masteries}`);
+        } else if (cls.id === "rogue") {
+            const sneakDice = Math.ceil(lvl / 2);
+            parts.push(`Sneak Attack ${sneakDice}d6`);
+        } else if (cls.id === "monk") {
+            const artsDie = lvl >= 17 ? "1d12" : lvl >= 11 ? "1d10" : lvl >= 5 ? "1d8" : "1d6";
+            const speed = lvl >= 18 ? "+30 ft" : lvl >= 14 ? "+25 ft" : lvl >= 10 ? "+20 ft" : lvl >= 6 ? "+15 ft" : lvl >= 2 ? "+10 ft" : "+0 ft";
+            parts.push(`${lvl} Focus Pts • Martial Arts ${artsDie} • Speed ${speed}`);
+        }
+
+        if (cls.spellcasting) {
+            const slots = cls.spellcasting.spellSlotsByLevel[lvl - 1];
+            if (cls.spellcasting.type === "pact") {
+                const totalSlots = slots ? slots.find((s: number) => s > 0) || 0 : 0;
+                const slotLvl = slots ? slots.findIndex((s: number) => s > 0) + 1 : 0;
+                if (totalSlots > 0) {
+                    parts.push(`${totalSlots} × ${slotLvl}${this.getOrdinalSuffix(slotLvl)}-Level Slot${totalSlots > 1 ? "s" : ""}`);
+                }
+            } else if (slots) {
+                const nonZero = slots
+                    .map((count: number, idx: number) => (count > 0 ? `${count} × ${idx + 1}${this.getOrdinalSuffix(idx + 1)}` : null))
+                    .filter(Boolean);
+                if (nonZero.length > 0) {
+                    parts.push(`Slots: ${nonZero.join(", ")}`);
+                }
+            }
+        }
+
+        return parts.length > 0 ? parts.join(" | ") : "";
+    }
+
+    private getOrdinalSuffix(n: number): string {
+        const s = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        return s[(v - 20) % 10] || s[v] || s[0];
+    }
+
+    private getFeatureTagHtml(featureName: string, level: number): string {
+        const lower = featureName.toLowerCase();
+        if (lower.includes("ability score improvement")) {
+            return `<span class="progression-feature-tag asi"><i class="fa-solid fa-arrow-up-right-dots"></i> ASI / Feat</span>`;
+        }
+        if (lower.includes("subclass")) {
+            return `<span class="progression-feature-tag subclass"><i class="fa-solid fa-shield-halved"></i> Subclass</span>`;
+        }
+        if (lower.includes("epic boon")) {
+            return `<span class="progression-feature-tag epic"><i class="fa-solid fa-crown"></i> Epic Boon</span>`;
+        }
+        if (level === 20 || lower.includes("capstone")) {
+            return `<span class="progression-feature-tag capstone"><i class="fa-solid fa-star"></i> Capstone</span>`;
+        }
+        if (lower.includes("spell") || lower.includes("secrets") || lower.includes("arcanum")) {
+            return `<span class="progression-feature-tag magic"><i class="fa-solid fa-wand-magic-sparkles"></i> Magic</span>`;
+        }
+        return "";
+    }
+
+    private renderClassProgression(cls: ClassDefinition): string {
+        const charLevel = this.state.level;
+        const rows: string[] = [];
+
+        for (let lvl = 1; lvl <= 20; lvl++) {
+            if (this.progressionFilter === "unlocked" && lvl > charLevel) {
+                continue;
+            }
+
+            const isUnlocked = lvl <= charLevel;
+            const featuresAtLvl = cls.features.filter((f: ClassLevelFeature) => f.level === lvl);
+            const pb = Math.floor((lvl - 1) / 4) + 2;
+            const statBadge = this.getClassLevelStatBadge(cls, lvl);
+
+            let subAnnotation = "";
+            if (this.state.subclassId && featuresAtLvl.some((f: ClassLevelFeature) => f.name.toLowerCase().includes("subclass"))) {
+                const sub = cls.subclasses.find((s: any) => s.id === this.state.subclassId);
+                if (sub) {
+                    subAnnotation = ` (${sub.name})`;
+                }
+            }
+
+            rows.push(`
+                <div class="progression-row ${isUnlocked ? "unlocked" : "locked"}">
+                    <div class="progression-lvl-col">
+                        <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}">
+                            ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Lvl ${lvl}
+                        </span>
+                        <span class="progression-pb-tag">PB +${pb}</span>
+                    </div>
+
+                    <div class="progression-content-col">
+                        <div class="progression-features-list">
+                            ${featuresAtLvl.map((f: ClassLevelFeature) => `
+                                <div class="progression-feature-item">
+                                    <div class="progression-feature-header">
+                                        <strong class="progression-feature-name">${f.name}${f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</strong>
+                                        ${this.getFeatureTagHtml(f.name, lvl)}
+                                    </div>
+                                    <p class="progression-feature-desc">${f.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+
+                        ${statBadge ? `
+                            <div class="progression-stat-badge">
+                                <i class="fa-solid fa-bolt"></i> ${statBadge}
+                            </div>
+                        ` : ""}
+                    </div>
+
+                    <div class="progression-status-col">
+                        <span class="progression-status-pill ${isUnlocked ? "status-unlocked" : "status-locked"}">
+                            ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Level ${lvl}`}
+                        </span>
+                    </div>
+                </div>
+            `);
+        }
+
+        return `
+            <div class="creator-detail-box class-progression-box">
+                <div class="progression-box-header">
+                    <div class="progression-header-text">
+                        <h4><i class="fa-solid fa-list-check"></i> ${cls.name} Level Progression (Levels 1–20)</h4>
+                        <p class="card-body">All class features, spell slots, and improvements gained at each level. Features active at your current level (Level ${charLevel}) are marked Active.</p>
+                    </div>
+                    <div class="progression-header-actions">
+                        <div class="progression-filter-group">
+                            <button type="button" class="btn btn-sm ${this.progressionFilter === "all" ? "btn-primary active" : "btn-outline"} prog-filter-btn" data-prog-filter="all">All Levels (1–20)</button>
+                            <button type="button" class="btn btn-sm ${this.progressionFilter === "unlocked" ? "btn-primary active" : "btn-outline"} prog-filter-btn" data-prog-filter="unlocked">Active (1–${charLevel})</button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline prog-expand-btn" id="progression-toggle-expand-btn">
+                            <i class="fa-solid ${this.progressionExpanded ? "fa-compress" : "fa-expand"}"></i> ${this.progressionExpanded ? "Compact View" : "Expand All"}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="progression-timeline ${this.progressionExpanded ? "expanded" : ""}">
+                    ${rows.join("")}
+                </div>
             </div>
         `;
     }
@@ -2173,6 +2330,20 @@ export class CharacterCreatorController {
                     }
                     this.renderStep(3);
                 });
+            });
+
+            document.querySelectorAll(".prog-filter-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const filter = (btn.getAttribute("data-prog-filter") || "all") as "all" | "unlocked";
+                    this.progressionFilter = filter;
+                    this.renderStep(3);
+                });
+            });
+
+            const expandBtn = document.getElementById("progression-toggle-expand-btn");
+            expandBtn?.addEventListener("click", () => {
+                this.progressionExpanded = !this.progressionExpanded;
+                this.renderStep(3);
             });
         } else if (step === 4) {
             document.querySelectorAll(".background-card").forEach((card) => {
