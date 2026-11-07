@@ -423,6 +423,10 @@ export default class CharacterController extends BaseController {
                     character.actions = normActions.actions;
                     autoHealedPayload = true;
                 }
+                const ddbApplied = await RulesController.applyDndBeyondDefinitionsToSiteCharacter(character);
+                if (ddbApplied) {
+                    autoHealedPayload = true;
+                }
             }
 
             if (autoHealedPayload) {
@@ -725,6 +729,10 @@ export default class CharacterController extends BaseController {
                     }
                     payloadToSave.equipment = eqList;
                 }
+            }
+
+            if (source === "site") {
+                await RulesController.applyDndBeyondDefinitionsToSiteCharacter(payloadToSave);
             }
 
             record.user = currentUser;

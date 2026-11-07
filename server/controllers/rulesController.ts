@@ -66,8 +66,49 @@ export default class RulesController extends BaseController {
                     if (rc.isCustom) continue;
                     const seedCls = SEED_CLASSES.find((sc) => sc.id === rc.slug);
                     if (!seedCls) continue;
-                    const desiredSubclassesJson = JSON.stringify(seedCls.subclasses || []);
-                    const desiredFeaturesJson = JSON.stringify(seedCls.features || []);
+
+                    const currentFeatures: any[] = this.safeParse(rc.featuresJson, []);
+                    const mergedFeatures = (seedCls.features || []).map((sf) => {
+                        const existingDdb = currentFeatures.find(
+                            (cf) => cf?.fromDndBeyond && String(cf.name || "").toLowerCase() === sf.name.toLowerCase()
+                        );
+                        return existingDdb || sf;
+                    });
+                    for (const cf of currentFeatures) {
+                        if (cf?.fromDndBeyond && !mergedFeatures.some((mf) => String(mf.name || "").toLowerCase() === String(cf.name || "").toLowerCase())) {
+                            mergedFeatures.push(cf);
+                        }
+                    }
+
+                    const currentSubs: any[] = this.safeParse(rc.subclassesJson, []);
+                    const mergedSubs = (seedCls.subclasses || []).map((ss) => {
+                        const existingSub = currentSubs.find(
+                            (cs) => cs?.id === ss.id || String(cs?.name || "").toLowerCase() === ss.name.toLowerCase()
+                        );
+                        if (!existingSub) return ss;
+                        const existingSubFeatures: any[] = Array.isArray(existingSub.features) ? existingSub.features : [];
+                        const mergedSubFeatures = (ss.features || []).map((ssf) => {
+                            const ddbSubFeat = existingSubFeatures.find(
+                                (esf) => esf?.fromDndBeyond && String(esf.name || "").toLowerCase() === ssf.name.toLowerCase()
+                            );
+                            return ddbSubFeat || ssf;
+                        });
+                        for (const esf of existingSubFeatures) {
+                            if (esf?.fromDndBeyond && !mergedSubFeatures.some((msf) => String(msf.name || "").toLowerCase() === String(esf.name || "").toLowerCase())) {
+                                mergedSubFeatures.push(esf);
+                            }
+                        }
+                        return {
+                            ...ss,
+                            description: existingSub.fromDndBeyond && existingSub.description ? existingSub.description : ss.description,
+                            fromDndBeyond: existingSub.fromDndBeyond || false,
+                            dndBeyondActions: existingSub.dndBeyondActions || undefined,
+                            features: mergedSubFeatures
+                        };
+                    });
+
+                    const desiredSubclassesJson = JSON.stringify(mergedSubs);
+                    const desiredFeaturesJson = JSON.stringify(mergedFeatures);
                     if (rc.subclassesJson !== desiredSubclassesJson || rc.featuresJson !== desiredFeaturesJson) {
                         rc.subclassesJson = desiredSubclassesJson;
                         rc.featuresJson = desiredFeaturesJson;
@@ -326,7 +367,7 @@ export default class RulesController extends BaseController {
                     const classFeatures: any[] = Array.isArray(c.classFeatures) ? c.classFeatures : [];
 
                     // Extract base class features from def.classFeatures and c.classFeatures
-                    const extractedFeatures: Array<{ level: number; name: string; description: string }> = [];
+                    const extractedFeatures: Array<{ level: number; name: string; description: string; htmlDescription: string; fromDndBeyond: boolean }> = [];
                     const defClassFeatures: any[] = Array.isArray(def.classFeatures) ? def.classFeatures : [];
                     for (const cf of [...defClassFeatures, ...classFeatures]) {
                         const fDef = cf.definition || cf;
@@ -336,11 +377,14 @@ export default class RulesController extends BaseController {
                                 (subDef?.name && String(fDef.source || "").toLowerCase() === subDef.name.toLowerCase());
                             if (!isSub) {
                                 const fName = String(fDef.name).trim();
+                                const rawHtml = String(fDef.description || fDef.snippet || "").trim();
                                 if (!extractedFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
                                     extractedFeatures.push({
                                         level: Number(fDef.requiredLevel || fDef.level) || 1,
                                         name: fName,
-                                        description: cleanHtmlTags(fDef.description || fDef.snippet || "")
+                                        description: cleanHtmlTags(rawHtml),
+                                        htmlDescription: rawHtml,
+                                        fromDndBeyond: true
                                     });
                                 }
                             }
@@ -348,18 +392,21 @@ export default class RulesController extends BaseController {
                     }
 
                     // Extract subclass features from subDef.classFeatures and c.classFeatures
-                    const extractedSubclassFeatures: Array<{ level: number; name: string; description: string }> = [];
+                    const extractedSubclassFeatures: Array<{ level: number; name: string; description: string; htmlDescription: string; fromDndBeyond: boolean }> = [];
                     if (subDef && subDef.name) {
                         const subFeaturesList = Array.isArray(subDef.classFeatures) ? subDef.classFeatures : [];
                         for (const scf of subFeaturesList) {
                             const fDef = scf.definition || scf;
                             if (fDef && fDef.name) {
                                 const fName = String(fDef.name).trim();
+                                const rawHtml = String(fDef.description || fDef.snippet || "").trim();
                                 if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
                                     extractedSubclassFeatures.push({
                                         level: Number(fDef.requiredLevel || fDef.level) || 3,
                                         name: fName,
-                                        description: cleanHtmlTags(fDef.description || fDef.snippet || "")
+                                        description: cleanHtmlTags(rawHtml),
+                                        htmlDescription: rawHtml,
+                                        fromDndBeyond: true
                                     });
                                 }
                             }
@@ -373,11 +420,14 @@ export default class RulesController extends BaseController {
                                     (fDef.source && String(fDef.source).toLowerCase() === subDef.name.toLowerCase());
                                 if (isSub) {
                                     const fName = String(fDef.name).trim();
+                                    const rawHtml = String(fDef.description || fDef.snippet || "").trim();
                                     if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
                                         extractedSubclassFeatures.push({
                                             level: Number(fDef.requiredLevel || fDef.level) || 3,
                                             name: fName,
-                                            description: cleanHtmlTags(fDef.description || fDef.snippet || "")
+                                            description: cleanHtmlTags(rawHtml),
+                                            htmlDescription: rawHtml,
+                                            fromDndBeyond: true
                                         });
                                     }
                                 }
@@ -396,6 +446,7 @@ export default class RulesController extends BaseController {
                                     id: subSlug,
                                     name: subDef.name,
                                     description: cleanHtmlTags(subDef.description || ""),
+                                    fromDndBeyond: true,
                                     features: extractedSubclassFeatures
                                 };
                                 subclasses.push(targetSub);
@@ -404,8 +455,18 @@ export default class RulesController extends BaseController {
                                 if (!Array.isArray(targetSub.features)) targetSub.features = [];
                                 let subFeatsChanged = false;
                                 for (const sf of extractedSubclassFeatures) {
-                                    if (!targetSub.features.some((f: any) => f.name.toLowerCase() === sf.name.toLowerCase())) {
+                                    const existingIdx = targetSub.features.findIndex((f: any) => f.name.toLowerCase() === sf.name.toLowerCase());
+                                    if (existingIdx === -1) {
                                         targetSub.features.push(sf);
+                                        subFeatsChanged = true;
+                                        count++;
+                                    } else if (sf.htmlDescription && targetSub.features[existingIdx].htmlDescription !== sf.htmlDescription) {
+                                        targetSub.features[existingIdx] = {
+                                            ...targetSub.features[existingIdx],
+                                            description: sf.description || targetSub.features[existingIdx].description,
+                                            htmlDescription: sf.htmlDescription,
+                                            fromDndBeyond: true
+                                        };
                                         subFeatsChanged = true;
                                         count++;
                                     }
@@ -420,8 +481,18 @@ export default class RulesController extends BaseController {
                         let existingFeatures: any[] = this.safeParse(ruleClass.featuresJson, []);
                         let featuresChanged = false;
                         for (const ef of extractedFeatures) {
-                            if (!existingFeatures.some((f: any) => f.name.toLowerCase() === ef.name.toLowerCase())) {
+                            const existingIdx = existingFeatures.findIndex((f: any) => f.name.toLowerCase() === ef.name.toLowerCase());
+                            if (existingIdx === -1) {
                                 existingFeatures.push(ef);
+                                featuresChanged = true;
+                                count++;
+                            } else if (ef.htmlDescription && existingFeatures[existingIdx].htmlDescription !== ef.htmlDescription) {
+                                existingFeatures[existingIdx] = {
+                                    ...existingFeatures[existingIdx],
+                                    description: ef.description || existingFeatures[existingIdx].description,
+                                    htmlDescription: ef.htmlDescription,
+                                    fromDndBeyond: true
+                                };
                                 featuresChanged = true;
                                 count++;
                             }
@@ -474,13 +545,16 @@ export default class RulesController extends BaseController {
                     const slug = slugify(raceName);
                     if (slug) {
                         const racialTraits: any[] = Array.isArray(race.racialTraits) ? race.racialTraits : [];
-                        const extractedTraits: Array<{ name: string; description: string }> = [];
+                        const extractedTraits: Array<{ name: string; description: string; htmlDescription: string; fromDndBeyond: boolean }> = [];
                         for (const rt of racialTraits) {
                             const tDef = rt.definition;
                             if (tDef && tDef.name) {
+                                const rawHtml = String(tDef.description || tDef.snippet || "").trim();
                                 extractedTraits.push({
                                     name: String(tDef.name).trim(),
-                                    description: cleanHtmlTags(tDef.description || "")
+                                    description: cleanHtmlTags(rawHtml),
+                                    htmlDescription: rawHtml,
+                                    fromDndBeyond: true
                                 });
                             }
                         }
@@ -490,8 +564,18 @@ export default class RulesController extends BaseController {
                             let existingTraits: any[] = this.safeParse(ruleSpecies.traitsJson, []);
                             let changed = false;
                             for (const et of extractedTraits) {
-                                if (!existingTraits.some((t: any) => t.name.toLowerCase() === et.name.toLowerCase())) {
+                                const existingIdx = existingTraits.findIndex((t: any) => t.name.toLowerCase() === et.name.toLowerCase());
+                                if (existingIdx === -1) {
                                     existingTraits.push(et);
+                                    changed = true;
+                                    count++;
+                                } else if (et.htmlDescription && existingTraits[existingIdx].htmlDescription !== et.htmlDescription) {
+                                    existingTraits[existingIdx] = {
+                                        ...existingTraits[existingIdx],
+                                        description: et.description || existingTraits[existingIdx].description,
+                                        htmlDescription: et.htmlDescription,
+                                        fromDndBeyond: true
+                                    };
                                     changed = true;
                                     count++;
                                 }
@@ -556,19 +640,26 @@ export default class RulesController extends BaseController {
                     const featName = String(fDef.name).trim();
                     const slug = slugify(featName);
                     if (!slug) continue;
+                    const rawHtml = String(fDef.description || fDef.snippet || "").trim();
 
                     let ruleFeat = await featRepo.findOne({ where: { slug } });
                     if (!ruleFeat) {
                         ruleFeat = featRepo.create({
                             slug,
                             name: featName,
-                            description: cleanHtmlTags(fDef.description || ""),
+                            description: rawHtml || cleanHtmlTags(rawHtml),
                             category: "general",
-                            benefitsJson: JSON.stringify([cleanHtmlTags(fDef.description || "")]),
+                            benefitsJson: JSON.stringify([cleanHtmlTags(rawHtml)]),
                             source: "D&D Beyond",
                             dndBeyondId: fDef.id ? Number(fDef.id) : undefined,
                             isCustom: false
                         });
+                        await featRepo.save(ruleFeat);
+                        count++;
+                    } else if (rawHtml && ruleFeat.source !== "D&D Beyond") {
+                        ruleFeat.description = rawHtml;
+                        ruleFeat.source = "D&D Beyond";
+                        if (fDef.id) ruleFeat.dndBeyondId = Number(fDef.id);
                         await featRepo.save(ruleFeat);
                         count++;
                     }
@@ -578,6 +669,7 @@ export default class RulesController extends BaseController {
             if (count > 0) {
                 // Invalidate rules cache
                 cache.del("dnd_rules_all");
+                await this.syncSiteCharactersWithDndBeyondDefinitions();
             }
         } catch (err) {
             console.error("Error upserting rules from D&D Beyond character:", err);
@@ -602,6 +694,7 @@ export default class RulesController extends BaseController {
             const classRepo = AppDataSource.getRepository(RuleClass);
             const speciesRepo = AppDataSource.getRepository(RuleSpecies);
             const bgRepo = AppDataSource.getRepository(RuleBackground);
+            const isDndBeyondPayload = Boolean(payloadToSave.dndBeyondUrl || inputCharacter?.dndBeyondUrl || payloadToSave.source === "dndbeyond");
 
             // Classes from saved payload
             if (Array.isArray(payloadToSave.classes)) {
@@ -656,24 +749,49 @@ export default class RulesController extends BaseController {
                             const featType = String(feat.type || "").toLowerCase();
                             const featSource = String(feat.source || "").toLowerCase();
                             const featName = String(feat.name).trim();
+                            const rawHtml = String(feat.description || "").trim();
 
                             if (targetSub && (featType.includes("subclass") || featSource === targetSub.name.toLowerCase())) {
-                                if (!targetSub.features.some((f: any) => f.name.toLowerCase() === featName.toLowerCase())) {
+                                const existingIdx = targetSub.features.findIndex((f: any) => f.name.toLowerCase() === featName.toLowerCase());
+                                if (existingIdx === -1) {
                                     targetSub.features.push({
                                         level: Number(feat.level) || 3,
                                         name: featName,
-                                        description: cleanHtmlTags(feat.description || "")
+                                        description: cleanHtmlTags(rawHtml),
+                                        htmlDescription: isDndBeyondPayload ? rawHtml : undefined,
+                                        fromDndBeyond: isDndBeyondPayload
                                     });
+                                    subsChanged = true;
+                                    count++;
+                                } else if (isDndBeyondPayload && rawHtml && targetSub.features[existingIdx].htmlDescription !== rawHtml) {
+                                    targetSub.features[existingIdx] = {
+                                        ...targetSub.features[existingIdx],
+                                        description: cleanHtmlTags(rawHtml) || targetSub.features[existingIdx].description,
+                                        htmlDescription: rawHtml,
+                                        fromDndBeyond: true
+                                    };
                                     subsChanged = true;
                                     count++;
                                 }
                             } else if (featType === "class" || featSource === name.toLowerCase()) {
-                                if (!existingClassFeatures.some((f: any) => f.name.toLowerCase() === featName.toLowerCase())) {
+                                const existingIdx = existingClassFeatures.findIndex((f: any) => f.name.toLowerCase() === featName.toLowerCase());
+                                if (existingIdx === -1) {
                                     existingClassFeatures.push({
                                         level: Number(feat.level) || 1,
                                         name: featName,
-                                        description: cleanHtmlTags(feat.description || "")
+                                        description: cleanHtmlTags(rawHtml),
+                                        htmlDescription: isDndBeyondPayload ? rawHtml : undefined,
+                                        fromDndBeyond: isDndBeyondPayload
                                     });
+                                    featsChanged = true;
+                                    count++;
+                                } else if (isDndBeyondPayload && rawHtml && existingClassFeatures[existingIdx].htmlDescription !== rawHtml) {
+                                    existingClassFeatures[existingIdx] = {
+                                        ...existingClassFeatures[existingIdx],
+                                        description: cleanHtmlTags(rawHtml) || existingClassFeatures[existingIdx].description,
+                                        htmlDescription: rawHtml,
+                                        fromDndBeyond: true
+                                    };
                                     featsChanged = true;
                                     count++;
                                 }
@@ -752,12 +870,309 @@ export default class RulesController extends BaseController {
 
             if (count > 0) {
                 cache.del("dnd_rules_all");
+                if (isDndBeyondPayload) {
+                    await this.syncSiteCharactersWithDndBeyondDefinitions();
+                }
             }
         } catch (err) {
             console.error("Error upserting rules from character payload:", err);
         }
 
         return count;
+    }
+
+    /**
+     * Collects all canonical D&D Beyond feature definitions and class/subclass actions from:
+     * 1) `SavedCharacter` records with `source === 'dndbeyond'`
+     * 2) `RuleClass`, `RuleSpecies`, `RuleFeat` entries with `fromDndBeyond` or `source === 'D&D Beyond'`
+     */
+    public static async collectDndBeyondCanonicalDefinitions(): Promise<{
+        featuresByKey: Map<string, { description: string; scaleValue?: string; limitedUse?: any }>;
+        actionsByClassAndFeature: Map<string, any[]>;
+    }> {
+        const featuresByKey = new Map<string, { description: string; scaleValue?: string; limitedUse?: any }>();
+        const actionsByClassAndFeature = new Map<string, any[]>();
+
+        if (!AppDataSource.isInitialized) {
+            return { featuresByKey, actionsByClassAndFeature };
+        }
+
+        try {
+            // 1. From RuleClass, RuleSpecies, RuleFeat
+            const classRepo = AppDataSource.getRepository(RuleClass);
+            const speciesRepo = AppDataSource.getRepository(RuleSpecies);
+            const featRepo = AppDataSource.getRepository(RuleFeat);
+
+            const [dbClasses, dbSpecies, dbFeats] = await Promise.all([
+                typeof classRepo.find === "function" ? classRepo.find() : Promise.resolve([]),
+                typeof speciesRepo.find === "function" ? speciesRepo.find() : Promise.resolve([]),
+                typeof featRepo.find === "function" ? featRepo.find() : Promise.resolve([])
+            ]);
+
+            for (const rc of dbClasses) {
+                const cNameLower = String(rc.name || "").toLowerCase();
+                const cFeats: any[] = this.safeParse(rc.featuresJson, []);
+                for (const cf of cFeats) {
+                    if (cf?.fromDndBeyond && (cf.htmlDescription || cf.description)) {
+                        const desc = cf.htmlDescription || `<p>${cf.description}</p>`;
+                        featuresByKey.set(`${cNameLower}::${String(cf.name).toLowerCase()}`, { description: desc });
+                        featuresByKey.set(`any::${String(cf.name).toLowerCase()}`, { description: desc });
+                    }
+                }
+                const subs: any[] = this.safeParse(rc.subclassesJson, []);
+                for (const sub of subs) {
+                    const sNameLower = String(sub?.name || "").toLowerCase();
+                    for (const sf of Array.isArray(sub?.features) ? sub.features : []) {
+                        if (sf?.fromDndBeyond && (sf.htmlDescription || sf.description)) {
+                            const desc = sf.htmlDescription || `<p>${sf.description}</p>`;
+                            featuresByKey.set(`${sNameLower}::${String(sf.name).toLowerCase()}`, { description: desc });
+                            featuresByKey.set(`any::${String(sf.name).toLowerCase()}`, { description: desc });
+                        }
+                    }
+                }
+            }
+
+            for (const rs of dbSpecies) {
+                const sNameLower = String(rs.name || "").toLowerCase();
+                const traits: any[] = this.safeParse(rs.traitsJson, []);
+                for (const t of traits) {
+                    if (t?.fromDndBeyond && (t.htmlDescription || t.description)) {
+                        const desc = t.htmlDescription || `<p>${t.description}</p>`;
+                        featuresByKey.set(`${sNameLower}::${String(t.name).toLowerCase()}`, { description: desc });
+                        featuresByKey.set(`any::${String(t.name).toLowerCase()}`, { description: desc });
+                    }
+                }
+            }
+
+            for (const rf of dbFeats) {
+                if (rf.source === "D&D Beyond" && rf.description) {
+                    const desc = /^<\s*p[\s>]/i.test(rf.description.trim()) ? rf.description.trim() : `<p>${rf.description.trim()}</p>`;
+                    featuresByKey.set(`feat::${String(rf.name).toLowerCase()}`, { description: desc });
+                    featuresByKey.set(`any::${String(rf.name).toLowerCase()}`, { description: desc });
+                }
+            }
+
+            // 2. From SavedCharacter records with source = 'dndbeyond'
+            const savedRepo = AppDataSource.getRepository("SavedCharacter" as any);
+            if (typeof savedRepo.find === "function") {
+                const ddbCharacters = await savedRepo.find({ where: { source: "dndbeyond" } });
+                for (const ddbRecord of ddbCharacters) {
+                    const parsed = this.safeParse(ddbRecord.payload, null);
+                    if (!parsed || typeof parsed !== "object") continue;
+
+                    for (const f of Array.isArray(parsed.features) ? parsed.features : []) {
+                        if (!f?.name || !f?.description) continue;
+                        const srcLower = String(f.source || "").toLowerCase().trim();
+                        const nameLower = String(f.name || "").toLowerCase().trim();
+                        const entry = {
+                            description: f.description,
+                            scaleValue: f.scaleValue,
+                            limitedUse: f.limitedUse
+                        };
+                        featuresByKey.set(`${srcLower}::${nameLower}`, entry);
+                        if (!featuresByKey.has(`any::${nameLower}`)) {
+                            featuresByKey.set(`any::${nameLower}`, entry);
+                        }
+                    }
+
+                    // Collect canonical D&D Beyond class/subclass actions grouped by base feature name
+                    const weaponNames = new Set(
+                        (Array.isArray(parsed.weapons) ? parsed.weapons : []).map((w: any) => String(w?.name || "").toLowerCase())
+                    );
+                    const charClasses: string[] = (Array.isArray(parsed.classes) ? parsed.classes : []).map((c: any) =>
+                        String(c?.name || "").toLowerCase()
+                    );
+                    const seenActionByClassKey = new Set<string>();
+
+                    for (const a of Array.isArray(parsed.actions) ? parsed.actions : []) {
+                        if (!a?.name || a.spellName) continue;
+                        const aNameLower = String(a.name).toLowerCase().trim();
+                        if (weaponNames.has(aNameLower)) continue;
+                        if (aNameLower.startsWith("circle spell:") || aNameLower === "initiate a circle spell") continue;
+
+                        // Map action to its governing feature key (e.g., "Wild Resurgence: Regain Wild Shape" -> "wild resurgence", "Wild Shape: Circle Forms" -> "circle forms", "Leave Druidic Message" -> "druidic")
+                        let featureTriggerKey = aNameLower.split(":")[0].trim();
+                        const afterColon = aNameLower.includes(":") ? aNameLower.split(":").slice(1).join(":").trim() : "";
+                        const parsedFeatureNames = new Set(
+                            (Array.isArray(parsed.features) ? parsed.features : []).map((f: any) => String(f?.name || "").toLowerCase().trim())
+                        );
+                        if (afterColon && parsedFeatureNames.has(afterColon)) {
+                            featureTriggerKey = afterColon;
+                        } else if (aNameLower === "leave druidic message") {
+                            featureTriggerKey = "druidic";
+                        } else if (aNameLower === "regain bardic inspiration") {
+                            featureTriggerKey = "font of inspiration";
+                        }
+
+                        for (const clsLower of charClasses) {
+                            const mapKey = `${clsLower}::${featureTriggerKey}`;
+                            const dedupeKey = `${mapKey}::${aNameLower}`;
+                            if (seenActionByClassKey.has(dedupeKey)) continue;
+                            seenActionByClassKey.add(dedupeKey);
+
+                            const list = actionsByClassAndFeature.get(mapKey) || [];
+                            list.push({
+                                name: a.name,
+                                type: a.type,
+                                rangeOrReach: a.rangeOrReach || "Special",
+                                hitOrDc: a.hitOrDc || "Special",
+                                damageOrEffect: a.damageOrEffect || "Class Feature",
+                                notes: a.notes || ""
+                            });
+                            actionsByClassAndFeature.set(mapKey, list);
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("Could not collect D&D Beyond canonical definitions:", err);
+        }
+
+        return { featuresByKey, actionsByClassAndFeature };
+    }
+
+    /**
+     * Applies any available D&D Beyond-provided feature descriptions and class/subclass actions
+     * onto a site-created character object in place. Returns true if any definition was updated.
+     */
+    public static async applyDndBeyondDefinitionsToSiteCharacter(character: any): Promise<boolean> {
+        if (!character || typeof character !== "object") return false;
+        const { featuresByKey, actionsByClassAndFeature } = await this.collectDndBeyondCanonicalDefinitions();
+        if (featuresByKey.size === 0 && actionsByClassAndFeature.size === 0) return false;
+
+        let changed = false;
+
+        // 1. Upgrade matching feature descriptions with canonical D&D Beyond HTML descriptions
+        if (Array.isArray(character.features)) {
+            for (const f of character.features) {
+                if (!f?.name) continue;
+                const srcLower = String(f.source || "").toLowerCase().trim();
+                const nameLower = String(f.name || "").toLowerCase().trim();
+                const shortOptionName = nameLower.includes(":") ? nameLower.split(":").slice(1).join(":").trim() : "";
+
+                const match =
+                    featuresByKey.get(`${srcLower}::${nameLower}`) ||
+                    (f.type === "Feat" ? featuresByKey.get(`feat::${nameLower}`) : undefined) ||
+                    featuresByKey.get(`any::${nameLower}`) ||
+                    (shortOptionName ? featuresByKey.get(`${srcLower}::${shortOptionName}`) || featuresByKey.get(`any::${shortOptionName}`) : undefined);
+
+                if (match && match.description && f.description !== match.description) {
+                    f.description = match.description;
+                    if (match.scaleValue && !f.scaleValue) f.scaleValue = match.scaleValue;
+                    if (match.limitedUse && !f.limitedUse) f.limitedUse = match.limitedUse;
+                    changed = true;
+                }
+            }
+        }
+
+        // 2. Replace synthesized class/subclass feature actions with canonical D&D Beyond actions where available
+        if (Array.isArray(character.actions) && Array.isArray(character.classes) && Array.isArray(character.features)) {
+            const charClasses = character.classes.map((c: any) => String(c?.name || "").toLowerCase().trim());
+            const charFeaturesLower = new Set<string>(
+                character.features.map((f: any) => String(f?.name || "").toLowerCase().trim())
+            );
+            // If a character has Spellcasting for Druid, they also have Druidic at level 1
+            if (charClasses.includes("druid")) {
+                charFeaturesLower.add("druidic");
+            }
+
+            const canonicalReplacements = new Map<string, any[]>();
+            for (const clsLower of charClasses) {
+                for (const featLower of charFeaturesLower) {
+                    const key = `${clsLower}::${featLower}`;
+                    const ddbActs = actionsByClassAndFeature.get(key);
+                    if (ddbActs && ddbActs.length > 0) {
+                        canonicalReplacements.set(featLower, ddbActs);
+                    }
+                }
+            }
+
+            if (canonicalReplacements.size > 0) {
+                const updatedActions: any[] = [];
+                const handledFeatures = new Set<string>();
+
+                for (const act of character.actions) {
+                    const actNameLower = String(act?.name || "").toLowerCase().trim();
+                    const baseFeatKey = actNameLower === "leave druidic message"
+                        ? "druidic"
+                        : actNameLower.split(":")[0].trim();
+
+                    if (!act?.spellName && canonicalReplacements.has(baseFeatKey)) {
+                        if (!handledFeatures.has(baseFeatKey)) {
+                            handledFeatures.add(baseFeatKey);
+                            updatedActions.push(...canonicalReplacements.get(baseFeatKey)!);
+                        }
+                    } else {
+                        updatedActions.push(act);
+                    }
+                }
+
+                // Append any canonical actions whose base feature (like "druidic" -> "Leave Druidic Message") had no prior action card
+                for (const [featKey, ddbActs] of canonicalReplacements.entries()) {
+                    if (!handledFeatures.has(featKey)) {
+                        handledFeatures.add(featKey);
+                        updatedActions.push(...ddbActs);
+                    }
+                }
+
+                if (JSON.stringify(updatedActions) !== JSON.stringify(character.actions)) {
+                    character.actions = updatedActions;
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    /**
+     * Propagates all D&D Beyond-provided definitions onto all saved `source = 'site'` characters in the database.
+     */
+    public static async syncSiteCharactersWithDndBeyondDefinitions(): Promise<number> {
+        if (!AppDataSource.isInitialized) return 0;
+        let updatedCount = 0;
+
+        try {
+            const savedRepo = AppDataSource.getRepository("SavedCharacter" as any);
+            const featureRepo = AppDataSource.getRepository("CharacterFeature" as any);
+            if (typeof savedRepo.find !== "function") return 0;
+
+            const siteCharacters = await savedRepo.find({ where: { source: "site" } });
+            for (const record of siteCharacters) {
+                const parsed = this.safeParse(record.payload, null);
+                if (!parsed || typeof parsed !== "object") continue;
+
+                const changed = await this.applyDndBeyondDefinitionsToSiteCharacter(parsed);
+                if (changed) {
+                    record.payload = JSON.stringify(parsed);
+                    await savedRepo.update(record.id, { payload: record.payload });
+
+                    if (Array.isArray(parsed.features) && typeof featureRepo.delete === "function" && typeof featureRepo.save === "function") {
+                        await featureRepo.delete({ savedCharacter: { id: record.id } });
+                        const charRef = { id: record.id } as any;
+                        const featureEntities = parsed.features.map((f: any) =>
+                            featureRepo.create({
+                                savedCharacter: charRef,
+                                name: f.name,
+                                source: f.source || "Class",
+                                type: f.type || "Class",
+                                description: f.description || "",
+                                scaleValue: f.scaleValue || undefined,
+                                limitedUse: f.limitedUse || undefined
+                            })
+                        );
+                        if (featureEntities.length > 0) {
+                            await featureRepo.save(featureEntities);
+                        }
+                    }
+                    updatedCount++;
+                }
+            }
+        } catch (err) {
+            console.warn("Could not sync site characters with D&D Beyond definitions:", err);
+        }
+
+        return updatedCount;
     }
 
     private static safeParse(json: string | null | undefined, fallback: any): any {

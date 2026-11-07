@@ -336,4 +336,160 @@ describe("RulesController", () => {
             expect(witchSubs[0].features.some((f: any) => f.name === "Hedge Charm")).toBe(true);
         });
     });
+
+    describe("applyDndBeyondDefinitionsToSiteCharacter", () => {
+        it("updates site-created character features and actions with canonical D&D Beyond definitions", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
+
+            const mockClassRepo = {
+                find: vi.fn().mockResolvedValue([
+                    {
+                        slug: "druid",
+                        name: "Druid",
+                        featuresJson: JSON.stringify([
+                            {
+                                name: "Wild Shape",
+                                level: 2,
+                                description: "<p>Canonical D&D Beyond Wild Shape HTML</p>",
+                                htmlDescription: "<p>Canonical D&D Beyond Wild Shape HTML</p>",
+                                fromDndBeyond: true
+                            }
+                        ]),
+                        subclassesJson: JSON.stringify([])
+                    }
+                ])
+            };
+
+            const mockSavedCharRepo = {
+                find: vi.fn().mockResolvedValue([
+                    {
+                        source: "dndbeyond",
+                        payload: JSON.stringify({
+                            classes: [{ name: "Druid", level: 7 }],
+                            features: [
+                                {
+                                    name: "Wild Resurgence",
+                                    source: "Druid",
+                                    type: "Class",
+                                    description: "<p>Canonical D&D Beyond Wild Resurgence HTML</p>"
+                                },
+                                {
+                                    name: "Druidic",
+                                    source: "Druid",
+                                    type: "Class",
+                                    description: "<p>Canonical D&D Beyond Druidic HTML</p>"
+                                }
+                            ],
+                            actions: [
+                                {
+                                    name: "Wild Shape",
+                                    type: "Bonus Action",
+                                    rangeOrReach: "Special",
+                                    hitOrDc: "Special",
+                                    damageOrEffect: "Beast Shape",
+                                    notes: "You assume the form of a Beast that you have seen before"
+                                },
+                                {
+                                    name: "Wild Resurgence: Regain Wild Shape",
+                                    type: "Action",
+                                    rangeOrReach: "Self",
+                                    hitOrDc: "Special",
+                                    damageOrEffect: "1 Wild Shape Use",
+                                    notes: "Expend a spell slot to regain one use of Wild Shape"
+                                },
+                                {
+                                    name: "Wild Resurgence: Regain Spell Slot",
+                                    type: "Action",
+                                    rangeOrReach: "Self",
+                                    hitOrDc: "Special",
+                                    damageOrEffect: "1st-Level Spell Slot",
+                                    notes: "Give up one use of Wild Shape to give yourself a level 1 spell slot"
+                                },
+                                {
+                                    name: "Leave Druidic Message",
+                                    type: "Action",
+                                    rangeOrReach: "Self",
+                                    hitOrDc: "DC 15",
+                                    damageOrEffect: "Hidden Message",
+                                    notes: "Leave a hidden Druidic message"
+                                }
+                            ]
+                        })
+                    }
+                ])
+            };
+
+            vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
+                if (entity === RuleClass) return mockClassRepo as any;
+                if (entity === "SavedCharacter" || entity?.name === "SavedCharacter") return mockSavedCharRepo as any;
+                return {
+                    find: vi.fn().mockResolvedValue([])
+                } as any;
+            });
+
+            const siteCharacter: any = {
+                source: "site",
+                classes: [{ name: "Druid", level: 6 }],
+                features: [
+                    {
+                        name: "Druidic",
+                        source: "Druid",
+                        type: "Class",
+                        description: "Seed Druidic description"
+                    },
+                    {
+                        name: "Wild Shape",
+                        source: "Druid",
+                        type: "Class",
+                        description: "Seed Wild Shape description"
+                    },
+                    {
+                        name: "Wild Resurgence",
+                        source: "Druid",
+                        type: "Class",
+                        description: "Seed Wild Resurgence description"
+                    }
+                ],
+                actions: [
+                    {
+                        name: "Unarmed Strike",
+                        type: "Action",
+                        isCustom: false,
+                        description: "Melee attack"
+                    },
+                    {
+                        name: "Wild Shape",
+                        type: "Bonus Action",
+                        isCustom: false,
+                        description: "Seed Wild Shape action"
+                    },
+                    {
+                        name: "Wild Resurgence",
+                        type: "Action",
+                        isCustom: false,
+                        description: "Seed Wild Resurgence action"
+                    }
+                ]
+            };
+
+            const changed = await RulesController.applyDndBeyondDefinitionsToSiteCharacter(siteCharacter);
+            expect(changed).toBe(true);
+
+            const wildShapeFeature = siteCharacter.features.find((f: any) => f.name === "Wild Shape");
+            expect(wildShapeFeature.description).toBe("<p>Canonical D&D Beyond Wild Shape HTML</p>");
+
+            const wildResurgenceFeature = siteCharacter.features.find((f: any) => f.name === "Wild Resurgence");
+            expect(wildResurgenceFeature.description).toBe("<p>Canonical D&D Beyond Wild Resurgence HTML</p>");
+
+            const actionNames = siteCharacter.actions.map((a: any) => a.name);
+            expect(actionNames).toContain("Wild Shape");
+            expect(actionNames).toContain("Wild Resurgence: Regain Wild Shape");
+            expect(actionNames).toContain("Wild Resurgence: Regain Spell Slot");
+            expect(actionNames).toContain("Leave Druidic Message");
+            expect(actionNames).not.toContain("Wild Resurgence");
+
+            const wildShapeAction = siteCharacter.actions.find((a: any) => a.name === "Wild Shape");
+            expect(wildShapeAction.notes).toBe("You assume the form of a Beast that you have seen before");
+        });
+    });
 });
