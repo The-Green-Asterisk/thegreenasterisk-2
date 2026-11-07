@@ -256,3 +256,88 @@ export const BATTLE_MASTER_MANEUVERS: FeatureOption[] = [
         description: "When within 5 feet of a willing ally, spend a superiority die to swap places; both of you gain an AC bonus equal to the die roll until your next turn."
     }
 ];
+
+export const DRUID_LAND_BIOMES: FeatureOption[] = [
+    {
+        id: "arid",
+        name: "Arid (Desert / Plains)",
+        description: "Affinity with scorched sands and blistering heat. Gain Fire Resistance and Land's Aid spells Blur and Fireball."
+    },
+    {
+        id: "polar",
+        name: "Polar (Tundra / Ice)",
+        description: "Affinity with biting frost and deep glaciers. Gain Cold Resistance and Land's Aid spells Hold Person and Ice Storm."
+    },
+    {
+        id: "temperate",
+        name: "Temperate (Forest / Grassland)",
+        description: "Affinity with lush woodlands and rolling hills. Gain Lightning/Poison affinity and Land's Aid spells Misty Step and Lightning Bolt."
+    },
+    {
+        id: "tropical",
+        name: "Tropical (Rainforest / Swamp)",
+        description: "Affinity with humid jungles and toxic fens. Gain Poison Resistance and Land's Aid spells Web and Polymorph."
+    }
+];
+
+export const ELEMENTAL_FURY_OPTIONS: FeatureOption[] = [
+    {
+        id: "primal-strike",
+        name: "Primal Strike",
+        description: "Once on each of your turns when you hit with a weapon attack or a Beast attack in Wild Shape, deal an extra 1d8 Cold, Fire, Lightning, or Thunder damage."
+    },
+    {
+        id: "potent-spellcasting",
+        name: "Potent Spellcasting",
+        description: "Add your Wisdom modifier to the damage you deal with any Druid cantrip."
+    }
+];
+
+export const BLESSED_STRIKES_OPTIONS: FeatureOption[] = [
+    {
+        id: "divine-strike",
+        name: "Divine Strike",
+        description: "Once on each of your turns when you hit a creature with a weapon attack, cause the attack to deal an extra 1d8 Radiant or Necrotic damage."
+    },
+    {
+        id: "potent-spellcasting",
+        name: "Potent Spellcasting",
+        description: "Add your Wisdom modifier to the damage you deal with any Cleric cantrip."
+    }
+];
+
+export const BARBARIAN_ASPECTS: FeatureOption[] = [
+    {
+        id: "elephant",
+        name: "Aspect of the Elephant",
+        description: "You gain Advantage on Athletics checks and your carrying capacity is doubled."
+    },
+    {
+        id: "owl",
+        name: "Aspect of the Owl",
+        description: "You gain Darkvision with a range of 60 feet (or extend it by 60 feet) and gain Advantage on Perception checks."
+    },
+    {
+        id: "spider",
+        name: "Aspect of the Spider",
+        description: "You gain a Climbing Speed equal to your Walking Speed, and can climb difficult surfaces without making an ability check."
+    },
+    {
+        id: "wolf",
+        name: "Aspect of the Wolf",
+        description: "You can track other creatures while traveling at a fast pace, and you can move stealthily at a normal pace."
+    }
+];
+
+export const HUNTER_DEFENSIVE_TACTICS: FeatureOption[] = [
+    {
+        id: "escape-the-horde",
+        name: "Escape the Horde",
+        description: "Opportunity attacks made against you have Disadvantage."
+    },
+    {
+        id: "multiattack-defense",
+        name: "Multiattack Defense",
+        description: "When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you for the rest of the turn."
+    }
+];

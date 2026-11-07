@@ -266,6 +266,10 @@ describe("RulesController", () => {
             const count = await RulesController.upsertRulesFromDndBeyond(rawCharacter);
             expect(count).toBeGreaterThan(0);
             expect(savedClasses.some((c) => c.name === "Blood Hunter")).toBe(true);
+            const bh = savedClasses.find((c) => c.name === "Blood Hunter");
+            const bhSubs = JSON.parse(bh.subclassesJson);
+            expect(bhSubs[0].name).toBe("Order of the Ghostslayer");
+            expect(bhSubs[0].features.some((f: any) => f.name === "Rite of the Dawn")).toBe(true);
             expect(savedSpecies.some((s) => s.name === "Goliath")).toBe(true);
             expect(savedBgs.some((b) => b.name === "Gladiator")).toBe(true);
             expect(savedFeats.some((f) => f.name === "Great Weapon Master")).toBe(true);
@@ -308,13 +312,28 @@ describe("RulesController", () => {
                         source: "Witch",
                         type: "Class",
                         description: "Brew powerful potions"
+                    },
+                    {
+                        name: "Hedge Charm",
+                        source: "Hedge Witch",
+                        type: "Subclass Feature",
+                        description: "Weave protective ward"
                     }
                 ]
             };
 
-            const count = await RulesController.upsertRulesFromCharacter(inputCharacter, { classes: inputCharacter.classes });
+            const count = await RulesController.upsertRulesFromCharacter(inputCharacter, {
+                classes: inputCharacter.classes,
+                features: inputCharacter.features
+            });
             expect(count).toBeGreaterThan(0);
             expect(savedClasses.some((c) => c.name === "Witch")).toBe(true);
+            const witch = savedClasses.find((c) => c.name === "Witch");
+            const witchFeatures = JSON.parse(witch.featuresJson);
+            const witchSubs = JSON.parse(witch.subclassesJson);
+            expect(witchFeatures.some((f: any) => f.name === "Cauldron Brew")).toBe(true);
+            expect(witchSubs[0].name).toBe("Hedge Witch");
+            expect(witchSubs[0].features.some((f: any) => f.name === "Hedge Charm")).toBe(true);
         });
     });
 });

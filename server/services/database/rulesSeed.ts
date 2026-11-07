@@ -1602,25 +1602,49 @@ export const SEED_CLASSES = [
                 "id": "moon",
                 "name": "Circle of the Moon",
                 "description": "Combat Wild Shape, Circle Forms with enhanced armor and radiant strikes.",
-                "features": []
+                "features": [
+                    { "level": 3, "name": "Combat Wild Shape", "description": "You can transform as a Bonus Action and gain temporary hit points equal to 3x your Druid level. While transformed, your Armor Class equals 13 + your Wisdom modifier if higher than the beast's normal AC." },
+                    { "level": 3, "name": "Circle Forms", "description": "You can transform into beasts with a Challenge Rating as high as your Druid level divided by 3 (rounded down). Your beast attacks can deal Radiant damage instead of normal damage." },
+                    { "level": 6, "name": "Improved Circle Forms", "description": "While in Wild Shape, your Armor Class equals 13 + your Wisdom modifier if that is higher than the beast's AC, and you add your Wisdom modifier to Constitution saving throws." },
+                    { "level": 6, "name": "Moonlight Step", "description": "As a Bonus Action, you magically teleport up to 30 feet to an unoccupied space you can see. You gain Advantage on the next attack roll you make before the end of this turn. You can use this feature a number of times equal to your Wisdom modifier per Long Rest." },
+                    { "level": 10, "name": "Moonlight Strike", "description": "While in Wild Shape, the radiant damage of your attacks increases by 1d8, and you can cast Moonbeam without spell components." },
+                    { "level": 14, "name": "Lunar Form", "description": "Once per turn when you teleport with Moonlight Step, you can choose to make one ally within 10 feet teleport with you." }
+                ]
             },
             {
                 "id": "land",
                 "name": "Circle of the Land",
                 "description": "Biome affinity (Arid, Polar, Temperate, Tropical), Natural Recovery.",
-                "features": []
+                "features": [
+                    { "level": 3, "name": "Circle of the Land Spells", "description": "Choose a biome affinity (Arid, Polar, Temperate, or Tropical) whenever you finish a Long Rest, gaining prepared spells associated with that land." },
+                    { "level": 6, "name": "Land's Aid", "description": "As a Magic action, expend a use of Wild Shape to make flowers and thorny vines erupt in a 10-foot-radius sphere within 60 feet. Enemies take 2d6 Necrotic damage (Con save halves), and one ally regains 2d6 HP." },
+                    { "level": 6, "name": "Natural Recovery", "description": "During a Short Rest, you can recover expended spell slots with a combined level up to half your Druid level (rounded up)." },
+                    { "level": 10, "name": "Natural Sanctuary", "description": "Creatures of the beast and plant types have difficulty attacking you, and you are immune to poison damage." },
+                    { "level": 14, "name": "Nature's Sanctuary", "description": "You can call forth a spectral tree that shelters you and your allies with half cover and resistance to selected damage types." }
+                ]
             },
             {
                 "id": "sea",
                 "name": "Circle of the Sea",
                 "description": "Wrath of the Sea tempest aura, aquatic affinity.",
-                "features": []
+                "features": [
+                    { "level": 3, "name": "Wrath of the Sea", "description": "As a Bonus Action, expend a use of Wild Shape to manifest a 10-foot aura of ocean spray and thunder for 10 minutes. Once per turn when a creature ends its turn in the aura, you can deal Thunder/Cold damage." },
+                    { "level": 6, "name": "Aquatic Affinity", "description": "You gain a Swimming Speed equal to your Walking Speed, and you can breathe underwater. While your Wrath of the Sea is active, you gain a Flying Speed equal to your Walking Speed." },
+                    { "level": 10, "name": "Stormborn", "description": "Your Wrath of the Sea aura increases to 20 feet, and you gain resistance to Cold, Lightning, and Thunder damage." },
+                    { "level": 14, "name": "Oceanic Tempest", "description": "You can manifest your Wrath of the Sea twice as powerful or grant its benefits to an ally within 60 feet." }
+                ]
             },
             {
                 "id": "stars",
                 "name": "Circle of the Stars",
                 "description": "Star Map, Starry Form (Archer, Chalice, Dragon), Cosmic Omen.",
-                "features": []
+                "features": [
+                    { "level": 3, "name": "Star Map", "description": "You create a celestial map that serves as your spellcasting focus and grants you the Guidance cantrip and free castings of Guiding Bolt." },
+                    { "level": 3, "name": "Starry Form", "description": "As a Bonus Action, expend a use of Wild Shape to assume a constellation form: Archer (Bonus Action radiant ranged attack), Chalice (bonus healing to another target), or Dragon (minimum 10 on Int/Wis checks and Con saves)." },
+                    { "level": 6, "name": "Cosmic Omen", "description": "Whenever you finish a Long Rest, consult the stars to gain Weal (add 1d6 to an ally's d20 roll) or Woe (subtract 1d6 from an enemy's d20 roll) as a Reaction a number of times equal to your Wisdom modifier." },
+                    { "level": 10, "name": "Twinkling Constellations", "description": "The Archer and Chalice dice increase to 2d8. At the start of each of your turns in Starry Form, you can switch which constellation form is active." },
+                    { "level": 14, "name": "Full of Stars", "description": "While in Starry Form, your body becomes partially incorporeal, granting you resistance to Bludgeoning, Piercing, and Slashing damage." }
+                ]
             }
         ],
         "startingEquipmentOptions": [

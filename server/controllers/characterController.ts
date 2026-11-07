@@ -1156,10 +1156,18 @@ export default class CharacterController extends BaseController {
             }
 
             // 10. Decisions
-            if (data.featureChoices && typeof data.featureChoices === "object") {
+            const choicesMap = (data.featureChoices && typeof data.featureChoices === "object")
+                ? data.featureChoices
+                : (data.subclassFeatureChoices && typeof data.subclassFeatureChoices === "object")
+                    ? data.subclassFeatureChoices
+                    : (data.creatorState?.subclassFeatureChoices && typeof data.creatorState?.subclassFeatureChoices === "object")
+                        ? data.creatorState.subclassFeatureChoices
+                        : null;
+
+            if (choicesMap) {
                 const decisionRepo = AppDataSource.getRepository(CharacterFeatureDecision);
                 await decisionRepo.delete({ savedCharacter: { id: savedCharacter.id } });
-                const decisionEntities = Object.entries(data.featureChoices).map(([decisionId, val]) => decisionRepo.create({
+                const decisionEntities = Object.entries(choicesMap).map(([decisionId, val]) => decisionRepo.create({
                     savedCharacter,
                     decisionId,
                     selectedValue: String(val)

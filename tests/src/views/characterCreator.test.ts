@@ -866,4 +866,113 @@ describe("CharacterCreatorController", () => {
         expect(warlock1.cantrips).toContain("Eldritch Blast");
         expect(warlock1.prepared).toContain("Hellish Rebuke");
     });
+
+    it("renders class and subclass feature choices at level 6 and 7", () => {
+        const ctrl = new CharacterCreatorController();
+
+        // Level 6 Druid - Circle of the Land
+        ctrl.state.classId = "druid";
+        ctrl.state.subclassId = "land";
+        ctrl.state.level = 6;
+        const druidCls = ctrl.classes.find((c) => c.id === "druid")!;
+        const lvl6Choices = (ctrl as any).renderLevelChoices(druidCls, 6);
+        expect(lvl6Choices).toContain("Circle of the Land Biome Affinity");
+        expect(lvl6Choices).toContain("Arid");
+        expect(lvl6Choices).toContain("Polar");
+        expect(lvl6Choices).toContain("Temperate");
+        expect(lvl6Choices).toContain("Tropical");
+
+        // Level 7 Druid - Elemental Fury
+        ctrl.state.level = 7;
+        const lvl7Choices = (ctrl as any).renderLevelChoices(druidCls, 7);
+        expect(lvl7Choices).toContain("Elemental Fury");
+        expect(lvl7Choices).toContain("Primal Strike");
+        expect(lvl7Choices).toContain("Potent Spellcasting");
+
+        // Level 6 Barbarian - Path of the Wild Heart
+        ctrl.state.classId = "barbarian";
+        ctrl.state.subclassId = "wild-heart";
+        ctrl.state.level = 6;
+        const barbCls = ctrl.classes.find((c) => c.id === "barbarian")!;
+        const barbLvl6 = (ctrl as any).renderLevelChoices(barbCls, 6);
+        expect(barbLvl6).toContain("Aspect of the Beast");
+        expect(barbLvl6).toContain("Aspect of the Elephant");
+        expect(barbLvl6).toContain("Aspect of the Spider");
+
+        // Level 6 Ranger - Hunter
+        ctrl.state.classId = "ranger";
+        ctrl.state.subclassId = "hunter";
+        ctrl.state.level = 6;
+        const rangerCls = ctrl.classes.find((c) => c.id === "ranger")!;
+        const rangerLvl6 = (ctrl as any).renderLevelChoices(rangerCls, 6);
+        expect(rangerLvl6).toContain("Defensive Tactics");
+        expect(rangerLvl6).toContain("Multiattack Defense");
+        expect(rangerLvl6).toContain("Escape the Horde");
+
+        // Level 7 Cleric - Blessed Strikes
+        ctrl.state.classId = "cleric";
+        ctrl.state.level = 7;
+        const clericCls = ctrl.classes.find((c) => c.id === "cleric")!;
+        const clericLvl7 = (ctrl as any).renderLevelChoices(clericCls, 7);
+        expect(clericLvl7).toContain("Blessed Strikes");
+        expect(clericLvl7).toContain("Divine Strike");
+        expect(clericLvl7).toContain("Potent Spellcasting");
+    });
+
+    it("factors class and subclass features into AC, HP, and special speeds", () => {
+        const ctrl = new CharacterCreatorController();
+
+        // 1. Moon Druid AC at level 6+ (Improved Circle Forms: 13 + Wis when unarmored)
+        ctrl.state.classId = "druid";
+        ctrl.state.subclassId = "moon";
+        ctrl.state.level = 6;
+        ctrl.state.selectedArmor = "None";
+        ctrl.state.hasShield = false;
+        ctrl.state.baseAbilities.dex = 12; // +1 mod (normal unarmored AC would be 10 + 1 = 11)
+        ctrl.state.baseAbilities.wis = 16; // +3 mod
+        ctrl.state.bgStatA = "wis";
+        ctrl.state.bgStatB = "con";
+        ctrl.state.backgroundOption = "two-and-one"; // Wis becomes 18 (+4 mod)
+        // 13 + 4 = 17 AC
+        expect(ctrl.getArmorClass()).toBe(17);
+
+        // With shield: 17 + 2 = 19 AC
+        ctrl.state.hasShield = true;
+        expect(ctrl.getArmorClass()).toBe(19);
+
+        // 2. Sea Druid Swim Speed at level 6+ (Aquatic Affinity)
+        ctrl.state.subclassId = "sea";
+        ctrl.state.level = 6;
+        const seaSpecialSpeeds = ctrl.getSpecialSpeeds();
+        expect(seaSpecialSpeeds).toContain("Swim 30 ft.");
+        expect(ctrl.getSpeedDisplay()).toContain("Swim 30 ft.");
+
+        // 3. Barbarian Aspect of the Spider Climb Speed at level 6+
+        ctrl.state.classId = "barbarian";
+        ctrl.state.subclassId = "wild-heart";
+        ctrl.state.level = 6;
+        ctrl.state.subclassFeatureChoices["barbarian-6-wild-heart"] = "spider";
+        const barbSpeeds = ctrl.getSpecialSpeeds();
+        // Walking speed for barbarian at lvl 6 is 30 + 10 (Fast Movement lvl 5) = 40 ft.
+        expect(ctrl.getSpeed()).toBe(40);
+        expect(barbSpeeds).toContain("Climb 40 ft.");
+        expect(ctrl.getSpeedDisplay()).toContain("Climb 40 ft.");
+
+        // 4. Draconic Sorcerer AC (10 + Dex + Cha) and HP (+1 per level at lvl 3+)
+        ctrl.state.classId = "sorcerer";
+        ctrl.state.subclassId = "draconic";
+        ctrl.state.level = 4;
+        ctrl.state.selectedArmor = "None";
+        ctrl.state.hasShield = false;
+        ctrl.state.baseAbilities.dex = 14; // +2 mod
+        ctrl.state.baseAbilities.cha = 16; // +3 mod
+        ctrl.state.baseAbilities.con = 12; // +1 mod
+        ctrl.state.bgStatA = "cha";
+        ctrl.state.bgStatB = "con";
+        ctrl.state.backgroundOption = "two-and-one"; // Cha 18 (+4 mod), Con 13 (+1 mod)
+        // Draconic unarmored AC: 10 + 2 (Dex) + 4 (Cha) = 16
+        expect(ctrl.getArmorClass()).toBe(16);
+        // HP: Hit die 6 + 1(Con) + 3*(4+1) + 4(Draconic Resilience) = 7 + 15 + 4 = 26 HP
+        expect(ctrl.getMaxHp()).toBe(26);
+    });
 });

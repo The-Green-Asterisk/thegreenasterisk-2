@@ -4,19 +4,24 @@ import { getData, postData } from "@services/request";
 import {
     AbilityName,
     BACKGROUNDS_2024,
+    BARBARIAN_ASPECTS,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
     BATTLE_MASTER_MANEUVERS,
     BackgroundDefinition,
+    BLESSED_STRIKES_OPTIONS,
     CLASS_SPELL_PRIORITIES,
     CLASSES_2024,
     ClassDefinition,
     ClassLevelFeature,
     DIVINE_ORDERS,
+    DRUID_LAND_BIOMES,
     ELDRITCH_INVOCATIONS,
+    ELEMENTAL_FURY_OPTIONS,
     FIGHTING_STYLES,
     GENERAL_FEATS_2024,
     GeneralFeatDefinition,
+    HUNTER_DEFENSIVE_TACTICS,
     METAMAGIC_OPTIONS,
     ORIGIN_FEATS_2024,
     OriginFeatDefinition,
@@ -57,6 +62,7 @@ export interface CreatorState {
     metamagic: string[];
     invocations: string[];
     maneuvers: string[];
+    subclassFeatureChoices: Record<string, string>;
     backgroundId: string;
     backgroundOption: "two-and-one" | "three-ones";
     bgStatA: AbilityName;
@@ -136,6 +142,13 @@ export class CharacterCreatorController {
         metamagic: [],
         invocations: [],
         maneuvers: [],
+        subclassFeatureChoices: {
+            "druid-6-land": "arid",
+            "druid-7": "potent-spellcasting",
+            "cleric-7": "potent-spellcasting",
+            "barbarian-6-wild-heart": "elephant",
+            "ranger-6-hunter": "multiattack-defense"
+        },
         classSkills: ["Athletics", "Perception"],
         expertiseSkills: [],
         selectedWeapons: ["Longsword", "Light Crossbow"],
@@ -634,6 +647,11 @@ export class CharacterCreatorController {
             hp += level;
         }
 
+        // Draconic Sorcerer (+1 HP per level starting at level 3)
+        if (this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && level >= 3) {
+            hp += level;
+        }
+
         return Math.max(1, hp);
     }
 
@@ -656,6 +674,10 @@ export class CharacterCreatorController {
                 ac = 10 + dexMod + this.getAbilityModifier("con");
             } else if (this.state.classId === "monk") {
                 ac = 10 + dexMod + this.getAbilityModifier("wis");
+            } else if (this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && this.state.level >= 3) {
+                ac = 10 + dexMod + this.getAbilityModifier("cha");
+            } else if (this.state.classId === "druid" && this.state.subclassId === "moon" && this.state.level >= 6) {
+                ac = Math.max(ac, 13 + this.getAbilityModifier("wis"));
             }
         }
 
@@ -684,6 +706,10 @@ export class CharacterCreatorController {
         if ((this.state.classId === "barbarian" || this.state.classId === "monk") && this.state.level >= 5) {
             speed += 10;
         }
+        // Ranger Roving (Level 6+)
+        if (this.state.classId === "ranger" && this.state.level >= 6) {
+            speed += 10;
+        }
         // Heavy Armor Strength requirement penalty: -10 ft if Strength is lower than required
         if (this.state.selectedArmor && this.state.selectedArmor !== "None") {
             const armor = BASE_ARMOR_2024.find((a) => a.name === this.state.selectedArmor);
@@ -695,6 +721,38 @@ export class CharacterCreatorController {
             }
         }
         return speed;
+    }
+
+    public getSpecialSpeeds(): string[] {
+        const special: string[] = [];
+        const baseSpeed = this.getSpeed();
+        // Sea Druid Level 6+ Aquatic Affinity
+        if (this.state.classId === "druid" && this.state.subclassId === "sea" && this.state.level >= 6) {
+            special.push(`Swim ${baseSpeed} ft.`);
+        }
+        // Barbarian Wild Heart Aspect of the Spider (Level 6+)
+        if (
+            this.state.classId === "barbarian" &&
+            this.state.subclassId === "wild-heart" &&
+            this.state.level >= 6 &&
+            this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] === "spider"
+        ) {
+            special.push(`Climb ${baseSpeed} ft.`);
+        }
+        // Ranger Level 6+ (Roving: Climbing and Swimming speed)
+        if (this.state.classId === "ranger" && this.state.level >= 6) {
+            special.push(`Climb ${baseSpeed} ft.`, `Swim ${baseSpeed} ft.`);
+        }
+        return special;
+    }
+
+    public getSpeedDisplay(): string {
+        const base = `${this.getSpeed()} ft.`;
+        const special = this.getSpecialSpeeds();
+        if (special.length > 0) {
+            return `${base} (${special.join(", ")})`;
+        }
+        return base;
     }
 
     public isProficientWithArmor(armorName: string): boolean {
@@ -1088,7 +1146,7 @@ export class CharacterCreatorController {
             const initVal = this.getInitiative();
             initEl.textContent = (initVal >= 0 ? "+" : "") + initVal;
         }
-        if (speedEl) speedEl.textContent = `${this.getSpeed()} ft.`;
+        if (speedEl) speedEl.textContent = this.getSpeedDisplay();
         if (avatarEl) avatarEl.src = this.state.avatarUrl || "/storage/images/default-avatar.png";
     }
 
@@ -1552,6 +1610,117 @@ export class CharacterCreatorController {
             }
         }
 
+        // Level 6 choices
+        if (lvl === 6) {
+            // Druid Circle of the Land: Biome Affinity
+            if (cls.id === "druid" && this.state.subclassId === "land") {
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-6-land"] || "arid";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-tree"></i> Circle of the Land Biome Affinity</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${DRUID_LAND_BIOMES.map((b) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === b.id ? "selected" : ""}" data-feature-key="druid-6-land" data-feature-choice="${b.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${b.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${b.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Barbarian Path of the Wild Heart: Aspect of the Beast
+            if (cls.id === "barbarian" && this.state.subclassId === "wild-heart") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] || "elephant";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Aspect of the Beast</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${BARBARIAN_ASPECTS.map((a) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === a.id ? "selected" : ""}" data-feature-key="barbarian-6-wild-heart" data-feature-choice="${a.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${a.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${a.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Ranger Hunter: Defensive Tactics
+            if (cls.id === "ranger" && this.state.subclassId === "hunter") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-6-hunter"] || "multiattack-defense";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Defensive Tactics</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${HUNTER_DEFENSIVE_TACTICS.map((t) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === t.id ? "selected" : ""}" data-feature-key="ranger-6-hunter" data-feature-choice="${t.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${t.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${t.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Level 7 choices
+        if (lvl === 7) {
+            // Druid Elemental Fury
+            if (cls.id === "druid") {
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-7"] || "potent-spellcasting";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-bolt"></i> Elemental Fury</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${ELEMENTAL_FURY_OPTIONS.map((opt) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === opt.id ? "selected" : ""}" data-feature-key="druid-7" data-feature-choice="${opt.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${opt.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+
+            // Cleric Blessed Strikes
+            if (cls.id === "cleric") {
+                const currentChoice = this.state.subclassFeatureChoices?.["cleric-7"] || "potent-spellcasting";
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Blessed Strikes</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${BLESSED_STRIKES_OPTIONS.map((opt) => `
+                                <div class="select-card subclass-feature-card ${currentChoice === opt.id ? "selected" : ""}" data-feature-key="cleric-7" data-feature-choice="${opt.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${opt.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
         // ASI / Feat levels note
         const asiLevels = [4, 8, 12, 16, 19];
         if (cls.id === "fighter") asiLevels.push(6, 14);
@@ -1579,15 +1748,37 @@ export class CharacterCreatorController {
 
             const isUnlocked = lvl <= charLevel;
             const isHidden = !isUnlocked && !this.progressionExpanded;
-            const featuresAtLvl = cls.features.filter((f: ClassLevelFeature) => f.level === lvl);
+            let featuresAtLvl = cls.features.filter((f: ClassLevelFeature) => f.level === lvl);
             const pb = Math.floor((lvl - 1) / 4) + 2;
             const statBadge = this.getClassLevelStatBadge(cls, lvl);
 
             let subAnnotation = "";
-            if (this.state.subclassId && featuresAtLvl.some((f: ClassLevelFeature) => f.name.toLowerCase().includes("subclass"))) {
-                const sub = cls.subclasses.find((s: any) => s.id === this.state.subclassId);
-                if (sub) {
-                    subAnnotation = ` (${sub.name})`;
+            const sub = this.state.subclassId ? cls.subclasses?.find((s: any) => s.id === this.state.subclassId) : undefined;
+            if (sub && featuresAtLvl.some((f: ClassLevelFeature) => f.name.toLowerCase().includes("subclass"))) {
+                subAnnotation = ` (${sub.name})`;
+            }
+
+            const subFeaturesAtLvl = sub?.features?.filter((f: any) => f.level === lvl) || [];
+            if (subFeaturesAtLvl.length > 0) {
+                const hasPlaceholder = featuresAtLvl.some((f: ClassLevelFeature) => f.name.toLowerCase() === "subclass feature");
+                if (hasPlaceholder) {
+                    featuresAtLvl = [
+                        ...featuresAtLvl.filter((f: ClassLevelFeature) => f.name.toLowerCase() !== "subclass feature"),
+                        ...subFeaturesAtLvl.map((sf: any) => ({
+                            level: sf.level,
+                            name: sf.name,
+                            description: sf.description
+                        }))
+                    ];
+                } else {
+                    featuresAtLvl = [
+                        ...featuresAtLvl,
+                        ...subFeaturesAtLvl.map((sf: any) => ({
+                            level: sf.level,
+                            name: sf.name,
+                            description: sf.description
+                        }))
+                    ];
                 }
             }
 
@@ -2408,7 +2599,7 @@ export class CharacterCreatorController {
                         <div class="review-row"><span class="label">Hit Points:</span><strong>${this.getMaxHp()} Max HP</strong></div>
                         <div class="review-row"><span class="label">Armor Class:</span><strong>${this.getArmorClass()} AC</strong></div>
                         <div class="review-row"><span class="label">Initiative:</span><strong>${(this.getInitiative() >= 0 ? "+" : "") + this.getInitiative()}</strong></div>
-                        <div class="review-row"><span class="label">Speed:</span><strong>${this.getSpeed()} ft.</strong></div>
+                        <div class="review-row"><span class="label">Speed:</span><strong>${this.getSpeedDisplay()}</strong></div>
                         <div class="review-row"><span class="label">Proficiency Bonus:</span><strong>+${this.getProficiencyBonus()}</strong></div>
                     </div>
 
@@ -2417,6 +2608,11 @@ export class CharacterCreatorController {
                         ${this.state.fightingStyle ? `<div class="review-row"><span class="label">Fighting Style:</span><strong>${FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle)?.name || this.state.fightingStyle}</strong></div>` : ""}
                         ${this.state.divineOrder ? `<div class="review-row"><span class="label">Divine Order:</span><strong>${DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder)?.name || this.state.divineOrder}</strong></div>` : ""}
                         ${this.state.primalOrder ? `<div class="review-row"><span class="label">Primal Order:</span><strong>${PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder)?.name || this.state.primalOrder}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["druid-6-land"] && this.state.classId === "druid" && this.state.subclassId === "land" ? `<div class="review-row"><span class="label">Land Biome:</span><strong>${DRUID_LAND_BIOMES.find((b) => b.id === this.state.subclassFeatureChoices["druid-6-land"])?.name || this.state.subclassFeatureChoices["druid-6-land"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" ? `<div class="review-row"><span class="label">Aspect of the Beast:</span><strong>${BARBARIAN_ASPECTS.find((a) => a.id === this.state.subclassFeatureChoices["barbarian-6-wild-heart"])?.name || this.state.subclassFeatureChoices["barbarian-6-wild-heart"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["ranger-6-hunter"] && this.state.classId === "ranger" && this.state.subclassId === "hunter" ? `<div class="review-row"><span class="label">Defensive Tactics:</span><strong>${HUNTER_DEFENSIVE_TACTICS.find((t) => t.id === this.state.subclassFeatureChoices["ranger-6-hunter"])?.name || this.state.subclassFeatureChoices["ranger-6-hunter"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["druid-7"] && this.state.classId === "druid" && this.state.level >= 7 ? `<div class="review-row"><span class="label">Elemental Fury:</span><strong>${ELEMENTAL_FURY_OPTIONS.find((o) => o.id === this.state.subclassFeatureChoices["druid-7"])?.name || this.state.subclassFeatureChoices["druid-7"]}</strong></div>` : ""}
+                        ${this.state.subclassFeatureChoices?.["cleric-7"] && this.state.classId === "cleric" && this.state.level >= 7 ? `<div class="review-row"><span class="label">Blessed Strikes:</span><strong>${BLESSED_STRIKES_OPTIONS.find((o) => o.id === this.state.subclassFeatureChoices["cleric-7"])?.name || this.state.subclassFeatureChoices["cleric-7"]}</strong></div>` : ""}
                         ${this.state.metamagic.length > 0 ? `<div class="review-row"><span class="label">Metamagic:</span><strong>${this.state.metamagic.map((m) => METAMAGIC_OPTIONS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
                         ${this.state.invocations.length > 0 ? `<div class="review-row"><span class="label">Invocations:</span><strong>${this.state.invocations.map((i) => ELDRITCH_INVOCATIONS.find((o) => o.id === i)?.name || i).join(", ")}</strong></div>` : ""}
                         ${this.state.maneuvers.length > 0 ? `<div class="review-row"><span class="label">Maneuvers:</span><strong>${this.state.maneuvers.map((m) => BATTLE_MASTER_MANEUVERS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
@@ -2689,6 +2885,21 @@ export class CharacterCreatorController {
             expandBtn?.addEventListener("click", () => {
                 this.progressionExpanded = !this.progressionExpanded;
                 this.renderStep(3);
+            });
+
+            document.querySelectorAll(".subclass-feature-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    const key = card.getAttribute("data-feature-key");
+                    const choice = card.getAttribute("data-feature-choice");
+                    if (key && choice) {
+                        if (!this.state.subclassFeatureChoices) {
+                            this.state.subclassFeatureChoices = {};
+                        }
+                        this.state.subclassFeatureChoices[key] = choice;
+                        this.renderStep(3);
+                        this.updateLiveSummary();
+                    }
+                });
             });
         } else if (step === 4) {
             document.querySelectorAll(".background-card").forEach((card) => {
@@ -3266,6 +3477,81 @@ export class CharacterCreatorController {
                         type: "Subclass",
                         description: sub.description
                     });
+                    if (sub.features && sub.features.length > 0) {
+                        sub.features
+                            .filter((sf) => sf.level <= this.state.level)
+                            .forEach((sf) => {
+                                featuresPayload.push({
+                                    name: sf.name,
+                                    source: sub.name,
+                                    type: "Subclass Feature",
+                                    level: sf.level,
+                                    description: sf.description
+                                });
+                            });
+                    }
+                }
+            }
+
+            // Subclass Feature Choices
+            if (this.state.subclassFeatureChoices) {
+                for (const [key, val] of Object.entries(this.state.subclassFeatureChoices)) {
+                    if (key === "druid-6-land" && this.state.classId === "druid" && this.state.subclassId === "land" && this.state.level >= 6) {
+                        const opt = DRUID_LAND_BIOMES.find((b) => b.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Land Biome: ${opt.name}`,
+                                source: "Circle of the Land",
+                                type: "Subclass Choice",
+                                level: 6,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "druid-7" && this.state.classId === "druid" && this.state.level >= 7) {
+                        const opt = ELEMENTAL_FURY_OPTIONS.find((o) => o.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Elemental Fury: ${opt.name}`,
+                                source: "Druid",
+                                type: "Class Choice",
+                                level: 7,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "cleric-7" && this.state.classId === "cleric" && this.state.level >= 7) {
+                        const opt = BLESSED_STRIKES_OPTIONS.find((o) => o.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Blessed Strikes: ${opt.name}`,
+                                source: "Cleric",
+                                type: "Class Choice",
+                                level: 7,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "barbarian-6-wild-heart" && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 6) {
+                        const opt = BARBARIAN_ASPECTS.find((a) => a.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Aspect of the Beast: ${opt.name}`,
+                                source: "Path of the Wild Heart",
+                                type: "Subclass Choice",
+                                level: 6,
+                                description: opt.description
+                            });
+                        }
+                    } else if (key === "ranger-6-hunter" && this.state.classId === "ranger" && this.state.subclassId === "hunter" && this.state.level >= 6) {
+                        const opt = HUNTER_DEFENSIVE_TACTICS.find((t) => t.id === val);
+                        if (opt) {
+                            featuresPayload.push({
+                                name: `Defensive Tactics: ${opt.name}`,
+                                source: "Hunter",
+                                type: "Subclass Choice",
+                                level: 6,
+                                description: opt.description
+                            });
+                        }
+                    }
                 }
             }
 
@@ -3415,7 +3701,7 @@ export class CharacterCreatorController {
                     tempHp: 0,
                     armorClass: this.getArmorClass(),
                     initiative: this.getInitiative(),
-                    speed: `${this.getSpeed()} ft.`,
+                    speed: this.getSpeedDisplay(),
                     proficiencyBonus: pb,
                     passivePerception: 10 + (percSkill?.bonus || 0),
                     passiveInvestigation: 10 + (invSkill?.bonus || 0),
@@ -3440,6 +3726,12 @@ export class CharacterCreatorController {
                 } : {},
                 creatorState: {
                     ...this.state
+                },
+                featureChoices: {
+                    ...this.state.subclassFeatureChoices
+                },
+                subclassFeatureChoices: {
+                    ...this.state.subclassFeatureChoices
                 }
             };
 

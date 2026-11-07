@@ -291,15 +291,63 @@ export default class RulesController extends BaseController {
                     const subDef = c.subclassDefinition;
                     const classFeatures: any[] = Array.isArray(c.classFeatures) ? c.classFeatures : [];
 
+                    // Extract base class features from def.classFeatures and c.classFeatures
                     const extractedFeatures: Array<{ level: number; name: string; description: string }> = [];
-                    for (const cf of classFeatures) {
-                        const fDef = cf.definition;
+                    const defClassFeatures: any[] = Array.isArray(def.classFeatures) ? def.classFeatures : [];
+                    for (const cf of [...defClassFeatures, ...classFeatures]) {
+                        const fDef = cf.definition || cf;
                         if (fDef && fDef.name) {
-                            extractedFeatures.push({
-                                level: Number(fDef.requiredLevel) || 1,
-                                name: String(fDef.name).trim(),
-                                description: cleanHtmlTags(fDef.description || "")
-                            });
+                            const isSub = (subDef?.id && (fDef.classId === subDef.id || fDef.subclassId === subDef.id)) ||
+                                fDef.isSubclassFeature === true ||
+                                (subDef?.name && String(fDef.source || "").toLowerCase() === subDef.name.toLowerCase());
+                            if (!isSub) {
+                                const fName = String(fDef.name).trim();
+                                if (!extractedFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
+                                    extractedFeatures.push({
+                                        level: Number(fDef.requiredLevel || fDef.level) || 1,
+                                        name: fName,
+                                        description: cleanHtmlTags(fDef.description || fDef.snippet || "")
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Extract subclass features from subDef.classFeatures and c.classFeatures
+                    const extractedSubclassFeatures: Array<{ level: number; name: string; description: string }> = [];
+                    if (subDef && subDef.name) {
+                        const subFeaturesList = Array.isArray(subDef.classFeatures) ? subDef.classFeatures : [];
+                        for (const scf of subFeaturesList) {
+                            const fDef = scf.definition || scf;
+                            if (fDef && fDef.name) {
+                                const fName = String(fDef.name).trim();
+                                if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
+                                    extractedSubclassFeatures.push({
+                                        level: Number(fDef.requiredLevel || fDef.level) || 3,
+                                        name: fName,
+                                        description: cleanHtmlTags(fDef.description || fDef.snippet || "")
+                                    });
+                                }
+                            }
+                        }
+                        for (const cf of classFeatures) {
+                            const fDef = cf.definition || cf;
+                            if (fDef && fDef.name) {
+                                const isSub = (subDef.id && (fDef.classId === subDef.id || fDef.subclassId === subDef.id)) ||
+                                    fDef.isSubclassFeature === true ||
+                                    (def.id && fDef.classId && fDef.classId !== def.id) ||
+                                    (fDef.source && String(fDef.source).toLowerCase() === subDef.name.toLowerCase());
+                                if (isSub) {
+                                    const fName = String(fDef.name).trim();
+                                    if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
+                                        extractedSubclassFeatures.push({
+                                            level: Number(fDef.requiredLevel || fDef.level) || 3,
+                                            name: fName,
+                                            description: cleanHtmlTags(fDef.description || fDef.snippet || "")
+                                        });
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -308,16 +356,31 @@ export default class RulesController extends BaseController {
                         let subclasses: any[] = this.safeParse(ruleClass.subclassesJson, []);
                         if (subDef && subDef.name) {
                             const subSlug = slugify(subDef.name);
-                            if (!subclasses.some((s: any) => s.id === subSlug || s.name.toLowerCase() === subDef.name.toLowerCase())) {
-                                subclasses.push({
+                            let targetSub = subclasses.find((s: any) => s.id === subSlug || s.name.toLowerCase() === subDef.name.toLowerCase());
+                            if (!targetSub) {
+                                targetSub = {
                                     id: subSlug,
                                     name: subDef.name,
                                     description: cleanHtmlTags(subDef.description || ""),
-                                    features: []
-                                });
-                                ruleClass.subclassesJson = JSON.stringify(subclasses);
+                                    features: extractedSubclassFeatures
+                                };
+                                subclasses.push(targetSub);
                                 count++;
+                            } else {
+                                if (!Array.isArray(targetSub.features)) targetSub.features = [];
+                                let subFeatsChanged = false;
+                                for (const sf of extractedSubclassFeatures) {
+                                    if (!targetSub.features.some((f: any) => f.name.toLowerCase() === sf.name.toLowerCase())) {
+                                        targetSub.features.push(sf);
+                                        subFeatsChanged = true;
+                                        count++;
+                                    }
+                                }
+                                if (subFeatsChanged) {
+                                    targetSub.features.sort((a: any, b: any) => a.level - b.level);
+                                }
                             }
+                            ruleClass.subclassesJson = JSON.stringify(subclasses);
                         }
 
                         let existingFeatures: any[] = this.safeParse(ruleClass.featuresJson, []);
@@ -342,7 +405,7 @@ export default class RulesController extends BaseController {
                                 id: slugify(subDef.name),
                                 name: subDef.name,
                                 description: cleanHtmlTags(subDef.description || ""),
-                                features: []
+                                features: extractedSubclassFeatures
                             });
                         }
 
@@ -532,6 +595,68 @@ export default class RulesController extends BaseController {
                         });
                         await classRepo.save(ruleClass);
                         count++;
+                    }
+
+                    // Populate/merge features from payloadToSave.features
+                    if (Array.isArray(payloadToSave.features)) {
+                        let existingClassFeatures: any[] = this.safeParse(ruleClass.featuresJson, []);
+                        let existingSubclasses: any[] = this.safeParse(ruleClass.subclassesJson, []);
+                        let subsChanged = false;
+                        let featsChanged = false;
+
+                        let targetSub: any = null;
+                        if (cls.subclass) {
+                            const subSlug = slugify(cls.subclass);
+                            targetSub = existingSubclasses.find((s: any) => s.id === subSlug || s.name.toLowerCase() === cls.subclass.toLowerCase());
+                            if (!targetSub) {
+                                targetSub = { id: subSlug, name: cls.subclass, description: "", features: [] };
+                                existingSubclasses.push(targetSub);
+                                subsChanged = true;
+                                count++;
+                            }
+                            if (!Array.isArray(targetSub.features)) targetSub.features = [];
+                        }
+
+                        for (const feat of payloadToSave.features) {
+                            if (!feat || !feat.name) continue;
+                            const featType = String(feat.type || "").toLowerCase();
+                            const featSource = String(feat.source || "").toLowerCase();
+                            const featName = String(feat.name).trim();
+
+                            if (targetSub && (featType.includes("subclass") || featSource === targetSub.name.toLowerCase())) {
+                                if (!targetSub.features.some((f: any) => f.name.toLowerCase() === featName.toLowerCase())) {
+                                    targetSub.features.push({
+                                        level: Number(feat.level) || 3,
+                                        name: featName,
+                                        description: cleanHtmlTags(feat.description || "")
+                                    });
+                                    subsChanged = true;
+                                    count++;
+                                }
+                            } else if (featType === "class" || featSource === name.toLowerCase()) {
+                                if (!existingClassFeatures.some((f: any) => f.name.toLowerCase() === featName.toLowerCase())) {
+                                    existingClassFeatures.push({
+                                        level: Number(feat.level) || 1,
+                                        name: featName,
+                                        description: cleanHtmlTags(feat.description || "")
+                                    });
+                                    featsChanged = true;
+                                    count++;
+                                }
+                            }
+                        }
+
+                        if (subsChanged) {
+                            if (targetSub?.features) targetSub.features.sort((a: any, b: any) => a.level - b.level);
+                            ruleClass.subclassesJson = JSON.stringify(existingSubclasses);
+                        }
+                        if (featsChanged) {
+                            existingClassFeatures.sort((a: any, b: any) => a.level - b.level);
+                            ruleClass.featuresJson = JSON.stringify(existingClassFeatures);
+                        }
+                        if (subsChanged || featsChanged) {
+                            await classRepo.save(ruleClass);
+                        }
                     } else if (cls.subclass) {
                         let subs: any[] = this.safeParse(ruleClass.subclassesJson, []);
                         const subSlug = slugify(cls.subclass);

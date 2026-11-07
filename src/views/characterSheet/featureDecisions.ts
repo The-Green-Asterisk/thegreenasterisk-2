@@ -94,6 +94,35 @@ export const PACT_BOON_OPTIONS: FeatureChoiceOption[] = [
     { value: "pact-boon:tome", label: "Pact of the Tome (Book of Shadows)" }
 ];
 
+export const ELEMENTAL_FURY_OPTIONS: FeatureChoiceOption[] = [
+    { value: "elemental-fury:potent-spellcasting", label: "Potent Spellcasting (+WIS to Cantrip Damage)" },
+    { value: "elemental-fury:primal-strike", label: "Primal Strike (+1d8 Elemental Weapon/Beast Damage)" }
+];
+
+export const BLESSED_STRIKES_OPTIONS: FeatureChoiceOption[] = [
+    { value: "blessed-strikes:potent-spellcasting", label: "Potent Spellcasting (+WIS to Cantrip Damage)" },
+    { value: "blessed-strikes:divine-strike", label: "Divine Strike (+1d8 Radiant/Necrotic Weapon Damage)" }
+];
+
+export const DRUID_LAND_BIOME_OPTIONS: FeatureChoiceOption[] = [
+    { value: "land-biome:arid", label: "Arid (Desert / Savanna / Badlands)" },
+    { value: "land-biome:polar", label: "Polar (Tundra / Glacier / Taiga)" },
+    { value: "land-biome:temperate", label: "Temperate (Forest / Grassland)" },
+    { value: "land-biome:tropical", label: "Tropical (Rainforest / Swamp)" }
+];
+
+export const BARBARIAN_ASPECT_OPTIONS: FeatureChoiceOption[] = [
+    { value: "aspect:elephant", label: "Aspect of the Elephant (Athletics Advantage, Double Capacity)" },
+    { value: "aspect:owl", label: "Aspect of the Owl (Darkvision 60 ft., Perception Advantage)" },
+    { value: "aspect:spider", label: "Aspect of the Spider (Climbing Speed = Walking Speed)" },
+    { value: "aspect:wolf", label: "Aspect of the Wolf (Fast-Paced Tracking & Normal Stealth)" }
+];
+
+export const HUNTER_DEFENSIVE_TACTIC_OPTIONS: FeatureChoiceOption[] = [
+    { value: "defensive-tactic:multiattack-defense", label: "Multiattack Defense (Disadvantage on Consecutive Hits)" },
+    { value: "defensive-tactic:escape-the-horde", label: "Escape the Horde (Opportunity Attacks have Disadvantage)" }
+];
+
 function slugifyKey(input: string): string {
     return String(input || "")
         .toLowerCase()
@@ -475,6 +504,46 @@ function mapLabelToCanonicalDecisionValue(
                 value: `resistance:${dmg.key}`,
                 label: `${dmg.label} Resistance`
             };
+        }
+    }
+
+    // Check Elemental Fury
+    for (const efOpt of ELEMENTAL_FURY_OPTIONS) {
+        const optName = efOpt.label.split("(")[0].trim().toLowerCase();
+        if (lower === optName || (hintLower.includes("fury") && lower.includes(optName))) {
+            return efOpt;
+        }
+    }
+
+    // Check Blessed Strikes
+    for (const bsOpt of BLESSED_STRIKES_OPTIONS) {
+        const optName = bsOpt.label.split("(")[0].trim().toLowerCase();
+        if (lower === optName || (hintLower.includes("blessed") && lower.includes(optName))) {
+            return bsOpt;
+        }
+    }
+
+    // Check Land Biomes
+    for (const bOpt of DRUID_LAND_BIOME_OPTIONS) {
+        const bName = bOpt.label.split("(")[0].trim().toLowerCase();
+        if (lower === bName || lower.includes(bName) || (hintLower.includes("land") && lower.includes(bName))) {
+            return bOpt;
+        }
+    }
+
+    // Check Barbarian Aspects
+    for (const aOpt of BARBARIAN_ASPECT_OPTIONS) {
+        const aName = aOpt.label.split("(")[0].replace("aspect of the", "").trim().toLowerCase();
+        if (lower === aName || lower.includes(aName) || (hintLower.includes("aspect") && lower.includes(aName))) {
+            return aOpt;
+        }
+    }
+
+    // Check Hunter Defensive Tactics
+    for (const dtOpt of HUNTER_DEFENSIVE_TACTIC_OPTIONS) {
+        const dtName = dtOpt.label.split("(")[0].trim().toLowerCase();
+        if (lower === dtName || lower.includes(dtName) || (hintLower.includes("defense") && lower.includes(dtName))) {
+            return dtOpt;
         }
     }
 
@@ -1125,6 +1194,78 @@ export function extractFeaturesAndApplyDecisions(
             }
         }
 
+        // Elemental Fury (Druid 7)
+        if (nameLower.includes("elemental fury") || nameLower === "primal strike" || (nameLower === "potent spellcasting" && category === "class")) {
+            const defaultFury = nameLower.includes("primal strike")
+                ? "elemental-fury:primal-strike"
+                : "elemental-fury:potent-spellcasting";
+            registerDecision(
+                "elemental-fury:0",
+                "Elemental Fury",
+                defaultFury,
+                ELEMENTAL_FURY_OPTIONS,
+                []
+            );
+        }
+
+        // Blessed Strikes (Cleric 7)
+        if (nameLower.includes("blessed strikes") || nameLower === "divine strike") {
+            const defaultStrike = nameLower.includes("divine strike")
+                ? "blessed-strikes:divine-strike"
+                : "blessed-strikes:potent-spellcasting";
+            registerDecision(
+                "blessed-strikes:0",
+                "Blessed Strikes",
+                defaultStrike,
+                BLESSED_STRIKES_OPTIONS,
+                []
+            );
+        }
+
+        // Circle of the Land Biome Affinity
+        if (nameLower.includes("circle of the land") || nameLower.includes("land's aid") || nameLower.includes("biome")) {
+            let defaultBiome = "land-biome:arid";
+            if (nameLower.includes("polar")) defaultBiome = "land-biome:polar";
+            else if (nameLower.includes("temperate")) defaultBiome = "land-biome:temperate";
+            else if (nameLower.includes("tropical")) defaultBiome = "land-biome:tropical";
+            registerDecision(
+                "land-biome:0",
+                "Land Biome Affinity",
+                defaultBiome,
+                DRUID_LAND_BIOME_OPTIONS,
+                []
+            );
+        }
+
+        // Aspect of the Beast (Barbarian 6)
+        if (nameLower.includes("aspect of the beast") || nameLower.includes("wild heart")) {
+            let defaultAspect = "aspect:elephant";
+            if (nameLower.includes("owl")) defaultAspect = "aspect:owl";
+            else if (nameLower.includes("spider")) defaultAspect = "aspect:spider";
+            else if (nameLower.includes("wolf")) defaultAspect = "aspect:wolf";
+            registerDecision(
+                "aspect:0",
+                "Aspect of the Beast",
+                defaultAspect,
+                BARBARIAN_ASPECT_OPTIONS,
+                []
+            );
+        }
+
+        // Defensive Tactics (Hunter Ranger 6)
+        if (nameLower.includes("defensive tactics") || nameLower.includes("escape the horde") || nameLower.includes("multiattack defense")) {
+            const defaultTactic = nameLower.includes("escape")
+                ? "defensive-tactic:escape-the-horde"
+                : "defensive-tactic:multiattack-defense";
+            registerDecision(
+                "defensive-tactic:0",
+                "Defensive Tactics",
+                defaultTactic,
+                HUNTER_DEFENSIVE_TACTIC_OPTIONS,
+                []
+            );
+        }
+
         // 7. Damage Resistance / Elemental / Lineage Traits
         const resMods = featureMods.filter(
             m => !consumedModUids.has(m._modUid) && m.type === "resistance"
@@ -1351,6 +1492,50 @@ export function extractFeaturesAndApplyDecisions(
                     source: subName,
                     type: "Subclass",
                     description: cf.description || cf.snippet || "",
+                    decisions: decisions.length > 0 ? decisions : undefined,
+                    scaleValue: meta.scaleValue,
+                    limitedUse: meta.limitedUse
+                });
+            });
+        }
+
+        // Check cl.classFeatures for any class or subclass features not already captured
+        if (Array.isArray(cl.classFeatures)) {
+            const subId = cl.subclassDefinition?.id;
+            const subName = cl.subclassDefinition?.name || "Subclass";
+            cl.classFeatures.forEach((cf: any) => {
+                const def = cf.definition || cf;
+                if (!def?.name) return;
+                const reqLevel = Number(def.requiredLevel ?? cf.requiredLevel ?? 1);
+                if (reqLevel > cLevel) return;
+                const cfNameLower = String(def.name).toLowerCase();
+                if (BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) return;
+
+                const isSub = (subId && (def.classId === subId || def.subclassId === subId)) ||
+                    def.isSubclassFeature === true ||
+                    (def.source && String(def.source).toLowerCase() === subName.toLowerCase());
+                const targetName = isSub ? subName : cName;
+                const targetType = isSub ? "Subclass" : "Class";
+
+                if (features.some(f => f.name.toLowerCase() === def.name.toLowerCase() && f.source.toLowerCase() === targetName.toLowerCase())) {
+                    return;
+                }
+
+                const compIds = getComponentIdsForFeature([cf.id, def.id], "class");
+                const prefix = `${isSub ? "subclass" : "class"}:${slugifyKey(targetName)}:${slugifyKey(def.name)}:${reqLevel}`;
+                const decisions = buildDecisionsForFeature(
+                    prefix,
+                    def.name,
+                    def.description || def.snippet || "",
+                    compIds,
+                    "class"
+                );
+                const meta = resolveFeatureTemplateMeta(cf, def, compIds, cLevel);
+                features.push({
+                    name: def.name,
+                    source: targetName,
+                    type: targetType,
+                    description: def.description || def.snippet || "",
                     decisions: decisions.length > 0 ? decisions : undefined,
                     scaleValue: meta.scaleValue,
                     limitedUse: meta.limitedUse
