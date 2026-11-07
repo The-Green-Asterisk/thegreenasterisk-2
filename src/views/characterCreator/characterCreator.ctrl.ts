@@ -153,6 +153,7 @@ export class CharacterCreatorController {
     public spellSearchQuery: string = "";
     public progressionExpanded: boolean = false;
     public progressionFilter: "all" | "unlocked" = "all";
+    public spellsWarningDismissed: boolean = false;
 
     public async init(query?: any) {
         this.bindEvents();
@@ -201,19 +202,21 @@ export class CharacterCreatorController {
         });
     }
 
-    private showAlert(msg: string) {
+    public showAlert(msg: string, type: "error" | "warning" = "error") {
         const alertBox = document.getElementById("creator-validation-alert");
         if (alertBox) {
-            alertBox.textContent = msg;
+            alertBox.innerHTML = `${type === "warning" ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : '<i class="fa-solid fa-circle-exclamation"></i> '}${msg}`;
             alertBox.classList.remove("hidden");
+            alertBox.classList.toggle("warning", type === "warning");
         }
     }
 
-    private hideAlert() {
+    public hideAlert() {
         const alertBox = document.getElementById("creator-validation-alert");
         if (alertBox) {
             alertBox.textContent = "";
             alertBox.classList.add("hidden");
+            alertBox.classList.remove("warning");
         }
     }
 
@@ -244,6 +247,43 @@ export class CharacterCreatorController {
                     return false;
                 }
                 return true;
+            case 8: {
+                const maxCantrips = this.getMaxCantrips();
+                const maxPrepared = this.getMaxPreparedSpells();
+                const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;
+
+                if (hasSpellcasting && !this.spellsWarningDismissed) {
+                    const cantripCount = this.state.selectedCantrips.length;
+                    const spellCount = this.state.selectedSpellsLevel1.length;
+                    const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+                    const className = cls?.name || "Spellcaster";
+
+                    if (cantripCount === 0 && spellCount === 0) {
+                        this.showAlert(
+                            `Warning: As a ${className}, your class uses spells, but you haven't selected any spells. Click Next again to proceed without spells, or choose your spells below.`,
+                            "warning"
+                        );
+                        this.spellsWarningDismissed = true;
+                        return false;
+                    } else if (maxPrepared > 0 && spellCount === 0) {
+                        this.showAlert(
+                            `Warning: As a ${className}, you can prepare up to ${maxPrepared} spells, but haven't selected any. Click Next again to proceed, or choose your spells below.`,
+                            "warning"
+                        );
+                        this.spellsWarningDismissed = true;
+                        return false;
+                    } else if (maxCantrips > 0 && cantripCount === 0) {
+                        this.showAlert(
+                            `Warning: As a ${className}, you can select up to ${maxCantrips} cantrips, but haven't selected any. Click Next again to proceed, or choose your cantrips below.`,
+                            "warning"
+                        );
+                        this.spellsWarningDismissed = true;
+                        return false;
+                    }
+                }
+                this.spellsWarningDismissed = false;
+                return true;
+            }
             default:
                 return true;
         }
@@ -257,6 +297,7 @@ export class CharacterCreatorController {
     public goToStep(step: number) {
         if (step < 1 || step > 9) return;
         this.hideAlert();
+        this.spellsWarningDismissed = false;
         this.state.currentStep = step;
 
         // Update stepper UI
@@ -2765,6 +2806,7 @@ export class CharacterCreatorController {
 
                 this.state.selectedCantrips = available.cantrips.slice(0, maxCantrips).map((c) => c.name);
                 this.state.selectedSpellsLevel1 = available.leveledSpells.slice(0, maxPrepared).map((s) => s.name);
+                this.spellsWarningDismissed = false;
                 this.hideAlert();
                 this.renderStep(8);
             });
@@ -2774,6 +2816,7 @@ export class CharacterCreatorController {
             clearBtn?.addEventListener("click", () => {
                 this.state.selectedCantrips = [];
                 this.state.selectedSpellsLevel1 = [];
+                this.spellsWarningDismissed = false;
                 this.hideAlert();
                 this.renderStep(8);
             });
@@ -2785,6 +2828,7 @@ export class CharacterCreatorController {
                     const maxCantrips = this.getMaxCantrips();
                     if (this.state.selectedCantrips.includes(spName)) {
                         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => s !== spName);
+                        this.spellsWarningDismissed = false;
                         this.hideAlert();
                     } else {
                         if (this.state.selectedCantrips.length >= maxCantrips) {
@@ -2792,6 +2836,7 @@ export class CharacterCreatorController {
                             return;
                         }
                         this.state.selectedCantrips.push(spName);
+                        this.spellsWarningDismissed = false;
                         this.hideAlert();
                     }
                     this.renderStep(8);
@@ -2805,6 +2850,7 @@ export class CharacterCreatorController {
                     const maxPrepared = this.getMaxPreparedSpells();
                     if (this.state.selectedSpellsLevel1.includes(spName)) {
                         this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => s !== spName);
+                        this.spellsWarningDismissed = false;
                         this.hideAlert();
                     } else {
                         if (this.state.selectedSpellsLevel1.length >= maxPrepared) {
@@ -2812,6 +2858,7 @@ export class CharacterCreatorController {
                             return;
                         }
                         this.state.selectedSpellsLevel1.push(spName);
+                        this.spellsWarningDismissed = false;
                         this.hideAlert();
                     }
                     this.renderStep(8);

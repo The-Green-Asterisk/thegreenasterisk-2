@@ -131,6 +131,49 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.validateCurrentStep()).toBe(true);
     });
 
+    it("warns spellcasting classes before passing spells screen if no spells selected", () => {
+        const alertEl = document.createElement("div");
+        alertEl.id = "creator-validation-alert";
+        alertEl.className = "creator-alert hidden";
+        document.body.appendChild(alertEl);
+
+        // Spellcaster (Wizard) on Step 8 with 0 spells
+        ctrl.state.classId = "wizard";
+        ctrl.state.currentStep = 8;
+        ctrl.state.selectedCantrips = [];
+        ctrl.state.selectedSpellsLevel1 = [];
+        ctrl.spellsWarningDismissed = false;
+
+        // First attempt to advance: fails validation, shows warning
+        const firstAttempt = ctrl.validateCurrentStep();
+        expect(firstAttempt).toBe(false);
+        expect(ctrl.spellsWarningDismissed).toBe(true);
+        expect(alertEl.classList.contains("warning")).toBe(true);
+        expect(alertEl.textContent).toContain("uses spells, but you haven't selected any spells");
+
+        // Second attempt to advance: user acknowledges warning, proceeds
+        const secondAttempt = ctrl.validateCurrentStep();
+        expect(secondAttempt).toBe(true);
+        expect(ctrl.spellsWarningDismissed).toBe(false);
+
+        // If Wizard has spells selected, advances without warning
+        ctrl.state.selectedCantrips = ["Light"];
+        ctrl.state.selectedSpellsLevel1 = ["Magic Missile"];
+        ctrl.spellsWarningDismissed = false;
+        expect(ctrl.validateCurrentStep()).toBe(true);
+        expect(ctrl.spellsWarningDismissed).toBe(false);
+
+        // Non-spellcaster (Fighter) on Step 8 with 0 spells passes directly
+        ctrl.state.classId = "fighter";
+        ctrl.state.selectedCantrips = [];
+        ctrl.state.selectedSpellsLevel1 = [];
+        ctrl.spellsWarningDismissed = false;
+        expect(ctrl.validateCurrentStep()).toBe(true);
+        expect(ctrl.spellsWarningDismissed).toBe(false);
+
+        document.body.removeChild(alertEl);
+    });
+
     it("manages Standard Array assignment by swapping numbers cleanly without editing", () => {
         // Initial standard array: str 15, dex 14, con 13, int 12, wis 10, cha 8
         expect(ctrl.state.baseAbilities.str).toBe(15);

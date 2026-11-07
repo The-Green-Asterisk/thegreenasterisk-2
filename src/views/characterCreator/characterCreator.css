@@ -262,6 +262,16 @@ el-character-creator,
     font-weight: 600;
 }
 
+.creator-alert i {
+    margin-right: 0.4rem;
+}
+
+.creator-alert.warning {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: rgba(234, 179, 8, 0.45);
+    color: #d97706;
+}
+
 .creator-alert.hidden {
     display: none;
 }
