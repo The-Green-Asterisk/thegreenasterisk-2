@@ -7,7 +7,7 @@ import { renderHeroSection } from "./hero";
 import { renderSpellSlotsAndResources } from "./resources";
 import { renderSkills } from "./skills";
 import { renderSpellsByLevel } from "./spells";
-import { renderVitalsSection } from "./vitals";
+import { renderSavingThrowNotes, renderVitalsSection } from "./vitals";
 import { renderWeapons } from "./weapons";
 
 export function renderSheetContent(data: CharacterData): string {
@@ -24,6 +24,7 @@ export function renderSheetContent(data: CharacterData): string {
             <div class="abilities-container" aria-label="Ability Scores & Saving Throws">
                 ${renderAbilityCards(data)}
             </div>
+            ${renderSavingThrowNotes(data)}
             ${renderVitalsSection(data)}
         </section>
 

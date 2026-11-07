@@ -312,3 +312,15 @@ export function renderVitalsSection(data: CharacterData): string {
         </div>
     `;
 }
+
+export function renderSavingThrowNotes(data: CharacterData): string {
+    const notes = data.savingThrowNotes || data.vitals?.savingThrowNotes || [];
+    if (!notes.length) return "";
+
+    return `
+        <div class="saving-throw-notes-row" aria-label="Saving Throw Modifiers">
+            <span class="saving-throw-notes-label"><i class="fa-solid fa-shield-halved"></i> Saving Throws:</span>
+            <span class="saving-throw-notes-text">${notes.join("; ")}</span>
+        </div>
+    `;
+}

@@ -325,6 +325,32 @@ export default class CharacterController extends BaseController {
                 }
             }
 
+            // Auto-heal saving throw notes so they appear once rather than duplicated under every ability card
+            if (character && Array.isArray(character.abilities)) {
+                const noteCounts = new Map<string, number>();
+                character.abilities.forEach((a: any) => {
+                    if (a?.notes) noteCounts.set(a.notes, (noteCounts.get(a.notes) || 0) + 1);
+                });
+                let changedNotes = false;
+                noteCounts.forEach((count, note) => {
+                    if (count >= 2 || note.toLowerCase().includes("charmed") || note.toLowerCase().includes("saving throw") || note.toLowerCase().includes("saves")) {
+                        if (!Array.isArray(character.savingThrowNotes)) character.savingThrowNotes = [];
+                        if (!character.savingThrowNotes.includes(note)) character.savingThrowNotes.push(note);
+                        character.abilities.forEach((a: any) => {
+                            if (a.notes === note) {
+                                delete a.notes;
+                                changedNotes = true;
+                            }
+                        });
+                    }
+                });
+                if (changedNotes) {
+                    if (character.vitals) character.vitals.savingThrowNotes = character.savingThrowNotes;
+                    record.payload = JSON.stringify(character);
+                    void repo.save(record).catch(err => console.warn("Could not auto-heal character saving throws:", err));
+                }
+            }
+
             return {
                 response: JSON.stringify({
                     savedCharacter: {

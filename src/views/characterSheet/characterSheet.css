@@ -646,6 +646,40 @@ el-character-sheet .content-slate section {
     gap: 0.75rem;
 }
 
+/* Saving Throw Modifiers Row (displayed once directly under ability stats) */
+.saving-throw-notes-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    font-size: 0.76rem;
+    color: var(--ui-text);
+    padding: 0.1rem 0.25rem;
+    margin-top: -0.65rem;
+    line-height: 1.35;
+}
+
+.saving-throw-notes-label {
+    font-weight: 700;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.saving-throw-notes-label i {
+    color: var(--ui-color);
+    font-size: 0.74rem;
+}
+
+.saving-throw-notes-text {
+    color: var(--ui-text);
+    font-weight: 500;
+}
+
 /* --- Vital Badge Variables (Dual Theme: Light / Dark) --- */
 :root {
     /* Light Mode Badge Gradients & Outlines */

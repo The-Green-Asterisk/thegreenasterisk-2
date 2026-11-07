@@ -507,10 +507,11 @@ export function parseDndBeyondCharacter(
             saveNotes.push("Advantage on Concentration");
         }
 
+        // Only ability-specific advantage notes stay on individual ability cards (general saving throw notes appear in their own dedicated row)
         const advSaveMods = allMods.filter(
             m =>
                 m.type === "advantage" &&
-                (m.subType === `${meta.key}-saving-throws` || m.subType === "saving-throws")
+                m.subType === `${meta.key}-saving-throws`
         );
         advSaveMods.forEach(m => {
             const rest = String(m.restriction || "").trim();
@@ -530,6 +531,44 @@ export function parseDndBeyondCharacter(
             bonus: score - baseVal,
             notes: saveNotes.length > 0 ? saveNotes.join("; ") : undefined
         });
+    }
+
+    // Saving Throw Modifiers (displayed once on its own row underneath the vitals section)
+    const savingThrowNotes: string[] = [];
+
+    allMods.forEach(m => {
+        if (m.type === "advantage" || m.type === "disadvantage") {
+            const isAdv = m.type === "advantage";
+            const sub = String(m.subType || "").toLowerCase();
+            if (sub === "saving-throws") {
+                const rest = String(m.restriction || "").trim();
+                const text = isAdv
+                    ? (rest ? `Advantage (${rest})` : "Advantage on saving throws")
+                    : (rest ? `Disadvantage (${rest})` : "Disadvantage on saving throws");
+                if (!savingThrowNotes.includes(text)) savingThrowNotes.push(text);
+            } else if (sub.endsWith("-saving-throws")) {
+                const statKey = sub.replace("-saving-throws", "");
+                const statName = statKey.charAt(0).toUpperCase() + statKey.slice(1);
+                const rest = String(m.restriction || "").trim();
+                const text = isAdv
+                    ? (rest ? `Advantage on ${statName} saves (${rest})` : `Advantage on ${statName} saves`)
+                    : (rest ? `Disadvantage on ${statName} saves (${rest})` : `Disadvantage on ${statName} saves`);
+                if (!savingThrowNotes.includes(text)) savingThrowNotes.push(text);
+            }
+        } else if ((m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "saving-throws" && !isUnrestrictedMod(m)) {
+            const rest = String(m.restriction || "").trim();
+            const val = resolveModValue(m);
+            const valStr = val >= 0 ? `+${val}` : `${val}`;
+            const text = rest ? `${valStr} on saving throws (${rest})` : `${valStr} on saving throws`;
+            if (!savingThrowNotes.includes(text)) savingThrowNotes.push(text);
+        }
+    });
+
+    if (
+        (hasFeat("War Caster") || hasClassFeatureOrOption("Eldritch Mind")) &&
+        !savingThrowNotes.some(n => n.toLowerCase().includes("concentration"))
+    ) {
+        savingThrowNotes.push("Advantage on Constitution saves (to maintain Concentration)");
     }
 
     // 4. Hit Points (including hit-points-per-level from Tough, Dwarven Toughness, Draconic Resilience, etc.)
@@ -2054,8 +2093,10 @@ export function parseDndBeyondCharacter(
             heroicInspiration: !!raw.inspiration,
             spellSaveDc,
             spellAttackBonus,
-            spellcastingAbility: `${ABILITY_NAMES[spellcastingAbilityId]?.name || "Charisma"} (+${spellMod})`
+            spellcastingAbility: `${ABILITY_NAMES[spellcastingAbilityId]?.name || "Charisma"} (+${spellMod})`,
+            savingThrowNotes
         },
+        savingThrowNotes,
         abilities,
         skills,
         spellSlots,
@@ -2326,5 +2367,42 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
                 resetOn: "short"
             });
         }
+    }
+}
+
+export function ensureSavingThrowNotesOnCharacter(character: CharacterData, raw?: any): void {
+    if (!character) return;
+    if (!Array.isArray(character.savingThrowNotes)) {
+        character.savingThrowNotes = [];
+    }
+    if (character.vitals && !Array.isArray(character.vitals.savingThrowNotes)) {
+        character.vitals.savingThrowNotes = character.savingThrowNotes;
+    }
+
+    // Check if abilities have repeated saving throw notes from older saved payloads
+    if (Array.isArray(character.abilities)) {
+        const counts = new Map<string, number>();
+        character.abilities.forEach(a => {
+            if (a.notes) {
+                counts.set(a.notes, (counts.get(a.notes) || 0) + 1);
+            }
+        });
+
+        counts.forEach((count, note) => {
+            if (count >= 2 || note.toLowerCase().includes("charmed") || note.toLowerCase().includes("saving throw") || note.toLowerCase().includes("saves")) {
+                if (!character.savingThrowNotes!.includes(note)) {
+                    character.savingThrowNotes!.push(note);
+                }
+                character.abilities.forEach(a => {
+                    if (a.notes === note) {
+                        delete a.notes;
+                    }
+                });
+            }
+        });
+    }
+
+    if (character.vitals) {
+        character.vitals.savingThrowNotes = character.savingThrowNotes;
     }
 }

@@ -196,7 +196,9 @@ export interface CharacterData {
             failures: number;
             isStable?: boolean;
         };
+        savingThrowNotes?: string[];
     };
+    savingThrowNotes?: string[];
     abilities: AbilityScore[];
     skills: SkillItem[];
     spellSlots: {

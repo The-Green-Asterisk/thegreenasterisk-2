@@ -13,6 +13,7 @@ import {
     renderSpellCard,
     renderSpellSlotsAndResources,
     renderSpellsByLevel,
+    renderSavingThrowNotes,
     renderVitalsSection,
     renderWeapons
 } from "./components/index";
@@ -54,6 +55,7 @@ export {
     renderSpellCard,
     renderSpellSlotsAndResources,
     renderSpellsByLevel,
+    renderSavingThrowNotes,
     renderVitalsSection,
     renderWeapons
 };

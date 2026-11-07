@@ -2393,4 +2393,70 @@ describe('Frontend View Templates', () => {
         expect(char.vitals.maxHp).toBe(66);
         expect(char.vitals.currentHp).toBe(66);
     });
+
+    it('displays general saving throw notes once in its own row underneath vital stats', async () => {
+        const { parseDndBeyondCharacter, ensureSavingThrowNotesOnCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+
+        const mockCharacterWithSaveAdv = {
+            id: 145444938,
+            name: 'San Te',
+            baseHitPoints: 48,
+            classes: [{ level: 9, definition: { name: 'Monk' } }],
+            stats: [
+                { id: 1, value: 10 },
+                { id: 2, value: 16 },
+                { id: 3, value: 14 },
+                { id: 4, value: 10 },
+                { id: 5, value: 16 },
+                { id: 6, value: 10 }
+            ],
+            modifiers: {
+                race: [
+                    {
+                        type: 'advantage',
+                        subType: 'saving-throws',
+                        restriction: 'against being charmed, and magic can’t put you to sleep'
+                    }
+                ]
+            },
+            inventory: []
+        };
+
+        const char = parseDndBeyondCharacter(mockCharacterWithSaveAdv, '145444938');
+        expect(char.savingThrowNotes).toBeDefined();
+        expect(char.savingThrowNotes).toContain('Advantage (against being charmed, and magic can’t put you to sleep)');
+
+        // Individual ability cards must NOT repeat the general saving throw advantage
+        char.abilities.forEach(ability => {
+            expect(ability.notes).toBeUndefined();
+        });
+
+        // In rendered HTML, the note must appear exactly once in .saving-throw-notes-row directly under abilities-container
+        const html = renderSheetContent(char);
+        expect(html).toContain('saving-throw-notes-row');
+        expect(html).toContain('Advantage (against being charmed, and magic can’t put you to sleep)');
+        const occurrences = (html.match(/Advantage \(against being charmed, and magic can’t put you to sleep\)/g) || []).length;
+        expect(occurrences).toBe(1);
+        expect(html.indexOf('abilities-container')).toBeLessThan(html.indexOf('saving-throw-notes-row'));
+        expect(html.indexOf('saving-throw-notes-row')).toBeLessThan(html.indexOf('vitals-grid'));
+
+        // ensureSavingThrowNotesOnCharacter heals legacy payload with duplicate notes on abilities
+        const legacyChar: any = {
+            name: 'San Te',
+            abilities: [
+                { abbr: 'STR', notes: 'Advantage (against being charmed, and magic can’t put you to sleep)' },
+                { abbr: 'DEX', notes: 'Advantage (against being charmed, and magic can’t put you to sleep)' },
+                { abbr: 'CON', notes: 'Advantage (against being charmed, and magic can’t put you to sleep)' },
+                { abbr: 'INT', notes: 'Advantage (against being charmed, and magic can’t put you to sleep)' },
+                { abbr: 'WIS', notes: 'Advantage (against being charmed, and magic can’t put you to sleep)' },
+                { abbr: 'CHA', notes: 'Advantage (against being charmed, and magic can’t put you to sleep)' }
+            ]
+        };
+        ensureSavingThrowNotesOnCharacter(legacyChar);
+        expect(legacyChar.savingThrowNotes).toContain('Advantage (against being charmed, and magic can’t put you to sleep)');
+        legacyChar.abilities.forEach((a: any) => {
+            expect(a.notes).toBeUndefined();
+        });
+    });
 });
