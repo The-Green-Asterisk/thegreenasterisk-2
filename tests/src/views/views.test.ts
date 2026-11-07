@@ -866,13 +866,13 @@ describe('Frontend View Templates', () => {
         expect(conInitial.proficientSave).toBe(true);
         expect(initialChar.vitals.armorClass).toBe(13); // 10 + 2 (DEX) + 1 (Defense Fighting Style)
 
-        // Verify dropdowns render in features HTML
+        // Verify features HTML renders feature cards without sheet-level decision dropdowns
         const featuresHtml = renderFeatures(initialChar);
-        expect(featuresHtml).toContain('feature-decision-select');
-        expect(featuresHtml).toContain('data-feature-decision-id="feat:war-caster:0:asi:0"');
-        expect(featuresHtml).toContain('data-feature-decision-id="feat:resilient:1:resilient:0"');
-        expect(featuresHtml).toContain('data-feature-decision-id="class:bard:expertise:2:skill-exp:0"');
-        expect(featuresHtml).toContain('data-feature-decision-id="class:bard:fighting-style:2:fighting-style:0"');
+        expect(featuresHtml).not.toContain('feature-decision-select');
+        expect(featuresHtml).toContain('War Caster');
+        expect(featuresHtml).toContain('Resilient');
+        expect(featuresHtml).toContain('Expertise');
+        expect(featuresHtml).toContain('Fighting Style');
 
         // Now change decisions:
         // 1) War Caster ASI from Charisma (+1 CHA) -> Wisdom (+1 WIS)

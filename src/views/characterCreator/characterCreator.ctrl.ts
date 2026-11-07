@@ -4200,72 +4200,130 @@ export class CharacterCreatorController {
                 }
             }
 
-            // Features (Species traits + Class Level features + Origin Feat + Progression choices)
-            const featuresPayload: any[] = [];
+            const wrapHtmlParagraph = (text: string): string => {
+                const trimmed = (text || "").trim();
+                if (!trimmed) return "";
+                if (/^<\s*p[\s>]/i.test(trimmed)) return trimmed;
+                return `<p>${trimmed}</p>`;
+            };
+            const stripHtmlTags = (text: string): string => {
+                return (text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+            };
+
+            // Features (matching D&D Beyond order & shape: 1. Feats, 2. Class Options / Invocations, 3. Class Features, 4. Subclass Features, 5. Species Traits)
+            const featsList: any[] = [];
+            const originFeat = this.originFeats.find((f) => f.id === this.state.originFeatId);
+            if (originFeat) {
+                featsList.push({
+                    name: originFeat.name,
+                    source: "Feat",
+                    type: "Feat",
+                    description: wrapHtmlParagraph(originFeat.benefits.join(" "))
+                });
+            }
+            if (this.state.speciesId === "human" && this.state.humanExtraFeatId) {
+                const extraOriginFeat = this.originFeats.find((f) => f.id === this.state.humanExtraFeatId);
+                if (extraOriginFeat && extraOriginFeat.id !== originFeat?.id) {
+                    featsList.push({
+                        name: extraOriginFeat.name,
+                        source: "Feat",
+                        type: "Feat",
+                        description: wrapHtmlParagraph(extraOriginFeat.benefits.join(" "))
+                    });
+                }
+            }
+
+            const asiLevels = this.getAsiLevels();
+            for (const lvl of asiLevels) {
+                const choice = this.state.asiChoices[lvl];
+                if (choice?.type === "feat" && choice.featId) {
+                    const featDef = this.generalFeats.find((f) => f.id === choice.featId);
+                    if (featDef) {
+                        featsList.push({
+                            name: featDef.name,
+                            source: "Feat",
+                            type: "Feat",
+                            description: wrapHtmlParagraph(featDef.benefits.join(" "))
+                        });
+                    }
+                } else {
+                    featsList.push({
+                        name: `${lvl}: Ability Score Improvement`,
+                        source: "Feat",
+                        type: "Feat",
+                        description: wrapHtmlParagraph(
+                            "Increase one ability score of your choice by 2, or increase two ability scores of your choice by 1, to a maximum of 20."
+                        )
+                    });
+                }
+            }
+
+            const classOptionsList: any[] = [];
+            const classFeaturesList: any[] = [];
+            const subclassFeaturesList: any[] = [];
+            const speciesTraitsList: any[] = [];
+
             species.traits.forEach((t) => {
-                featuresPayload.push({
+                speciesTraitsList.push({
                     name: t.name,
                     source: species.name,
                     type: "Species",
-                    description: t.description
+                    description: wrapHtmlParagraph(t.description)
                 });
             });
+
             const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
             const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
             resolvedClsFeatures.filter((f) => {
                 if (f.level > this.state.level) return false;
+                const lowerName = f.name.toLowerCase().trim();
+                if (/\b\d+(?:st|nd|rd|th)-level spells\b/i.test(lowerName)) return false;
+                if (lowerName === "ability score improvement" || lowerName === "epic boon") return false;
                 if (this.state.subclassId && this.state.level >= 3) {
-                    const lowerName = f.name.toLowerCase();
                     if (lowerName === "subclass feature" || lowerName === "subclass capstone" || lowerName.endsWith(" subclass")) {
                         return false;
                     }
                 }
                 return true;
             }).forEach((f) => {
-                featuresPayload.push({
+                classFeaturesList.push({
                     name: f.name,
                     source: cls.name,
                     type: "Class",
-                    description: f.description
+                    description: wrapHtmlParagraph(f.description)
                 });
             });
-            const originFeat = this.originFeats.find((f) => f.id === this.state.originFeatId);
-            if (originFeat) {
-                featuresPayload.push({
-                    name: originFeat.name,
-                    source: "Background",
-                    type: "Feat",
-                    description: originFeat.benefits.join(" ")
-                });
-            }
 
             // Subclass features
             if (this.state.subclassId) {
                 const sub = cls.subclasses.find((s) => s.id === this.state.subclassId) || fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
                 const fallbackSub = fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
                 if (sub) {
-                    featuresPayload.push({
-                        name: `Subclass: ${sub.name}`,
-                        source: cls.name,
-                        type: "Subclass",
-                        description: sub.description
-                    });
                     const subFeatures = (sub.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
                     if (subFeatures.length > 0) {
                         subFeatures
                             .filter((sf) => sf.level <= this.state.level)
                             .forEach((sf) => {
-                                featuresPayload.push({
+                                subclassFeaturesList.push({
                                     name: sf.name,
                                     source: sub.name,
-                                    type: "Subclass Feature",
+                                    type: "Subclass",
                                     level: sf.level,
-                                    description: sf.description
+                                    description: wrapHtmlParagraph(sf.description)
                                 });
                             });
+                    } else {
+                        subclassFeaturesList.push({
+                            name: sub.name,
+                            source: sub.name,
+                            type: "Subclass",
+                            description: wrapHtmlParagraph(sub.description)
+                        });
                     }
                 }
             }
+
+            const featuresPayload: any[] = [];
 
             // Subclass Feature Choices
             if (this.state.subclassFeatureChoices) {
@@ -4276,7 +4334,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Land Biome: ${opt.name}`,
                                 source: "Circle of the Land",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 6,
                                 description: opt.description
                             });
@@ -4287,7 +4345,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Elemental Fury: ${opt.name}`,
                                 source: "Druid",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 7,
                                 description: opt.description
                             });
@@ -4298,7 +4356,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Blessed Strikes: ${opt.name}`,
                                 source: "Cleric",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 7,
                                 description: opt.description
                             });
@@ -4309,7 +4367,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Aspect of the Beast: ${opt.name}`,
                                 source: "Path of the Wild Heart",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 6,
                                 description: opt.description
                             });
@@ -4320,7 +4378,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Defensive Tactics: ${opt.name}`,
                                 source: "Hunter",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 6,
                                 description: opt.description
                             });
@@ -4331,7 +4389,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Scholar: ${opt.name}`,
                                 source: "Wizard",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 2,
                                 description: opt.description
                             });
@@ -4342,7 +4400,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Rage of the Wilds: ${opt.name}`,
                                 source: "Path of the Wild Heart",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4353,7 +4411,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Divine Fury: ${opt.name}`,
                                 source: "Path of the Zealot",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4364,7 +4422,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Elemental Attunement: ${opt.name}`,
                                 source: "Warrior of the Elements",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4375,7 +4433,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Primal Companion: ${opt.name}`,
                                 source: "Beast Master",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4386,7 +4444,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Hunter's Prey: ${opt.name}`,
                                 source: "Hunter",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4397,7 +4455,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Draconic Ancestor: ${opt.name}`,
                                 source: "Draconic Sorcery",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4408,7 +4466,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Cunning Strike: ${opt.name}`,
                                 source: "Rogue",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 5,
                                 description: opt.description
                             });
@@ -4419,7 +4477,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Brutal Strike: ${opt.name}`,
                                 source: "Barbarian",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 9,
                                 description: opt.description
                             });
@@ -4430,7 +4488,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Tactical Master: ${opt.name}`,
                                 source: "Fighter",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 9,
                                 description: opt.description
                             });
@@ -4441,7 +4499,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Fiendish Resilience: ${opt.name}`,
                                 source: "Fiend Patron",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 10,
                                 description: opt.description
                             });
@@ -4452,7 +4510,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Totemic Attunement: ${opt.name}`,
                                 source: "Path of the Wild Heart",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 14,
                                 description: opt.description
                             });
@@ -4463,7 +4521,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Devious Strike: ${opt.name}`,
                                 source: "Rogue",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 14,
                                 description: opt.description
                             });
@@ -4474,7 +4532,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Student of War: ${opt.name}`,
                                 source: "Battle Master",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4485,7 +4543,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Open Hand Technique: ${opt.name}`,
                                 source: "Warrior of the Open Hand",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4496,7 +4554,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Otherworldly Glamour: ${opt.name}`,
                                 source: "Fey Wanderer",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4507,7 +4565,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Steps of the Fey: ${opt.name}`,
                                 source: "Archfey Patron",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4518,7 +4576,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Starry Form: ${opt.name}`,
                                 source: "Circle of the Stars",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4529,7 +4587,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Wrath of the Sea: ${opt.name}`,
                                 source: "Circle of the Sea",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4540,7 +4598,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Circle Forms Strike: ${opt.name}`,
                                 source: "Circle of the Moon",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 3,
                                 description: opt.description
                             });
@@ -4551,7 +4609,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Cosmic Omen: ${opt.name}`,
                                 source: "Circle of the Stars",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 6,
                                 description: opt.description
                             });
@@ -4562,7 +4620,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `War God's Blessing: ${opt.name}`,
                                 source: "War Domain",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 6,
                                 description: opt.description
                             });
@@ -4573,7 +4631,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Additional Fighting Style: ${opt.name}`,
                                 source: "Champion",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 7,
                                 description: opt.description
                             });
@@ -4584,7 +4642,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Telekinetic Thrust: ${opt.name}`,
                                 source: "Psi Warrior",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 7,
                                 description: opt.description
                             });
@@ -4595,7 +4653,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Battering Roots: ${opt.name}`,
                                 source: "Path of the World Tree",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 10,
                                 description: opt.description
                             });
@@ -4606,7 +4664,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `The Third Eye: ${opt.name}`,
                                 source: "Diviner",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 10,
                                 description: opt.description
                             });
@@ -4617,7 +4675,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Improved Brutal Strike: ${opt.name}`,
                                 source: "Barbarian",
-                                type: "Class Choice",
+                                type: "Class",
                                 level: 13,
                                 description: opt.description
                             });
@@ -4628,7 +4686,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Revelation in Flesh: ${opt.name}`,
                                 source: "Aberrant Sorcery",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 14,
                                 description: opt.description
                             });
@@ -4639,7 +4697,7 @@ export class CharacterCreatorController {
                             featuresPayload.push({
                                 name: `Superior Hunter's Defense: ${opt.name}`,
                                 source: "Hunter",
-                                type: "Subclass Choice",
+                                type: "Subclass",
                                 level: 15,
                                 description: opt.description
                             });
@@ -4649,13 +4707,18 @@ export class CharacterCreatorController {
             }
 
             // Fighting Style
-            if (this.state.fightingStyle) {
+            if (
+                this.state.fightingStyle &&
+                (this.state.classId === "fighter" ||
+                    (this.state.classId === "paladin" && this.state.level >= 2) ||
+                    (this.state.classId === "ranger" && this.state.level >= 2))
+            ) {
                 const fs = FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle);
                 if (fs) {
                     featuresPayload.push({
                         name: `Fighting Style: ${fs.name}`,
-                        source: cls.name,
-                        type: "Class",
+                        source: "Class Option / Fighting Style",
+                        type: "Invocation",
                         description: fs.description
                     });
                 }
@@ -4667,8 +4730,8 @@ export class CharacterCreatorController {
                 if (ord) {
                     featuresPayload.push({
                         name: `Divine Order: ${ord.name}`,
-                        source: cls.name,
-                        type: "Class",
+                        source: "Class Option / Divine Order",
+                        type: "Invocation",
                         description: ord.description
                     });
                 }
@@ -4678,22 +4741,22 @@ export class CharacterCreatorController {
                 if (ord) {
                     featuresPayload.push({
                         name: `Primal Order: ${ord.name}`,
-                        source: cls.name,
-                        type: "Class",
+                        source: "Class Option / Primal Order",
+                        type: "Invocation",
                         description: ord.description
                     });
                 }
             }
 
             // Metamagic
-            if (this.state.metamagic.length > 0) {
+            if (this.state.metamagic.length > 0 && this.state.classId === "sorcerer" && this.state.level >= 2) {
                 this.state.metamagic.forEach((mId) => {
                     const meta = METAMAGIC_OPTIONS.find((m) => m.id === mId);
                     if (meta) {
                         featuresPayload.push({
                             name: `Metamagic: ${meta.name}`,
-                            source: cls.name,
-                            type: "Class",
+                            source: "Class Option / Metamagic",
+                            type: "Invocation",
                             description: meta.description
                         });
                     }
@@ -4701,14 +4764,14 @@ export class CharacterCreatorController {
             }
 
             // Invocations
-            if (this.state.invocations.length > 0) {
+            if (this.state.invocations.length > 0 && this.state.classId === "warlock") {
                 this.state.invocations.forEach((invId) => {
                     const inv = ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
                     if (inv) {
                         featuresPayload.push({
                             name: `Eldritch Invocation: ${inv.name}`,
-                            source: cls.name,
-                            type: "Class",
+                            source: "Class Option / Invocation",
+                            type: "Invocation",
                             description: inv.description
                         });
                     }
@@ -4716,36 +4779,41 @@ export class CharacterCreatorController {
             }
 
             // Maneuvers
-            if (this.state.maneuvers.length > 0) {
+            if (this.state.maneuvers.length > 0 && this.state.classId === "fighter" && this.state.subclassId === "battle-master" && this.state.level >= 3) {
                 this.state.maneuvers.forEach((mId) => {
                     const man = BATTLE_MASTER_MANEUVERS.find((m) => m.id === mId);
                     if (man) {
                         featuresPayload.push({
                             name: `Maneuver: ${man.name}`,
-                            source: cls.name,
-                            type: "Subclass",
+                            source: "Class Option / Maneuver",
+                            type: "Invocation",
                             description: man.description
                         });
                     }
                 });
             }
 
-            // ASI Feats
-            const asiLevels = this.getAsiLevels();
-            for (const lvl of asiLevels) {
-                const choice = this.state.asiChoices[lvl];
-                if (choice?.type === "feat" && choice.featId) {
-                    const featDef = this.generalFeats.find((f) => f.id === choice.featId);
-                    if (featDef) {
-                        featuresPayload.push({
-                            name: featDef.name,
-                            source: featDef.isEpicBoon ? "Epic Boon" : "General Feat",
-                            type: "Feat",
-                            description: featDef.benefits.join(" ")
-                        });
-                    }
-                }
-            }
+            // Assemble featuresPayload in D&D Beyond order:
+            // 1. Feats, 2. Class Options / Invocations, 3. Class Features, 4. Subclass Features, 5. Species Traits
+            const extraChoiceFeatures = featuresPayload.map((f) => ({
+                ...f,
+                description: wrapHtmlParagraph(f.description || "")
+            }));
+            const invocationExtras = extraChoiceFeatures.filter((f) => f.type === "Invocation");
+            const classChoiceExtras = extraChoiceFeatures.filter((f) => f.type === "Class");
+            const subclassChoiceExtras = extraChoiceFeatures.filter((f) => f.type === "Subclass");
+
+            featuresPayload.length = 0;
+            featuresPayload.push(
+                ...featsList,
+                ...classOptionsList,
+                ...invocationExtras,
+                ...classFeaturesList,
+                ...classChoiceExtras,
+                ...subclassFeaturesList,
+                ...subclassChoiceExtras,
+                ...speciesTraitsList
+            );
 
             // Class Resources
             const resourcesPayload: any[] = [];
@@ -4791,7 +4859,135 @@ export class CharacterCreatorController {
             const invSkill = skillsPayload.find((s) => s.name === "Investigation");
             const insSkill = skillsPayload.find((s) => s.name === "Insight");
 
+            const spellAttackMod = this.getSpellAttackModifier() ?? 0;
+            const spellSaveDcVal = this.getSpellSaveDc() ?? 10;
+            const cantripActions: any[] = spellsPayload
+                .filter((sp) => sp.level === 0)
+                .map((sp) => {
+                    const descLower = (sp.description || "").toLowerCase();
+                    let hitOrDc = `${spellAttackMod >= 0 ? `+${spellAttackMod}` : spellAttackMod} to hit`;
+                    if (descLower.includes("saving throw") || descLower.includes("save")) {
+                        hitOrDc = `DC ${spellSaveDcVal} Save`;
+                    }
+                    let damageOrEffect = "Spell Effect";
+                    if (sp.name.toLowerCase() === "eldritch blast" && this.state.invocations.includes("agonizing-blast")) {
+                        const chaMod = this.getAbilityModifier("cha");
+                        damageOrEffect = `1d10 ${chaMod >= 0 ? `+ ${chaMod}` : `- ${Math.abs(chaMod)}`} Force`;
+                    }
+                    return {
+                        name: sp.name,
+                        type: (sp.castingTime || "").toLowerCase().includes("bonus")
+                            ? "Bonus Action"
+                            : (sp.castingTime || "").toLowerCase().includes("reaction")
+                              ? "Reaction"
+                              : "Action",
+                        rangeOrReach: sp.range || "Self",
+                        hitOrDc,
+                        damageOrEffect,
+                        notes: `${sp.school} cantrip. Click to view full details.`,
+                        spellName: sp.name
+                    };
+                });
+
+            const inferFeatureActionType = (name: string, desc: string): "Action" | "Bonus Action" | "Reaction" | null => {
+                const n = (name || "").toLowerCase();
+                const d = (desc || "").toLowerCase();
+                if (
+                    n.includes("ability score improvement") ||
+                    n === "spellcasting" ||
+                    n === "pact magic" ||
+                    n.includes("level spells") ||
+                    n.startsWith("subclass:") ||
+                    n === "extra attack" ||
+                    n === "two extra attacks" ||
+                    n === "three extra attacks" ||
+                    n.includes("swim form") ||
+                    n.includes("fly form") ||
+                    n === "keen senses" ||
+                    n === "fey ancestry" ||
+                    n === "darkvision" ||
+                    n === "trance" ||
+                    n === "unarmored defense" ||
+                    n === "unarmored movement" ||
+                    n === "fast movement" ||
+                    n === "expertise" ||
+                    n === "jack of all trades" ||
+                    n === "evasion" ||
+                    n === "danger sense" ||
+                    n.startsWith("fighting style:") ||
+                    n.startsWith("primal order") ||
+                    n.startsWith("divine order") ||
+                    n === "elemental fury" ||
+                    n === "blessed strikes" ||
+                    n === "alert"
+                ) {
+                    return null;
+                }
+                if (/\bas a bonus action\b|\btake a bonus action\b|\bbonus action to\b|\bbonus action when\b/i.test(d)) {
+                    return "Bonus Action";
+                }
+                if (/\bas a reaction\b|\btake a reaction\b|\breaction when\b|\buse your reaction\b/i.test(d)) {
+                    return "Reaction";
+                }
+                if (
+                    /\bas a magic action\b|\btake a magic action\b|\bas an action\b|\btake an action\b|\bonce on each of your turns\b|\bonce per turn\b|\bwhen you hit\b|\bexpend a spell slot\b|\bexpend one use\b|\bexpend a use\b/i.test(d) ||
+                    n.includes("wild shape") ||
+                    n.includes("wild companion") ||
+                    n.includes("wild resurgence") ||
+                    n.includes("starry form") ||
+                    n.includes("star map") ||
+                    n.includes("channel divinity") ||
+                    n.includes("bardic inspiration") ||
+                    n.includes("second wind") ||
+                    n.includes("action surge") ||
+                    n.includes("flurry of blows") ||
+                    n.includes("patient defense") ||
+                    n.includes("step of the wind") ||
+                    n.includes("stunning strike") ||
+                    n.includes("lay on hands") ||
+                    n.includes("divine smite") ||
+                    n.includes("sneak attack") ||
+                    n.includes("cunning action") ||
+                    n.includes("cunning strike") ||
+                    n.includes("uncanny dodge") ||
+                    n.includes("innate sorcery") ||
+                    n.includes("font of magic") ||
+                    n.includes("arcane recovery")
+                ) {
+                    if (d.includes("bonus action")) return "Bonus Action";
+                    if (d.includes("reaction")) return "Reaction";
+                    return "Action";
+                }
+                return null;
+            };
+
+            const featureActions: any[] = [];
+            const seenActionNames = new Set<string>();
+            for (const feat of featuresPayload) {
+                const actType = inferFeatureActionType(feat.name, feat.description);
+                if (!actType) continue;
+                const key = feat.name.toLowerCase();
+                if (seenActionNames.has(key)) continue;
+                seenActionNames.add(key);
+                const plainDesc = stripHtmlTags(feat.description || "");
+                const rangeMatch = plainDesc.match(/within\s+(\d+\s*(?:feet|ft\.?))/i);
+                const rangeOrReach = rangeMatch ? rangeMatch[1].replace(/feet/i, "ft.") : "Special";
+                const forcesSave = /\bmust (?:succeed on|make) a [a-z]+ saving throw\b|\bfailed save\b/i.test(plainDesc);
+                const hitOrDc = forcesSave && (this.getSpellSaveDc() !== null)
+                    ? `DC ${spellSaveDcVal}`
+                    : "Special";
+                featureActions.push({
+                    name: feat.name,
+                    type: actType,
+                    rangeOrReach,
+                    hitOrDc,
+                    damageOrEffect: plainDesc || "Class Feature",
+                    notes: wrapHtmlParagraph(feat.description || "")
+                });
+            }
+
             const actionsPayload: any[] = [
+                ...cantripActions,
                 ...weaponsPayload.map((w) => ({
                     name: w.name,
                     type: "Action",
@@ -4807,7 +5003,8 @@ export class CharacterCreatorController {
                     hitOrDc: `+${this.getAbilityModifier("str") + pb} to hit`,
                     damageOrEffect: `${Math.max(1, 1 + this.getAbilityModifier("str"))} Bludgeoning`,
                     notes: `Damage, Grapple, or Shove (DC ${8 + this.getAbilityModifier("str") + pb})`
-                }
+                },
+                ...featureActions
             ];
 
             const spellSlotsPayload: Record<string, any> = {};

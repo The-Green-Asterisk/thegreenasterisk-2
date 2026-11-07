@@ -265,8 +265,14 @@ describe('CharacterController', () => {
                 abilities: [{ name: 'Wisdom', abbr: 'WIS', score: 18, baseScore: 17, bonus: 1, modifier: 4, save: 7, proficientSave: true }],
                 skills: [],
                 inventory: [],
-                spells: [],
-                features: [],
+                spells: [
+                    { name: 'Produce Flame', level: 0, school: 'Conjuration', source: 'Class', prepared: true, castingTime: 'Bonus Action', range: 'Self (60 feet)', duration: '10 minutes', components: 'V, S', concentration: false, ritual: false, description: 'Make a ranged spell attack.' }
+                ],
+                features: [
+                    { name: 'Wild Shape', source: 'Druid', type: 'Class', description: 'As a Bonus Action, you shape-shift into a Beast.' },
+                    { name: 'Starry Form', source: 'Circle of the Stars', type: 'Subclass Feature', description: 'As a Bonus Action, assume a Starry Form.' },
+                    { name: '5th-Level Spells', source: 'Druid', type: 'Class', description: 'You can now prepare 5th-level Druid spells.' }
+                ],
                 resources: [{ name: 'Wild Shape', total: 2, currentUsed: 0, resetOn: 'short' }],
                 decisions: []
             };
@@ -290,6 +296,12 @@ describe('CharacterController', () => {
             expect(body.character.spellSlots.level2).toEqual({ level: 2, total: 3, label: '2nd Level' });
             expect(body.character.spellSlots.level3).toEqual({ level: 3, total: 3, label: '3rd Level' });
             expect(body.character.classResources.find((r: any) => r.name === 'Wild Shape')?.total).toBe(3);
+            expect(body.character.features.some((f: any) => f.name === '5th-Level Spells')).toBe(false);
+            expect(body.character.features.find((f: any) => f.name === 'Starry Form')?.type).toBe('Subclass');
+            expect(body.character.features.find((f: any) => f.name === 'Starry Form')?.description).toContain('<p>');
+            expect(body.character.actions.some((a: any) => a.name === 'Produce Flame' && a.spellName === 'Produce Flame')).toBe(true);
+            expect(body.character.actions.some((a: any) => a.name === 'Wild Shape' && a.type === 'Bonus Action')).toBe(true);
+            expect(body.character.actions.some((a: any) => a.name === 'Starry Form' && a.type === 'Bonus Action')).toBe(true);
             expect(mockUpdate).toHaveBeenCalledWith(5, expect.objectContaining({
                 payload: expect.stringContaining('"level3":{"level":3,"total":3,"label":"3rd Level"}')
             }));

@@ -403,6 +403,28 @@ export default class CharacterController extends BaseController {
                 }
             }
 
+            // Auto-heal features and actions on site-created characters to match D&D Beyond's structure
+            if (character && record.source === "site") {
+                const normFeatures = this.normalizeCharacterFeatures(character.features || [], character.creatorState || parsed?.creatorState);
+                if (normFeatures.changed) {
+                    character.features = normFeatures.features;
+                    autoHealedPayload = true;
+                }
+                const normActions = this.buildCompleteCharacterActions(
+                    character.actions,
+                    character.weapons || [],
+                    character.spells || [],
+                    character.features || [],
+                    character.abilities || [],
+                    character.vitals,
+                    record.source
+                );
+                if (normActions.changed) {
+                    character.actions = normActions.actions;
+                    autoHealedPayload = true;
+                }
+            }
+
             if (autoHealedPayload) {
                 record.payload = JSON.stringify(character);
                 void repo.update(record.id, { payload: record.payload }).catch(err => console.warn("Could not auto-heal character payload:", err));
@@ -968,6 +990,355 @@ export default class CharacterController extends BaseController {
         return result;
     }
 
+    private static wrapHtmlParagraph(text: string): string {
+        const trimmed = (text || "").trim();
+        if (!trimmed) return "";
+        if (/^<\s*(?:p|div|ul|ol|table|h\d)[\s>]/i.test(trimmed)) return trimmed;
+        return `<p>${trimmed}</p>`;
+    }
+
+    private static stripHtmlTags(text: string): string {
+        return (text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    private static normalizeCharacterFeatures(rawFeatures: any[], creatorState?: any): { features: any[]; changed: boolean } {
+        if (!Array.isArray(rawFeatures) || rawFeatures.length === 0) {
+            return { features: [], changed: false };
+        }
+
+        let changed = false;
+        const hasSpecificSubclassFeatures = rawFeatures.some((f) => {
+            const t = String(f?.type || "").toLowerCase();
+            const n = String(f?.name || "").toLowerCase();
+            return (t.includes("subclass") && !n.startsWith("subclass:")) || (!n.startsWith("subclass:") && t === "subclass");
+        });
+
+        const featsList: any[] = [];
+        const invocationList: any[] = [];
+        const classList: any[] = [];
+        const subclassList: any[] = [];
+        const speciesList: any[] = [];
+
+        const asiLevels = [4, 8, 12, 16, 19];
+        let asiCounter = 0;
+
+        const primaryClassId = String(creatorState?.classId || "").toLowerCase();
+        for (const f of rawFeatures) {
+            if (!f || !f.name) continue;
+            const nameStr = String(f.name).trim();
+            const lowerName = nameStr.toLowerCase();
+            const rawType = String(f.type || "Class").trim();
+            const lowerType = rawType.toLowerCase();
+            const rawSource = String(f.source || "Class").trim();
+
+            // Omit redundant spell slot progression rows ("3rd-Level Spells", "5th-Level Spells", "6th-Level Spells", etc.)
+            if (/\b\d+(?:st|nd|rd|th)-level spells\b/i.test(lowerName)) {
+                changed = true;
+                continue;
+            }
+
+            // Omit bogus default Fighting Style on non-Fighter/Paladin/Ranger classes
+            if (
+                lowerName.startsWith("fighting style:") &&
+                primaryClassId &&
+                !["fighter", "paladin", "ranger"].includes(primaryClassId)
+            ) {
+                changed = true;
+                continue;
+            }
+
+            // Omit generic "Subclass: ..." summary card when individual subclass features exist
+            if (lowerName.startsWith("subclass:") && hasSpecificSubclassFeatures) {
+                changed = true;
+                continue;
+            }
+
+            // Convert generic Class "Ability Score Improvement" entries into D&D Beyond-style Feat entries ("4: Ability Score Improvement", etc.) if not already a feat
+            if (lowerName === "ability score improvement" && lowerType === "class") {
+                const lvl = asiLevels[asiCounter] || 4;
+                asiCounter++;
+                const asiChoice = creatorState?.asiChoices?.[lvl];
+                if (asiChoice?.type === "feat" && asiChoice?.featId) {
+                    changed = true;
+                    continue;
+                }
+                changed = true;
+                featsList.push({
+                    ...f,
+                    name: `${lvl}: Ability Score Improvement`,
+                    source: "Feat",
+                    type: "Feat",
+                    description: this.wrapHtmlParagraph(f.description || "Increase one ability score of your choice by 2, or increase two ability scores of your choice by 1, to a maximum of 20.")
+                });
+                continue;
+            }
+
+            let normalizedType: "Feat" | "Invocation" | "Class" | "Subclass" | "Species" = "Class";
+            let normalizedSource = rawSource;
+
+            if (lowerType === "feat" || rawSource === "Background" || rawSource === "General Feat" || rawSource === "Epic Boon") {
+                normalizedType = "Feat";
+                normalizedSource = "Feat";
+            } else if (
+                lowerType === "invocation" ||
+                rawSource.startsWith("Class Option") ||
+                lowerName.startsWith("primal order:") ||
+                lowerName.startsWith("divine order:") ||
+                lowerName.startsWith("fighting style:") ||
+                lowerName.startsWith("eldritch invocation:") ||
+                lowerName.startsWith("metamagic:") ||
+                lowerName.startsWith("maneuver:")
+            ) {
+                normalizedType = "Invocation";
+                if (!rawSource.startsWith("Class Option")) {
+                    normalizedSource = "Class Option / Invocation";
+                }
+            } else if (lowerType.includes("subclass")) {
+                normalizedType = "Subclass";
+            } else if (lowerType.includes("species") || lowerType.includes("race")) {
+                normalizedType = "Species";
+            } else {
+                normalizedType = "Class";
+            }
+
+            const wrappedDesc = this.wrapHtmlParagraph(f.description || "");
+            if (normalizedType !== rawType || normalizedSource !== rawSource || wrappedDesc !== (f.description || "")) {
+                changed = true;
+            }
+
+            const item = {
+                ...f,
+                name: nameStr,
+                source: normalizedSource,
+                type: normalizedType,
+                description: wrappedDesc
+            };
+
+            if (normalizedType === "Feat") featsList.push(item);
+            else if (normalizedType === "Invocation") invocationList.push(item);
+            else if (normalizedType === "Class") classList.push(item);
+            else if (normalizedType === "Subclass") subclassList.push(item);
+            else speciesList.push(item);
+        }
+
+        const ordered = [
+            ...featsList,
+            ...invocationList,
+            ...classList,
+            ...subclassList,
+            ...speciesList
+        ];
+
+        if (ordered.length !== rawFeatures.length) {
+            changed = true;
+        } else {
+            for (let i = 0; i < ordered.length; i++) {
+                if (ordered[i].name !== rawFeatures[i]?.name || ordered[i].type !== rawFeatures[i]?.type || ordered[i].source !== rawFeatures[i]?.source) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        return { features: ordered, changed };
+    }
+
+    private static inferFeatureActionType(name: string, desc: string): "Action" | "Bonus Action" | "Reaction" | null {
+        const n = (name || "").toLowerCase().trim();
+        const d = this.stripHtmlTags(desc || "").toLowerCase();
+        if (
+            n.includes("ability score improvement") ||
+            n === "spellcasting" ||
+            n === "pact magic" ||
+            n === "druidic" ||
+            n.includes("level spells") ||
+            n.startsWith("subclass:") ||
+            n === "extra attack" ||
+            n === "two extra attacks" ||
+            n === "three extra attacks" ||
+            n.includes("swim form") ||
+            n.includes("fly form") ||
+            n === "keen senses" ||
+            n === "fey ancestry" ||
+            n === "darkvision" ||
+            n === "trance" ||
+            n === "elven lineage" ||
+            n === "unarmored defense" ||
+            n === "unarmored movement" ||
+            n === "fast movement" ||
+            n === "expertise" ||
+            n === "jack of all trades" ||
+            n === "evasion" ||
+            n === "danger sense" ||
+            n.startsWith("fighting style:") ||
+            n === "primal order" ||
+            n.startsWith("primal order:") ||
+            n === "divine order" ||
+            n.startsWith("divine order:") ||
+            n === "elemental fury" ||
+            n === "blessed strikes" ||
+            n === "alert"
+        ) {
+            return null;
+        }
+        if (/\bas a bonus action\b|\btake a bonus action\b|\bbonus action to\b|\bbonus action when\b/i.test(d)) {
+            return "Bonus Action";
+        }
+        if (/\bas a reaction\b|\btake a reaction\b|\breaction when\b|\buse your reaction\b/i.test(d)) {
+            return "Reaction";
+        }
+        if (
+            /\bas a magic action\b|\btake a magic action\b|\bas an action\b|\btake an action\b|\bonce on each of your turns\b|\bonce per turn\b|\bwhen you hit\b|\bexpend a spell slot\b|\bexpend one use\b|\bexpend a use\b|\byou can cast\b/i.test(d) ||
+            n.includes("wild shape") ||
+            n.includes("wild companion") ||
+            n.includes("wild resurgence") ||
+            n.includes("starry form") ||
+            n.includes("star map") ||
+            n.includes("cosmic omen") ||
+            n.includes("twinkling constellations") ||
+            n.includes("channel divinity") ||
+            n.includes("bardic inspiration") ||
+            n.includes("second wind") ||
+            n.includes("action surge") ||
+            n.includes("flurry of blows") ||
+            n.includes("patient defense") ||
+            n.includes("step of the wind") ||
+            n.includes("stunning strike") ||
+            n.includes("lay on hands") ||
+            n.includes("divine smite") ||
+            n.includes("sneak attack") ||
+            n.includes("cunning action") ||
+            n.includes("cunning strike") ||
+            n.includes("uncanny dodge") ||
+            n.includes("innate sorcery") ||
+            n.includes("font of magic") ||
+            n.includes("arcane recovery")
+        ) {
+            if (d.includes("bonus action")) return "Bonus Action";
+            if (d.includes("reaction")) return "Reaction";
+            return "Action";
+        }
+        return null;
+    }
+
+    private static buildCompleteCharacterActions(
+        existingActions: any[] | undefined,
+        weapons: any[],
+        spells: any[],
+        features: any[],
+        abilities: any[],
+        vitals: any,
+        source?: string
+    ): { actions: any[]; changed: boolean } {
+        const current = Array.isArray(existingActions) ? existingActions : [];
+        // If D&D Beyond character already has full actions (cantrips or class actions), preserve as-is
+        const cantripSpells = Array.isArray(spells) ? spells.filter((sp) => Number(sp?.level) === 0) : [];
+        const hasCantripActions = current.some((a) => Boolean(a?.spellName));
+        const hasFeatureActions = current.length > (weapons.length + 1 + cantripSpells.length);
+
+        if (source === "dndbeyond" && current.length > 0) {
+            return { actions: current, changed: false };
+        }
+        if (current.length > 0 && (cantripSpells.length === 0 || hasCantripActions) && hasFeatureActions) {
+            return { actions: current, changed: false };
+        }
+
+        const spellAttackBonus = Number(vitals?.spellAttackBonus) || 0;
+        const spellSaveDc = Number(vitals?.spellSaveDc) || 10;
+        const strMod = Number(abilities?.find((a: any) => a?.abbr === "STR")?.modifier) || 0;
+        const pb = Number(vitals?.proficiencyBonus) || 2;
+        const chaMod = Number(abilities?.find((a: any) => a?.abbr === "CHA")?.modifier) || 0;
+        const hasAgonizingBlast = Array.isArray(features) && features.some((f) => String(f?.name || "").toLowerCase().includes("agonizing blast"));
+
+        const cantripActions = cantripSpells.map((sp: any) => {
+            const descLower = (sp.description || "").toLowerCase();
+            let hitOrDc = `${spellAttackBonus >= 0 ? `+${spellAttackBonus}` : spellAttackBonus} to hit`;
+            if (descLower.includes("saving throw") || descLower.includes("save")) {
+                hitOrDc = `DC ${spellSaveDc} Save`;
+            }
+            let damageOrEffect = "Spell Effect";
+            if (String(sp.name || "").toLowerCase() === "eldritch blast" && hasAgonizingBlast) {
+                damageOrEffect = `1d10 ${chaMod >= 0 ? `+ ${chaMod}` : `- ${Math.abs(chaMod)}`} Force`;
+            }
+            const castLower = String(sp.castingTime || "").toLowerCase();
+            return {
+                name: sp.name,
+                type: castLower.includes("bonus")
+                    ? "Bonus Action"
+                    : castLower.includes("reaction")
+                      ? "Reaction"
+                      : "Action",
+                rangeOrReach: sp.range || "Self",
+                hitOrDc,
+                damageOrEffect,
+                notes: `${sp.school || "Evocation"} cantrip. Click to view full details.`,
+                spellName: sp.name
+            };
+        });
+
+        const weaponActions = (Array.isArray(weapons) ? weapons : []).map((w: any) => ({
+            name: w.name,
+            type: "Action" as const,
+            rangeOrReach: w.range || "Reach 5 ft.",
+            hitOrDc: `${w.attackBonus || "+0"} to hit`,
+            damageOrEffect: w.damage || "1d4",
+            notes: w.mastery?.unlocked && w.mastery?.name
+                ? `Mastery: ${w.mastery.name}`
+                : (Array.isArray(w.properties) && w.properties.length > 0 ? w.properties.join(", ") : "Weapon")
+        }));
+
+        const unarmedAction = {
+            name: "Unarmed Strike",
+            type: "Action" as const,
+            rangeOrReach: "Reach 5 ft.",
+            hitOrDc: `+${strMod + pb} to hit`,
+            damageOrEffect: `${Math.max(1, 1 + strMod)} Bludgeoning`,
+            notes: `Damage, Grapple, or Shove (DC ${8 + strMod + pb})`
+        };
+
+        const featureActions: any[] = [];
+        const seenNames = new Set<string>([
+            ...cantripActions.map((a) => String(a.name).toLowerCase()),
+            ...weaponActions.map((a) => String(a.name).toLowerCase()),
+            "unarmed strike"
+        ]);
+
+        for (const feat of Array.isArray(features) ? features : []) {
+            if (!feat?.name) continue;
+            const actType = this.inferFeatureActionType(feat.name, feat.description || "");
+            if (!actType) continue;
+            const key = String(feat.name).toLowerCase();
+            if (seenNames.has(key)) continue;
+            seenNames.add(key);
+
+            const plainDesc = this.stripHtmlTags(feat.description || "");
+            const rangeMatch = plainDesc.match(/within\s+(\d+\s*(?:feet|ft\.?))/i);
+            const rangeOrReach = rangeMatch ? rangeMatch[1].replace(/feet/i, "ft.") : "Special";
+            const forcesSave = /\bmust (?:succeed on|make) a [a-z]+ saving throw\b|\bfailed save\b/i.test(plainDesc);
+            const hitOrDc = forcesSave && spellSaveDc > 0
+                ? `DC ${spellSaveDc}`
+                : "Special";
+
+            featureActions.push({
+                name: feat.name,
+                type: actType,
+                rangeOrReach,
+                hitOrDc,
+                damageOrEffect: plainDesc || "Class Feature",
+                notes: this.wrapHtmlParagraph(feat.description || "")
+            });
+        }
+
+        const built = [
+            ...cantripActions,
+            ...weaponActions,
+            unarmedAction,
+            ...featureActions
+        ];
+
+        return { actions: built, changed: true };
+    }
+
     private static hydrateFromRelationalEntities(record: SavedCharacter, fallbackPayload: any): any {
         const vitals = record.vitals ? {
             currentHp: record.vitals.currentHp,
@@ -1096,7 +1467,7 @@ export default class CharacterController extends BaseController {
             }))
             : (fallbackPayload?.spells || []);
 
-        const features = record.features && record.features.length > 0
+        const rawFeatures = record.features && record.features.length > 0
             ? record.features.map(f => ({
                 name: f.name,
                 source: f.source,
@@ -1106,6 +1477,10 @@ export default class CharacterController extends BaseController {
                 limitedUse: f.limitedUse
             }))
             : (fallbackPayload?.features || []);
+
+        const features = record.source === "site"
+            ? this.normalizeCharacterFeatures(rawFeatures, fallbackPayload?.creatorState).features
+            : rawFeatures;
 
         const classResources = record.resources && record.resources.length > 0
             ? record.resources.map(r => ({
@@ -1125,26 +1500,15 @@ export default class CharacterController extends BaseController {
             }, {} as Record<string, string>)
             : (fallbackPayload?.featureChoices || {});
 
-        const actions = Array.isArray(fallbackPayload?.actions) && fallbackPayload.actions.length > 0
-            ? fallbackPayload.actions
-            : [
-                ...weapons.map((w: any) => ({
-                    name: w.name,
-                    type: "Action" as const,
-                    rangeOrReach: w.range || "5 ft.",
-                    hitOrDc: `${w.attackBonus || "+0"} to hit`,
-                    damageOrEffect: w.damage || "1d4",
-                    notes: w.mastery?.name ? `Mastery: ${w.mastery.name}` : (Array.isArray(w.properties) ? w.properties.join(", ") : "")
-                })),
-                {
-                    name: "Unarmed Strike",
-                    type: "Action" as const,
-                    rangeOrReach: "Reach 5 ft.",
-                    hitOrDc: `+${(abilities.find((a: any) => a.abbr === "STR")?.modifier ?? 0) + (vitals?.proficiencyBonus ?? 2)} to hit`,
-                    damageOrEffect: `${Math.max(1, 1 + (abilities.find((a: any) => a.abbr === "STR")?.modifier ?? 0))} Bludgeoning`,
-                    notes: "Damage, Grapple, or Shove (DC " + (8 + (abilities.find((a: any) => a.abbr === "STR")?.modifier ?? 0) + (vitals?.proficiencyBonus ?? 2)) + ")"
-                }
-            ];
+        const actions = this.buildCompleteCharacterActions(
+            fallbackPayload?.actions,
+            weapons,
+            spells,
+            features,
+            abilities,
+            vitals,
+            record.source
+        ).actions;
 
         const proficiencies = fallbackPayload?.proficiencies && typeof fallbackPayload.proficiencies === "object"
             ? {
