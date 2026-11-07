@@ -14,10 +14,8 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
     const loaderToggleBtn = sheet.querySelector<HTMLButtonElement>("#character-loader-toggle-btn");
     const idInput = sheet.querySelector<HTMLInputElement>("#dndbeyond-id-input");
     const loadBtn = sheet.querySelector<HTMLButtonElement>("#load-character-btn");
-    const createBtn = sheet.querySelector<HTMLButtonElement>("#create-character-btn");
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
     const refreshDndBeyondBtn = sheet.querySelector<HTMLButtonElement>("#refresh-dndbeyond-btn");
-    const editFieldsBtn = sheet.querySelector<HTMLButtonElement>("#edit-character-fields-btn");
     const exportPdfBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-sheet-btn");
     const prefer2024RulesToggle = sheet.querySelector<HTMLInputElement>("#prefer-2024-rules-toggle");
 
@@ -74,31 +72,12 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
     loadForm?.addEventListener("submit", handleLoadSubmit);
     loadBtn?.addEventListener("click", handleLoadSubmit);
 
-    createBtn?.addEventListener("click", () => {
-        ctx.beginNewSiteCharacter();
-    });
-
     saveBtn?.addEventListener("click", () => {
         void ctx.saveActiveCharacter();
     });
 
     refreshDndBeyondBtn?.addEventListener("click", () => {
         void ctx.refreshFromDndBeyondAndOverride();
-    });
-
-    editFieldsBtn?.addEventListener("click", () => {
-        const nextEditMode = !ctx.getIsEditMode();
-        ctx.setIsEditMode(nextEditMode);
-        ctx.renderActiveCharacterView();
-        if (!nextEditMode) {
-            const activeCharacter = ctx.getCharacter();
-            if (activeCharacter) {
-                ctx.setCurrentHp(activeCharacter.vitals.currentHp);
-                ctx.setMaxHp(activeCharacter.vitals.maxHp);
-                ctx.setTempHp(Number(activeCharacter.vitals.tempHp) || 0);
-                ctx.showStatus(`Applied edits for "${activeCharacter.name}". Save to persist.`);
-            }
-        }
     });
 
     const exportPdfModal = sheet.querySelector<HTMLElement>("#export-pdf-modal-container");
@@ -252,12 +231,6 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         const canSave = hasCharacter && el.isAuth;
         const canRefreshFromDndBeyond = hasCharacter && activeCharacter?.source === "dndbeyond";
 
-        if (editFieldsBtn) {
-            editFieldsBtn.classList.toggle("hidden", !hasCharacter);
-            editFieldsBtn.innerHTML = isEditMode
-                ? '<i class="fa-solid fa-check"></i> Done Editing'
-                : '<i class="fa-solid fa-pen"></i> Edit Fields';
-        }
         const editInWizardBtn = sheet.querySelector<HTMLAnchorElement>("#edit-in-wizard-btn");
         if (editInWizardBtn) {
             editInWizardBtn.classList.toggle("hidden", !hasCharacter);
@@ -268,13 +241,9 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
             exportPdfBtn.classList.toggle("hidden", !hasCharacter);
         }
         if (saveBtn) {
-            saveBtn.classList.toggle("hidden", !hasCharacter);
+            saveBtn.classList.toggle("hidden", !canSave);
             saveBtn.disabled = !canSave;
             saveBtn.title = canSave ? "Save this character to your account" : "Log in to save characters";
-        }
-        if (createBtn) {
-            createBtn.classList.toggle("hidden", !el.isAuth);
-            createBtn.disabled = !el.isAuth;
         }
         if (refreshDndBeyondBtn) {
             refreshDndBeyondBtn.classList.toggle("hidden", !canRefreshFromDndBeyond);

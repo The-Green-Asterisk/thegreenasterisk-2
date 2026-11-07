@@ -739,22 +739,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     }
 
     function beginNewSiteCharacter() {
-        if (!el.isAuth) {
-            showStatus("You must be logged in to create a new character.", true);
-            return;
-        }
-        activeRawDndBeyondPayload = undefined;
-        currentEquipOverrides = [];
-        activeCharacter = createEmptySiteCharacter();
-        activeCharacterId = "";
-        currentHp = activeCharacter.vitals.currentHp;
-        maxHp = activeCharacter.vitals.maxHp;
-        tempHp = Number(activeCharacter.vitals.tempHp) || 0;
-        isEditMode = true;
-        if (idInput) idInput.value = "";
-        hideDndBeyondNote();
-        renderActiveCharacterView();
-        showStatus("Started a new site character. Edit fields and click Save Character.");
+        window.location.href = "/character-sheet/creator";
     }
 
     function syncSheetVitalsAndStatsToDom() {

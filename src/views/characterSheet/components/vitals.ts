@@ -143,7 +143,7 @@ export function renderVitalsSection(data: CharacterData): string {
                     <div id="hp-normal-mode" class="hp-mode-container ${isDying ? 'hidden' : ''}">
                         <div class="vital-header">
                             <span class="vital-title"><i class="fa-solid fa-heart-pulse"></i> HIT POINTS</span>
-                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
+                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.source === "dndbeyond" && data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
                         </div>
                         <div class="hp-gauge">
                             <div class="hp-bar-fill" id="hp-bar-fill" style="width: ${Math.round((data.vitals.currentHp / data.vitals.maxHp) * 100)}%;"></div>
