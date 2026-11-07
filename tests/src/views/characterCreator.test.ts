@@ -376,4 +376,72 @@ describe("CharacterCreatorController", () => {
         // Attack Bonus = PB(2) + Int Mod(4) = +6
         expect(ctrl.getSpellAttackModifier()).toBe(6);
     });
+
+    it("calculates maximum unlocked spell level and filters available spells by starting level", () => {
+        // Full caster: Wizard
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxSpellLevel()).toBe(1);
+
+        ctrl.state.level = 3;
+        expect(ctrl.getMaxSpellLevel()).toBe(2);
+
+        ctrl.state.level = 5;
+        expect(ctrl.getMaxSpellLevel()).toBe(3);
+
+        ctrl.state.level = 9;
+        expect(ctrl.getMaxSpellLevel()).toBe(5);
+
+        ctrl.state.level = 17;
+        expect(ctrl.getMaxSpellLevel()).toBe(9);
+
+        // Half caster: Paladin
+        ctrl.state.classId = "paladin";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxSpellLevel()).toBe(1);
+
+        ctrl.state.level = 5;
+        expect(ctrl.getMaxSpellLevel()).toBe(2);
+
+        ctrl.state.level = 9;
+        expect(ctrl.getMaxSpellLevel()).toBe(3);
+
+        // Non caster: Fighter
+        ctrl.state.classId = "fighter";
+        ctrl.state.subclassId = "champion";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxSpellLevel()).toBe(0);
+
+        // Third caster: Eldritch Knight
+        ctrl.state.subclassId = "eldritch-knight";
+        ctrl.state.level = 3;
+        expect(ctrl.getMaxSpellLevel()).toBe(1);
+
+        ctrl.state.level = 7;
+        expect(ctrl.getMaxSpellLevel()).toBe(2);
+
+        // Verify available spell list filtering at Level 5 Wizard:
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 5;
+        const availableLvl5 = ctrl.getAvailableSpells();
+        const availableNames = availableLvl5.leveledSpells.map((s) => s.name);
+
+        // Can access Level 1, 2, and 3 spells:
+        expect(availableNames).toContain("Magic Missile"); // Level 1
+        expect(availableNames).toContain("Misty Step");    // Level 2
+        expect(availableNames).toContain("Fireball");      // Level 3
+
+        // Cannot access Level 4+ spells:
+        expect(availableNames).not.toContain("Dimension Door"); // Level 4
+        expect(availableNames).not.toContain("Chain Lightning"); // Level 6
+
+        // If character selects a Level 3 spell (Fireball) and level drops to 1:
+        ctrl.state.selectedSpellsLevel1 = ["Magic Missile", "Fireball"];
+        ctrl.state.level = 1;
+        ctrl.sanitizeSpellSelections();
+
+        // Fireball must be pruned because Level 1 Wizard only has 1st-level spell slots
+        expect(ctrl.state.selectedSpellsLevel1).toContain("Magic Missile");
+        expect(ctrl.state.selectedSpellsLevel1).not.toContain("Fireball");
+    });
 });

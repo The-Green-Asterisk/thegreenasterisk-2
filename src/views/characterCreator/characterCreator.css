@@ -1252,4 +1252,61 @@ el-character-creator,
     cursor: not-allowed;
 }
 
+/* Spell Level Filters & Search */
+.spells-filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.spell-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.spell-search-box i {
+    position: absolute;
+    left: 0.85rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.spell-search-box .creator-input {
+    padding-left: 2.2rem;
+    width: 100%;
+}
+
+.spell-level-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.spell-tab-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.spell-tab-btn:hover {
+    border-color: var(--ui-accent);
+    color: var(--text);
+}
+
+.spell-tab-btn.active {
+    background: var(--ui-accent);
+    color: #ffffff;
+    border-color: var(--ui-accent);
+}
+
+
 

@@ -107,6 +107,9 @@ export class CharacterCreatorController {
         selectedSpellsLevel1: []
     };
 
+    public activeSpellLevelFilter: number | "all" = "all";
+    public spellSearchQuery: string = "";
+
     public init(query?: any) {
         this.bindEvents();
         this.renderStep(1);
@@ -542,14 +545,35 @@ export class CharacterCreatorController {
         return list;
     }
 
-    public getAvailableSpells(): { cantrips: RuleSpellDefinition[]; spellsLvl1: RuleSpellDefinition[] } {
+    public getMaxSpellLevel(): number {
+        const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+        if (!cls?.spellcasting) {
+            if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
+                if (this.state.level >= 19) return 4;
+                if (this.state.level >= 13) return 3;
+                if (this.state.level >= 7) return 2;
+                return 1;
+            }
+            if (this.state.originFeatId.startsWith("magic-initiate")) return 1;
+            return 0;
+        }
+        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
+        const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
+        for (let i = slotsRow.length - 1; i >= 0; i--) {
+            if (slotsRow[i] > 0) return i + 1;
+        }
+        return 1;
+    }
+
+    public getAvailableSpells(): { cantrips: RuleSpellDefinition[]; leveledSpells: RuleSpellDefinition[]; spellsLvl1: RuleSpellDefinition[] } {
         const allowed = this.getAllowedSpellClasses();
         if (allowed.length === 0) {
-            return { cantrips: [], spellsLvl1: [] };
+            return { cantrips: [], leveledSpells: [], spellsLvl1: [] };
         }
+        const maxLevel = this.getMaxSpellLevel();
         const cantrips = SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.some((c) => allowed.includes(c)));
-        const spellsLvl1 = SPELLS_2024.filter((sp) => sp.level === 1 && sp.classes.some((c) => allowed.includes(c)));
-        return { cantrips, spellsLvl1 };
+        const leveledSpells = SPELLS_2024.filter((sp) => sp.level >= 1 && sp.level <= maxLevel && sp.classes.some((c) => allowed.includes(c)));
+        return { cantrips, leveledSpells, spellsLvl1: leveledSpells };
     }
 
     public sanitizeSpellSelections() {
@@ -561,10 +585,10 @@ export class CharacterCreatorController {
         }
         const available = this.getAvailableSpells();
         const validCantripNames = new Set(available.cantrips.map((c) => c.name));
-        const validLvl1Names = new Set(available.spellsLvl1.map((s) => s.name));
+        const validLeveledNames = new Set(available.leveledSpells.map((s) => s.name));
 
         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => validCantripNames.has(s));
-        this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => validLvl1Names.has(s));
+        this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => validLeveledNames.has(s));
 
         const maxCantrips = this.getMaxCantrips();
         if (this.state.selectedCantrips.length > maxCantrips) {
@@ -1206,6 +1230,7 @@ export class CharacterCreatorController {
         const cls = CLASSES_2024.find((c) => c.id === this.state.classId) || CLASSES_2024[0];
         const maxCantrips = this.getMaxCantrips();
         const maxPrepared = this.getMaxPreparedSpells();
+        const maxSpellLevel = this.getMaxSpellLevel();
         const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;
 
         if (!hasSpellcasting) {
@@ -1329,7 +1354,7 @@ export class CharacterCreatorController {
 
                 <div class="creator-detail-box" style="margin-top: 1rem;">
                     <div class="box-header-with-badge">
-                        <h4>1st-Level Prepared Spells</h4>
+                        <h4>Prepared Spells ${maxSpellLevel > 1 ? `(Levels 1–${maxSpellLevel})` : "(Level 1)"}</h4>
                         ${maxPrepared > 0 ? `
                             <span class="spell-count-badge ${spellsChosen === maxPrepared ? "maxed" : "info"}">
                                 <i class="fa-solid ${spellsChosen === maxPrepared ? "fa-check" : "fa-book"}"></i>
@@ -1345,24 +1370,56 @@ export class CharacterCreatorController {
                     ${maxPrepared === 0 ? `
                         <p class="creator-empty-notice">
                             <i class="fa-solid fa-circle-info"></i>
-                            ${cls.name} does not prepare 1st-level spells at Level ${this.state.level}.
+                            ${cls.name} does not prepare spells at Level ${this.state.level}.
                         </p>
                     ` : `
+                        <div class="spells-filter-bar">
+                            <div class="spell-search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="spell-search-input" class="creator-input" placeholder="Search spells by name or school..." value="${this.spellSearchQuery}" />
+                            </div>
+                            ${maxSpellLevel > 1 ? `
+                                <div class="spell-level-tabs">
+                                    <button type="button" class="spell-tab-btn ${this.activeSpellLevelFilter === "all" ? "active" : ""}" data-level="all">
+                                        All (${available.leveledSpells.length})
+                                    </button>
+                                    ${Array.from({ length: maxSpellLevel }, (_, i) => i + 1).map((lvl) => {
+                                        const count = available.leveledSpells.filter((s) => s.level === lvl).length;
+                                        if (count === 0) return "";
+                                        const prepCount = this.state.selectedSpellsLevel1.filter((name) => {
+                                            const s = SPELLS_2024.find((sp) => sp.name === name);
+                                            return s?.level === lvl;
+                                        }).length;
+                                        return `
+                                            <button type="button" class="spell-tab-btn ${this.activeSpellLevelFilter === lvl ? "active" : ""}" data-level="${lvl}">
+                                                Lvl ${lvl} (${prepCount > 0 ? `${prepCount}/` : ""}${count})
+                                            </button>
+                                        `;
+                                    }).join("")}
+                                </div>
+                            ` : ""}
+                        </div>
+
                         <div class="item-select-list">
-                            ${available.spellsLvl1.map((sp) => {
+                            ${(this.activeSpellLevelFilter === "all" ? available.leveledSpells : available.leveledSpells.filter((s) => s.level === this.activeSpellLevelFilter)).map((sp) => {
                                 const isSelected = this.state.selectedSpellsLevel1.includes(sp.name);
                                 const isLimitReached = !isSelected && spellsChosen >= maxPrepared;
                                 return `
                                     <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
                                          data-spell-name="${sp.name}"
+                                         data-spell-school="${sp.school}"
+                                         data-spell-level="${sp.level}"
                                          ${isLimitReached ? 'title="Prepared spell limit reached. Deselect one to prepare this spell."' : ""}>
                                         <div class="item-row-left">
                                             <div class="item-row-title">
-                                                ${sp.name} (${sp.school})
+                                                <span>${sp.name}</span>
+                                                <span class="stat-req-pill met">Lvl ${sp.level}</span>
+                                                <span class="stat-req-pill">${sp.school}</span>
                                                 ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
+                                                ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain"></i> Conc.</span>' : ""}
                                                 ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
                                             </div>
-                                            <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration} ${sp.concentration ? "• Concentration" : ""}</div>
+                                            <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
                                             <div class="item-row-desc">${sp.description}</div>
                                         </div>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
@@ -1415,9 +1472,12 @@ export class CharacterCreatorController {
                     <div class="review-section" style="grid-column: 1 / -1;">
                         <h4>Magic & Spells</h4>
                         <div class="review-row"><span class="label">Cantrips (${this.state.selectedCantrips.length}/${this.getMaxCantrips()}):</span><strong>${this.state.selectedCantrips.join(", ") || "None"}</strong></div>
-                        <div class="review-row"><span class="label">Prepared Spells (${this.state.selectedSpellsLevel1.length}/${this.getMaxPreparedSpells()}):</span><strong>${this.state.selectedSpellsLevel1.join(", ") || "None"}</strong></div>
+                        <div class="review-row"><span class="label">Prepared Spells (${this.state.selectedSpellsLevel1.length}/${this.getMaxPreparedSpells()}):</span><strong>${this.state.selectedSpellsLevel1.map((name) => {
+                            const sp = SPELLS_2024.find((s) => s.name === name);
+                            return sp ? `${name} (Lvl ${sp.level})` : name;
+                        }).join(", ") || "None"}</strong></div>
                         ${spellAbility ? `
-                            <div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>
+                            <div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Max Slot Level: ${this.getMaxSpellLevel()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>
                         ` : ""}
                     </div>
                 </div>
@@ -1795,6 +1855,29 @@ export class CharacterCreatorController {
         } else if (step === 8) {
             this.sanitizeSpellSelections();
 
+            // Spell level filter tabs
+            document.querySelectorAll(".spell-tab-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const lvl = btn.getAttribute("data-level") || "all";
+                    this.activeSpellLevelFilter = lvl === "all" ? "all" : Number(lvl);
+                    this.renderStep(8);
+                });
+            });
+
+            // Search filter input
+            const searchInput = document.getElementById("spell-search-input") as HTMLInputElement;
+            searchInput?.addEventListener("input", (e) => {
+                const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
+                this.spellSearchQuery = q;
+                document.querySelectorAll(".spell1-row").forEach((row) => {
+                    const name = (row.getAttribute("data-spell-name") || "").toLowerCase();
+                    const school = (row.getAttribute("data-spell-school") || "").toLowerCase();
+                    const desc = (row.querySelector(".item-row-desc")?.textContent || "").toLowerCase();
+                    const matches = !q || name.includes(q) || school.includes(q) || desc.includes(q);
+                    (row as HTMLElement).style.display = matches ? "" : "none";
+                });
+            });
+
             // Auto-Fill spells button
             const autoBtn = document.querySelector(".auto-spells-btn");
             autoBtn?.addEventListener("click", () => {
@@ -1803,7 +1886,7 @@ export class CharacterCreatorController {
                 const maxPrepared = this.getMaxPreparedSpells();
 
                 this.state.selectedCantrips = available.cantrips.slice(0, maxCantrips).map((c) => c.name);
-                this.state.selectedSpellsLevel1 = available.spellsLvl1.slice(0, maxPrepared).map((s) => s.name);
+                this.state.selectedSpellsLevel1 = available.leveledSpells.slice(0, maxPrepared).map((s) => s.name);
                 this.hideAlert();
                 this.renderStep(8);
             });
@@ -1837,7 +1920,7 @@ export class CharacterCreatorController {
                 });
             });
 
-            // 1st-level spell toggles with strict limit enforcement
+            // Prepared spell toggles with strict limit enforcement
             document.querySelectorAll(".spell1-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
@@ -1847,7 +1930,7 @@ export class CharacterCreatorController {
                         this.hideAlert();
                     } else {
                         if (this.state.selectedSpellsLevel1.length >= maxPrepared) {
-                            this.showAlert(`You can only prepare ${maxPrepared} 1st-level spell${maxPrepared === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
+                            this.showAlert(`You can only prepare ${maxPrepared} spell${maxPrepared === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
                             return;
                         }
                         this.state.selectedSpellsLevel1.push(spName);
