@@ -157,6 +157,10 @@ export default class ItemController extends BaseController {
                             existing = await itemRepo.findOne({ where: { dndBeyondId } });
                         }
 
+                        if (rawWep?.grantedBy && existing) {
+                            continue;
+                        }
+
                         const sourceLabel = (rawWep.source
                             ? (String(rawWep.source).toLowerCase().includes("d&d beyond") || String(rawWep.source).toLowerCase().includes("custom")
                                 ? String(rawWep.source)
@@ -243,6 +247,10 @@ export default class ItemController extends BaseController {
                         let existing = await itemRepo.findOne({ where: { slug } });
                         if (!existing && dndBeyondId) {
                             existing = await itemRepo.findOne({ where: { dndBeyondId } });
+                        }
+
+                        if (rawEq?.grantedBy && existing) {
+                            continue;
                         }
 
                         const sourceLabel = (rawEq.source
@@ -505,6 +513,9 @@ export default class ItemController extends BaseController {
                     // Cached potion was mistakenly flagged with weapon attributes; invalidate and reprocess
                     cache.del(cacheKey);
                     cache.del(`item_detail_${slug}`);
+                } else if (cachedItem && (cachedItem.slug === "quarterstaff" || cachedItem.name?.toLowerCase() === "quarterstaff") && cachedItem.description && (cachedItem.description.includes("woodlands") || cachedItem.description.includes("can be wielded as a magic"))) {
+                    cache.del(cacheKey);
+                    cache.del(`item_detail_${slug}`);
                 } else {
                     return {
                         response: cached,
@@ -586,6 +597,11 @@ export default class ItemController extends BaseController {
                         if (dbItem.filterType === "Magic Item") {
                             dbItem.filterType = dbItem.damage ? "Weapon" : "Equipment";
                         }
+                        await itemRepo.save(dbItem);
+                    }
+
+                    if (dbItem.slug === "quarterstaff" && dbItem.description && (dbItem.description.includes("woodlands") || dbItem.description.includes("can be wielded as a magic quarterstaff"))) {
+                        dbItem.description = "<p>Proficiency with a Quarterstaff allows you to add your proficiency bonus to the attack roll for any attack you make with it.</p><p><strong>Versatile:</strong> This weapon can be used with one or two hands. A damage value in parentheses appears with the property—the damage when the weapon is used with two hands to make a melee attack.</p>";
                         await itemRepo.save(dbItem);
                     }
 

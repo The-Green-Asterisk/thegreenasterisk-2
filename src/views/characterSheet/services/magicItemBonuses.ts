@@ -14,6 +14,634 @@ export interface MagicBonusExtraction {
     initiativeBonus: number;
 }
 
+export interface BaseWeaponDef {
+    name: string;
+    category: string;
+    damageDie: string;
+    damageType: string;
+    damage: string;
+    range: string;
+    properties: string[];
+    description?: string;
+    mastery?: {
+        name: string;
+        description: string;
+        unlocked?: boolean;
+    };
+}
+
+export interface GrantedWeaponInfo {
+    weaponName: string;
+    magicBonus: number;
+    baseDef: BaseWeaponDef;
+}
+
+export const BASE_5E_WEAPONS: Record<string, BaseWeaponDef> = {
+    "club": {
+        name: "Club",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d4",
+        damageType: "Bludgeoning",
+        damage: "1d4 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: ["Light"],
+        mastery: { name: "Slow", description: "If you hit a creature with this weapon, you can reduce its Speed by 10 feet until the start of your next turn.", unlocked: false }
+    },
+    "dagger": {
+        name: "Dagger",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d4",
+        damageType: "Piercing",
+        damage: "1d4 Piercing",
+        range: "20/60 ft.",
+        properties: ["Finesse", "Light", "Thrown"],
+        mastery: { name: "Nick", description: "When you make the extra attack of the Light weapon property, you can make it as part of the Attack action instead of as a Bonus Action.", unlocked: false }
+    },
+    "greatclub": {
+        name: "Greatclub",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Bludgeoning",
+        damage: "1d8 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: ["Two-Handed"],
+        mastery: { name: "Push", description: "If you hit a creature with this weapon, you can push the creature up to 10 feet away from you if it is Large or smaller.", unlocked: false }
+    },
+    "handaxe": {
+        name: "Handaxe",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Slashing",
+        damage: "1d6 Slashing",
+        range: "20/60 ft.",
+        properties: ["Light", "Thrown"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it with this weapon, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "javelin": {
+        name: "Javelin",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Piercing",
+        damage: "1d6 Piercing",
+        range: "30/120 ft.",
+        properties: ["Thrown"],
+        mastery: { name: "Slow", description: "If you hit a creature with this weapon, you can reduce its Speed by 10 feet until the start of your next turn.", unlocked: false }
+    },
+    "light hammer": {
+        name: "Light Hammer",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d4",
+        damageType: "Bludgeoning",
+        damage: "1d4 Bludgeoning",
+        range: "20/60 ft.",
+        properties: ["Light", "Thrown"],
+        mastery: { name: "Nick", description: "When you make the extra attack of the Light weapon property, you can make it as part of the Attack action instead of as a Bonus Action.", unlocked: false }
+    },
+    "mace": {
+        name: "Mace",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Bludgeoning",
+        damage: "1d6 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: [],
+        mastery: { name: "Sap", description: "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.", unlocked: false }
+    },
+    "quarterstaff": {
+        name: "Quarterstaff",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Bludgeoning",
+        damage: "1d6 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: ["Versatile (1d8)"],
+        description: "<p>Proficiency with a Quarterstaff allows you to add your proficiency bonus to the attack roll for any attack you make with it.</p><p><strong>Versatile:</strong> This weapon can be used with one or two hands. A damage value in parentheses appears with the property—the damage when the weapon is used with two hands to make a melee attack (1d8).</p>",
+        mastery: { name: "Topple", description: "If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw (DC 8 + your Strength modifier + your Proficiency Bonus) or fall Prone.", unlocked: false }
+    },
+    "sickle": {
+        name: "Sickle",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d4",
+        damageType: "Slashing",
+        damage: "1d4 Slashing",
+        range: "Reach 5 ft.",
+        properties: ["Light"],
+        mastery: { name: "Nick", description: "When you make the extra attack of the Light weapon property, you can make it as part of the Attack action instead of as a Bonus Action.", unlocked: false }
+    },
+    "spear": {
+        name: "Spear",
+        category: "Simple Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Piercing",
+        damage: "1d6 Piercing",
+        range: "20/60 ft.",
+        properties: ["Thrown", "Versatile (1d8)"],
+        mastery: { name: "Sap", description: "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.", unlocked: false }
+    },
+    "light crossbow": {
+        name: "Light Crossbow",
+        category: "Simple Weapon (Ranged)",
+        damageDie: "1d8",
+        damageType: "Piercing",
+        damage: "1d8 Piercing",
+        range: "80/320 ft.",
+        properties: ["Ammunition", "Loading", "Two-Handed"],
+        mastery: { name: "Slow", description: "If you hit a creature with this weapon, you can reduce its Speed by 10 feet until the start of your next turn.", unlocked: false }
+    },
+    "dart": {
+        name: "Dart",
+        category: "Simple Weapon (Ranged)",
+        damageDie: "1d4",
+        damageType: "Piercing",
+        damage: "1d4 Piercing",
+        range: "20/60 ft.",
+        properties: ["Finesse", "Thrown"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "shortbow": {
+        name: "Shortbow",
+        category: "Simple Weapon (Ranged)",
+        damageDie: "1d6",
+        damageType: "Piercing",
+        damage: "1d6 Piercing",
+        range: "80/320 ft.",
+        properties: ["Ammunition", "Two-Handed"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "sling": {
+        name: "Sling",
+        category: "Simple Weapon (Ranged)",
+        damageDie: "1d4",
+        damageType: "Bludgeoning",
+        damage: "1d4 Bludgeoning",
+        range: "30/120 ft.",
+        properties: ["Ammunition"],
+        mastery: { name: "Slow", description: "If you hit a creature with this weapon, you can reduce its Speed by 10 feet until the start of your next turn.", unlocked: false }
+    },
+    "battleaxe": {
+        name: "Battleaxe",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Slashing",
+        damage: "1d8 Slashing",
+        range: "Reach 5 ft.",
+        properties: ["Versatile (1d10)"],
+        mastery: { name: "Topple", description: "If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw or fall Prone.", unlocked: false }
+    },
+    "flail": {
+        name: "Flail",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Bludgeoning",
+        damage: "1d8 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: [],
+        mastery: { name: "Sap", description: "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.", unlocked: false }
+    },
+    "glaive": {
+        name: "Glaive",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d10",
+        damageType: "Slashing",
+        damage: "1d10 Slashing",
+        range: "Reach 10 ft.",
+        properties: ["Heavy", "Reach", "Two-Handed"],
+        mastery: { name: "Graze", description: "If your attack roll misses a creature, that creature takes damage equal to your ability modifier.", unlocked: false }
+    },
+    "greataxe": {
+        name: "Greataxe",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d12",
+        damageType: "Slashing",
+        damage: "1d12 Slashing",
+        range: "Reach 5 ft.",
+        properties: ["Heavy", "Two-Handed"],
+        mastery: { name: "Cleave", description: "If you hit a creature with this weapon, you can make a melee attack roll against a second creature within 5 feet.", unlocked: false }
+    },
+    "greatsword": {
+        name: "Greatsword",
+        category: "Martial Weapon (Melee)",
+        damageDie: "2d6",
+        damageType: "Slashing",
+        damage: "2d6 Slashing",
+        range: "Reach 5 ft.",
+        properties: ["Heavy", "Two-Handed"],
+        mastery: { name: "Graze", description: "If your attack roll misses a creature, that creature takes damage equal to your ability modifier.", unlocked: false }
+    },
+    "halberd": {
+        name: "Halberd",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d10",
+        damageType: "Slashing",
+        damage: "1d10 Slashing",
+        range: "Reach 10 ft.",
+        properties: ["Heavy", "Reach", "Two-Handed"],
+        mastery: { name: "Cleave", description: "If you hit a creature with this weapon, you can make a melee attack roll against a second creature within 5 feet.", unlocked: false }
+    },
+    "lance": {
+        name: "Lance",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d10",
+        damageType: "Piercing",
+        damage: "1d10 Piercing",
+        range: "Reach 10 ft.",
+        properties: ["Heavy", "Reach", "Two-Handed"],
+        mastery: { name: "Topple", description: "If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw or fall Prone.", unlocked: false }
+    },
+    "longsword": {
+        name: "Longsword",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Slashing",
+        damage: "1d8 Slashing",
+        range: "Reach 5 ft.",
+        properties: ["Versatile (1d10)"],
+        mastery: { name: "Sap", description: "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.", unlocked: false }
+    },
+    "maul": {
+        name: "Maul",
+        category: "Martial Weapon (Melee)",
+        damageDie: "2d6",
+        damageType: "Bludgeoning",
+        damage: "2d6 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: ["Heavy", "Two-Handed"],
+        mastery: { name: "Topple", description: "If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw or fall Prone.", unlocked: false }
+    },
+    "morningstar": {
+        name: "Morningstar",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Piercing",
+        damage: "1d8 Piercing",
+        range: "Reach 5 ft.",
+        properties: [],
+        mastery: { name: "Sap", description: "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.", unlocked: false }
+    },
+    "pike": {
+        name: "Pike",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d10",
+        damageType: "Piercing",
+        damage: "1d10 Piercing",
+        range: "Reach 10 ft.",
+        properties: ["Heavy", "Reach", "Two-Handed"],
+        mastery: { name: "Push", description: "If you hit a creature with this weapon, you can push the creature up to 10 feet away from you.", unlocked: false }
+    },
+    "rapier": {
+        name: "Rapier",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Piercing",
+        damage: "1d8 Piercing",
+        range: "Reach 5 ft.",
+        properties: ["Finesse"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "scimitar": {
+        name: "Scimitar",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Slashing",
+        damage: "1d6 Slashing",
+        range: "Reach 5 ft.",
+        properties: ["Finesse", "Light"],
+        mastery: { name: "Nick", description: "When you make the extra attack of the Light weapon property, you can make it as part of the Attack action instead of as a Bonus Action.", unlocked: false }
+    },
+    "shortsword": {
+        name: "Shortsword",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d6",
+        damageType: "Piercing",
+        damage: "1d6 Piercing",
+        range: "Reach 5 ft.",
+        properties: ["Finesse", "Light"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "trident": {
+        name: "Trident",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Piercing",
+        damage: "1d8 Piercing",
+        range: "20/60 ft.",
+        properties: ["Thrown", "Versatile (1d10)"],
+        mastery: { name: "Topple", description: "If you hit a creature with this weapon, you can force the creature to make a Constitution saving throw or fall Prone.", unlocked: false }
+    },
+    "war pick": {
+        name: "War Pick",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Piercing",
+        damage: "1d8 Piercing",
+        range: "Reach 5 ft.",
+        properties: ["Versatile (1d10)"],
+        mastery: { name: "Sap", description: "If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.", unlocked: false }
+    },
+    "warhammer": {
+        name: "Warhammer",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d8",
+        damageType: "Bludgeoning",
+        damage: "1d8 Bludgeoning",
+        range: "Reach 5 ft.",
+        properties: ["Versatile (1d10)"],
+        mastery: { name: "Push", description: "If you hit a creature with this weapon, you can push the creature up to 10 feet away from you.", unlocked: false }
+    },
+    "whip": {
+        name: "Whip",
+        category: "Martial Weapon (Melee)",
+        damageDie: "1d4",
+        damageType: "Slashing",
+        damage: "1d4 Slashing",
+        range: "Reach 10 ft.",
+        properties: ["Finesse", "Reach"],
+        mastery: { name: "Slow", description: "If you hit a creature with this weapon, you can reduce its Speed by 10 feet until the start of your next turn.", unlocked: false }
+    },
+    "blowgun": {
+        name: "Blowgun",
+        category: "Martial Weapon (Ranged)",
+        damageDie: "1",
+        damageType: "Piercing",
+        damage: "1 Piercing",
+        range: "25/100 ft.",
+        properties: ["Ammunition", "Loading"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "hand crossbow": {
+        name: "Hand Crossbow",
+        category: "Martial Weapon (Ranged)",
+        damageDie: "1d6",
+        damageType: "Piercing",
+        damage: "1d6 Piercing",
+        range: "30/120 ft.",
+        properties: ["Ammunition", "Light", "Loading"],
+        mastery: { name: "Vex", description: "If you hit a creature and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn.", unlocked: false }
+    },
+    "heavy crossbow": {
+        name: "Heavy Crossbow",
+        category: "Martial Weapon (Ranged)",
+        damageDie: "1d10",
+        damageType: "Piercing",
+        damage: "1d10 Piercing",
+        range: "100/400 ft.",
+        properties: ["Ammunition", "Heavy", "Loading", "Two-Handed"],
+        mastery: { name: "Push", description: "If you hit a creature with this weapon, you can push the creature up to 10 feet away from you.", unlocked: false }
+    },
+    "longbow": {
+        name: "Longbow",
+        category: "Martial Weapon (Ranged)",
+        damageDie: "1d8",
+        damageType: "Piercing",
+        damage: "1d8 Piercing",
+        range: "150/600 ft.",
+        properties: ["Ammunition", "Heavy", "Two-Handed"],
+        mastery: { name: "Slow", description: "If you hit a creature with this weapon, you can reduce its Speed by 10 feet until the start of your next turn.", unlocked: false }
+    },
+    "net": {
+        name: "Net",
+        category: "Martial Weapon (Ranged)",
+        damageDie: "—",
+        damageType: "Special",
+        damage: "—",
+        range: "5/15 ft.",
+        properties: ["Thrown"],
+        mastery: undefined
+    }
+};
+
+const BASE_WEAPON_ALIASES: Record<string, string> = {
+    "quarter staff": "quarterstaff",
+    "war hammer": "warhammer",
+    "warpick": "war pick",
+    "crossbow, light": "light crossbow",
+    "crossbow, hand": "hand crossbow",
+    "crossbow, heavy": "heavy crossbow",
+    "short sword": "shortsword",
+    "long sword": "longsword",
+    "great sword": "greatsword",
+    "great club": "greatclub",
+    "great axe": "greataxe"
+};
+
+/**
+ * Accurately analyzes an item description to detect if it can be wielded or used as a weapon,
+ * returning the granted weapon details, magic bonuses, and base weapon definition.
+ */
+export function extractGrantedWeaponFromItem(item?: {
+    name?: string;
+    description?: string;
+    notes?: string;
+    type?: string;
+    filterType?: string;
+    rarity?: string;
+}): GrantedWeaponInfo | null {
+    if (!item || !item.name) return null;
+    const itemName = item.name.trim();
+    const itemDesc = `${item.description || ""} ${item.notes || ""}`;
+    const cleanText = itemDesc.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+
+    let matchedWeaponKey: string | null = null;
+    let explicitPlusBonus = 0;
+
+    // Pattern A: Match in HTML hrefs e.g. <a href="/equipment/18-quarterstaff">
+    const hrefMatch = itemDesc.match(/(?:wielded as|used as|functions as|acts as|serves as|counts as)[^<]*<a\b[^>]*href=["'][^"']*\/(?:equipment|weapons)\/([^"'#?]+)["'][^>]*>([\s\S]*?)<\/a>/i);
+    if (hrefMatch) {
+        const slug = decodeURIComponent(hrefMatch[1]).replace(/^\d+-/, "").replace(/-/g, " ").toLowerCase().trim();
+        const label = hrefMatch[2].replace(/<[^>]*>/g, "").toLowerCase().trim();
+        const resolvedSlug = BASE_WEAPON_ALIASES[slug] || slug;
+        const resolvedLabel = BASE_WEAPON_ALIASES[label] || label;
+        if (BASE_5E_WEAPONS[resolvedSlug]) {
+            matchedWeaponKey = resolvedSlug;
+        } else if (BASE_5E_WEAPONS[resolvedLabel]) {
+            matchedWeaponKey = resolvedLabel;
+        }
+    }
+
+    // Pattern B: Regex against stripped text
+    if (!matchedWeaponKey) {
+        const allKeys = Array.from(new Set([...Object.keys(BASE_5E_WEAPONS), ...Object.keys(BASE_WEAPON_ALIASES)])).sort((a, b) => b.length - a.length);
+        const weaponNamesPattern = allKeys.join("|");
+        const phraseRegex = new RegExp(
+            `(?:can be wielded as|can be used as|functions as|acts as|serves as|is wielded as|counts as)\\s+(?:an?|the)?\\s*(?:magic\\s+)?(?:(\\+[1-3])\\s+)?\\b(${weaponNamesPattern})\\b`,
+            "i"
+        );
+        const match = cleanText.match(phraseRegex);
+        if (match) {
+            if (match[1]) explicitPlusBonus = Number(match[1].replace("+", "")) || 0;
+            const rawWName = match[2].toLowerCase().trim();
+            const resolvedWName = BASE_WEAPON_ALIASES[rawWName] || rawWName;
+            if (BASE_5E_WEAPONS[resolvedWName]) {
+                matchedWeaponKey = resolvedWName;
+            }
+        }
+    }
+
+    // Pattern C: 5e Rule: Staves default to Quarterstaff if no other weapon matched
+    if (!matchedWeaponKey) {
+        const isStaff =
+            (item.type && item.type.toLowerCase() === "staff") ||
+            (item.filterType && item.filterType.toLowerCase() === "staff") ||
+            /\bstaff\b/i.test(itemName);
+        if (isStaff && !cleanText.toLowerCase().includes("cannot be wielded as a weapon")) {
+            matchedWeaponKey = "quarterstaff";
+        }
+    }
+
+    if (!matchedWeaponKey) return null;
+
+    const baseDef = BASE_5E_WEAPONS[matchedWeaponKey];
+    if (!baseDef) return null;
+
+    const magicBonus = explicitPlusBonus || extractPlusBonus(itemName, itemDesc);
+
+    return {
+        weaponName: baseDef.name,
+        magicBonus,
+        baseDef
+    };
+}
+
+/**
+ * Dynamically synchronizes weapons granted by active equipment (such as Staff of the Woodlands -> Quarterstaff).
+ * When granting items are equipped & attuned, ensures granted weapons exist in character.weapons and character.actions.
+ * When granting items are unequipped or unattuned, removes the granted weapons and actions.
+ */
+export function applyGrantedWeapons(character: CharacterData): void {
+    if (!character.weapons) {
+        character.weapons = [];
+    }
+
+    const abilityMods: Record<string, number> = {};
+    (character.abilities || []).forEach(a => {
+        abilityMods[a.abbr] = a.modifier;
+    });
+    const strMod = abilityMods.STR ?? 0;
+    const dexMod = abilityMods.DEX ?? 0;
+    const profBonus = Number(character.vitals?.proficiencyBonus) || 2;
+
+    const activeGrantedWeapons = new Map<string, { item: EquipmentItem; grant: GrantedWeaponInfo }>();
+    if (Array.isArray(character.equipment)) {
+        character.equipment.forEach(item => {
+            const reqAttune = checkItemRequiresAttunement(item);
+            const isAttuned = !reqAttune || !!item.attuned;
+            const isActive = !!item.equipped && isAttuned;
+            if (!isActive) return;
+
+            const grant = extractGrantedWeaponFromItem(item);
+            if (grant) {
+                activeGrantedWeapons.set(item.name.toLowerCase(), { item, grant });
+            }
+        });
+    }
+
+    // Remove or unequip any previously granted weapons whose granting item is no longer active
+    character.weapons = character.weapons.filter(w => {
+        if (!w.grantedBy) return true;
+        const grantingItemNameLower = w.grantedBy.toLowerCase();
+        const active = activeGrantedWeapons.get(grantingItemNameLower);
+        if (!active) {
+            if (Array.isArray(character.actions)) {
+                character.actions = character.actions.filter(
+                    a => !(a.name.toLowerCase() === w.name.toLowerCase() && ((a as any).grantedBy === w.grantedBy || a.notes?.includes("Granted by") || a.notes?.includes(w.grantedBy!)))
+                );
+            }
+            return false;
+        }
+        return true;
+    });
+
+    const currentWeapons = character.weapons;
+
+    // Add or update active granted weapons
+    activeGrantedWeapons.forEach(({ item, grant }, grantingItemNameLower) => {
+        let weapon = currentWeapons.find(
+            w => w.grantedBy && w.grantedBy.toLowerCase() === grantingItemNameLower
+        );
+
+        if (!weapon) {
+            weapon = {
+                name: grant.baseDef.name,
+                grantedBy: item.name,
+                quantity: 1,
+                equipped: true,
+                attuned: item.attuned,
+                requiresAttunement: item.requiresAttunement,
+                category: grant.baseDef.category,
+                damage: grant.baseDef.damage,
+                damageType: grant.baseDef.damageType,
+                damageDie: grant.baseDef.damageDie,
+                attackBonus: "+0",
+                toHitModifier: 0,
+                range: grant.baseDef.range,
+                properties: [...grant.baseDef.properties],
+                isMagic: true,
+                rarity: item.rarity || "Common",
+                description: grant.baseDef.description || `<p>Proficiency with a ${grant.baseDef.name} allows you to add your proficiency bonus to the attack roll for any attack you make with it.</p>`,
+                imageUrl: item.imageUrl,
+                mastery: grant.baseDef.mastery
+                    ? {
+                        name: grant.baseDef.mastery.name,
+                        description: grant.baseDef.mastery.description,
+                        unlocked: !!grant.baseDef.mastery.unlocked
+                    }
+                    : undefined,
+                notes: `Granted by ${item.name}${grant.magicBonus > 0 ? ` (+${grant.magicBonus})` : ""}`
+            };
+            currentWeapons.push(weapon);
+        } else {
+            weapon.equipped = true;
+            weapon.isMagic = true;
+            weapon.rarity = item.rarity || "Common";
+            weapon.notes = `Granted by ${item.name}${grant.magicBonus > 0 ? ` (+${grant.magicBonus})` : ""}`;
+            weapon.description = grant.baseDef.description || weapon.description;
+        }
+
+        (weapon as any)._grantedMagicBonus = grant.magicBonus;
+
+        // Calculate attack bonus & damage for granted weapon
+        const props = Array.isArray(weapon.properties) ? weapon.properties : [];
+        const isFinesse = props.some(p => p.toLowerCase().includes("finesse"));
+        const isRanged = props.some(p => p.toLowerCase().includes("ranged") || p.toLowerCase().includes("ammunition"));
+        const isThrown = props.some(p => p.toLowerCase().includes("thrown"));
+
+        let chosenMod = strMod;
+        if (isRanged) chosenMod = dexMod;
+        else if (isFinesse || isThrown) chosenMod = Math.max(strMod, dexMod);
+
+        const toHit = chosenMod + profBonus + grant.magicBonus;
+        weapon.toHitModifier = toHit;
+        weapon.attackBonus = toHit >= 0 ? `+${toHit}` : `${toHit}`;
+
+        const totalDmgMod = chosenMod + grant.magicBonus;
+        const dmgModStr = totalDmgMod >= 0 ? `+ ${totalDmgMod}` : `- ${Math.abs(totalDmgMod)}`;
+        weapon.damage = `${grant.baseDef.damageDie} ${dmgModStr} ${grant.baseDef.damageType}`;
+
+        // Ensure weapon attack exists in character.actions
+        if (Array.isArray(character.actions)) {
+            let actionMatch = character.actions.find(
+                a => a.name.toLowerCase() === weapon!.name.toLowerCase() && ((a as any).grantedBy === item.name || a.notes?.includes(item.name))
+            );
+            if (!actionMatch) {
+                actionMatch = {
+                    name: weapon.name,
+                    type: "Action",
+                    rangeOrReach: weapon.range,
+                    hitOrDc: `${toHit >= 0 ? `+${toHit}` : toHit} to hit`,
+                    damageOrEffect: weapon.damage,
+                    notes: (weapon.properties || []).join(", ") || `Granted by ${item.name}`
+                };
+                (actionMatch as any).grantedBy = item.name;
+                character.actions.push(actionMatch);
+            } else {
+                actionMatch.hitOrDc = `${toHit >= 0 ? `+${toHit}` : toHit} to hit`;
+                actionMatch.damageOrEffect = weapon.damage;
+                (actionMatch as any).grantedBy = item.name;
+            }
+        }
+    });
+}
+
 export const MUNDANE_WEAPON_NAMES = new Set([
     "club", "dagger", "greatclub", "handaxe", "javelin", "light hammer", "mace", "quarterstaff", "sickle", "spear",
     "light crossbow", "dart", "shortbow", "sling",
@@ -470,14 +1098,17 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         character.vitals.speed = `${adjustedSpeed} ft.`;
     }
 
+    // --- 3.5. PROCESS GRANTED WEAPONS FROM ACTIVE EQUIPMENT ---
+    applyGrantedWeapons(character);
+
     // --- 4. RECALCULATE WEAPONS (Attack Bonus and Damage with Magic Bonuses) ---
     if (Array.isArray(character.weapons)) {
         character.weapons.forEach(weapon => {
             const wName = weapon.name || "";
             const wDesc = weapon.description || weapon.notes || "";
-            const isMundane = isMundaneEquipment(wName);
-            const magicPlus = isMundane ? 0 : extractPlusBonus(wName, wDesc);
-            if (magicPlus > 0) {
+            const isMundane = !weapon.grantedBy && isMundaneEquipment(wName);
+            const magicPlus = isMundane ? 0 : Math.max(extractPlusBonus(wName, wDesc), (weapon as any)._grantedMagicBonus || 0);
+            if (magicPlus > 0 || weapon.grantedBy) {
                 weapon.isMagic = true;
             } else if (isMundane) {
                 weapon.isMagic = false;
@@ -520,10 +1151,20 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
 
             // Sync with matching weapon attack action in character.actions
             if (Array.isArray(character.actions)) {
-                const actionMatch = character.actions.find(
+                let actionMatch = character.actions.find(
                     a => a.name.toLowerCase() === wName.toLowerCase() || (a.spellName && a.spellName.toLowerCase() === wName.toLowerCase())
                 );
-                if (actionMatch) {
+                if (!actionMatch && weapon.equipped) {
+                    actionMatch = {
+                        name: weapon.name,
+                        type: "Action",
+                        rangeOrReach: weapon.range,
+                        hitOrDc: `${toHit >= 0 ? `+${toHit}` : toHit} to hit`,
+                        damageOrEffect: weapon.damage,
+                        notes: (weapon.properties || []).join(", ") || (weapon.grantedBy ? `Granted by ${weapon.grantedBy}` : "Weapon")
+                    };
+                    character.actions.push(actionMatch);
+                } else if (actionMatch) {
                     actionMatch.hitOrDc = toHit >= 0 ? `+${toHit} to hit` : `${toHit} to hit`;
                     actionMatch.damageOrEffect = weapon.damage;
                 }

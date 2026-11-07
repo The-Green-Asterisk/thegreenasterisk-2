@@ -692,6 +692,12 @@ function renderActionLinkHtml(actionName: string, labelText?: string): string {
     return `<a href="${url}" class="inline-action-link" data-action-link="${encodedName}" target="_blank" rel="noopener noreferrer" title="Click to view ${escapedLabel} action details"><i class="fa-solid fa-bolt"></i> ${escapedLabel}</a>`;
 }
 
+export function renderItemButtonHtml(itemName: string, labelText?: string): string {
+    const encodedName = encodeURIComponent(itemName);
+    const escapedLabel = escapeHtml(labelText || itemName);
+    return `<button type="button" class="inline-item-link" data-item-name="${encodedName}" title="Click to view ${escapedLabel} details"><i class="fa-solid fa-shield-halved"></i> ${escapedLabel}</button>`;
+}
+
 export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlaceholderContext): string {
     if (!value) return "";
 
@@ -705,7 +711,7 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
     // 0. Resolve any D&D Beyond {{scalevalue}}, {{limiteduse}}, {{savedc:...}}, {{modifier:...}} placeholders first
     let working = resolveDescriptionPlaceholders(value, ctx);
 
-    // 1. Replace explicit [condition]...[/condition], [spell]...[/spell], [rules]...[/rules], and [action]...[/action] tags
+    // 1. Replace explicit [condition], [spell], [item], [rules], and [action] tags
     //    Support D&D Beyond's [tag]target;display_label[/tag] semicolon syntax
     working = working
         .replace(/\[conditions?\]([\s\S]*?)\[\/conditions?\]/gi, (_match, rawConditionName: string) => {
@@ -718,6 +724,12 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
             if (!target) return "";
             return storeBlock(renderSpellButtonHtml(target, label));
         })
+        .replace(/\[(?:items?|magicitems?|equipments?|weapons?)\]([\s\S]*?)\[\/(?:items?|magicitems?|equipments?|weapons?)\]/gi, (_match, rawItemName: string) => {
+            const { target, label } = parseTagTargetAndLabel(rawItemName);
+            if (!target) return "";
+            const cleanTarget = target.replace(/^\d+-/, "").replace(/-/g, " ").trim();
+            return storeBlock(renderItemButtonHtml(cleanTarget, label));
+        })
         .replace(/\[rules?\]([\s\S]*?)\[\/rules?\]/gi, (_match, rawRuleName: string) => {
             const { target, label } = parseTagTargetAndLabel(rawRuleName);
             if (!target) return "";
@@ -728,6 +740,39 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
             if (!target) return "";
             return storeBlock(renderActionLinkHtml(target, label));
         });
+
+    // 1.5. Intercept D&D Beyond HTML anchor tags pointing to /equipment/, /magic-items/, /weapons/, /items/, or /spells/
+    working = working
+        .replace(/<a\b[^>]*\bhref=["'](?:https?:\/\/(?:[a-z0-9_-]+\.)*dndbeyond\.com)?\/(?:equipment|magic-items|weapons|items)\/([^"'#?]+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_match, slug, linkText) => {
+            const rawLabel = linkText.replace(/<[^>]*>/g, "").trim();
+            const cleanSlug = decodeURIComponent(slug).replace(/^\d+-/, "").replace(/-/g, " ").trim();
+            const rawName = rawLabel || cleanSlug;
+            const itemName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+            return storeBlock(renderItemButtonHtml(itemName, rawLabel || itemName));
+        })
+        .replace(/<a\b[^>]*\bhref=["'](?:https?:\/\/(?:[a-z0-9_-]+\.)*dndbeyond\.com)?\/spells\/([^"'#?]+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_match, slug, linkText) => {
+            const rawLabel = linkText.replace(/<[^>]*>/g, "").trim();
+            const cleanSlug = decodeURIComponent(slug).replace(/^\d+-/, "").replace(/-/g, " ").trim();
+            const spellName = rawLabel || cleanSlug;
+            return storeBlock(renderSpellButtonHtml(spellName, rawLabel || spellName));
+        });
+
+    // 1.6. Intercept plain-text weapon grant mentions e.g. "can be wielded as a magic quarterstaff"
+    const standardWeaponNames = [
+        "quarterstaff", "dagger", "club", "mace", "spear", "greatclub", "handaxe", "javelin", "light hammer", "sickle",
+        "light crossbow", "dart", "shortbow", "sling",
+        "battleaxe", "flail", "glaive", "greataxe", "greatsword", "halberd", "lance", "longsword", "maul", "morningstar",
+        "pike", "rapier", "scimitar", "shortsword", "trident", "war pick", "warhammer", "whip",
+        "blowgun", "hand crossbow", "heavy crossbow", "longbow", "net"
+    ];
+    const plainWeaponRegex = new RegExp(
+        `((?:can be wielded as|can be used as|functions as|acts as|serves as)\\s+(?:an?|the)?\\s*(?:magic\\s+)?(?:\\+[1-3]\\s+)?)\\b(${standardWeaponNames.join("|")})\\b`,
+        "gi"
+    );
+    working = working.replace(plainWeaponRegex, (_m, prefix: string, weaponMatch: string) => {
+        const canonicalName = weaponMatch.charAt(0).toUpperCase() + weaponMatch.slice(1);
+        return `${prefix}${storeBlock(renderItemButtonHtml(canonicalName, weaponMatch))}`;
+    });
 
     // 2. Replace exact case-sensitive condition names (e.g. "Charmed", "Incapacitated", "Prone")
     //    outside of HTML tags so attributes are never corrupted.

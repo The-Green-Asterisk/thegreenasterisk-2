@@ -2057,4 +2057,340 @@ describe('Frontend View Templates', () => {
         expect(charB.name).toBe('Elminster');
         expect(charB.abilities[0].score).toBe(10);
     });
+
+    it('grants an equipped Quarterstaff (+2) when Staff of the Woodlands is equipped and attuned', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { applyMagicalItemBonuses } = await import('../../../src/views/characterSheet/services/magicItemBonuses');
+
+        const druidPayload = {
+            id: 777001,
+            name: 'Druid of the Circle',
+            classes: [
+                {
+                    level: 5,
+                    definition: { name: 'Druid', hitDice: 8, canCastSpells: true, spellCastingAbilityId: 5 }
+                }
+            ],
+            baseHitPoints: 38,
+            stats: [
+                { id: 1, value: 14 }, // STR +2
+                { id: 2, value: 12 }, // DEX +1
+                { id: 3, value: 14 }, // CON +2
+                { id: 4, value: 10 }, // INT +0
+                { id: 5, value: 16 }, // WIS +3
+                { id: 6, value: 10 }  // CHA +0
+            ],
+            modifiers: {},
+            inventory: [
+                {
+                    id: 991,
+                    equipped: true,
+                    isAttuned: true,
+                    quantity: 1,
+                    definition: {
+                        id: 4762,
+                        name: 'Staff of the Woodlands',
+                        filterType: 'Staff',
+                        canAttune: true,
+                        magic: true,
+                        rarity: 'Rare',
+                        description: '<p>This staff can be wielded as a magic <a href="/equipment/quarterstaff">Quarterstaff</a> that grants a +2 bonus to attack and damage rolls made with it. While holding it, you have a +2 bonus to spell attack rolls.</p>'
+                    }
+                }
+            ],
+            spells: {}
+        };
+
+        const char = parseDndBeyondCharacter(druidPayload);
+        // Prof = +3 at level 5; STR mod = +2; Magic bonus = +2
+        // To-hit = STR (+2) + Prof (+3) + Magic (+2) = +7
+        // Damage = 1d6 + 4 Bludgeoning (STR +2 + Magic +2)
+        const grantedWeapon = char.weapons?.find(w => w.name === 'Quarterstaff');
+        expect(grantedWeapon).toBeDefined();
+        expect(grantedWeapon?.equipped).toBe(true);
+        expect(grantedWeapon?.isMagic).toBe(true);
+        expect(grantedWeapon?.toHitModifier).toBe(7);
+        expect(grantedWeapon?.attackBonus).toBe('+7');
+        expect(grantedWeapon?.damage).toBe('1d6 + 4 Bludgeoning');
+        expect(grantedWeapon?.category).toBe('Simple Weapon (Melee)');
+        expect(grantedWeapon?.properties).toContain('Versatile (1d8)');
+        expect(grantedWeapon?.grantedBy).toBe('Staff of the Woodlands');
+        // Must show the description of a Quarterstaff, NOT Staff of the Woodlands
+        expect(grantedWeapon?.description).toContain('Proficiency with a Quarterstaff');
+        expect(grantedWeapon?.description).not.toContain('Staff of the Woodlands');
+
+        // Corresponding weapon attack in actions tab
+        const action = char.actions?.find(a => a.name === 'Quarterstaff');
+        expect(action).toBeDefined();
+        expect(action?.hitOrDc).toBe('+7 to hit');
+        expect(action?.damageOrEffect).toBe('1d6 + 4 Bludgeoning');
+
+        // Unequipping Staff of the Woodlands removes the granted weapon and action
+        const staffItem = char.equipment.find(e => e.name === 'Staff of the Woodlands');
+        expect(staffItem).toBeDefined();
+        staffItem!.equipped = false;
+        applyMagicalItemBonuses(char);
+
+        const unequippedGranted = char.weapons?.find(w => w.name === 'Quarterstaff');
+        expect(unequippedGranted).toBeUndefined();
+        const unequippedAction = char.actions?.find(a => a.name === 'Quarterstaff');
+        expect(unequippedAction).toBeUndefined();
+
+        // Re-equipping adds it back
+        staffItem!.equipped = true;
+        applyMagicalItemBonuses(char);
+        expect(char.weapons?.find(w => w.name === 'Quarterstaff')?.equipped).toBe(true);
+
+        // Unattuning also removes it
+        staffItem!.attuned = false;
+        applyMagicalItemBonuses(char);
+        expect(char.weapons?.find(w => w.name === 'Quarterstaff')).toBeUndefined();
+    });
+
+    it('supports granting other weapon types (e.g. Mace, Rapier, Dagger) from equipment', async () => {
+        const { applyMagicalItemBonuses } = await import('../../../src/views/characterSheet/services/magicItemBonuses');
+
+        const testChar: any = {
+            id: 888001,
+            name: 'Hero',
+            level: 5,
+            vitals: { proficiencyBonus: 3, armorClass: 10, speed: '30 ft.' },
+            abilities: [
+                { abbr: 'STR', score: 10, modifier: 0, save: 0 },
+                { abbr: 'DEX', score: 16, modifier: 3, save: 3 }
+            ],
+            equipment: [
+                {
+                    name: 'Scepter of Smiting',
+                    equipped: true,
+                    attuned: true,
+                    requiresAttunement: false,
+                    description: 'This golden rod can be wielded as a magic mace.'
+                },
+                {
+                    name: 'Duellist Cloakpin',
+                    equipped: true,
+                    attuned: true,
+                    requiresAttunement: false,
+                    description: 'Functions as a +1 rapier that grants +1 to attack and damage rolls.'
+                }
+            ],
+            weapons: [],
+            actions: []
+        };
+
+        applyMagicalItemBonuses(testChar);
+
+        // Mace: Simple Melee (STR mod = 0, prof = 3) -> +3 to hit, 1d6 + 0 Bludgeoning
+        const mace = testChar.weapons.find((w: any) => w.name === 'Mace');
+        expect(mace).toBeDefined();
+        expect(mace.equipped).toBe(true);
+        expect(mace.isMagic).toBe(true);
+        expect(mace.toHitModifier).toBe(3);
+        expect(mace.damage).toBe('1d6 + 0 Bludgeoning');
+
+        // Rapier: Finesse (uses DEX mod = 3, prof = 3, magic = 1) -> +7 to hit, 1d8 + 4 Piercing
+        const rapier = testChar.weapons.find((w: any) => w.name === 'Rapier');
+        expect(rapier).toBeDefined();
+        expect(rapier.equipped).toBe(true);
+        expect(rapier.toHitModifier).toBe(7);
+        expect(rapier.damage).toBe('1d8 + 4 Piercing');
+    });
+
+    it('transforms item and spell links in descriptions to modal-triggering buttons', async () => {
+        const { linkifyConditionAndSpellTags } = await import('../../../src/views/characterSheet/components/markupLinks');
+
+        const htmlWithItemLink = '<p>This staff can be wielded as a magic <a href="/equipment/quarterstaff">Quarterstaff</a> that grants a +2 bonus.</p>';
+        const resultA = linkifyConditionAndSpellTags(htmlWithItemLink);
+        expect(resultA).toContain('class="inline-item-link"');
+        expect(resultA).toContain('data-item-name="Quarterstaff"');
+        expect(resultA).toContain('Quarterstaff');
+        expect(resultA).not.toContain('href="/equipment/quarterstaff"');
+
+        const htmlWithDndbItemLink = '<p>Functions as a <a href="https://www.dndbeyond.com/equipment/18-quarterstaff" class="tooltip">Quarterstaff</a>.</p>';
+        const resultB = linkifyConditionAndSpellTags(htmlWithDndbItemLink);
+        expect(resultB).toContain('class="inline-item-link"');
+        expect(resultB).toContain('data-item-name="Quarterstaff"');
+
+        const tagItem = 'You can summon a [item]Quarterstaff[/item] into your hand.';
+        const resultC = linkifyConditionAndSpellTags(tagItem);
+        expect(resultC).toContain('class="inline-item-link"');
+        expect(resultC).toContain('data-item-name="Quarterstaff"');
+
+        const spellLink = 'You can cast <a href="/spells/pass-without-trace">Pass without Trace</a> at will.';
+        const resultD = linkifyConditionAndSpellTags(spellLink);
+        expect(resultD).toContain('class="action-spell-link inline-spell-link"');
+        expect(resultD).toContain('data-spell-name="Pass%20without%20Trace"');
+
+        const htmlWithRelativeIdLink = '<p>This staff can be wielded as a magic <a href="/equipment/12-quarterstaff">Quarterstaff</a> that grants a +2 bonus.</p>';
+        const resultE = linkifyConditionAndSpellTags(htmlWithRelativeIdLink);
+        expect(resultE).toContain('class="inline-item-link"');
+        expect(resultE).toContain('data-item-name="Quarterstaff"');
+
+        const plainTextPhrase = '<p>This staff can be wielded as a magic quarterstaff that grants a +2 bonus.</p>';
+        const resultF = linkifyConditionAndSpellTags(plainTextPhrase);
+        expect(resultF).toContain('class="inline-item-link"');
+        expect(resultF).toContain('data-item-name="Quarterstaff"');
+    });
+
+    it('correctly calculates Wild Shape uses for 2024 Druids and respects D&D Beyond limitedUse', async () => {
+        const { parseDndBeyondCharacter, ensureClassResourcesOnCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        // Test 1: Level 9 Druid with 2024 rules (sourceId: 145) and action limitedUse (maxUses: 3)
+        const mockRaw2024Druid = {
+            id: 172604675,
+            name: 'The nameless Firbolg',
+            classes: [
+                {
+                    level: 9,
+                    definition: {
+                        name: 'Druid',
+                        sources: [{ sourceId: 145 }]
+                    }
+                }
+            ],
+            actions: {
+                class: [
+                    {
+                        name: 'Wild Shape',
+                        limitedUse: {
+                            maxUses: 3,
+                            numberUsed: 2
+                        }
+                    }
+                ]
+            },
+            modifiers: {},
+            inventory: [],
+            stats: [
+                { id: 1, value: 10 },
+                { id: 2, value: 14 },
+                { id: 3, value: 14 },
+                { id: 4, value: 10 },
+                { id: 5, value: 16 },
+                { id: 6, value: 10 }
+            ]
+        };
+
+        const charA = parseDndBeyondCharacter(mockRaw2024Druid, '172604675');
+        const wildShapeA = charA.classResources?.find((r: any) => r.name === 'Wild Shape');
+        expect(wildShapeA).toBeDefined();
+        expect(wildShapeA?.total).toBe(3);
+
+        // Test 2: Level 9 Druid fallback without explicit action limitedUse (still gets 3 via 2024 scaling)
+        const mockRawLevel9Fallback = {
+            id: 999999,
+            name: 'Druid Level 9',
+            classes: [
+                {
+                    level: 9,
+                    definition: {
+                        name: 'Druid',
+                        sources: [{ sourceId: 145 }]
+                    }
+                }
+            ],
+            actions: {},
+            modifiers: {},
+            inventory: [],
+            stats: [
+                { id: 1, value: 10 },
+                { id: 2, value: 14 },
+                { id: 3, value: 14 },
+                { id: 4, value: 10 },
+                { id: 5, value: 16 },
+                { id: 6, value: 10 }
+            ]
+        };
+
+        const charB = parseDndBeyondCharacter(mockRawLevel9Fallback, '999999');
+        const wildShapeB = charB.classResources?.find((r: any) => r.name === 'Wild Shape');
+        expect(wildShapeB).toBeDefined();
+        expect(wildShapeB?.total).toBe(3);
+
+        // Test 3: ensureClassResourcesOnCharacter heals a saved character with outdated total: 2
+        const outdatedSavedChar: any = {
+            name: 'The nameless Firbolg',
+            classes: [{ name: 'Druid', level: 9 }],
+            classResources: [{ name: 'Wild Shape', total: 2, resetOn: 'short' }]
+        };
+        ensureClassResourcesOnCharacter(outdatedSavedChar);
+        expect(outdatedSavedChar.classResources[0].total).toBe(3);
+    });
+
+    it('does not add healing potion dice modifiers to Maximum Hit Points', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const mockCharacterWithPotions = {
+            id: 145444938,
+            name: 'San Te',
+            baseHitPoints: 48,
+            bonusHitPoints: null,
+            overrideHitPoints: null,
+            removedHitPoints: 0,
+            temporaryHitPoints: 0,
+            classes: [
+                {
+                    level: 9,
+                    definition: { name: 'Monk', hitDice: 8 }
+                }
+            ],
+            stats: [
+                { id: 1, value: 10 },
+                { id: 2, value: 16 },
+                { id: 3, value: 13 }, // CON 13 base + 1 feat bonus = 14 (+2 mod)
+                { id: 4, value: 10 },
+                { id: 5, value: 16 },
+                { id: 6, value: 10 }
+            ],
+            modifiers: {
+                feat: [
+                    {
+                        type: 'bonus',
+                        subType: 'constitution-score',
+                        value: 1,
+                        fixedValue: 1
+                    }
+                ],
+                item: [
+                    {
+                        id: '443',
+                        type: 'bonus',
+                        subType: 'hit-points',
+                        fixedValue: 4,
+                        dice: { diceCount: 4, diceValue: 4, fixedValue: 4, diceString: '4d4 + 4' },
+                        componentId: 5133
+                    },
+                    {
+                        id: '62627295',
+                        type: 'bonus',
+                        subType: 'hit-points',
+                        fixedValue: 2,
+                        dice: { diceCount: 2, diceValue: 4, fixedValue: 2, diceString: '2d4 + 2' },
+                        componentId: 8960641
+                    }
+                ]
+            },
+            inventory: [
+                {
+                    id: 854458643,
+                    definition: { id: 5133, name: 'Potion of Healing (Greater)', filterType: 'Potion', canEquip: false },
+                    equipped: false,
+                    isAttuned: false
+                },
+                {
+                    id: 892846179,
+                    definition: { id: 8960641, name: 'Potion of Healing', filterType: 'Potion', canEquip: false },
+                    equipped: false,
+                    isAttuned: false
+                }
+            ]
+        };
+
+        const char = parseDndBeyondCharacter(mockCharacterWithPotions, '145444938');
+        // Base 48 + CON mod (+2) * Level 9 = 48 + 18 = 66
+        // Must NOT include the +4 and +2 from potions!
+        expect(char.vitals.maxHp).toBe(66);
+        expect(char.vitals.currentHp).toBe(66);
+    });
 });

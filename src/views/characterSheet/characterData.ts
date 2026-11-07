@@ -108,6 +108,7 @@ export interface WeaponItem {
         unlocked: boolean; // whether character has mastery unlocked for this weapon
     };
     notes?: string;
+    grantedBy?: string;
 }
 
 export interface SpellSlotTier {

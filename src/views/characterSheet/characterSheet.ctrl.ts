@@ -1,6 +1,6 @@
 import el from "@elements";
 import { delData, getData, postData, putData } from "@services/request";
-import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
+import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
 import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
@@ -615,6 +615,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeRawDndBeyondPayload = undefined;
             currentEquipOverrides = [];
             activeCharacter = response.character;
+            ensureClassResourcesOnCharacter(activeCharacter);
             ensureFeatureDecisionsOnCharacterData(activeCharacter);
             ensureBaseScoresOnCharacter(activeCharacter, undefined);
             isEditMode = false;
@@ -651,6 +652,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                         if (raw) {
                             activeRawDndBeyondPayload = raw;
                             if (activeCharacter) {
+                                ensureClassResourcesOnCharacter(activeCharacter, raw);
                                 ensureBaseScoresOnCharacter(activeCharacter, raw);
                                 if (isEditMode) {
                                     editModeCtrl.enableCardLayoutEditors();

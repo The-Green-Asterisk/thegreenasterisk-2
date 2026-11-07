@@ -1591,14 +1591,19 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 }
 
                 if (modalItemDescription && itemObj.description) {
-                    const rawItemHtml = itemObj.description.startsWith("<")
-                        ? itemObj.description
-                        : `<p>${itemObj.description}</p>`;
-                    modalItemDescription.innerHTML = linkifyConditionAndSpellTags(rawItemHtml, {
-                        character: activeCharacter,
-                        entityName: itemObj.name,
-                        sourceName: itemObj.category || displayType
-                    });
+                    const localIsRich = localDesc && (localDesc.includes("<a ") || localDesc.includes("<button") || localDesc.includes("inline-item-link") || localDesc.length > 50);
+                    const sourceTier = String(independentRes.sourceTier || "").toLowerCase();
+                    const isGenericFallback = sourceTier.includes("srd") || sourceTier.includes("legacy") || sourceTier.includes("open5e");
+                    if (!localIsRich || !isGenericFallback) {
+                        const rawItemHtml = itemObj.description.startsWith("<")
+                            ? itemObj.description
+                            : `<p>${itemObj.description}</p>`;
+                        modalItemDescription.innerHTML = linkifyConditionAndSpellTags(rawItemHtml, {
+                            character: activeCharacter,
+                            entityName: itemObj.name,
+                            sourceName: itemObj.category || displayType
+                        });
+                    }
                 }
 
                 const finalItemImg = itemObj.imageUrl || initialItemImg;
@@ -1841,6 +1846,51 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     closeActionModal();
                 }
                 void openSpellModal(encodedSpell);
+            }
+            return;
+        }
+
+        const inlineItemBtn = target.closest<HTMLElement>(".inline-item-link[data-item-name]");
+        if (inlineItemBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            const encodedItem = inlineItemBtn.getAttribute("data-item-name");
+            if (encodedItem) {
+                if (actionModalBackdrop && !actionModalBackdrop.classList.contains("hidden")) {
+                    closeActionModal();
+                }
+                void openItemModal(encodedItem);
+            }
+            return;
+        }
+
+        // Fallback interceptor for any standard <a> tags with relative D&D Beyond links
+        const anchor = target.closest<HTMLAnchorElement>("a[href]");
+        if (anchor) {
+            const href = anchor.getAttribute("href") || "";
+            const itemMatch = href.match(/(?:https?:\/\/(?:www\.)?dndbeyond\.com)?\/(?:equipment|magic-items|weapons|items)\/([^/?#]+)/i);
+            if (itemMatch) {
+                event.preventDefault();
+                event.stopPropagation();
+                const slug = itemMatch[1];
+                const cleanName = anchor.textContent?.trim() || decodeURIComponent(slug).replace(/^\d+-/, "").replace(/-/g, " ");
+                if (actionModalBackdrop && !actionModalBackdrop.classList.contains("hidden")) {
+                    closeActionModal();
+                }
+                void openItemModal(cleanName);
+                return;
+            }
+            const spellMatch = href.match(/(?:https?:\/\/(?:www\.)?dndbeyond\.com)?\/spells\/([^/?#]+)/i);
+            if (spellMatch) {
+                event.preventDefault();
+                event.stopPropagation();
+                const slug = spellMatch[1];
+                const cleanSpell = anchor.textContent?.trim() || decodeURIComponent(slug).replace(/^\d+-/, "").replace(/-/g, " ");
+                if (actionModalBackdrop && !actionModalBackdrop.classList.contains("hidden")) {
+                    closeActionModal();
+                }
+                void openSpellModal(cleanSpell);
+                return;
             }
         }
     });

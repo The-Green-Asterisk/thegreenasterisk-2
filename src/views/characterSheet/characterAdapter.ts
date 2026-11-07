@@ -10,7 +10,7 @@ import {
     WeaponItem
 } from "./characterData";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
-import { applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
+import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
     1: { name: "Strength", abbr: "STR", key: "strength" },
@@ -153,11 +153,31 @@ export function parseDndBeyondCharacter(
     // Helper: check if an inventory item's modifiers should be active
     const isInventoryItemActive = (item: any): boolean => {
         const def = item.definition;
-        const canEquip = def?.canEquip !== false; // default true unless explicitly false
-        const isEquipped = canEquip ? !!item.equipped : true;
-        if (!isEquipped) return false;
-        const requiresAttunement = def?.canAttune === true;
-        if (requiresAttunement && item.isAttuned === false) return false;
+        if (!def) return false;
+
+        const nameLower = String(def.name || "").toLowerCase();
+        const filterTypeLower = String(def.filterType || "").toLowerCase();
+        // Consumables (potions, oils, scrolls) never grant passive ongoing modifiers from inventory
+        if (
+            filterTypeLower === "potion" ||
+            filterTypeLower === "scroll" ||
+            nameLower.includes("potion of") ||
+            nameLower.includes("oil of") ||
+            nameLower.startsWith("potion ") ||
+            nameLower.startsWith("oil ")
+        ) {
+            return false;
+        }
+
+        const requiresAttunement = def.canAttune === true;
+        if (requiresAttunement && !item.isAttuned) return false;
+
+        const canEquip = def.canEquip !== false;
+        if (canEquip && !item.equipped) return false;
+
+        // If it cannot be equipped and does not require attunement (e.g. adventuring gear, mundane items), it is not an active magical equipment item
+        if (!canEquip && !requiresAttunement) return false;
+
         return true;
     };
 
@@ -549,7 +569,9 @@ export function parseDndBeyondCharacter(
         .filter(
             m =>
                 (m.type === "bonus" || m.type === "stacking-bonus") &&
-                (m.subType === "hit-points" || m.subType === "maximum-hit-points")
+                (m.subType === "hit-points" || m.subType === "maximum-hit-points") &&
+                // Exclude healing dice roll formulas (e.g. 4d4 + 4 on potions or healing spells)
+                (!m.dice || (!m.dice.diceCount && !m.dice.diceString))
         )
         .reduce((sum, m) => sum + resolveModValue(m), 0);
 
@@ -1585,7 +1607,7 @@ export function parseDndBeyondCharacter(
             isMagic: isMundaneEquipment(def?.name) ? false : (isPotion ? true : !!def?.magic),
             description: def?.description || def?.snippet || undefined,
             imageUrl: def?.largeAvatarUrl || def?.avatarUrl || undefined,
-            notes: def?.snippet || def?.description ? def.snippet || "" : undefined
+            notes: def?.description || def?.snippet || undefined
         };
     });
 
@@ -1695,7 +1717,7 @@ export function parseDndBeyondCharacter(
             description: def.description || def.snippet || undefined,
             imageUrl: def.largeAvatarUrl || def.avatarUrl || undefined,
             mastery,
-            notes: def.snippet || def.description ? def.snippet : undefined
+            notes: def.description || def.snippet || undefined
         };
     });
 
@@ -1800,11 +1822,26 @@ export function parseDndBeyondCharacter(
     // 14. Class-Specific Resources across all classes
     const classResources: ClassResource[] = [];
 
+    const getActionMaxUses = (actionName: string): number | undefined => {
+        const actionCategories = Object.values(raw.actions || {});
+        for (const list of actionCategories) {
+            if (!Array.isArray(list)) continue;
+            const match = list.find(
+                (a: any) => a?.name?.toLowerCase() === actionName.toLowerCase() && a?.limitedUse?.maxUses != null
+            );
+            if (match && typeof match.limitedUse.maxUses === "number" && match.limitedUse.maxUses > 0) {
+                return match.limitedUse.maxUses;
+            }
+        }
+        return undefined;
+    };
+
     // Check Barbarian Rage
     const barb = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "barbarian");
     if (barb) {
         const bLvl = barb.level || 1;
-        const rages = bLvl >= 20 ? 99 : bLvl >= 17 ? 6 : bLvl >= 12 ? 5 : bLvl >= 6 ? 4 : bLvl >= 3 ? 3 : 2;
+        const actionRages = getActionMaxUses("Rage");
+        const rages = actionRages ?? (bLvl >= 20 ? 99 : bLvl >= 17 ? 6 : bLvl >= 12 ? 5 : bLvl >= 6 ? 4 : bLvl >= 3 ? 3 : 2);
         classResources.push({
             name: "Rage",
             total: rages,
@@ -1830,9 +1867,10 @@ export function parseDndBeyondCharacter(
     // Check Cleric / Paladin Channel Divinity
     const cleric = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "cleric");
     const paladin = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "paladin");
+    const cdActionUses = getActionMaxUses("Channel Divinity");
     if (cleric) {
         const cLvl = cleric.level || 1;
-        const uses = cLvl >= 18 ? 3 : cLvl >= 6 ? 2 : 1;
+        const uses = cdActionUses ?? (cLvl >= 18 ? 3 : cLvl >= 6 ? 2 : 1);
         classResources.push({
             name: "Channel Divinity",
             total: uses,
@@ -1841,17 +1879,35 @@ export function parseDndBeyondCharacter(
     } else if (paladin && paladin.level >= 3) {
         classResources.push({
             name: "Channel Divinity",
-            total: paladin.level >= 11 ? 2 : 1,
+            total: cdActionUses ?? (paladin.level >= 11 ? 2 : 1),
             resetOn: "short"
         });
     }
 
-    // Check Druid Wild Shape
+    // Check Druid Wild Shape (supports D&D Beyond action limitedUse and 2024 scaling: 2 at lvl 2, 3 at lvl 6, 4 at lvl 17)
     const druid = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "druid");
     if (druid && druid.level >= 2) {
+        const actionUses = getActionMaxUses("Wild Shape");
+        const is2024Druid =
+            druid.definition?.sourceId === 145 ||
+            (Array.isArray(druid.definition?.sources) &&
+                druid.definition.sources.some((s: any) => s?.sourceId === 145));
+
+        const fallbackUses = druid.level >= 20
+            ? 99
+            : is2024Druid || druid.level >= 6
+              ? druid.level >= 17
+                  ? 4
+                  : druid.level >= 6
+                    ? 3
+                    : 2
+              : 2;
+
+        const totalUses = actionUses ?? fallbackUses;
+
         classResources.push({
             name: "Wild Shape",
-            total: druid.level >= 20 ? 99 : 2,
+            total: totalUses,
             resetOn: "short"
         });
     }
@@ -1860,23 +1916,26 @@ export function parseDndBeyondCharacter(
     const fighter = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "fighter");
     if (fighter) {
         const fLvl = fighter.level || 1;
+        const secondWindUses = getActionMaxUses("Second Wind") ?? (fLvl >= 10 ? 4 : fLvl >= 4 ? 3 : fLvl >= 2 ? 2 : 1);
         classResources.push({
             name: "Second Wind",
-            total: 1,
+            total: secondWindUses,
             resetOn: "short",
             dieOrType: `1d10+${fLvl}`
         });
         if (fLvl >= 2) {
+            const actionSurgeUses = getActionMaxUses("Action Surge") ?? (fLvl >= 17 ? 2 : 1);
             classResources.push({
                 name: "Action Surge",
-                total: fLvl >= 17 ? 2 : 1,
+                total: actionSurgeUses,
                 resetOn: "short"
             });
         }
         if (fLvl >= 9) {
+            const indomitableUses = getActionMaxUses("Indomitable") ?? (fLvl >= 17 ? 3 : fLvl >= 13 ? 2 : 1);
             classResources.push({
                 name: "Indomitable",
-                total: fLvl >= 17 ? 3 : fLvl >= 13 ? 2 : 1,
+                total: indomitableUses,
                 resetOn: "long"
             });
         }
@@ -1961,7 +2020,7 @@ export function parseDndBeyondCharacter(
     }
     const activeConditions = Array.from(activeConditionsSet);
 
-    return {
+    const result: CharacterData = {
         id: characterId,
         name: raw.name || "Adventurer",
         subtitle,
@@ -2034,6 +2093,9 @@ export function parseDndBeyondCharacter(
         },
         spells: spellsList
     };
+
+    applyGrantedWeapons(result);
+    return result;
 }
 
 export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload?: any): void {
@@ -2214,6 +2276,55 @@ export function applyLockedFieldsToRefreshedCharacter(
             if (dexAb) {
                 target.vitals.initiative = dexAb.modifier;
             }
+        }
+    }
+}
+
+export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: any): void {
+    if (!character) return;
+    if (!Array.isArray(character.classResources)) {
+        character.classResources = [];
+    }
+
+    // Check if raw actions provides maxUses
+    let rawWildShapeUses: number | undefined;
+    if (raw && typeof raw === "object" && raw.actions) {
+        const actionCategories = Object.values(raw.actions || {});
+        for (const list of actionCategories) {
+            if (!Array.isArray(list)) continue;
+            const match = list.find(
+                (a: any) => a?.name?.toLowerCase() === "wild shape" && a?.limitedUse?.maxUses != null
+            );
+            if (match && typeof match.limitedUse.maxUses === "number" && match.limitedUse.maxUses > 0) {
+                rawWildShapeUses = match.limitedUse.maxUses;
+                break;
+            }
+        }
+    }
+
+    const druidClass = (character.classes || []).find(c => c?.name?.toLowerCase() === "druid");
+    if (druidClass && druidClass.level >= 2) {
+        const expectedUses =
+            rawWildShapeUses ??
+            (druidClass.level >= 20
+                ? 99
+                : druidClass.level >= 17
+                  ? 4
+                  : druidClass.level >= 6
+                    ? 3
+                    : 2);
+
+        const existingWs = character.classResources.find(r => r?.name?.toLowerCase() === "wild shape");
+        if (existingWs) {
+            if (existingWs.total < expectedUses) {
+                existingWs.total = expectedUses;
+            }
+        } else {
+            character.classResources.push({
+                name: "Wild Shape",
+                total: expectedUses,
+                resetOn: "short"
+            });
         }
     }
 }

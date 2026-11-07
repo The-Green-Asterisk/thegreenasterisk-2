@@ -311,6 +311,20 @@ export default class CharacterController extends BaseController {
                 savedCharacterId: record.id
             };
 
+            // Auto-heal Wild Shape uses for Druids saved under outdated formulas
+            if (character && Array.isArray(character.classes) && Array.isArray(character.classResources)) {
+                const druid = character.classes.find((c: any) => c?.name?.toLowerCase() === "druid");
+                if (druid && druid.level >= 2) {
+                    const expectedUses = druid.level >= 20 ? 99 : druid.level >= 17 ? 4 : druid.level >= 6 ? 3 : 2;
+                    const ws = character.classResources.find((r: any) => r?.name?.toLowerCase() === "wild shape");
+                    if (ws && typeof ws.total === "number" && ws.total < expectedUses) {
+                        ws.total = expectedUses;
+                        record.payload = JSON.stringify(character);
+                        void repo.save(record).catch(err => console.warn("Could not auto-heal character payload:", err));
+                    }
+                }
+            }
+
             return {
                 response: JSON.stringify({
                     savedCharacter: {

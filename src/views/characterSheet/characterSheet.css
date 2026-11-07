@@ -4367,6 +4367,31 @@ el-character-sheet .content-slate section.sheet-hero,
     text-decoration: none;
 }
 
+.inline-item-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: #ede9fe;
+    border: 1px solid #c4b5fd;
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: #6d28d9;
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-item-link:hover {
+    background: #ddd6fe;
+    border-color: #8b5cf6;
+    color: #5b21b6;
+    text-decoration: none;
+}
+
 #action-modal-container {
     z-index: 10040;
 }
@@ -4755,6 +4780,18 @@ el-character-sheet .content-slate section.sheet-hero,
     background: rgba(16, 185, 129, 0.28);
     border-color: #10b981;
     color: #ecfdf5;
+}
+
+:root[data-theme="dark"] .inline-item-link {
+    background: rgba(147, 51, 234, 0.15);
+    border-color: rgba(168, 85, 247, 0.45);
+    color: #c084fc;
+}
+
+:root[data-theme="dark"] .inline-item-link:hover {
+    background: rgba(147, 51, 234, 0.3);
+    border-color: #a855f7;
+    color: #f3e8ff;
 }
 
 :root[data-theme="dark"] .action-modal-external-link-row {
