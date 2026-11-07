@@ -1,3 +1,5 @@
+import el from "@elements";
+import FileService from "@services/fileService";
 import { postData } from "@services/request";
 import {
     AbilityName,
@@ -417,8 +419,25 @@ export class CharacterCreatorController {
                         <input type="text" id="char-gender-input" class="creator-input" placeholder="e.g. Female (She/Her)" value="${this.escape(this.state.gender)}" />
                     </div>
                     <div class="creator-form-group" style="grid-column: 1 / -1;">
-                        <label class="creator-label" for="char-avatar-input">Avatar Image URL</label>
-                        <input type="text" id="char-avatar-input" class="creator-input" placeholder="https://example.com/character-portrait.png" value="${this.escape(this.state.avatarUrl)}" />
+                        <label class="creator-label">Character Avatar</label>
+                        <div class="creator-avatar-picker">
+                            <div class="creator-avatar-preview">
+                                <img id="char-avatar-preview-img" src="${this.escape(this.state.avatarUrl || '/storage/images/default-avatar.png')}" alt="Avatar Preview" />
+                            </div>
+                            <div class="creator-avatar-controls">
+                                <div class="creator-avatar-upload-row">
+                                    <input type="file" id="char-avatar-file-input" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="display: none;" />
+                                    <button type="button" id="char-avatar-upload-btn" class="creator-nav-btn secondary-btn">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Image File
+                                    </button>
+                                    <span id="char-avatar-upload-status" class="creator-upload-status">PNG, JPG, WebP, GIF (Max 10MB)</span>
+                                </div>
+                                <div class="creator-avatar-divider"><span>OR PROVIDE IMAGE URL</span></div>
+                                <div class="creator-avatar-url-row">
+                                    <input type="text" id="char-avatar-input" class="creator-input" placeholder="https://example.com/character-portrait.png" value="${this.escape(this.state.avatarUrl)}" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -901,9 +920,59 @@ export class CharacterCreatorController {
             });
 
             const avatarInput = document.getElementById("char-avatar-input") as HTMLInputElement;
+            const previewImg = document.getElementById("char-avatar-preview-img") as HTMLImageElement;
+            const uploadBtn = document.getElementById("char-avatar-upload-btn") as HTMLButtonElement;
+            const fileInput = document.getElementById("char-avatar-file-input") as HTMLInputElement;
+            const uploadStatus = document.getElementById("char-avatar-upload-status");
+
             avatarInput?.addEventListener("input", (e) => {
-                this.state.avatarUrl = (e.target as HTMLInputElement).value || "/storage/images/default-avatar.png";
+                const url = (e.target as HTMLInputElement).value.trim();
+                this.state.avatarUrl = url || "/storage/images/default-avatar.png";
+                if (previewImg) previewImg.src = this.state.avatarUrl;
                 this.updateLiveSummary();
+            });
+
+            uploadBtn?.addEventListener("click", () => {
+                fileInput?.click();
+            });
+
+            fileInput?.addEventListener("change", async () => {
+                const file = fileInput.files?.[0];
+                if (!file) return;
+
+                if (!el.isAuth) {
+                    if (uploadStatus) {
+                        uploadStatus.className = "creator-upload-status is-error";
+                        uploadStatus.textContent = "Please log in to upload files directly, or paste an image URL below.";
+                    }
+                    return;
+                }
+
+                if (uploadBtn) uploadBtn.disabled = true;
+                if (uploadStatus) {
+                    uploadStatus.className = "creator-upload-status";
+                    uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading ${this.escape(file.name)}...`;
+                }
+
+                try {
+                    const filePath = await FileService.uploadFile(file, "avatars");
+                    this.state.avatarUrl = filePath;
+                    if (avatarInput) avatarInput.value = filePath;
+                    if (previewImg) previewImg.src = filePath;
+                    if (uploadStatus) {
+                        uploadStatus.className = "creator-upload-status is-success";
+                        uploadStatus.innerHTML = `<i class="fa-solid fa-circle-check"></i> Uploaded successfully!`;
+                    }
+                    this.updateLiveSummary();
+                } catch (err: any) {
+                    if (uploadStatus) {
+                        uploadStatus.className = "creator-upload-status is-error";
+                        uploadStatus.textContent = err.message || "Failed to upload avatar.";
+                    }
+                } finally {
+                    if (uploadBtn) uploadBtn.disabled = false;
+                    fileInput.value = "";
+                }
             });
         } else if (step === 2) {
             document.querySelectorAll(".species-card").forEach((card) => {

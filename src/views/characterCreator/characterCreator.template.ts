@@ -5,21 +5,8 @@ const html = Helpers.html;
 export const characterCreatorTemplate = () => html`
     <el-character-creator class="character-creator-view">
         <div class="creator-container content-slate">
-            <header class="creator-header">
-                <div class="creator-header-main">
-                    <div class="creator-badge">D&D 5.5e (2024 Revision)</div>
-                    <h1 class="creator-title">Character Creator</h1>
-                    <p class="creator-subtitle">Craft a fully-featured hero with complete 2024 rules, weapon masteries, origin feats, and normalized site storage.</p>
-                </div>
-                <div class="creator-header-actions">
-                    <a href="/character-sheet" class="creator-cancel-btn" title="Back to Character Sheet">
-                        <i class="fa-solid fa-arrow-left"></i> Exit to Sheet
-                    </a>
-                </div>
-            </header>
-
-            <!-- Stepper Progress Bar -->
-            <nav class="creator-stepper" aria-label="Creation Steps">
+            <!-- Stepper Progress Bar (resting just below the site nav) -->
+            <div class="creator-stepper" role="tablist" aria-label="Creation Steps">
                 <ol class="stepper-list" id="creator-stepper-list">
                     <li class="stepper-item active" data-step="1">
                         <span class="stepper-circle">1</span>
@@ -58,7 +45,20 @@ export const characterCreatorTemplate = () => html`
                         <span class="stepper-label">Review</span>
                     </li>
                 </ol>
-            </nav>
+            </div>
+
+            <header class="creator-header">
+                <div class="creator-header-main">
+                    <div class="creator-badge">D&D 5.5e (2024 Revision)</div>
+                    <h1 class="creator-title">Character Creator</h1>
+                    <p class="creator-subtitle">Craft a fully-featured hero with complete 2024 rules, weapon masteries, origin feats, and normalized site storage.</p>
+                </div>
+                <div class="creator-header-actions">
+                    <a href="/character-sheet" class="creator-cancel-btn" title="Back to Character Sheet">
+                        <i class="fa-solid fa-arrow-left"></i> Exit to Sheet
+                    </a>
+                </div>
+            </header>
 
             <!-- Live Summary Strip -->
             <div class="creator-summary-strip" id="creator-summary-strip">
