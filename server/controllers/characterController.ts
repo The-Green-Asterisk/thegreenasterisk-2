@@ -317,17 +317,20 @@ export default class CharacterController extends BaseController {
             const record = siteCharacterId
                 ? await repo.findOne({
                     where: { siteCharacterId, user: { id: currentUser.id } },
-                    relations: queryRelations
+                    relations: queryRelations,
+                    relationLoadStrategy: "query"
                 })
                 : externalCharacterId
                     ? await repo.findOne({
                         where: { externalCharacterId, user: { id: currentUser.id } },
                         order: { updatedAt: "DESC" },
-                        relations: queryRelations
+                        relations: queryRelations,
+                        relationLoadStrategy: "query"
                     })
                     : await repo.findOne({
                         where: { id: savedId, user: { id: currentUser.id } },
-                        relations: queryRelations
+                        relations: queryRelations,
+                        relationLoadStrategy: "query"
                     });
 
             if (!record) {
@@ -354,7 +357,7 @@ export default class CharacterController extends BaseController {
                     if (ws && typeof ws.total === "number" && ws.total < expectedUses) {
                         ws.total = expectedUses;
                         record.payload = JSON.stringify(character);
-                        void repo.save(record).catch(err => console.warn("Could not auto-heal character payload:", err));
+                        void repo.update(record.id, { payload: record.payload }).catch(err => console.warn("Could not auto-heal character payload:", err));
                     }
                 }
             }
@@ -381,7 +384,7 @@ export default class CharacterController extends BaseController {
                 if (changedNotes) {
                     if (character.vitals) character.vitals.savingThrowNotes = character.savingThrowNotes;
                     record.payload = JSON.stringify(character);
-                    void repo.save(record).catch(err => console.warn("Could not auto-heal character saving throws:", err));
+                    void repo.update(record.id, { payload: record.payload }).catch(err => console.warn("Could not auto-heal character saving throws:", err));
                 }
             }
 
@@ -983,22 +986,14 @@ export default class CharacterController extends BaseController {
     private static async syncCharacterRelationalEntities(savedCharacter: SavedCharacter, data: any) {
         if (!AppDataSource.isInitialized || !savedCharacter?.id) return;
         try {
-            // 1. Update basic columns on SavedCharacter if needed
-            const charRepo = AppDataSource.getRepository(SavedCharacter);
-            savedCharacter.level = Number(data.level) || (Array.isArray(data.classes) && data.classes[0]?.level) || 1;
-            savedCharacter.race = data.race || data.species || savedCharacter.race;
-            savedCharacter.background = data.background || savedCharacter.background;
-            savedCharacter.alignment = data.alignment || savedCharacter.alignment;
-            savedCharacter.avatarUrl = data.avatarUrl || savedCharacter.avatarUrl;
-            savedCharacter.dndBeyondUrl = data.dndBeyondUrl || savedCharacter.dndBeyondUrl;
-            await charRepo.save(savedCharacter);
+            const charRef = { id: savedCharacter.id } as SavedCharacter;
 
-            // 2. Character Vitals
+            // 1. Character Vitals
             if (data.vitals) {
                 const vitalsRepo = AppDataSource.getRepository(CharacterVitals);
                 let vitals = await vitalsRepo.findOne({ where: { savedCharacter: { id: savedCharacter.id } } });
                 if (!vitals) {
-                    vitals = vitalsRepo.create({ savedCharacter });
+                    vitals = vitalsRepo.create({ savedCharacter: charRef });
                 }
                 vitals.currentHp = Number(data.vitals.currentHp) || 10;
                 vitals.maxHp = Number(data.vitals.maxHp) || 10;
@@ -1031,7 +1026,7 @@ export default class CharacterController extends BaseController {
                 const classRepo = AppDataSource.getRepository(CharacterClass);
                 await classRepo.delete({ savedCharacter: { id: savedCharacter.id } });
                 const classEntities = data.classes.map((c: any, idx: number) => classRepo.create({
-                    savedCharacter,
+                    savedCharacter: charRef,
                     name: c.name || "Adventurer",
                     level: Number(c.level) || 1,
                     subclass: c.subclass || undefined,
@@ -1045,7 +1040,7 @@ export default class CharacterController extends BaseController {
                 const abilityRepo = AppDataSource.getRepository(CharacterAbility);
                 await abilityRepo.delete({ savedCharacter: { id: savedCharacter.id } });
                 const abilityEntities = data.abilities.map((a: any) => abilityRepo.create({
-                    savedCharacter,
+                    savedCharacter: charRef,
                     name: a.name || a.abbr,
                     abbr: a.abbr || a.name,
                     score: Number(a.score) || 10,
@@ -1064,7 +1059,7 @@ export default class CharacterController extends BaseController {
                 const skillRepo = AppDataSource.getRepository(CharacterSkill);
                 await skillRepo.delete({ savedCharacter: { id: savedCharacter.id } });
                 const skillEntities = data.skills.map((s: any) => skillRepo.create({
-                    savedCharacter,
+                    savedCharacter: charRef,
                     name: s.name,
                     stat: s.stat || "DEX",
                     bonus: Number(s.bonus) || 0,
@@ -1080,7 +1075,7 @@ export default class CharacterController extends BaseController {
             if (Array.isArray(data.weapons)) {
                 for (const w of data.weapons) {
                     itemsToSave.push(itemRepo.create({
-                        savedCharacter,
+                        savedCharacter: charRef,
                         name: w.name,
                         quantity: Number(w.quantity) || 1,
                         equipped: Boolean(w.equipped),
@@ -1109,7 +1104,7 @@ export default class CharacterController extends BaseController {
             if (Array.isArray(data.equipment)) {
                 for (const e of data.equipment) {
                     itemsToSave.push(itemRepo.create({
-                        savedCharacter,
+                        savedCharacter: charRef,
                         name: e.name,
                         quantity: Number(e.quantity) || 1,
                         equipped: Boolean(e.equipped),
@@ -1132,7 +1127,7 @@ export default class CharacterController extends BaseController {
                 const spellRepo = AppDataSource.getRepository(CharacterSpell);
                 await spellRepo.delete({ savedCharacter: { id: savedCharacter.id } });
                 const spellEntities = data.spells.map((sp: any) => spellRepo.create({
-                    savedCharacter,
+                    savedCharacter: charRef,
                     name: sp.name,
                     level: Number(sp.level) || 0,
                     school: sp.school || "Evocation",
@@ -1155,7 +1150,7 @@ export default class CharacterController extends BaseController {
                 const featureRepo = AppDataSource.getRepository(CharacterFeature);
                 await featureRepo.delete({ savedCharacter: { id: savedCharacter.id } });
                 const featureEntities = data.features.map((f: any) => featureRepo.create({
-                    savedCharacter,
+                    savedCharacter: charRef,
                     name: f.name,
                     source: f.source || "Class",
                     type: f.type || "Class",
@@ -1171,7 +1166,7 @@ export default class CharacterController extends BaseController {
                 const resourceRepo = AppDataSource.getRepository(CharacterResource);
                 await resourceRepo.delete({ savedCharacter: { id: savedCharacter.id } });
                 const resourceEntities = data.classResources.map((r: any) => resourceRepo.create({
-                    savedCharacter,
+                    savedCharacter: charRef,
                     name: r.name,
                     total: Number(r.total) || 0,
                     currentUsed: Number(r.currentUsed) || 0,
@@ -1194,11 +1189,23 @@ export default class CharacterController extends BaseController {
             if (choicesMap) {
                 const decisionRepo = AppDataSource.getRepository(CharacterFeatureDecision);
                 await decisionRepo.delete({ savedCharacter: { id: savedCharacter.id } });
-                const decisionEntities = Object.entries(choicesMap).map(([decisionId, val]) => decisionRepo.create({
-                    savedCharacter,
-                    decisionId,
-                    selectedValue: String(val)
-                }));
+                const classNames = Array.isArray(data.classes)
+                    ? data.classes.map((c: any) => String(c.name || "").toLowerCase())
+                    : [];
+                const knownClassPrefixes = ["barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
+                const decisionEntities = Object.entries(choicesMap)
+                    .filter(([decisionId]) => {
+                        const prefix = decisionId.split("-")[0]?.toLowerCase();
+                        if (prefix && knownClassPrefixes.includes(prefix) && classNames.length > 0) {
+                            return classNames.includes(prefix);
+                        }
+                        return true;
+                    })
+                    .map(([decisionId, val]) => decisionRepo.create({
+                        savedCharacter: charRef,
+                        decisionId,
+                        selectedValue: String(val)
+                    }));
                 if (decisionEntities.length > 0) await decisionRepo.save(decisionEntities);
             }
         } catch (err) {

@@ -4820,12 +4820,26 @@ export class CharacterCreatorController {
                 creatorState: {
                     ...this.state
                 },
-                featureChoices: {
-                    ...this.state.subclassFeatureChoices
-                },
-                subclassFeatureChoices: {
-                    ...this.state.subclassFeatureChoices
-                }
+                featureChoices: Object.fromEntries(
+                    Object.entries(this.state.subclassFeatureChoices || {}).filter(([key]) => {
+                        const parts = key.split("-");
+                        const clsPrefix = parts[0];
+                        const reqLvl = Number(parts[1]);
+                        if (clsPrefix !== this.state.classId) return false;
+                        if (!Number.isNaN(reqLvl) && reqLvl > this.state.level) return false;
+                        return true;
+                    })
+                ),
+                subclassFeatureChoices: Object.fromEntries(
+                    Object.entries(this.state.subclassFeatureChoices || {}).filter(([key]) => {
+                        const parts = key.split("-");
+                        const clsPrefix = parts[0];
+                        const reqLvl = Number(parts[1]);
+                        if (clsPrefix !== this.state.classId) return false;
+                        if (!Number.isNaN(reqLvl) && reqLvl > this.state.level) return false;
+                        return true;
+                    })
+                )
             };
 
             const saveBody: any = {
