@@ -1,6 +1,6 @@
 import el from "@elements";
 import FileService from "@services/fileService";
-import { getData, postData } from "@services/request";
+import { getData, postData, putData } from "@services/request";
 import {
     AbilityName,
     BACKGROUNDS_2024,
@@ -72,6 +72,7 @@ export interface AsiChoice {
 export interface CreatorState {
     currentStep: number;
     savedId?: number;
+    siteCharacterId?: string;
     name: string;
     level: number;
     alignment: string;
@@ -592,13 +593,18 @@ export class CharacterCreatorController {
 
             const char = response.character;
             const savedId = response.savedCharacter?.id || char.savedCharacterId;
+            const siteCharacterId = response.savedCharacter?.siteCharacterId || char.siteCharacterId;
             if (savedId) {
                 this.state.savedId = Number(savedId);
+            }
+            if (siteCharacterId) {
+                this.state.siteCharacterId = String(siteCharacterId);
             }
 
             if (char.creatorState && typeof char.creatorState === "object") {
                 Object.assign(this.state, char.creatorState);
                 if (savedId) this.state.savedId = Number(savedId);
+                if (siteCharacterId) this.state.siteCharacterId = String(siteCharacterId);
             } else {
                 if (char.name) this.state.name = char.name;
                 if (char.level) this.state.level = Number(char.level);
@@ -4827,12 +4833,19 @@ export class CharacterCreatorController {
                 source: "site",
                 character: characterPayload
             };
+            const isUpdatingExisting = Boolean(this.state.savedId || this.state.siteCharacterId);
             if (this.state.savedId) {
                 saveBody.savedId = this.state.savedId;
                 characterPayload.savedCharacterId = this.state.savedId;
             }
+            if (this.state.siteCharacterId) {
+                saveBody.siteCharacterId = this.state.siteCharacterId;
+                characterPayload.siteCharacterId = this.state.siteCharacterId;
+            }
 
-            const response = await postData<any>("/save-character", saveBody);
+            const response = isUpdatingExisting
+                ? await putData<any>("/save-character", saveBody)
+                : await postData<any>("/create-character", saveBody);
 
             if (response && response.savedCharacter?.siteCharacterId) {
                 window.location.href = `/character-sheet/${response.savedCharacter.siteCharacterId}`;

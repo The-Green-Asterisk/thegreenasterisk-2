@@ -493,7 +493,23 @@ export default class CharacterController extends BaseController {
         }
     }
 
+    public static async createCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
+        return this.persistCharacter(req, res, "create");
+    }
+
+    public static async updateCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
+        return this.persistCharacter(req, res, "update");
+    }
+
     public static async saveCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
+        return this.persistCharacter(req, res, "update");
+    }
+
+    private static async persistCharacter(
+        req: http.IncomingMessage,
+        _res: http.ServerResponse,
+        mode: "create" | "update"
+    ) {
         const currentUser = SessionController.getUser(req as ReqAndUser);
         if (!currentUser) {
             return {
@@ -551,33 +567,44 @@ export default class CharacterController extends BaseController {
             const repo = AppDataSource.getRepository(SavedCharacter);
             let record: SavedCharacter | null = null;
 
-            if (savedId && !Number.isNaN(savedId)) {
-                record = await repo.findOne({
-                    where: { id: savedId, user: { id: currentUser.id } },
-                    relations: { user: true }
-                });
-            }
+            if (mode === "update") {
+                if (savedId && !Number.isNaN(savedId)) {
+                    record = await repo.findOne({
+                        where: { id: savedId, user: { id: currentUser.id } },
+                        relations: { user: true }
+                    });
+                }
 
-            if (!record && siteCharacterIdFromBody) {
-                record = await repo.findOne({
-                    where: { user: { id: currentUser.id }, siteCharacterId: siteCharacterIdFromBody },
-                    relations: { user: true }
-                });
-            }
+                if (!record && siteCharacterIdFromBody) {
+                    record = await repo.findOne({
+                        where: { user: { id: currentUser.id }, siteCharacterId: siteCharacterIdFromBody },
+                        relations: { user: true }
+                    });
+                }
 
-            if (!record && externalCharacterId) {
-                record = await repo.findOne({
-                    where: { user: { id: currentUser.id }, externalCharacterId },
-                    order: { updatedAt: "DESC" },
-                    relations: { user: true }
-                });
+                if (!record && externalCharacterId) {
+                    record = await repo.findOne({
+                        where: { user: { id: currentUser.id }, externalCharacterId },
+                        order: { updatedAt: "DESC" },
+                        relations: { user: true }
+                    });
+                }
+            } else {
+                // In create mode, if importing from D&D Beyond, check if externalCharacterId already exists for this user
+                if (externalCharacterId) {
+                    record = await repo.findOne({
+                        where: { user: { id: currentUser.id }, externalCharacterId },
+                        order: { updatedAt: "DESC" },
+                        relations: { user: true }
+                    });
+                }
             }
 
             if (!record) {
                 record = repo.create({
                     user: currentUser,
                     name,
-                    siteCharacterId: siteCharacterIdFromBody || this.generateSiteCharacterId(),
+                    siteCharacterId: (mode === "update" && siteCharacterIdFromBody) ? siteCharacterIdFromBody : this.generateSiteCharacterId(),
                     source,
                     externalCharacterId,
                     payload: "{}"

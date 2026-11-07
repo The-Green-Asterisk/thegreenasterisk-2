@@ -290,9 +290,19 @@ export default class Routes {
         return CharacterController.getSavedCharacter(req, res);
     }
 
+    @Method('POST')
+    private ['/create-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.createCharacter(req, res);
+    }
+
     @Method('PUT')
     private ['/save-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return CharacterController.saveCharacter(req, res);
+    }
+
+    @Method('PUT')
+    private ['/update-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.updateCharacter(req, res);
     }
 
     @Method('DELETE')

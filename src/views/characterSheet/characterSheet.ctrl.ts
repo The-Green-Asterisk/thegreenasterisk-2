@@ -471,10 +471,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }
 
         try {
-            const response = await putData<{
-                savedCharacter?: { id: number; name: string; siteCharacterId?: string; source?: "site" | "dndbeyond"; externalCharacterId?: string };
-                character?: CharacterData;
-            }>("/save-character", {
+            const isUpdatingExisting = Boolean(activeCharacter.savedCharacterId || activeCharacter.siteCharacterId);
+            const savePayload = {
                 savedId: activeCharacter.savedCharacterId,
                 siteCharacterId: activeCharacter.siteCharacterId,
                 source: activeCharacter.source || (activeCharacterId && /^\d+$/.test(activeCharacterId) ? "dndbeyond" : "site"),
@@ -484,7 +482,16 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                         : undefined,
                 name: activeCharacter.name,
                 character: activeCharacter
-            });
+            };
+            const response = isUpdatingExisting
+                ? await putData<{
+                    savedCharacter?: { id: number; name: string; siteCharacterId?: string; source?: "site" | "dndbeyond"; externalCharacterId?: string };
+                    character?: CharacterData;
+                }>("/save-character", savePayload)
+                : await postData<{
+                    savedCharacter?: { id: number; name: string; siteCharacterId?: string; source?: "site" | "dndbeyond"; externalCharacterId?: string };
+                    character?: CharacterData;
+                }>("/create-character", savePayload);
 
             if (response?.savedCharacter?.id) {
                 activeCharacter.savedCharacterId = response.savedCharacter.id;

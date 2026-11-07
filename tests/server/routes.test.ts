@@ -1,5 +1,6 @@
 import http from 'http';
 import { describe, expect, it, vi } from 'vitest';
+import CharacterController from '../../server/controllers/characterController';
 import SessionController from '../../server/controllers/sessionController';
 import Routes from '../../server/routes';
 
@@ -57,5 +58,28 @@ describe('Server Routes Dispatcher', () => {
         expect(logoutSpy).toHaveBeenCalledWith(req);
         expect(result.status).toBe(200);
         expect(JSON.parse(result.response)).toBe('Logged out');
+    });
+
+    it('routes POST /create-character to CharacterController.createCharacter and PUT /save-character to CharacterController.saveCharacter', async () => {
+        const createSpy = vi.spyOn(CharacterController, 'createCharacter').mockResolvedValueOnce({
+            response: JSON.stringify({ success: true }),
+            status: 200
+        });
+        const saveSpy = vi.spyOn(CharacterController, 'saveCharacter').mockResolvedValueOnce({
+            response: JSON.stringify({ success: true }),
+            status: 200
+        });
+
+        const createReq = { url: '/data/create-character', method: 'POST' } as http.IncomingMessage;
+        const createRes = {} as http.ServerResponse;
+        const createResult = await new Routes(createReq, createRes).response;
+        expect(createSpy).toHaveBeenCalledWith(createReq, createRes);
+        expect(createResult.status).toBe(200);
+
+        const saveReq = { url: '/data/save-character', method: 'PUT' } as http.IncomingMessage;
+        const saveRes = {} as http.ServerResponse;
+        const saveResult = await new Routes(saveReq, saveRes).response;
+        expect(saveSpy).toHaveBeenCalledWith(saveReq, saveRes);
+        expect(saveResult.status).toBe(200);
     });
 });

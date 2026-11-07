@@ -1321,4 +1321,41 @@ describe("CharacterCreatorController", () => {
         expect(strippedLvl6Row.textContent).toContain("Moonlight Step (Circle of the Moon)");
         expect(strippedLvl6Row.textContent).not.toContain("Gain a feature granted by");
     });
+
+    it("uses POST /create-character for new characters and PUT /save-character when updating an existing character", async () => {
+        const requestModule = await import("../../../src/services/request");
+        const postSpy = vi.spyOn(requestModule, "postData").mockResolvedValue({
+            savedCharacter: { id: 101, siteCharacterId: "tga-newchar1" }
+        } as any);
+        const putSpy = vi.spyOn(requestModule, "putData").mockResolvedValue({
+            savedCharacter: { id: 101, siteCharacterId: "tga-newchar1" }
+        } as any);
+
+        // New character -> POST /create-character
+        ctrl.state.name = "Lyra Moonwhisper";
+        ctrl.state.savedId = undefined;
+        ctrl.state.siteCharacterId = undefined;
+        await ctrl.submitCharacter();
+        expect(postSpy).toHaveBeenCalledWith("/create-character", expect.objectContaining({
+            name: "Lyra Moonwhisper"
+        }));
+        expect(putSpy).not.toHaveBeenCalled();
+
+        postSpy.mockClear();
+        putSpy.mockClear();
+
+        // Existing character -> PUT /save-character
+        ctrl.state.savedId = 101;
+        ctrl.state.siteCharacterId = "tga-newchar1";
+        await ctrl.submitCharacter();
+        expect(putSpy).toHaveBeenCalledWith("/save-character", expect.objectContaining({
+            name: "Lyra Moonwhisper",
+            savedId: 101,
+            siteCharacterId: "tga-newchar1"
+        }));
+        expect(postSpy).not.toHaveBeenCalled();
+
+        postSpy.mockRestore();
+        putSpy.mockRestore();
+    });
 });
