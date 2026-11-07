@@ -138,9 +138,9 @@ export default class CharacterController extends BaseController {
         const itemName = (body?.itemName || "").toString().trim();
         const equipped = body?.equipped;
 
-        if (!characterId || !itemName || (scope !== "item" && scope !== "weapon" && scope !== "weapon-mastery") || typeof equipped !== "boolean") {
+        if (!characterId || !itemName || (scope !== "item" && scope !== "weapon" && scope !== "weapon-mastery" && scope !== "attunement") || typeof equipped !== "boolean") {
             return {
-                response: JSON.stringify({ error: "characterId, scope ('item' | 'weapon' | 'weapon-mastery'), itemName, and equipped (boolean) are required." }),
+                response: JSON.stringify({ error: "characterId, scope ('item' | 'weapon' | 'weapon-mastery' | 'attunement'), itemName, and equipped (boolean) are required." }),
                 status: 400
             };
         }
@@ -427,12 +427,50 @@ export default class CharacterController extends BaseController {
                 });
             }
 
-            const payloadToSave = {
+            const payloadToSave: any = {
                 ...(inputCharacter as Record<string, unknown>),
                 savedCharacterId: record.id || savedId,
                 siteCharacterId: record.siteCharacterId || siteCharacterIdFromBody,
                 source
             };
+
+            // Sanitize weapons: ensure no potions or oils are ever stored as weapons in character payload
+            if (Array.isArray(payloadToSave.weapons)) {
+                const cleanedWeapons: any[] = [];
+                const extraEquipment: any[] = [];
+                for (const w of payloadToSave.weapons) {
+                    const wName = String(w?.name || "").toLowerCase();
+                    if (wName.includes("potion of") || wName.includes("oil of") || wName.startsWith("potion ") || wName.startsWith("oil ")) {
+                        extraEquipment.push({
+                            id: w.id || w.definitionId,
+                            definitionId: w.definitionId || w.id,
+                            name: w.name,
+                            quantity: Number(w.quantity) || 1,
+                            equipped: false,
+                            attuned: false,
+                            requiresAttunement: false,
+                            type: "Potion",
+                            filterType: "Potion",
+                            rarity: wName.includes("greater") ? "Uncommon" : (wName.includes("superior") ? "Rare" : (wName.includes("supreme") ? "Very Rare" : "Common")),
+                            isMagic: true,
+                            description: w.description || `<p>${w.name}.</p>`
+                        });
+                    } else {
+                        cleanedWeapons.push(w);
+                    }
+                }
+                payloadToSave.weapons = cleanedWeapons;
+                if (extraEquipment.length > 0) {
+                    const eqList = Array.isArray(payloadToSave.equipment) ? payloadToSave.equipment : [];
+                    for (const extra of extraEquipment) {
+                        const exists = eqList.some((e: any) => String(e.name || "").toLowerCase() === extra.name.toLowerCase());
+                        if (!exists) {
+                            eqList.push(extra);
+                        }
+                    }
+                    payloadToSave.equipment = eqList;
+                }
+            }
 
             record.user = currentUser;
             record.name = name;
@@ -448,10 +486,10 @@ export default class CharacterController extends BaseController {
                 await SpellController.upsertSpellsFromCharacter((inputCharacter as any).spells);
             }
 
-            if (Array.isArray((inputCharacter as any).weapons) || Array.isArray((inputCharacter as any).equipment)) {
+            if (Array.isArray(payloadToSave.weapons) || Array.isArray(payloadToSave.equipment)) {
                 await ItemController.upsertItemsFromCharacter(
-                    (inputCharacter as any).weapons || [],
-                    (inputCharacter as any).equipment || []
+                    payloadToSave.weapons || [],
+                    payloadToSave.equipment || []
                 );
             }
 
@@ -488,7 +526,41 @@ export default class CharacterController extends BaseController {
 
     private static tryParsePayload(payload: string): any | undefined {
         try {
-            return JSON.parse(payload);
+            const parsed = JSON.parse(payload);
+            if (parsed && Array.isArray(parsed.weapons)) {
+                const potionWeapons = parsed.weapons.filter((w: any) => {
+                    const name = String(w?.name || "").toLowerCase();
+                    return name.includes("potion of") || name.includes("oil of") || name.startsWith("potion ") || name.startsWith("oil ");
+                });
+                if (potionWeapons.length > 0) {
+                    parsed.weapons = parsed.weapons.filter((w: any) => {
+                        const name = String(w?.name || "").toLowerCase();
+                        return !name.includes("potion of") && !name.includes("oil of") && !name.startsWith("potion ") && !name.startsWith("oil ");
+                    });
+                    if (!Array.isArray(parsed.equipment)) parsed.equipment = [];
+                    for (const pw of potionWeapons) {
+                        const exists = parsed.equipment.some((e: any) => String(e.name || "").toLowerCase() === String(pw.name || "").toLowerCase());
+                        if (!exists) {
+                            const pwName = String(pw.name || "").toLowerCase();
+                            parsed.equipment.push({
+                                id: pw.id || pw.definitionId,
+                                definitionId: pw.definitionId || pw.id,
+                                name: pw.name,
+                                quantity: Number(pw.quantity) || 1,
+                                equipped: false,
+                                attuned: false,
+                                requiresAttunement: false,
+                                type: "Potion",
+                                filterType: "Potion",
+                                rarity: pwName.includes("greater") ? "Uncommon" : (pwName.includes("superior") ? "Rare" : (pwName.includes("supreme") ? "Very Rare" : "Common")),
+                                isMagic: true,
+                                description: pw.description || `<p>${pw.name}.</p>`
+                            });
+                        }
+                    }
+                }
+            }
+            return parsed;
         } catch {
             return undefined;
         }

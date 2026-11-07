@@ -10,7 +10,7 @@ import {
     WeaponItem
 } from "./characterData";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
-import { applyMagicalItemBonuses, isMundaneEquipment } from "./services/magicItemBonuses";
+import { applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
     1: { name: "Strength", abbr: "STR", key: "strength" },
@@ -85,7 +85,7 @@ function dieAverageSize(diceString?: string): number {
 export function parseDndBeyondCharacter(
     payload: any,
     originalUrlOrId?: string,
-    equipStateOverrides?: Array<{ scope: "item" | "weapon" | "weapon-mastery"; itemName: string; equipped: boolean }>,
+    equipStateOverrides?: Array<{ scope: "item" | "weapon" | "weapon-mastery" | "attunement"; itemName: string; equipped: boolean }>,
     featureChoiceOverrides?: Record<string, string>
 ): CharacterData {
     const raw = payload?.data || payload;
@@ -108,13 +108,18 @@ export function parseDndBeyondCharacter(
         const isWeapon = item.definition?.filterType === "Weapon";
         const itemKey = `item:${iName}`;
         const weaponKey = `weapon:${iName}`;
+        const attuneKey = `attunement:${iName}`;
         let equipped = !!item.equipped;
         if (isWeapon && stateOverrideMap.has(weaponKey)) {
             equipped = !!stateOverrideMap.get(weaponKey);
         } else if (stateOverrideMap.has(itemKey)) {
             equipped = !!stateOverrideMap.get(itemKey);
         }
-        return { ...item, equipped };
+        let isAttuned = !!item.isAttuned;
+        if (stateOverrideMap.has(attuneKey)) {
+            isAttuned = !!stateOverrideMap.get(attuneKey);
+        }
+        return { ...item, equipped, isAttuned };
     });
 
     const characterValues: any[] = Array.isArray(raw.characterValues) ? raw.characterValues : [];
@@ -1546,17 +1551,38 @@ export function parseDndBeyondCharacter(
     // 12. Equipment & Weapons
     const equipment: EquipmentItem[] = inventory.map((i: any) => {
         const def = i.definition;
+        const requiresAttune = def?.canAttune === true || checkItemRequiresAttunement({
+            name: def?.name,
+            requiresAttunement: def?.canAttune === true,
+            attuned: !!i.isAttuned,
+            description: def?.description,
+            notes: def?.snippet
+        });
+        const attuneKey = `attunement:${(def?.name || "").toLowerCase()}`;
+        let isAttuned = !!i.isAttuned;
+        if (stateOverrideMap.has(attuneKey)) {
+            isAttuned = !!stateOverrideMap.get(attuneKey);
+        }
+        const defNameLower = String(def?.name || "").toLowerCase();
+        const isPotion = defNameLower.includes("potion of") || defNameLower.includes("oil of") || defNameLower.startsWith("potion ") || defNameLower.startsWith("oil ");
+        let rarity = isMundaneEquipment(def?.name) ? "Common" : (def?.rarity || "Common");
+        if (isPotion) {
+            if (defNameLower.includes("greater")) rarity = "Uncommon";
+            else if (defNameLower.includes("superior")) rarity = "Rare";
+            else if (defNameLower.includes("supreme")) rarity = "Very Rare";
+        }
         return {
             id: i.id,
             definitionId: def?.id,
             name: def?.name || "Item",
             quantity: Number(i.quantity) || 1,
             equipped: !!i.equipped,
-            attuned: !!i.isAttuned,
-            type: def?.filterType || "Gear",
-            filterType: def?.filterType || "Gear",
-            rarity: isMundaneEquipment(def?.name) ? "Common" : (def?.rarity || "Common"),
-            isMagic: isMundaneEquipment(def?.name) ? false : !!def?.magic,
+            attuned: isPotion ? false : isAttuned,
+            requiresAttunement: isPotion ? false : requiresAttune,
+            type: isPotion ? "Potion" : (def?.filterType || "Gear"),
+            filterType: isPotion ? "Potion" : (def?.filterType || "Gear"),
+            rarity,
+            isMagic: isMundaneEquipment(def?.name) ? false : (isPotion ? true : !!def?.magic),
             description: def?.description || def?.snippet || undefined,
             imageUrl: def?.largeAvatarUrl || def?.avatarUrl || undefined,
             notes: def?.snippet || def?.description ? def.snippet || "" : undefined
@@ -1572,7 +1598,14 @@ export function parseDndBeyondCharacter(
     });
 
     // Parse weapons
-    const rawWeapons = inventory.filter((i: any) => i.definition?.filterType === "Weapon");
+    const rawWeapons = inventory.filter((i: any) => {
+        if (i.definition?.filterType !== "Weapon") return false;
+        const nameLower = (i.definition?.name || "").toLowerCase();
+        if (nameLower.includes("potion of") || nameLower.includes("oil of") || nameLower.startsWith("potion ") || nameLower.startsWith("oil ")) {
+            return false;
+        }
+        return true;
+    });
     const aggregatedWeapons = new Map<string, { item: any; count: number; equipped: boolean }>();
     rawWeapons.forEach((w: any) => {
         const wName = w.definition.name;
@@ -1628,12 +1661,27 @@ export function parseDndBeyondCharacter(
             };
         }
 
+        const requiresAttune = def?.canAttune === true || checkItemRequiresAttunement({
+            name: def?.name,
+            requiresAttunement: def?.canAttune === true,
+            attuned: !!item.isAttuned,
+            description: def?.description,
+            notes: def?.snippet
+        });
+        const attuneKey = `attunement:${(def?.name || "").toLowerCase()}`;
+        let isAttuned = !!item.isAttuned;
+        if (stateOverrideMap.has(attuneKey)) {
+            isAttuned = !!stateOverrideMap.get(attuneKey);
+        }
+
         return {
             id: item.id,
             definitionId: def.id,
             name: def.name,
             quantity: count,
             equipped,
+            attuned: isAttuned,
+            requiresAttunement: requiresAttune,
             category,
             damage: wStats.damage,
             damageType: wStats.dmgType,

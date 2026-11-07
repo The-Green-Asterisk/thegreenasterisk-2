@@ -68,6 +68,47 @@ export function isMundaneEquipment(name?: string): boolean {
     return MUNDANE_EQUIPMENT_NAMES.has(baseClean) || MUNDANE_WEAPON_NAMES.has(baseClean) || MUNDANE_ARMOR_NAMES.has(baseClean);
 }
 
+export function isPotionOrOil(name?: string, category?: string, filterType?: string): boolean {
+    const n = (name || "").toLowerCase();
+    const c = (category || "").toLowerCase();
+    const f = (filterType || "").toLowerCase();
+    return (
+        n.includes("potion of") ||
+        n.includes("oil of") ||
+        n.startsWith("potion ") ||
+        n.startsWith("oil ") ||
+        c.includes("potion") ||
+        c.includes("oil") ||
+        f.includes("potion") ||
+        f.includes("oil")
+    );
+}
+
+export function getItemSearchAliases(name: string): string[] {
+    const raw = (name || "").trim();
+    if (!raw) return [];
+    const aliases = new Set<string>();
+    aliases.add(raw);
+
+    const potionParenMatch = raw.match(/Potion of Healing\s*\((Greater|Superior|Supreme)\)/i);
+    if (potionParenMatch) {
+        const tier = potionParenMatch[1].charAt(0).toUpperCase() + potionParenMatch[1].slice(1).toLowerCase();
+        aliases.add(`Potion of ${tier} Healing`);
+        aliases.add(`Potion of Healing, ${tier}`);
+        aliases.add(`Potion of Healing`);
+    }
+
+    const potionOrderMatch = raw.match(/Potion of (Greater|Superior|Supreme) Healing/i);
+    if (potionOrderMatch) {
+        const tier = potionOrderMatch[1].charAt(0).toUpperCase() + potionOrderMatch[1].slice(1).toLowerCase();
+        aliases.add(`Potion of Healing (${tier})`);
+        aliases.add(`Potion of Healing, ${tier}`);
+        aliases.add(`Potion of Healing`);
+    }
+
+    return Array.from(aliases);
+}
+
 export default class ItemController extends BaseController {
     /**
      * Upserts weapon and equipment definitions that come in with a character pull into the local database.
@@ -79,9 +120,29 @@ export default class ItemController extends BaseController {
         try {
             const itemRepo = AppDataSource.getRepository(Item);
 
+            const sanitizedWeapons: any[] = [];
+            const sanitizedEquipment: any[] = [...(equipment || [])];
+
+            (weapons || []).forEach(w => {
+                const wName = String(w?.name || "").toLowerCase();
+                if (wName.includes("potion of") || wName.includes("oil of")) {
+                    sanitizedEquipment.push({
+                        ...w,
+                        type: "Potion",
+                        filterType: "Potion",
+                        damage: undefined,
+                        range: undefined,
+                        properties: undefined,
+                        mastery: undefined
+                    });
+                } else {
+                    sanitizedWeapons.push(w);
+                }
+            });
+
             // Process weapons
-            if (Array.isArray(weapons)) {
-                for (const rawWep of weapons) {
+            if (Array.isArray(sanitizedWeapons)) {
+                for (const rawWep of sanitizedWeapons) {
                     try {
                         const name = String(rawWep?.name || "").trim().slice(0, 255);
                         if (!name) continue;
@@ -191,10 +252,17 @@ export default class ItemController extends BaseController {
                             : "D&D Beyond").slice(0, 255);
 
                         const rawType = String(rawEq.type || "").trim();
-                        const isMundane = isMundaneEquipment(name);
-                        const isMagic = isMundane ? false : !!(rawEq.isMagic || (rawEq.rarity && rawEq.rarity.toLowerCase() !== "common" && rawEq.rarity.toLowerCase() !== "none"));
-                        const filterType = isMundane ? (rawType || "Equipment") : (rawType || (isMagic ? "Magic Item" : "Item"));
-                        const rarity = isMundane ? "Common" : String(rawEq.rarity || (isMagic ? "Uncommon" : "Common")).slice(0, 100);
+                        const isPotion = isPotionOrOil(name, rawType, rawEq.filterType);
+                        const isMundane = isPotion ? false : isMundaneEquipment(name);
+                        const isMagic = isPotion ? true : (isMundane ? false : !!(rawEq.isMagic || (rawEq.rarity && rawEq.rarity.toLowerCase() !== "common" && rawEq.rarity.toLowerCase() !== "none")));
+                        const filterType = isPotion ? "Potion" : (isMundane ? (rawType || "Equipment") : (rawType || (isMagic ? "Magic Item" : "Item")));
+                        let rarity = isMundane ? "Common" : String(rawEq.rarity || (isMagic ? "Uncommon" : "Common")).slice(0, 100);
+                        if (isPotion) {
+                            const nLower = name.toLowerCase();
+                            if (nLower.includes("greater")) rarity = "Uncommon";
+                            else if (nLower.includes("superior")) rarity = "Rare";
+                            else if (nLower.includes("supreme")) rarity = "Very Rare";
+                        }
                         const desc = String(rawEq.description || rawEq.notes || `<p>${name} (${filterType}).</p>`).trim();
                         const imageUrl = rawEq.imageUrl ? String(rawEq.imageUrl).slice(0, 500) : undefined;
                         const weight = Number(rawEq.weight) || 0;
@@ -205,9 +273,10 @@ export default class ItemController extends BaseController {
                                 slug,
                                 name,
                                 filterType: filterType.slice(0, 100),
+                                category: isPotion ? "Potion" : undefined,
                                 rarity,
                                 isMagic,
-                                requiresAttunement: isMundane ? false : !!(rawEq.attuned || rawEq.requiresAttunement),
+                                requiresAttunement: isMundane || isPotion ? false : !!(rawEq.attuned || rawEq.requiresAttunement),
                                 source: sourceLabel,
                                 weight,
                                 cost,
@@ -220,12 +289,24 @@ export default class ItemController extends BaseController {
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             savedCount++;
-                        } else if (isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>" || isMundane) {
+                        } else if (isPotion || isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>" || isMundane) {
                             existing.name = name;
-                            if (filterType && existing.filterType === "Item") existing.filterType = filterType.slice(0, 100);
-                            if (isMundane && existing.filterType === "Magic Item") existing.filterType = "Equipment";
-                            existing.rarity = rarity;
-                            existing.isMagic = isMagic;
+                            if (isPotion) {
+                                existing.filterType = "Potion";
+                                existing.category = "Potion";
+                                existing.damage = undefined;
+                                existing.range = undefined;
+                                existing.properties = undefined;
+                                existing.mastery = undefined;
+                                existing.isMagic = true;
+                                existing.rarity = rarity;
+                                existing.requiresAttunement = false;
+                            } else {
+                                if (filterType && existing.filterType === "Item") existing.filterType = filterType.slice(0, 100);
+                                if (isMundane && existing.filterType === "Magic Item") existing.filterType = "Equipment";
+                                existing.rarity = rarity;
+                                existing.isMagic = isMagic;
+                            }
                             existing.source = sourceLabel;
                             if (desc) existing.description = desc;
                             if (imageUrl) existing.imageUrl = imageUrl;
@@ -287,19 +368,76 @@ export default class ItemController extends BaseController {
                 }
             });
 
+            // Auto-heal any misclassified potions/oils in the database
+            for (const item of allItems) {
+                if (isPotionOrOil(item.name, item.category, item.filterType)) {
+                    let changed = false;
+                    if (item.filterType !== "Potion") {
+                        item.filterType = "Potion";
+                        changed = true;
+                    }
+                    if (item.category !== "Potion") {
+                        item.category = "Potion";
+                        changed = true;
+                    }
+                    if (item.damage) {
+                        item.damage = undefined as any;
+                        changed = true;
+                    }
+                    if (item.range) {
+                        item.range = undefined as any;
+                        changed = true;
+                    }
+                    if (item.properties) {
+                        item.properties = undefined as any;
+                        changed = true;
+                    }
+                    if (item.mastery) {
+                        item.mastery = undefined as any;
+                        changed = true;
+                    }
+                    if (!item.isMagic) {
+                        item.isMagic = true;
+                        changed = true;
+                    }
+                    const nLower = item.name.toLowerCase();
+                    if (nLower.includes("greater") && (!item.rarity || item.rarity === "Common")) {
+                        item.rarity = "Uncommon";
+                        changed = true;
+                    } else if (nLower.includes("superior") && (!item.rarity || item.rarity === "Common" || item.rarity === "Uncommon")) {
+                        item.rarity = "Rare";
+                        changed = true;
+                    } else if (nLower.includes("supreme") && (!item.rarity || item.rarity !== "Very Rare")) {
+                        item.rarity = "Very Rare";
+                        changed = true;
+                    }
+                    if (changed) {
+                        await itemRepo.save(item);
+                        const slug = item.slug || slugify(item.name);
+                        cache.del(`item_detail_${slug}_pref2024`);
+                        cache.del(`item_detail_${slug}_mixed`);
+                        cache.del(`item_detail_${slug}`);
+                    }
+                }
+            }
+
             let filtered = allItems.filter(item => {
+                const itemIsPotion = isPotionOrOil(item.name, item.category, item.filterType);
                 if (typeFilter && typeFilter !== "all") {
                     const fType = (item.filterType || "").toLowerCase();
                     const cat = (item.category || "").toLowerCase();
                     if (typeFilter === "weapon") {
+                        if (itemIsPotion) return false;
                         if (!fType.includes("weapon") && !cat.includes("weapon") && !item.damage) return false;
                     } else if (typeFilter === "magic-item") {
-                        if (!item.isMagic && (!item.rarity || item.rarity.toLowerCase() === "common") && !fType.includes("magic")) return false;
+                        if (!item.isMagic && (!item.rarity || item.rarity.toLowerCase() === "common") && !fType.includes("magic") && !itemIsPotion) return false;
                     } else if (typeFilter === "armor") {
+                        if (itemIsPotion) return false;
                         if (!fType.includes("armor") && !fType.includes("shield") && !cat.includes("armor")) return false;
                     } else if (typeFilter === "potion") {
-                        if (!fType.includes("potion") && !cat.includes("potion")) return false;
+                        if (!itemIsPotion && !fType.includes("potion") && !cat.includes("potion")) return false;
                     } else if (typeFilter === "wondrous") {
+                        if (itemIsPotion) return false;
                         if (!fType.includes("wondrous")) return false;
                     } else if (typeFilter === "gear") {
                         if (fType.includes("weapon") || fType.includes("armor")) return false;
@@ -358,8 +496,13 @@ export default class ItemController extends BaseController {
             try {
                 const parsedCached = JSON.parse(cached);
                 const cachedItem = parsedCached?.item || parsedCached;
+                const cachedIsPotion = cachedItem && isPotionOrOil(cachedItem.name, cachedItem.category, cachedItem.filterType);
                 if (cachedItem && isMundaneEquipment(cachedItem.name) && cachedItem.isMagic) {
                     // Cached item was mistakenly flagged as magic; invalidate and reprocess
+                    cache.del(cacheKey);
+                    cache.del(`item_detail_${slug}`);
+                } else if (cachedIsPotion && (cachedItem.damage || cachedItem.filterType === "Weapon" || String(cachedItem.category || "").toLowerCase().includes("weapon"))) {
+                    // Cached potion was mistakenly flagged with weapon attributes; invalidate and reprocess
                     cache.del(cacheKey);
                     cache.del(`item_detail_${slug}`);
                 } else {
@@ -393,7 +536,51 @@ export default class ItemController extends BaseController {
                 }
 
                 if (dbItem) {
-                    if (isMundaneEquipment(dbItem.name) && (dbItem.isMagic || dbItem.filterType === "Magic Item")) {
+                    if (isPotionOrOil(dbItem.name, dbItem.category, dbItem.filterType)) {
+                        let changed = false;
+                        if (dbItem.filterType !== "Potion") {
+                            dbItem.filterType = "Potion";
+                            changed = true;
+                        }
+                        if (dbItem.category !== "Potion") {
+                            dbItem.category = "Potion";
+                            changed = true;
+                        }
+                        if (dbItem.damage) {
+                            dbItem.damage = undefined as any;
+                            changed = true;
+                        }
+                        if (dbItem.range) {
+                            dbItem.range = undefined as any;
+                            changed = true;
+                        }
+                        if (dbItem.properties) {
+                            dbItem.properties = undefined as any;
+                            changed = true;
+                        }
+                        if (dbItem.mastery) {
+                            dbItem.mastery = undefined as any;
+                            changed = true;
+                        }
+                        if (!dbItem.isMagic) {
+                            dbItem.isMagic = true;
+                            changed = true;
+                        }
+                        const nLower = dbItem.name.toLowerCase();
+                        if (nLower.includes("greater") && (!dbItem.rarity || dbItem.rarity === "Common")) {
+                            dbItem.rarity = "Uncommon";
+                            changed = true;
+                        } else if (nLower.includes("superior") && (!dbItem.rarity || dbItem.rarity === "Common" || dbItem.rarity === "Uncommon")) {
+                            dbItem.rarity = "Rare";
+                            changed = true;
+                        } else if (nLower.includes("supreme") && (!dbItem.rarity || dbItem.rarity !== "Very Rare")) {
+                            dbItem.rarity = "Very Rare";
+                            changed = true;
+                        }
+                        if (changed) {
+                            await itemRepo.save(dbItem);
+                        }
+                    } else if (isMundaneEquipment(dbItem.name) && (dbItem.isMagic || dbItem.filterType === "Magic Item")) {
                         dbItem.isMagic = false;
                         dbItem.rarity = "Common";
                         if (dbItem.filterType === "Magic Item") {
@@ -649,13 +836,16 @@ export default class ItemController extends BaseController {
         }
 
         // Check if magic item
-        const isMundane = isMundaneEquipment(name);
+        const isPotion = isPotionOrOil(name);
+        const isMundane = isPotion ? false : isMundaneEquipment(name);
         const isMagicRoute = sourceUrl ? sourceUrl.includes("/magic-items/") : false;
         const detailsContainerLower = (detailsContainerMatch ? detailsContainerMatch[0] : "").toLowerCase();
         const moreInfoLower = (moreInfoContentMatch ? moreInfoContentMatch[0] : "").toLowerCase();
 
         let isMagic = false;
-        if (!isMundane) {
+        if (isPotion) {
+            isMagic = true;
+        } else if (!isMundane) {
             isMagic = isMagicRoute ||
                 detailsContainerLower.includes("magic item") ||
                 detailsContainerLower.includes("wondrous item") ||
@@ -665,7 +855,7 @@ export default class ItemController extends BaseController {
                 name.toLowerCase().includes("scroll of");
         }
 
-        const requiresAttunement = !isMundane && html.toLowerCase().includes("requires attunement");
+        const requiresAttunement = !isMundane && !isPotion && html.toLowerCase().includes("requires attunement");
 
         // Rarity
         let rarity = "Common";
@@ -673,6 +863,11 @@ export default class ItemController extends BaseController {
             const rarityMatch = html.match(/\b(uncommon|rare|very rare|legendary|artifact)\b/i);
             if (rarityMatch) {
                 rarity = rarityMatch[1].charAt(0).toUpperCase() + rarityMatch[1].slice(1).toLowerCase();
+            } else if (isPotion) {
+                const nLower = name.toLowerCase();
+                if (nLower.includes("greater")) rarity = "Uncommon";
+                else if (nLower.includes("superior")) rarity = "Rare";
+                else if (nLower.includes("supreme")) rarity = "Very Rare";
             } else {
                 rarity = "Common";
             }
@@ -684,21 +879,24 @@ export default class ItemController extends BaseController {
         let properties: string | undefined;
         let mastery: string | undefined;
 
-        const dmgMatch = html.match(/Damage:\s*<[^>]+>([^<]+)<\/[^>]+>\s*<[^>]+>([^<]+)<\/[^>]+>/i) ||
-            html.match(/(\d+d\d+)\s+([A-Za-z]+)/i);
-        if (dmgMatch) {
-            damage = `${dmgMatch[1]} ${dmgMatch[2]}`;
-        }
+        if (!isPotion) {
+            const dmgMatch = html.match(/Damage:\s*<[^>]+>([^<]+)<\/[^>]+>\s*<[^>]+>([^<]+)<\/[^>]+>/i) ||
+                html.match(/(\d+d\d+)\s+(bludgeoning|piercing|slashing|fire|cold|lightning|thunder|acid|poison|necrotic|radiant|force|psychic)\b/i);
+            if (dmgMatch) {
+                damage = `${dmgMatch[1]} ${dmgMatch[2]}`;
+            }
 
-        const masteryMatch = html.match(/<strong><em>(Nick|Vex|Sap|Slow|Push|Topple|Cleave|Graze)\.<\/em><\/strong>/i);
-        if (masteryMatch) {
-            mastery = masteryMatch[1];
+            const masteryMatch = html.match(/<strong><em>(Nick|Vex|Sap|Slow|Push|Topple|Cleave|Graze)\.<\/em><\/strong>/i);
+            if (masteryMatch) {
+                mastery = masteryMatch[1];
+            }
         }
 
         return {
             slug,
             name,
-            filterType: isMagic ? "Magic Item" : "Equipment",
+            filterType: isPotion ? "Potion" : (isMagic ? "Magic Item" : "Equipment"),
+            category: isPotion ? "Potion" : undefined,
             rarity,
             isMagic,
             requiresAttunement,
@@ -714,51 +912,62 @@ export default class ItemController extends BaseController {
     }
 
     private static async fetchFromOpen5eOr5eApi(name: string, typeHint?: string): Promise<Partial<Item> | null> {
-        const slug = slugify(name);
+        const aliases = getItemSearchAliases(name);
+        const isPotion = isPotionOrOil(name) || aliases.some(a => isPotionOrOil(a));
 
         // 1. D&D 5e API (magic-items or equipment)
         try {
-            const urls = [
-                `https://www.dnd5eapi.co/api/magic-items/${slug}`,
-                `https://www.dnd5eapi.co/api/equipment/${slug}`
-            ];
+            const urls: string[] = [];
+            for (const alias of aliases) {
+                const aSlug = slugify(alias);
+                urls.push(`https://www.dnd5eapi.co/api/magic-items/${aSlug}`);
+                if (!isPotion) {
+                    urls.push(`https://www.dnd5eapi.co/api/equipment/${aSlug}`);
+                }
+            }
 
             for (const url of urls) {
                 const res = await fetch(url);
                 if (res.ok) {
                     const data = await res.json();
                     if (data && data.name) {
-                        const isMundane = isMundaneEquipment(data.name || name);
+                        const isMundane = isPotion ? false : isMundaneEquipment(data.name || name);
                         const isMagicUrl = url.includes("magic-items");
                         const rarityName = data.rarity?.name || "";
-                        const isMagic = !isMundane && (isMagicUrl || (!!data.rarity && rarityName.toLowerCase() !== "common" && rarityName.toLowerCase() !== "none"));
-                        const rarity = isMundane ? "Common" : (rarityName || (isMagic ? "Varies" : "Common"));
+                        const isMagic = isPotion ? true : (!isMundane && (isMagicUrl || (!!data.rarity && rarityName.toLowerCase() !== "common" && rarityName.toLowerCase() !== "none")));
+                        let rarity = isMundane ? "Common" : (rarityName || (isMagic ? "Varies" : "Common"));
+                        if (isPotion) {
+                            const nLower = (data.name || name).toLowerCase();
+                            if (nLower.includes("greater")) rarity = "Uncommon";
+                            else if (nLower.includes("superior")) rarity = "Rare";
+                            else if (nLower.includes("supreme")) rarity = "Very Rare";
+                        }
                         const desc = Array.isArray(data.desc) ? data.desc.map((d: string) => `<p>${d}</p>`).join("") : `<p>${data.desc || ""}</p>`;
 
                         let damage: string | undefined;
-                        if (data.damage) {
+                        if (!isPotion && data.damage) {
                             damage = `${data.damage.damage_dice} ${data.damage.damage_type?.name || ""}`.trim();
                         }
 
                         let range: string | undefined;
-                        if (data.range) {
+                        if (!isPotion && data.range) {
                             range = data.range.long ? `${data.range.normal}/${data.range.long} ft.` : `${data.range.normal} ft.`;
                         }
 
                         let properties: string | undefined;
-                        if (Array.isArray(data.properties)) {
+                        if (!isPotion && Array.isArray(data.properties)) {
                             properties = data.properties.map((p: any) => p.name).join(", ");
                         }
 
                         return {
-                            slug,
+                            slug: slugify(data.name || name),
                             name: data.name,
-                            filterType: isMundane ? "Equipment" : (isMagic ? "Magic Item" : (data.equipment_category?.name || "Equipment")),
+                            filterType: isPotion ? "Potion" : (isMundane ? "Equipment" : (isMagic ? "Magic Item" : (data.equipment_category?.name || "Equipment"))),
                             rarity,
                             isMagic,
-                            requiresAttunement: !isMundane && !!(data.desc && JSON.stringify(data.desc).toLowerCase().includes("requires attunement")),
+                            requiresAttunement: !isMundane && !isPotion && !!(data.desc && JSON.stringify(data.desc).toLowerCase().includes("requires attunement")),
                             source: "D&D 5e API (SRD)",
-                            category: data.equipment_category?.name || data.gear_category?.name,
+                            category: isPotion ? "Potion" : (data.equipment_category?.name || data.gear_category?.name),
                             damage,
                             range,
                             properties,
@@ -773,38 +982,53 @@ export default class ItemController extends BaseController {
             console.warn("Failed fetching from dnd5eapi.co:", err);
         }
 
-        // 2. Open5e API (weapons or magicitems)
+        // 2. Open5e API (magicitems or weapons)
         try {
-            const open5eEndpoints = [
-                `https://api.open5e.com/v1/weapons/?search=${encodeURIComponent(name)}`,
-                `https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(name)}`
-            ];
+            const open5eEndpoints: string[] = [];
+            for (const alias of aliases) {
+                // For potions/oils, search magicitems ONLY - never query weapons/
+                open5eEndpoints.push(`https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(alias)}`);
+                if (!isPotion) {
+                    open5eEndpoints.push(`https://api.open5e.com/v1/weapons/?search=${encodeURIComponent(alias)}`);
+                }
+            }
 
             for (const ep of open5eEndpoints) {
                 const res = await fetch(ep);
                 if (res.ok) {
                     const data = await res.json();
                     if (data && Array.isArray(data.results) && data.results.length > 0) {
-                        const exact = data.results.find((i: any) => i.name.toLowerCase() === name.toLowerCase()) || data.results[0];
+                        // Strict alias matching - NEVER fall back to results[0] without matching name
+                        const exact = data.results.find((i: any) => {
+                            const iName = (i.name || "").toLowerCase().trim();
+                            return aliases.some(a => a.toLowerCase().trim() === iName);
+                        });
                         if (exact) {
-                            const isMundane = isMundaneEquipment(exact.name || name);
+                            const itemIsPotion = isPotion || isPotionOrOil(exact.name, exact.type, exact.category);
+                            const isMundane = itemIsPotion ? false : isMundaneEquipment(exact.name || name);
                             const isMagicEp = ep.includes("magicitems");
                             const rawRarity = exact.rarity ? exact.rarity.toLowerCase() : "";
-                            const isMagic = !isMundane && (isMagicEp || (!!exact.rarity && rawRarity !== "common" && rawRarity !== "none"));
-                            const rarity = isMundane ? "Common" : (exact.rarity ? exact.rarity.charAt(0).toUpperCase() + exact.rarity.slice(1).toLowerCase() : (isMagic ? "Uncommon" : "Common"));
+                            const isMagic = itemIsPotion ? true : (!isMundane && (isMagicEp || (!!exact.rarity && rawRarity !== "common" && rawRarity !== "none")));
+                            let rarity = isMundane ? "Common" : (exact.rarity ? exact.rarity.charAt(0).toUpperCase() + exact.rarity.slice(1).toLowerCase() : (isMagic ? "Uncommon" : "Common"));
+                            if (itemIsPotion) {
+                                const nLower = (exact.name || name).toLowerCase();
+                                if (nLower.includes("greater")) rarity = "Uncommon";
+                                else if (nLower.includes("superior")) rarity = "Rare";
+                                else if (nLower.includes("supreme")) rarity = "Very Rare";
+                            }
                             const desc = exact.desc ? `<p>${exact.desc.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>` : "";
 
                             return {
-                                slug,
+                                slug: slugify(exact.name || name),
                                 name: exact.name,
-                                filterType: isMundane ? "Weapon" : (isMagic ? "Magic Item" : "Weapon"),
+                                filterType: itemIsPotion ? "Potion" : (isMundane ? "Weapon" : (isMagic ? "Magic Item" : "Weapon")),
                                 rarity,
                                 isMagic,
-                                requiresAttunement: !isMundane && !!(exact.requires_attunement || (exact.desc && exact.desc.toLowerCase().includes("requires attunement"))),
+                                requiresAttunement: !isMundane && !itemIsPotion && !!(exact.requires_attunement || (exact.desc && exact.desc.toLowerCase().includes("requires attunement"))),
                                 source: "Open5e (SRD)",
-                                category: exact.category,
-                                damage: exact.damage_dice ? `${exact.damage_dice} ${exact.damage_type || ""}`.trim() : undefined,
-                                properties: Array.isArray(exact.properties) ? exact.properties.join(", ") : undefined,
+                                category: itemIsPotion ? "Potion" : exact.category,
+                                damage: !itemIsPotion && exact.damage_dice ? `${exact.damage_dice} ${exact.damage_type || ""}`.trim() : undefined,
+                                properties: !itemIsPotion && Array.isArray(exact.properties) ? exact.properties.join(", ") : undefined,
                                 description: desc
                             };
                         }
@@ -842,17 +1066,21 @@ export default class ItemController extends BaseController {
             // 2. Query Open5e endpoints based on typeFilter
             const endpoints: string[] = [];
             const tf = typeFilter.toLowerCase();
-            if (tf === "weapon") {
+            const queryIsPotion = isPotionOrOil(rawQuery);
+
+            if (queryIsPotion || tf === "potion") {
+                endpoints.push(`https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(rawQuery)}&limit=16`);
+            } else if (tf === "weapon") {
                 endpoints.push(`https://api.open5e.com/v1/weapons/?search=${encodeURIComponent(rawQuery)}&limit=12`);
                 endpoints.push(`https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(rawQuery)}&limit=12`);
-            } else if (tf === "magic-item" || tf === "wondrous" || tf === "potion") {
+            } else if (tf === "magic-item" || tf === "wondrous") {
                 endpoints.push(`https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(rawQuery)}&limit=16`);
             } else if (tf === "armor") {
                 endpoints.push(`https://api.open5e.com/v1/armor/?search=${encodeURIComponent(rawQuery)}&limit=12`);
                 endpoints.push(`https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(rawQuery)}&limit=12`);
             } else {
-                endpoints.push(`https://api.open5e.com/v1/weapons/?search=${encodeURIComponent(rawQuery)}&limit=10`);
                 endpoints.push(`https://api.open5e.com/v1/magicitems/?search=${encodeURIComponent(rawQuery)}&limit=10`);
+                endpoints.push(`https://api.open5e.com/v1/weapons/?search=${encodeURIComponent(rawQuery)}&limit=10`);
                 endpoints.push(`https://api.open5e.com/v1/armor/?search=${encodeURIComponent(rawQuery)}&limit=10`);
             }
 
@@ -868,6 +1096,7 @@ export default class ItemController extends BaseController {
                             if (!sSlug || candidatesMap.has(sSlug)) continue;
 
                             if (ep.includes("weapons")) {
+                                if (isPotionOrOil(match.name, match.category, match.type)) continue;
                                 const desc = match.desc ? `<p>${match.desc.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>` : `<p>${match.name} (${match.category || "Weapon"}).</p>`;
                                 candidatesMap.set(sSlug, {
                                     slug: sSlug,
@@ -885,6 +1114,7 @@ export default class ItemController extends BaseController {
                                     description: desc
                                 });
                             } else if (ep.includes("armor")) {
+                                if (isPotionOrOil(match.name, match.category, match.type)) continue;
                                 const desc = match.desc ? `<p>${match.desc.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>` : `<p>${match.name} (${match.category || "Armor"}). AC: ${match.ac_string || "Standard"}.</p>`;
                                 candidatesMap.set(sSlug, {
                                     slug: sSlug,
@@ -903,19 +1133,26 @@ export default class ItemController extends BaseController {
                                 if (isMundaneEquipment(match.name)) {
                                     continue;
                                 }
-                                const isWeapon = (match.type || "").toLowerCase().includes("weapon");
-                                const isArmor = (match.type || "").toLowerCase().includes("armor") || (match.type || "").toLowerCase().includes("shield");
-                                const rarity = match.rarity ? match.rarity.charAt(0).toUpperCase() + match.rarity.slice(1).toLowerCase() : "Rare";
-                                const desc = match.desc ? `<p>${match.desc.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>` : `<p>${match.name} (${match.type || "Magic Item"}).</p>`;
+                                const itemIsPotion = isPotionOrOil(match.name, match.type);
+                                const isWeapon = !itemIsPotion && (match.type || "").toLowerCase().includes("weapon");
+                                const isArmor = !itemIsPotion && ((match.type || "").toLowerCase().includes("armor") || (match.type || "").toLowerCase().includes("shield"));
+                                let rarity = match.rarity ? match.rarity.charAt(0).toUpperCase() + match.rarity.slice(1).toLowerCase() : (itemIsPotion ? "Common" : "Rare");
+                                if (itemIsPotion) {
+                                    const nLower = match.name.toLowerCase();
+                                    if (nLower.includes("greater")) rarity = "Uncommon";
+                                    else if (nLower.includes("superior")) rarity = "Rare";
+                                    else if (nLower.includes("supreme")) rarity = "Very Rare";
+                                }
+                                const desc = match.desc ? `<p>${match.desc.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>` : `<p>${match.name} (${match.type || (itemIsPotion ? "Potion" : "Magic Item")}).</p>`;
                                 candidatesMap.set(sSlug, {
                                     slug: sSlug,
                                     name: String(match.name).slice(0, 255),
-                                    filterType: isWeapon ? "Weapon" : (isArmor ? "Armor" : String(match.type || "Magic Item").slice(0, 100)),
+                                    filterType: itemIsPotion ? "Potion" : (isWeapon ? "Weapon" : (isArmor ? "Armor" : String(match.type || "Magic Item").slice(0, 100))),
                                     rarity: rarity.slice(0, 100),
                                     isMagic: true,
-                                    requiresAttunement: !!(match.requires_attunement || (match.desc && match.desc.toLowerCase().includes("requires attunement"))),
+                                    requiresAttunement: itemIsPotion ? false : !!(match.requires_attunement || (match.desc && match.desc.toLowerCase().includes("requires attunement"))),
                                     source: `Open5e (${match.document__title || "SRD"})`.slice(0, 255),
-                                    category: match.type ? String(match.type).slice(0, 100) : undefined,
+                                    category: itemIsPotion ? "Potion" : (match.type ? String(match.type).slice(0, 100) : undefined),
                                     description: desc
                                 });
                             }

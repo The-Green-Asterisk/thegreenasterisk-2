@@ -48,6 +48,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const modalItemImage = sheet.querySelector<HTMLImageElement>("#modal-item-image");
     const modalItemDescription = sheet.querySelector<HTMLElement>("#modal-item-description");
     const modalItemSource = sheet.querySelector<HTMLElement>("#modal-item-source");
+    const modalItemQtyDec = sheet.querySelector<HTMLButtonElement>("#modal-item-qty-dec");
+    const modalItemQtyInc = sheet.querySelector<HTMLButtonElement>("#modal-item-qty-inc");
+    const modalItemQuantityInput = sheet.querySelector<HTMLInputElement>("#modal-item-quantity-input");
+    let currentItemModalName = "";
 
     // Action modal elements
     const actionModalBackdrop = sheet.querySelector<HTMLElement>("#action-modal-container");
@@ -950,10 +954,24 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter) return;
 
+        const itemNameLower = String(item.name || "").toLowerCase();
+        const itemCatLower = String(item.category || "").toLowerCase();
+        const itemFilterLower = String(item.filterType || "").toLowerCase();
+        const isPotionOrOil =
+            itemNameLower.includes("potion of") ||
+            itemNameLower.includes("oil of") ||
+            itemNameLower.startsWith("potion ") ||
+            itemNameLower.startsWith("oil ") ||
+            itemCatLower.includes("potion") ||
+            itemCatLower.includes("oil") ||
+            itemFilterLower.includes("potion") ||
+            itemFilterLower.includes("oil");
+
         const isWeapon =
-            item.filterType === "weapon" ||
-            (item.category && item.category.toLowerCase().includes("weapon")) ||
-            (item.damage && item.damage !== "—" && !item.filterType);
+            !isPotionOrOil &&
+            (itemFilterLower === "weapon" ||
+                itemCatLower.includes("weapon") ||
+                (item.damage && item.damage !== "—" && !item.filterType));
 
         if (isWeapon) {
             if (!activeCharacter.weapons) activeCharacter.weapons = [];
@@ -1468,6 +1486,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const localEquipment = activeCharacter.equipment.find(e => e.name.toLowerCase() === decodedName.toLowerCase());
 
         const displayName = localWeapon?.name || localEquipment?.name || decodedName;
+        currentItemModalName = displayName;
+        const currentQty = localWeapon ? (localWeapon.quantity ?? 1) : localEquipment ? (localEquipment.quantity ?? 1) : 1;
+        if (modalItemQuantityInput) modalItemQuantityInput.value = String(currentQty);
         const isMundane = isMundaneEquipment(displayName);
         const displayType = localWeapon ? localWeapon.category : (localEquipment?.type || itemType || "Equipment");
         const displayRarity = isMundane ? "Common" : (localWeapon?.rarity || localEquipment?.rarity || "Common");
@@ -1851,6 +1872,44 @@ export function initModalsController(ctx: CharacterSheetContext) {
     itemModalBackdrop?.addEventListener("click", (event) => {
         if (event.target === itemModalBackdrop) {
             closeItemModal();
+        }
+    });
+
+    modalItemQtyDec?.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!currentItemModalName) return;
+        const current = Number(modalItemQuantityInput?.value || "1");
+        const next = Math.max(0, current - 1);
+        if (modalItemQuantityInput) modalItemQuantityInput.value = String(next);
+        if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, next);
+        renderManageCurrentItemsPanel();
+    });
+
+    modalItemQtyInc?.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!currentItemModalName) return;
+        const current = Number(modalItemQuantityInput?.value || "1");
+        const next = current + 1;
+        if (modalItemQuantityInput) modalItemQuantityInput.value = String(next);
+        if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, next);
+        renderManageCurrentItemsPanel();
+    });
+
+    modalItemQuantityInput?.addEventListener("input", () => {
+        if (!currentItemModalName) return;
+        const val = parseInt(modalItemQuantityInput.value, 10);
+        if (!Number.isNaN(val) && val >= 0) {
+            if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, val);
+            renderManageCurrentItemsPanel();
+        }
+    });
+
+    modalItemQuantityInput?.addEventListener("blur", () => {
+        if (!currentItemModalName) return;
+        if (modalItemQuantityInput.value === "" || isNaN(Number(modalItemQuantityInput.value)) || Number(modalItemQuantityInput.value) < 0) {
+            modalItemQuantityInput.value = "0";
+            if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, 0);
+            renderManageCurrentItemsPanel();
         }
     });
 

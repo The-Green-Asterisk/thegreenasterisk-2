@@ -2,7 +2,7 @@ import http from 'http';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import BaseController from '../../server/controllers/baseController';
-import ItemController from '../../server/controllers/itemController';
+import ItemController, { getItemSearchAliases, isPotionOrOil } from '../../server/controllers/itemController';
 import AppDataSource from '../../server/services/database';
 
 describe('ItemController', () => {
@@ -165,5 +165,100 @@ describe('ItemController', () => {
         expect(parsed.isMagic).toBe(false);
         expect(parsed.rarity).toBe('Common');
         expect(parsed.filterType).toBe('Equipment');
+    });
+
+    it('identifies potions and oils correctly with isPotionOrOil', () => {
+        expect(isPotionOrOil('Potion of Healing (Greater)')).toBe(true);
+        expect(isPotionOrOil('Potion of Greater Healing')).toBe(true);
+        expect(isPotionOrOil('Potion of Superior Healing')).toBe(true);
+        expect(isPotionOrOil('Oil of Slipperiness')).toBe(true);
+        expect(isPotionOrOil('Dagger')).toBe(false);
+        expect(isPotionOrOil('Greatsword')).toBe(false);
+    });
+
+    it('generates proper aliases for Potion of Healing (Greater)', () => {
+        const aliases = getItemSearchAliases('Potion of Healing (Greater)');
+        expect(aliases).toContain('Potion of Greater Healing');
+        expect(aliases).toContain('Potion of Healing, Greater');
+        expect(aliases).toContain('Potion of Healing');
+    });
+
+    it('never assigns weapon damage or weapon filterType to Potion of Healing (Greater) in D&D Beyond html parser', () => {
+        const fakeGreaterPotionHtml = `
+            <html>
+                <h1 class="page-title">Potion of Healing (Greater)</h1>
+                <div class="more-info details-more-info">
+                    <div class="more-info-content">
+                        <p>You regain 4d4 + 4 hit points when you drink this potion.</p>
+                    </div>
+                </div>
+            </html>
+        `;
+
+        const parsed = (ItemController as any).parseDndBeyondItemHtml(
+            fakeGreaterPotionHtml,
+            'Potion of Healing (Greater)',
+            'potion-of-healing-greater',
+            undefined,
+            'https://www.dndbeyond.com/magic-items/potion-of-healing-greater'
+        );
+
+        expect(parsed).toBeDefined();
+        expect(parsed.name).toBe('Potion of Healing (Greater)');
+        expect(parsed.filterType).toBe('Potion');
+        expect(parsed.category).toBe('Potion');
+        expect(parsed.damage).toBeUndefined();
+        expect(parsed.range).toBeUndefined();
+        expect(parsed.properties).toBeUndefined();
+        expect(parsed.isMagic).toBe(true);
+        expect(parsed.rarity).toBe('Uncommon');
+    });
+
+    it('auto-heals misclassified potion database records on searchItems', async () => {
+        Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+        const misclassifiedPotion = {
+            id: 99,
+            slug: 'potion-of-healing-greater',
+            name: 'Potion of Healing (Greater)',
+            filterType: 'Weapon',
+            category: 'Simple Melee',
+            damage: '4d4 hit',
+            range: 'Reach 5 ft.',
+            properties: 'Finesse',
+            mastery: 'Nick',
+            rarity: 'Common',
+            isMagic: false,
+            description: '<p>You regain 4d4 + 4 hit points.</p>'
+        };
+
+        const mockSave = vi.fn().mockImplementation(async (item) => item);
+        const mockFind = vi.fn().mockResolvedValue([misclassifiedPotion]);
+
+        vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+            find: mockFind,
+            save: mockSave,
+        } as any);
+
+        const searchReq: Partial<http.IncomingMessage> = {
+            url: '/data/search-items?q=potion&type=all',
+            method: 'GET'
+        };
+
+        const result = await ItemController.searchItems(
+            searchReq as http.IncomingMessage,
+            mockRes as http.ServerResponse
+        );
+
+        expect(result.status).toBe(200);
+        expect(mockSave).toHaveBeenCalled();
+        expect(misclassifiedPotion.filterType).toBe('Potion');
+        expect(misclassifiedPotion.category).toBe('Potion');
+        expect(misclassifiedPotion.damage).toBeUndefined();
+        expect(misclassifiedPotion.range).toBeUndefined();
+        expect(misclassifiedPotion.properties).toBeUndefined();
+        expect(misclassifiedPotion.mastery).toBeUndefined();
+        expect(misclassifiedPotion.isMagic).toBe(true);
+        expect(misclassifiedPotion.rarity).toBe('Uncommon');
     });
 });
