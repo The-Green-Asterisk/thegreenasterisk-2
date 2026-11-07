@@ -1120,7 +1120,7 @@ export class CharacterCreatorController {
 
                 ${this.state.level >= 3 && currentClass.subclasses.length > 0 ? `
                     <div class="creator-detail-box">
-                        <h4>Subclass Selection (Level ${this.state.level})</h4>
+                        <h4>Subclass Selection (Level 3)</h4>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                             ${currentClass.subclasses.map((sub) => `
                                 <div class="select-card subclass-card ${this.state.subclassId === sub.id ? "selected" : ""}" data-subclass-id="${sub.id}">

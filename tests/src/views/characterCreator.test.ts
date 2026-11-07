@@ -613,4 +613,15 @@ describe("CharacterCreatorController", () => {
         expect(container.innerHTML).toContain("Arcane Recovery");
         expect(container.innerHTML).toContain("Signature Spells");
     });
+
+    it("displays Subclass Selection (Level 3) rather than the character's current level", () => {
+        const ctrl = new CharacterCreatorController();
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 10;
+        ctrl.renderStep(3);
+
+        const container = document.getElementById("creator-step-panels")!;
+        expect(container.innerHTML).toContain("Subclass Selection (Level 3)");
+        expect(container.innerHTML).not.toContain("Subclass Selection (Level 10)");
+    });
 });
