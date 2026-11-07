@@ -130,4 +130,77 @@ describe("CharacterCreatorController", () => {
         ctrl.state.name = "Gromph";
         expect(ctrl.validateCurrentStep()).toBe(true);
     });
+
+    it("manages Standard Array assignment by swapping numbers cleanly without editing", () => {
+        // Initial standard array: str 15, dex 14, con 13, int 12, wis 10, cha 8
+        expect(ctrl.state.baseAbilities.str).toBe(15);
+        expect(ctrl.state.baseAbilities.dex).toBe(14);
+
+        // Assign 15 to dex: str should swap to 14
+        ctrl.setStandardArrayScore("dex", 15);
+        expect(ctrl.state.baseAbilities.dex).toBe(15);
+        expect(ctrl.state.baseAbilities.str).toBe(14);
+
+        // Assign 8 to str: cha (which was 8) should swap to 14
+        ctrl.setStandardArrayScore("str", 8);
+        expect(ctrl.state.baseAbilities.str).toBe(8);
+        expect(ctrl.state.baseAbilities.cha).toBe(14);
+
+        // All 6 numbers from the array are preserved
+        const sorted = Object.values(ctrl.state.baseAbilities).sort((a, b) => b - a);
+        expect(sorted).toEqual([15, 14, 13, 12, 10, 8]);
+    });
+
+    it("manages Point Buy: tracking available points (0-27) and enforcing cost scaling", () => {
+        // Reset to all 8s (base minimum in Point Buy)
+        ctrl.state.baseAbilities = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
+        expect(ctrl.getSpentPoints()).toBe(0);
+        expect(ctrl.getAvailablePoints()).toBe(27);
+
+        // Decrement below 8 is blocked
+        expect(ctrl.canDecrementPointBuy("str")).toBe(false);
+        expect(ctrl.decrementPointBuy("str")).toBe(false);
+
+        // Increase str to 13 (costs 1 point per increase from 8 to 13: 5 points total)
+        for (let i = 8; i < 13; i++) {
+            expect(ctrl.incrementPointBuy("str")).toBe(true);
+        }
+        expect(ctrl.state.baseAbilities.str).toBe(13);
+        expect(ctrl.getSpentPoints()).toBe(5);
+        expect(ctrl.getAvailablePoints()).toBe(22);
+
+        // Increasing to 14 costs 2 points (total cost for 14 is 7 pts)
+        expect(ctrl.incrementPointBuy("str")).toBe(true);
+        expect(ctrl.state.baseAbilities.str).toBe(14);
+        expect(ctrl.getSpentPoints()).toBe(7);
+        expect(ctrl.getAvailablePoints()).toBe(20);
+
+        // Increasing to 15 costs 2 points (total cost for 15 is 9 pts)
+        expect(ctrl.incrementPointBuy("str")).toBe(true);
+        expect(ctrl.state.baseAbilities.str).toBe(15);
+        expect(ctrl.getSpentPoints()).toBe(9);
+        expect(ctrl.getAvailablePoints()).toBe(18);
+
+        // Cannot increase beyond 15
+        expect(ctrl.canIncrementPointBuy("str")).toBe(false);
+        expect(ctrl.incrementPointBuy("str")).toBe(false);
+        expect(ctrl.state.baseAbilities.str).toBe(15);
+
+        // Decrementing str refunds points: 15 -> 14 refunds 2 points
+        expect(ctrl.decrementPointBuy("str")).toBe(true);
+        expect(ctrl.state.baseAbilities.str).toBe(14);
+        expect(ctrl.getSpentPoints()).toBe(7);
+        expect(ctrl.getAvailablePoints()).toBe(20);
+
+        // Spend all 27 points: 15 (9), 15 (9), 15 (9), 8, 8, 8 = 27 points
+        ctrl.state.baseAbilities = { str: 15, dex: 15, con: 15, int: 8, wis: 8, cha: 8 };
+        expect(ctrl.getSpentPoints()).toBe(27);
+        expect(ctrl.getAvailablePoints()).toBe(0);
+
+        // When points are exhausted, increment is blocked for all stats
+        expect(ctrl.canIncrementPointBuy("int")).toBe(false);
+        expect(ctrl.incrementPointBuy("int")).toBe(false);
+        expect(ctrl.state.baseAbilities.int).toBe(8);
+        expect(ctrl.getAvailablePoints()).toBe(0);
+    });
 });

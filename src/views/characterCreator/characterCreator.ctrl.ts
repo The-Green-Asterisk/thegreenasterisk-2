@@ -228,6 +228,71 @@ export class CharacterCreatorController {
         return Math.floor((this.state.level - 1) / 4) + 2;
     }
 
+    public static readonly STANDARD_ARRAY: number[] = [15, 14, 13, 12, 10, 8];
+
+    public static readonly POINT_BUY_COSTS: Record<number, number> = {
+        8: 0,
+        9: 1,
+        10: 2,
+        11: 3,
+        12: 4,
+        13: 5,
+        14: 7,
+        15: 9
+    };
+
+    public getPointBuyCost(score: number): number {
+        return CharacterCreatorController.POINT_BUY_COSTS[score] ?? 0;
+    }
+
+    public getSpentPoints(): number {
+        const stats: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
+        return stats.reduce((sum, st) => {
+            const score = this.state.baseAbilities[st];
+            return sum + (CharacterCreatorController.POINT_BUY_COSTS[score] ?? 0);
+        }, 0);
+    }
+
+    public getAvailablePoints(): number {
+        return Math.max(0, Math.min(27, 27 - this.getSpentPoints()));
+    }
+
+    public canIncrementPointBuy(stat: AbilityName): boolean {
+        const current = this.state.baseAbilities[stat] ?? 8;
+        if (current >= 15) return false;
+        const nextCost = CharacterCreatorController.POINT_BUY_COSTS[current + 1] ?? 99;
+        const currentCost = CharacterCreatorController.POINT_BUY_COSTS[current] ?? 0;
+        const diff = nextCost - currentCost;
+        return this.getAvailablePoints() >= diff;
+    }
+
+    public canDecrementPointBuy(stat: AbilityName): boolean {
+        return (this.state.baseAbilities[stat] ?? 8) > 8;
+    }
+
+    public incrementPointBuy(stat: AbilityName): boolean {
+        if (!this.canIncrementPointBuy(stat)) return false;
+        this.state.baseAbilities[stat]++;
+        return true;
+    }
+
+    public decrementPointBuy(stat: AbilityName): boolean {
+        if (!this.canDecrementPointBuy(stat)) return false;
+        this.state.baseAbilities[stat]--;
+        return true;
+    }
+
+    public setStandardArrayScore(targetStat: AbilityName, newValue: number): void {
+        if (!CharacterCreatorController.STANDARD_ARRAY.includes(newValue)) return;
+        const stats: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
+        const swapStat = stats.find((st) => st !== targetStat && this.state.baseAbilities[st] === newValue);
+        const oldValue = this.state.baseAbilities[targetStat];
+        this.state.baseAbilities[targetStat] = newValue;
+        if (swapStat) {
+            this.state.baseAbilities[swapStat] = oldValue;
+        }
+    }
+
     public getEffectiveAbilityScore(stat: AbilityName): number {
         let score = this.state.baseAbilities[stat] || 10;
         // Background bonuses
@@ -647,6 +712,8 @@ export class CharacterCreatorController {
     private renderStep5Abilities(): string {
         const stats: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
         const labels: Record<AbilityName, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
+        const mode = this.state.abilityMode;
+        const availablePoints = this.getAvailablePoints();
 
         return `
             <div class="step-panel active">
@@ -656,37 +723,76 @@ export class CharacterCreatorController {
                 </div>
 
                 <div class="ability-modes-tabs">
-                    <button type="button" class="tab-btn ${this.state.abilityMode === "standard" ? "active" : ""}" data-mode="standard">Standard Array</button>
-                    <button type="button" class="tab-btn ${this.state.abilityMode === "pointbuy" ? "active" : ""}" data-mode="pointbuy">Point Buy (27)</button>
-                    <button type="button" class="tab-btn ${this.state.abilityMode === "roll" ? "active" : ""}" data-mode="roll">Roll 4d6 Drop Lowest</button>
-                    <button type="button" class="tab-btn ${this.state.abilityMode === "manual" ? "active" : ""}" data-mode="manual">Manual Entry</button>
+                    <button type="button" class="tab-btn ${mode === "standard" ? "active" : ""}" data-mode="standard">Standard Array</button>
+                    <button type="button" class="tab-btn ${mode === "pointbuy" ? "active" : ""}" data-mode="pointbuy">Point Buy (27)</button>
+                    <button type="button" class="tab-btn ${mode === "roll" ? "active" : ""}" data-mode="roll">Roll 4d6 Drop Lowest</button>
+                    <button type="button" class="tab-btn ${mode === "manual" ? "active" : ""}" data-mode="manual">Manual Entry</button>
                 </div>
+
+                ${mode === "standard" ? `
+                    <div class="ability-mode-info-banner">
+                        <span class="ability-info-title"><i class="fa-solid fa-list-ol"></i> Standard Array: 15, 14, 13, 12, 10, 8</span>
+                        <p class="ability-info-desc">Assign numbers from the array to specific abilities. Choosing an already-assigned value automatically swaps with that ability.</p>
+                    </div>
+                ` : ""}
+
+                ${mode === "pointbuy" ? `
+                    <div class="point-buy-banner">
+                        <div class="point-buy-header">
+                            <span class="point-buy-title"><i class="fa-solid fa-scale-balanced"></i> Point Buy</span>
+                            <div class="point-buy-counter ${availablePoints === 0 ? "is-spent" : ""}">
+                                <span class="counter-label">Available Points:</span>
+                                <strong class="counter-val" id="point-buy-available-val">${availablePoints} / 27</strong>
+                            </div>
+                        </div>
+                        <p class="point-buy-desc">Base scores range from 8 (0 pts) to 15 (9 pts). Point costs: 9 (1 pt), 10 (2 pts), 11 (3 pts), 12 (4 pts), 13 (5 pts), 14 (7 pts), 15 (9 pts). Available points never exceed 27 or drop below 0.</p>
+                    </div>
+                ` : ""}
 
                 <div class="ability-scores-grid" style="margin-top: 1rem;">
                     ${stats.map((stat) => {
-                        const base = this.state.baseAbilities[stat];
+                        const base = this.state.baseAbilities[stat] ?? 10;
                         const total = this.getEffectiveAbilityScore(stat);
                         const mod = this.getAbilityModifier(stat);
                         const modStr = (mod >= 0 ? "+" : "") + mod;
                         const bgBonus = total - base;
 
                         return `
-                            <div class="ability-score-card">
+                            <div class="ability-score-card" data-stat-card="${stat}">
                                 <span class="ability-abbr">${labels[stat]}</span>
                                 <div class="ability-score-display">${total}</div>
                                 <span class="ability-mod-display">${modStr}</span>
-                                <div class="ability-inputs">
-                                    <button type="button" class="score-control-btn score-dec-btn" data-stat="${stat}">-</button>
-                                    <input type="number" class="score-num-input" data-stat="${stat}" min="3" max="20" value="${base}" />
-                                    <button type="button" class="score-control-btn score-inc-btn" data-stat="${stat}">+</button>
-                                </div>
-                                <span class="ability-breakdown">Base: ${base} ${bgBonus > 0 ? `(+${bgBonus} BG)` : ""}</span>
+
+                                ${mode === "standard" ? `
+                                    <div class="ability-inputs standard-array-inputs" style="width: 100%;">
+                                        <select class="standard-array-select" data-stat="${stat}" aria-label="${labels[stat]} base score">
+                                            ${CharacterCreatorController.STANDARD_ARRAY.map((val) => `
+                                                <option value="${val}" ${base === val ? "selected" : ""}>Base: ${val}</option>
+                                            `).join("")}
+                                        </select>
+                                    </div>
+                                    <span class="ability-breakdown">${bgBonus > 0 ? `(+${bgBonus} from Background)` : "No BG bonus"}</span>
+                                ` : mode === "pointbuy" ? `
+                                    <div class="ability-inputs point-buy-inputs">
+                                        <button type="button" class="score-control-btn point-buy-dec-btn" data-stat="${stat}" ${!this.canDecrementPointBuy(stat) ? "disabled" : ""} title="Decrease ${labels[stat]} score">-</button>
+                                        <span class="point-buy-score-display">${base}</span>
+                                        <button type="button" class="score-control-btn point-buy-inc-btn" data-stat="${stat}" ${!this.canIncrementPointBuy(stat) ? "disabled" : ""} title="Increase ${labels[stat]} score">+</button>
+                                    </div>
+                                    <span class="point-buy-cost-breakdown">Cost: ${this.getPointBuyCost(base)} pts ${bgBonus > 0 ? `(+${bgBonus} BG)` : ""}</span>
+                                ` : `
+                                    <div class="ability-inputs">
+                                        <button type="button" class="score-control-btn score-dec-btn" data-stat="${stat}">-</button>
+                                        <input type="number" class="score-num-input" data-stat="${stat}" min="3" max="20" value="${base}" />
+                                        <button type="button" class="score-control-btn score-inc-btn" data-stat="${stat}">+</button>
+                                    </div>
+                                    <span class="ability-breakdown">Base: ${base} ${bgBonus > 0 ? `(+${bgBonus} BG)` : ""}</span>
+                                `}
                             </div>
                         `;
                     }).join("")}
                 </div>
 
-                ${this.state.abilityMode === "roll" ? `
+                ${mode === "roll" ? `
                     <div style="margin-top: 1rem;">
                         <button type="button" id="roll-all-stats-btn" class="creator-nav-btn secondary-btn">
                             <i class="fa-solid fa-dice-d20"></i> Roll All Stats (4d6 Drop Lowest)
@@ -1078,15 +1184,62 @@ export class CharacterCreatorController {
         } else if (step === 5) {
             document.querySelectorAll(".tab-btn").forEach((btn) => {
                 btn.addEventListener("click", () => {
-                    this.state.abilityMode = btn.getAttribute("data-mode") as any;
-                    if (this.state.abilityMode === "standard") {
-                        this.state.baseAbilities = { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 };
+                    const newMode = btn.getAttribute("data-mode") as any;
+                    this.state.abilityMode = newMode;
+                    if (newMode === "standard") {
+                        const currentValues = Object.values(this.state.baseAbilities).slice().sort((a, b) => b - a);
+                        const isMatch = CharacterCreatorController.STANDARD_ARRAY.every((v, i) => currentValues[i] === v);
+                        if (!isMatch) {
+                            this.state.baseAbilities = { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 };
+                        }
+                    } else if (newMode === "pointbuy") {
+                        const stats: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
+                        const allInRange = stats.every((st) => this.state.baseAbilities[st] >= 8 && this.state.baseAbilities[st] <= 15);
+                        if (!allInRange || this.getSpentPoints() > 27) {
+                            this.state.baseAbilities = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
+                        }
                     }
                     this.renderStep(5);
                     this.updateLiveSummary();
                 });
             });
 
+            // Standard array selection: swapping values without editing
+            document.querySelectorAll(".standard-array-select").forEach((select) => {
+                select.addEventListener("change", (e) => {
+                    const stat = (e.target as HTMLSelectElement).getAttribute("data-stat") as AbilityName;
+                    const val = Number((e.target as HTMLSelectElement).value);
+                    if (stat && val) {
+                        this.setStandardArrayScore(stat, val);
+                        this.renderStep(5);
+                        this.updateLiveSummary();
+                    }
+                });
+            });
+
+            // Point buy decrement
+            document.querySelectorAll(".point-buy-dec-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const stat = btn.getAttribute("data-stat") as AbilityName;
+                    if (stat && this.decrementPointBuy(stat)) {
+                        this.renderStep(5);
+                        this.updateLiveSummary();
+                    }
+                });
+            });
+
+            // Point buy increment
+            document.querySelectorAll(".point-buy-inc-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const stat = btn.getAttribute("data-stat") as AbilityName;
+                    if (stat && this.incrementPointBuy(stat)) {
+                        this.renderStep(5);
+                        this.updateLiveSummary();
+                    }
+                });
+            });
+
+            // Manual / Roll score controls
             document.querySelectorAll(".score-dec-btn").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     const stat = btn.getAttribute("data-stat") as AbilityName;

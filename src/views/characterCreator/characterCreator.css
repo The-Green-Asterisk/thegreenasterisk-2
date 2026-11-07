@@ -673,6 +673,111 @@ el-character-creator,
     color: var(--text-muted);
 }
 
+/* Ability Mode Banners (Standard Array & Point Buy) */
+.ability-mode-info-banner,
+.point-buy-banner {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.15rem;
+    margin-top: 1rem;
+    box-sizing: border-box;
+}
+
+.ability-info-title,
+.point-buy-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.ability-info-desc,
+.point-buy-desc {
+    margin: 0.35rem 0 0 0;
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.point-buy-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.point-buy-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface);
+    border: 1.5px solid var(--ui-color);
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    box-shadow: var(--sm-shadow);
+}
+
+.point-buy-counter.is-spent {
+    border-color: var(--border-mid);
+    background: var(--surface-muted);
+}
+
+.point-buy-counter .counter-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.point-buy-counter .counter-val {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: var(--ui-text);
+}
+
+.point-buy-counter.is-spent .counter-val {
+    color: var(--text);
+}
+
+.standard-array-select {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 800;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.standard-array-select:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px rgba(41, 112, 27, 0.2);
+}
+
+.point-buy-score-display {
+    min-width: 32px;
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--text);
+    text-align: center;
+    display: inline-block;
+}
+
+.point-buy-cost-breakdown {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
 /* Skills list */
 .skills-select-grid {
     display: grid;
