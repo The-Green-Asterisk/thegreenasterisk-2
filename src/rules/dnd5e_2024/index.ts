@@ -5,3 +5,5 @@ export * from "./originFeats";
 export * from "./classes";
 export * from "./spells";
 export * from "./equipment";
+export * from "./classOptions";
+export * from "./generalFeats";

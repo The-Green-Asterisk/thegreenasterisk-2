@@ -258,6 +258,12 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 ? '<i class="fa-solid fa-check"></i> Done Editing'
                 : '<i class="fa-solid fa-pen"></i> Edit Fields';
         }
+        const editInWizardBtn = sheet.querySelector<HTMLAnchorElement>("#edit-in-wizard-btn");
+        if (editInWizardBtn) {
+            editInWizardBtn.classList.toggle("hidden", !hasCharacter);
+            const charId = activeCharacter?.siteCharacterId || activeCharacter?.savedCharacterId || ctx.getActiveCharacterId() || "";
+            editInWizardBtn.href = `/character-sheet/creator?id=${encodeURIComponent(charId)}`;
+        }
         if (exportPdfBtn) {
             exportPdfBtn.classList.toggle("hidden", !hasCharacter);
         }

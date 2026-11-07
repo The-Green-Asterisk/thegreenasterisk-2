@@ -5,7 +5,6 @@ const html = Helpers.html;
 export const characterCreatorTemplate = () => html`
     <el-character-creator class="character-creator-view">
         <div class="creator-container content-slate">
-            <!-- Stepper Progress Bar (resting just below the site nav) -->
             <div class="creator-stepper" role="tablist" aria-label="Creation Steps">
                 <ol class="stepper-list" id="creator-stepper-list">
                     <li class="stepper-item active" data-step="1">

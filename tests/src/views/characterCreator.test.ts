@@ -444,4 +444,132 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.selectedSpellsLevel1).toContain("Magic Missile");
         expect(ctrl.state.selectedSpellsLevel1).not.toContain("Fireball");
     });
+
+    it("calculates ASI milestone levels accurately by class and current level", () => {
+        // Standard class (e.g. Wizard)
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        expect(ctrl.getAsiLevels()).toEqual([]);
+
+        ctrl.state.level = 4;
+        expect(ctrl.getAsiLevels()).toEqual([4]);
+
+        ctrl.state.level = 12;
+        expect(ctrl.getAsiLevels()).toEqual([4, 8, 12]);
+
+        ctrl.state.level = 20;
+        expect(ctrl.getAsiLevels()).toEqual([4, 8, 12, 16, 19]);
+
+        // Fighter gains extra ASIs at 6 and 14
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 6;
+        expect(ctrl.getAsiLevels()).toEqual([4, 6]);
+
+        ctrl.state.level = 14;
+        expect(ctrl.getAsiLevels()).toEqual([4, 6, 8, 12, 14]);
+
+        ctrl.state.level = 20;
+        expect(ctrl.getAsiLevels()).toEqual([4, 6, 8, 12, 14, 16, 19]);
+
+        // Rogue gains extra ASI at 10
+        ctrl.state.classId = "rogue";
+        ctrl.state.level = 10;
+        expect(ctrl.getAsiLevels()).toEqual([4, 8, 10]);
+
+        ctrl.state.level = 20;
+        expect(ctrl.getAsiLevels()).toEqual([4, 8, 10, 12, 16, 19]);
+    });
+
+    it("applies ASI choices (single +2, dual +1/+1, and feat +1) to effective ability scores", () => {
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 8;
+        ctrl.state.baseAbilities = { str: 15, dex: 14, con: 13, int: 10, wis: 10, cha: 8 };
+        ctrl.state.backgroundOption = "two-and-one";
+        ctrl.state.bgStatA = "str"; // +2 => 17
+        ctrl.state.bgStatB = "con"; // +1 => 14
+
+        // Level 4: +2 STR
+        // Level 6: +1 DEX, +1 CON
+        // Level 8: Feat (Heavy Armor Master: +1 STR)
+        ctrl.state.asiChoices = {
+            4: { type: "single", statA: "str" },
+            6: { type: "dual", statA: "dex", statB: "con" },
+            8: { type: "feat", featId: "heavy-armor-master", statA: "str" }
+        };
+
+        // STR: base 15 + 2 (BG) + 2 (Lvl 4) + 1 (Lvl 8 Feat) = 20
+        expect(ctrl.getEffectiveAbilityScore("str")).toBe(20);
+        expect(ctrl.getAbilityModifier("str")).toBe(5);
+
+        // DEX: base 14 + 1 (Lvl 6) = 15
+        expect(ctrl.getEffectiveAbilityScore("dex")).toBe(15);
+        expect(ctrl.getAbilityModifier("dex")).toBe(2);
+
+        // CON: base 13 + 1 (BG) + 1 (Lvl 6) = 15
+        expect(ctrl.getEffectiveAbilityScore("con")).toBe(15);
+        expect(ctrl.getAbilityModifier("con")).toBe(2);
+    });
+
+    it("computes progression feature limits accurately across levels", () => {
+        // Metamagic (Sorcerer)
+        ctrl.state.classId = "sorcerer";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxMetamagicCount()).toBe(0);
+        ctrl.state.level = 2;
+        expect(ctrl.getMaxMetamagicCount()).toBe(2);
+        ctrl.state.level = 10;
+        expect(ctrl.getMaxMetamagicCount()).toBe(3);
+        ctrl.state.level = 17;
+        expect(ctrl.getMaxMetamagicCount()).toBe(4);
+
+        // Eldritch Invocations (Warlock)
+        ctrl.state.classId = "warlock";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxInvocationsCount()).toBe(1);
+        ctrl.state.level = 2;
+        expect(ctrl.getMaxInvocationsCount()).toBe(3);
+        ctrl.state.level = 5;
+        expect(ctrl.getMaxInvocationsCount()).toBe(5);
+        ctrl.state.level = 9;
+        expect(ctrl.getMaxInvocationsCount()).toBe(7);
+        ctrl.state.level = 18;
+        expect(ctrl.getMaxInvocationsCount()).toBe(10);
+
+        // Battle Master Maneuvers (Fighter)
+        ctrl.state.classId = "fighter";
+        ctrl.state.subclassId = "battle-master";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxManeuversCount()).toBe(0);
+        ctrl.state.level = 3;
+        expect(ctrl.getMaxManeuversCount()).toBe(3);
+        ctrl.state.level = 7;
+        expect(ctrl.getMaxManeuversCount()).toBe(5);
+        ctrl.state.level = 10;
+        expect(ctrl.getMaxManeuversCount()).toBe(7);
+        ctrl.state.level = 15;
+        expect(ctrl.getMaxManeuversCount()).toBe(9);
+
+        // Expertise (Rogue, Bard, Ranger)
+        ctrl.state.classId = "rogue";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxExpertiseCount()).toBe(2);
+        ctrl.state.level = 6;
+        expect(ctrl.getMaxExpertiseCount()).toBe(4);
+
+        ctrl.state.classId = "bard";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxExpertiseCount()).toBe(0);
+        ctrl.state.level = 2;
+        expect(ctrl.getMaxExpertiseCount()).toBe(2);
+        ctrl.state.level = 9;
+        expect(ctrl.getMaxExpertiseCount()).toBe(4);
+
+        ctrl.state.classId = "ranger";
+        ctrl.state.level = 1;
+        expect(ctrl.getMaxExpertiseCount()).toBe(0);
+        ctrl.state.level = 2;
+        expect(ctrl.getMaxExpertiseCount()).toBe(1);
+        ctrl.state.level = 9;
+        expect(ctrl.getMaxExpertiseCount()).toBe(2);
+    });
 });

@@ -30,6 +30,9 @@ export function renderLoaderBar(): string {
                     <a href="/character-sheet/creator" id="launch-character-creator-btn" class="load-btn secondary" title="Launch the 5.5e Character Creation Wizard" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Character Creator
                     </a>
+                    <a href="/character-sheet/creator" id="edit-in-wizard-btn" class="load-btn secondary hidden" title="Edit this character in the 5.5e Creation Wizard" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Edit in Wizard
+                    </a>
                     <button type="button" id="create-character-btn" class="load-btn secondary hidden" title="Create a brand new site character sheet">
                         <i class="fa-solid fa-user-plus"></i> New Character
                     </button>

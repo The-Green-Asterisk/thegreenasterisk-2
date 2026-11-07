@@ -1,21 +1,36 @@
 import el from "@elements";
 import FileService from "@services/fileService";
-import { postData } from "@services/request";
+import { getData, postData } from "@services/request";
 import {
     AbilityName,
     BACKGROUNDS_2024,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
+    BATTLE_MASTER_MANEUVERS,
     CLASSES_2024,
+    DIVINE_ORDERS,
+    ELDRITCH_INVOCATIONS,
+    FIGHTING_STYLES,
+    GENERAL_FEATS_2024,
+    METAMAGIC_OPTIONS,
     ORIGIN_FEATS_2024,
+    PRIMAL_ORDERS,
     RuleSpellDefinition,
     SPECIES_2024,
     SPELLS_2024,
     WEAPON_MASTERIES
 } from "../../rules/dnd5e_2024";
 
+export interface AsiChoice {
+    type: "single" | "dual" | "feat";
+    statA?: AbilityName;
+    statB?: AbilityName;
+    featId?: string;
+}
+
 export interface CreatorState {
     currentStep: number;
+    savedId?: number;
     name: string;
     level: number;
     alignment: string;
@@ -28,6 +43,13 @@ export interface CreatorState {
     classId: string;
     subclassId: string;
     weaponMasteries: string[];
+    // Class-specific progression choices:
+    fightingStyle?: string;
+    divineOrder?: string;
+    primalOrder?: string;
+    metamagic: string[];
+    invocations: string[];
+    maneuvers: string[];
     backgroundId: string;
     backgroundOption: "two-and-one" | "three-ones";
     bgStatA: AbilityName;
@@ -37,6 +59,7 @@ export interface CreatorState {
     originFeatId: string;
     abilityMode: "standard" | "pointbuy" | "roll" | "manual";
     baseAbilities: Record<AbilityName, number>;
+    asiChoices: Record<number, AsiChoice>;
     classSkills: string[];
     expertiseSkills: string[];
     selectedWeapons: string[];
@@ -98,6 +121,13 @@ export class CharacterCreatorController {
             wis: 10,
             cha: 8
         },
+        asiChoices: {},
+        fightingStyle: "defense",
+        divineOrder: "protector",
+        primalOrder: "warden",
+        metamagic: [],
+        invocations: [],
+        maneuvers: [],
         classSkills: ["Athletics", "Perception"],
         expertiseSkills: [],
         selectedWeapons: ["Longsword", "Light Crossbow"],
@@ -110,8 +140,12 @@ export class CharacterCreatorController {
     public activeSpellLevelFilter: number | "all" = "all";
     public spellSearchQuery: string = "";
 
-    public init(query?: any) {
+    public async init(query?: any) {
         this.bindEvents();
+        const targetId = query?.id || query?.savedId || query?.characterId || query?.siteCharacterId;
+        if (targetId) {
+            await this.loadCharacter(targetId);
+        }
         this.renderStep(1);
         this.updateLiveSummary();
     }
@@ -297,6 +331,178 @@ export class CharacterCreatorController {
         }
     }
 
+    public getAsiLevels(): number[] {
+        const lvls = [4, 8, 12, 16, 19];
+        if (this.state.classId === "fighter") {
+            lvls.push(6, 14);
+        } else if (this.state.classId === "rogue") {
+            lvls.push(10);
+        }
+        return lvls.sort((a, b) => a - b).filter((l) => l <= this.state.level);
+    }
+
+    public ensureAsiChoices(): void {
+        const asiLevels = this.getAsiLevels();
+        if (!this.state.asiChoices) this.state.asiChoices = {};
+        for (const lvl of asiLevels) {
+            if (!this.state.asiChoices[lvl]) {
+                const cls = CLASSES_2024.find((c) => c.id === this.state.classId);
+                const defaultStat: AbilityName = cls?.savingThrows[0] || "str";
+                this.state.asiChoices[lvl] = {
+                    type: "single",
+                    statA: defaultStat
+                };
+            }
+        }
+    }
+
+    public getMaxMetamagicCount(): number {
+        if (this.state.classId !== "sorcerer" || this.state.level < 2) return 0;
+        if (this.state.level >= 17) return 4;
+        if (this.state.level >= 10) return 3;
+        return 2;
+    }
+
+    public getMaxInvocationsCount(): number {
+        if (this.state.classId !== "warlock") return 0;
+        const lvl = this.state.level;
+        if (lvl >= 18) return 10;
+        if (lvl >= 15) return 9;
+        if (lvl >= 12) return 8;
+        if (lvl >= 9) return 7;
+        if (lvl >= 7) return 6;
+        if (lvl >= 5) return 5;
+        if (lvl >= 2) return 3;
+        return 1;
+    }
+
+    public getMaxManeuversCount(): number {
+        if (this.state.classId !== "fighter" || this.state.subclassId !== "battle-master" || this.state.level < 3) return 0;
+        const lvl = this.state.level;
+        if (lvl >= 15) return 9;
+        if (lvl >= 10) return 7;
+        if (lvl >= 7) return 5;
+        return 3;
+    }
+
+    public getMaxExpertiseCount(): number {
+        const { classId, level } = this.state;
+        if (classId === "rogue") {
+            return level >= 6 ? 4 : 2;
+        }
+        if (classId === "bard") {
+            if (level >= 9) return 4;
+            if (level >= 2) return 2;
+            return 0;
+        }
+        if (classId === "ranger") {
+            if (level >= 9) return 2;
+            if (level >= 2) return 1;
+            return 0;
+        }
+        return 0;
+    }
+
+    public async loadCharacter(targetId: string | number) {
+        try {
+            const queryParam = typeof targetId === "number" || /^\d+$/.test(String(targetId))
+                ? `id=${targetId}`
+                : `siteCharacterId=${encodeURIComponent(targetId)}`;
+            const response = await getData<{
+                character?: any;
+                savedCharacter?: any;
+            }>(`/get-saved-character?${queryParam}`);
+
+            if (!response?.character) {
+                console.warn("Could not load character:", targetId);
+                return;
+            }
+
+            const char = response.character;
+            const savedId = response.savedCharacter?.id || char.savedCharacterId;
+            if (savedId) {
+                this.state.savedId = Number(savedId);
+            }
+
+            if (char.creatorState && typeof char.creatorState === "object") {
+                Object.assign(this.state, char.creatorState);
+                if (savedId) this.state.savedId = Number(savedId);
+            } else {
+                if (char.name) this.state.name = char.name;
+                if (char.level) this.state.level = Number(char.level);
+                if (char.alignment) this.state.alignment = char.alignment;
+                if (char.gender) this.state.gender = char.gender || "";
+                if (char.avatarUrl) this.state.avatarUrl = char.avatarUrl;
+
+                const spName = (char.species || char.race || "").toLowerCase();
+                const matchedSp = SPECIES_2024.find((s) => s.name.toLowerCase() === spName || s.id === spName);
+                if (matchedSp) this.state.speciesId = matchedSp.id;
+
+                if (Array.isArray(char.classes) && char.classes.length > 0) {
+                    const primaryClass = char.classes[0];
+                    const clsName = (primaryClass.name || "").toLowerCase();
+                    const matchedCls = CLASSES_2024.find((c) => c.name.toLowerCase() === clsName || c.id === clsName);
+                    if (matchedCls) {
+                        this.state.classId = matchedCls.id;
+                        if (primaryClass.subclass) {
+                            const subName = primaryClass.subclass.toLowerCase();
+                            const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
+                            if (matchedSub) this.state.subclassId = matchedSub.id;
+                        }
+                    }
+                }
+
+                if (char.background) {
+                    const bgName = char.background.toLowerCase();
+                    const matchedBg = BACKGROUNDS_2024.find((b) => b.name.toLowerCase() === bgName || b.id === bgName);
+                    if (matchedBg) this.state.backgroundId = matchedBg.id;
+                }
+
+                if (Array.isArray(char.abilities)) {
+                    for (const ab of char.abilities) {
+                        const abbr = (ab.abbr || "").toLowerCase() as AbilityName;
+                        if (abbr && this.state.baseAbilities[abbr] !== undefined) {
+                            this.state.baseAbilities[abbr] = ab.baseScore ?? ab.score ?? 10;
+                        }
+                    }
+                }
+
+                if (Array.isArray(char.skills)) {
+                    this.state.classSkills = char.skills
+                        .filter((s: any) => s.proficiency === "proficient")
+                        .map((s: any) => s.name);
+                    this.state.expertiseSkills = char.skills
+                        .filter((s: any) => s.proficiency === "expertise")
+                        .map((s: any) => s.name);
+                }
+
+                if (Array.isArray(char.weapons)) {
+                    this.state.selectedWeapons = char.weapons.map((w: any) => w.name);
+                    this.state.weaponMasteries = char.weapons
+                        .filter((w: any) => w.mastery?.unlocked)
+                        .map((w: any) => w.name);
+                }
+                if (Array.isArray(char.equipment)) {
+                    const armor = char.equipment.find((e: any) => e.type === "Armor" && e.name !== "Shield");
+                    if (armor) this.state.selectedArmor = armor.name;
+                    this.state.hasShield = char.equipment.some((e: any) => e.name === "Shield" && e.equipped);
+                }
+
+                if (Array.isArray(char.spells)) {
+                    this.state.selectedCantrips = char.spells.filter((s: any) => s.level === 0).map((s: any) => s.name);
+                    this.state.selectedSpellsLevel1 = char.spells.filter((s: any) => s.level > 0).map((s: any) => s.name);
+                }
+            }
+
+            const submitBtn = document.getElementById("creator-submit-btn");
+            if (submitBtn) {
+                submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
+            }
+        } catch (err) {
+            console.error("Failed to load character for editing:", err);
+        }
+    }
+
     public getEffectiveAbilityScore(stat: AbilityName): number {
         let score = this.state.baseAbilities[stat] || 10;
         // Background bonuses
@@ -308,6 +514,22 @@ export class CharacterCreatorController {
                 score += 1;
             }
         }
+
+        // ASI / Feat bonuses up to current level
+        const asiLevels = this.getAsiLevels();
+        for (const lvl of asiLevels) {
+            const choice = this.state.asiChoices?.[lvl];
+            if (!choice) continue;
+            if (choice.type === "single") {
+                if (choice.statA === stat) score += 2;
+            } else if (choice.type === "dual") {
+                if (choice.statA === stat) score += 1;
+                if (choice.statB === stat) score += 1;
+            } else if (choice.type === "feat") {
+                if (choice.statA === stat) score += 1;
+            }
+        }
+
         return score;
     }
 
@@ -884,6 +1106,118 @@ export class CharacterCreatorController {
                         </div>
                     </div>
                 ` : ""}
+
+                ${((this.state.classId === "fighter" && this.state.level >= 1) || (this.state.classId === "paladin" && this.state.level >= 2) || (this.state.classId === "ranger" && this.state.level >= 2)) ? `
+                    <div class="creator-detail-box">
+                        <h4>Fighting Style (Choose 1)</h4>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                            ${FIGHTING_STYLES.map((fs) => `
+                                <div class="select-card fighting-style-card ${this.state.fightingStyle === fs.id ? "selected" : ""}" data-fighting-style-id="${fs.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${fs.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${fs.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                ` : ""}
+
+                ${this.state.classId === "cleric" && this.state.level >= 1 ? `
+                    <div class="creator-detail-box">
+                        <h4>Divine Order</h4>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${DIVINE_ORDERS.map((ord) => `
+                                <div class="select-card divine-order-card ${this.state.divineOrder === ord.id ? "selected" : ""}" data-divine-order-id="${ord.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${ord.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${ord.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                ` : ""}
+
+                ${this.state.classId === "druid" && this.state.level >= 1 ? `
+                    <div class="creator-detail-box">
+                        <h4>Primal Order</h4>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+                            ${PRIMAL_ORDERS.map((ord) => `
+                                <div class="select-card primal-order-card ${this.state.primalOrder === ord.id ? "selected" : ""}" data-primal-order-id="${ord.id}">
+                                    <div class="card-title-row">
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${ord.name}</h5>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <p class="card-body">${ord.description}</p>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                ` : ""}
+
+                ${this.state.classId === "sorcerer" && this.state.level >= 2 ? `
+                    <div class="creator-detail-box">
+                        <h4>Metamagic (Choose up to ${this.getMaxMetamagicCount()})</h4>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                            ${METAMAGIC_OPTIONS.map((meta) => {
+                                const isSelected = this.state.metamagic.includes(meta.id);
+                                return `
+                                    <div class="select-card metamagic-card ${isSelected ? "selected" : ""}" data-metamagic-id="${meta.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${meta.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        <p class="card-body">${meta.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                ` : ""}
+
+                ${this.state.classId === "warlock" && this.state.level >= 1 ? `
+                    <div class="creator-detail-box">
+                        <h4>Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h4>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || this.state.level >= inv.minLevel).map((inv) => {
+                                const isSelected = this.state.invocations.includes(inv.id);
+                                return `
+                                    <div class="select-card invocation-card ${isSelected ? "selected" : ""}" data-invocation-id="${inv.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${inv.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        ${inv.minLevel ? `<span class="card-tag">Min Level: ${inv.minLevel}</span>` : ""}
+                                        <p class="card-body">${inv.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                ` : ""}
+
+                ${this.state.classId === "fighter" && this.state.subclassId === "battle-master" && this.state.level >= 3 ? `
+                    <div class="creator-detail-box">
+                        <h4>Battle Master Maneuvers (Choose up to ${this.getMaxManeuversCount()})</h4>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${BATTLE_MASTER_MANEUVERS.map((man) => {
+                                const isSelected = this.state.maneuvers.includes(man.id);
+                                return `
+                                    <div class="select-card maneuver-card ${isSelected ? "selected" : ""}" data-maneuver-id="${man.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${man.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        <p class="card-body">${man.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                ` : ""}
             </div>
         `;
     }
@@ -1055,6 +1389,100 @@ export class CharacterCreatorController {
                         </button>
                     </div>
                 ` : ""}
+
+                ${this.getAsiLevels().length > 0 ? `
+                    <div class="creator-detail-box asi-section" style="margin-top: 1.5rem;">
+                        <h4><i class="fa-solid fa-arrow-up-right-dots"></i> Ability Score Improvements & Feats</h4>
+                        <p class="card-body">Your character has reached levels that grant an Ability Score Improvement or Feat. Choose how to distribute your increases.</p>
+                        <div class="asi-milestones-container">
+                            ${this.getAsiLevels().map((lvl) => this.renderAsiMilestoneCard(lvl)).join("")}
+                        </div>
+                    </div>
+                ` : ""}
+            </div>
+        `;
+    }
+
+    private renderAsiMilestoneCard(lvl: number): string {
+        this.ensureAsiChoices();
+        const choice = this.state.asiChoices[lvl] || { type: "single", statA: "str" };
+        const stats: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
+        const labels: Record<AbilityName, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
+        const isEpicLevel = lvl >= 19;
+        const availableFeats = isEpicLevel
+            ? GENERAL_FEATS_2024
+            : GENERAL_FEATS_2024.filter((f) => !f.isEpicBoon);
+
+        const currentFeat = availableFeats.find((f) => f.id === choice.featId) || availableFeats[0];
+        const allowedFeatStats = currentFeat?.allowedStats || stats;
+
+        return `
+            <div class="asi-milestone-card" data-asi-level="${lvl}">
+                <div class="asi-card-header">
+                    <span class="asi-level-badge">Level ${lvl} Improvement</span>
+                    <div class="asi-type-selector">
+                        <label class="asi-type-radio-label">
+                            <input type="radio" class="asi-type-radio" name="asi-type-${lvl}" data-asi-level="${lvl}" value="single" ${choice.type === "single" ? "checked" : ""} />
+                            <span>+2 to One Stat</span>
+                        </label>
+                        <label class="asi-type-radio-label">
+                            <input type="radio" class="asi-type-radio" name="asi-type-${lvl}" data-asi-level="${lvl}" value="dual" ${choice.type === "dual" ? "checked" : ""} />
+                            <span>+1 to Two Stats</span>
+                        </label>
+                        <label class="asi-type-radio-label">
+                            <input type="radio" class="asi-type-radio" name="asi-type-${lvl}" data-asi-level="${lvl}" value="feat" ${choice.type === "feat" ? "checked" : ""} />
+                            <span>${isEpicLevel ? "Epic Boon / Feat" : "General Feat (+1 Stat)"}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="asi-inputs-row">
+                    ${choice.type === "single" ? `
+                        <div class="asi-select-wrap">
+                            <label class="asi-select-label">Select Ability (+2):</label>
+                            <select class="creator-select asi-stat-select" data-asi-field="statA" data-asi-level="${lvl}">
+                                ${stats.map((st) => `
+                                    <option value="${st}" ${choice.statA === st ? "selected" : ""}>${labels[st]} (Current: ${this.getEffectiveAbilityScore(st)})</option>
+                                `).join("")}
+                            </select>
+                        </div>
+                    ` : choice.type === "dual" ? `
+                        <div class="asi-select-wrap">
+                            <label class="asi-select-label">First Ability (+1):</label>
+                            <select class="creator-select asi-stat-select" data-asi-field="statA" data-asi-level="${lvl}">
+                                ${stats.map((st) => `
+                                    <option value="${st}" ${choice.statA === st ? "selected" : ""}>${labels[st]} (Current: ${this.getEffectiveAbilityScore(st)})</option>
+                                `).join("")}
+                            </select>
+                        </div>
+                        <div class="asi-select-wrap">
+                            <label class="asi-select-label">Second Ability (+1):</label>
+                            <select class="creator-select asi-stat-select" data-asi-field="statB" data-asi-level="${lvl}">
+                                ${stats.map((st) => `
+                                    <option value="${st}" ${(choice.statB || "dex") === st ? "selected" : ""}>${labels[st]} (Current: ${this.getEffectiveAbilityScore(st)})</option>
+                                `).join("")}
+                            </select>
+                        </div>
+                    ` : `
+                        <div class="asi-select-wrap" style="flex: 2;">
+                            <label class="asi-select-label">Choose Feat:</label>
+                            <select class="creator-select asi-feat-select" data-asi-level="${lvl}">
+                                ${availableFeats.map((f) => `
+                                    <option value="${f.id}" ${choice.featId === f.id ? "selected" : ""}>${f.name}${f.isEpicBoon ? " (Epic Boon)" : ""}</option>
+                                `).join("")}
+                            </select>
+                            <p class="asi-feat-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">${currentFeat?.description}</p>
+                        </div>
+                        <div class="asi-select-wrap" style="flex: 1;">
+                            <label class="asi-select-label">Feat Ability (+1):</label>
+                            <select class="creator-select asi-stat-select" data-asi-field="statA" data-asi-level="${lvl}">
+                                ${allowedFeatStats.map((st) => `
+                                    <option value="${st}" ${choice.statA === st ? "selected" : ""}>${labels[st]} (Current: ${this.getEffectiveAbilityScore(st)})</option>
+                                `).join("")}
+                            </select>
+                        </div>
+                    `}
+                </div>
             </div>
         `;
     }
@@ -1095,6 +1523,32 @@ export class CharacterCreatorController {
                         `;
                     }).join("")}
                 </div>
+
+                ${this.getMaxExpertiseCount() > 0 ? `
+                    <div class="creator-detail-box" style="margin-top: 1.5rem;">
+                        <h4><i class="fa-solid fa-star"></i> Expertise (Choose up to ${this.getMaxExpertiseCount()})</h4>
+                        <p class="card-body">Your proficiency bonus is doubled for any ability check you make that uses the chosen proficiencies.</p>
+                        <div class="skills-select-grid">
+                            ${ALL_SKILLS.filter((sk) => {
+                                const isBgSkill = bgSkills.includes(sk.name);
+                                const isHumanExtra = this.state.speciesId === "human" && this.state.humanExtraSkill === sk.name;
+                                const isClassSkill = this.state.classSkills.includes(sk.name);
+                                return isBgSkill || isHumanExtra || isClassSkill;
+                            }).map((sk) => {
+                                const isExpert = this.state.expertiseSkills.includes(sk.name);
+                                return `
+                                    <div class="skill-checkbox-card expertise-skill-card ${isExpert ? "selected" : ""}" data-skill-name="${sk.name}">
+                                        <div class="skill-info">
+                                            <span class="card-check"><i class="fa-solid fa-star"></i></span>
+                                            <span class="skill-name">${sk.name}</span>
+                                        </div>
+                                        <span class="skill-stat-badge">${sk.stat.toUpperCase()}</span>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                ` : ""}
             </div>
         `;
     }
@@ -1435,7 +1889,8 @@ export class CharacterCreatorController {
 
     private renderStep9Review(): string {
         const species = SPECIES_2024.find((s) => s.id === this.state.speciesId)?.name || "";
-        const cls = CLASSES_2024.find((c) => c.id === this.state.classId)?.name || "";
+        const currentClsDef = CLASSES_2024.find((c) => c.id === this.state.classId);
+        const cls = currentClsDef?.name || "";
         const bg = BACKGROUNDS_2024.find((b) => b.id === this.state.backgroundId)?.name || "";
         const feat = ORIGIN_FEATS_2024.find((f) => f.id === this.state.originFeatId)?.name || "";
         const spellAbility = this.getSpellcastingAbility();
@@ -1443,7 +1898,7 @@ export class CharacterCreatorController {
         return `
             <div class="step-panel active">
                 <div class="panel-header">
-                    <h3 class="panel-title">Review & Finalize Character</h3>
+                    <h3 class="panel-title">${this.state.savedId ? "Review & Save Character Changes" : "Review & Finalize Character"}</h3>
                     <p class="panel-desc">Inspect your completed character profile before saving to the database.</p>
                 </div>
 
@@ -1452,6 +1907,7 @@ export class CharacterCreatorController {
                         <h4>Hero Overview</h4>
                         <div class="review-row"><span class="label">Name:</span><strong>${this.state.name}</strong></div>
                         <div class="review-row"><span class="label">Class & Level:</span><strong>${cls} (Level ${this.state.level})</strong></div>
+                        ${this.state.subclassId ? `<div class="review-row"><span class="label">Subclass:</span><strong>${currentClsDef?.subclasses.find((s) => s.id === this.state.subclassId)?.name || this.state.subclassId}</strong></div>` : ""}
                         <div class="review-row"><span class="label">Species:</span><strong>${species}</strong></div>
                         <div class="review-row"><span class="label">Background:</span><strong>${bg}</strong></div>
                         <div class="review-row"><span class="label">Origin Feat:</span><strong>${feat}</strong></div>
@@ -1467,6 +1923,30 @@ export class CharacterCreatorController {
                         <div class="review-row"><span class="label">Initiative:</span><strong>${(this.getInitiative() >= 0 ? "+" : "") + this.getInitiative()}</strong></div>
                         <div class="review-row"><span class="label">Speed:</span><strong>${this.getSpeed()} ft.</strong></div>
                         <div class="review-row"><span class="label">Proficiency Bonus:</span><strong>+${this.getProficiencyBonus()}</strong></div>
+                    </div>
+
+                    <div class="review-section">
+                        <h4>Class & Progression Features</h4>
+                        ${this.state.fightingStyle ? `<div class="review-row"><span class="label">Fighting Style:</span><strong>${FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle)?.name || this.state.fightingStyle}</strong></div>` : ""}
+                        ${this.state.divineOrder ? `<div class="review-row"><span class="label">Divine Order:</span><strong>${DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder)?.name || this.state.divineOrder}</strong></div>` : ""}
+                        ${this.state.primalOrder ? `<div class="review-row"><span class="label">Primal Order:</span><strong>${PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder)?.name || this.state.primalOrder}</strong></div>` : ""}
+                        ${this.state.metamagic.length > 0 ? `<div class="review-row"><span class="label">Metamagic:</span><strong>${this.state.metamagic.map((m) => METAMAGIC_OPTIONS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
+                        ${this.state.invocations.length > 0 ? `<div class="review-row"><span class="label">Invocations:</span><strong>${this.state.invocations.map((i) => ELDRITCH_INVOCATIONS.find((o) => o.id === i)?.name || i).join(", ")}</strong></div>` : ""}
+                        ${this.state.maneuvers.length > 0 ? `<div class="review-row"><span class="label">Maneuvers:</span><strong>${this.state.maneuvers.map((m) => BATTLE_MASTER_MANEUVERS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
+                        ${this.state.expertiseSkills.length > 0 ? `<div class="review-row"><span class="label">Expertise Skills:</span><strong>${this.state.expertiseSkills.join(", ")}</strong></div>` : ""}
+                        ${this.getAsiLevels().length > 0 ? `
+                            <div class="review-row" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
+                                <span class="label">Ability Improvements & Feats:</span>
+                                ${this.getAsiLevels().map((lvl) => {
+                                    const ch = this.state.asiChoices[lvl];
+                                    if (!ch) return `<div>• Level ${lvl}: Standard Increase</div>`;
+                                    if (ch.type === "single") return `<div>• Level ${lvl}: +2 ${ch.statA?.toUpperCase()}</div>`;
+                                    if (ch.type === "dual") return `<div>• Level ${lvl}: +1 ${ch.statA?.toUpperCase()}, +1 ${ch.statB?.toUpperCase()}</div>`;
+                                    const fDef = GENERAL_FEATS_2024.find((f) => f.id === ch.featId);
+                                    return `<div>• Level ${lvl}: Feat (${fDef?.name || ch.featId}) [+1 ${ch.statA?.toUpperCase()}]</div>`;
+                                }).join("")}
+                            </div>
+                        ` : ""}
                     </div>
 
                     <div class="review-section" style="grid-column: 1 / -1;">
@@ -1634,6 +2114,66 @@ export class CharacterCreatorController {
                     this.renderStep(3);
                 });
             });
+
+            document.querySelectorAll(".fighting-style-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    this.state.fightingStyle = card.getAttribute("data-fighting-style-id") || "";
+                    this.renderStep(3);
+                });
+            });
+
+            document.querySelectorAll(".divine-order-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    this.state.divineOrder = card.getAttribute("data-divine-order-id") || "";
+                    this.renderStep(3);
+                });
+            });
+
+            document.querySelectorAll(".primal-order-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    this.state.primalOrder = card.getAttribute("data-primal-order-id") || "";
+                    this.renderStep(3);
+                });
+            });
+
+            document.querySelectorAll(".metamagic-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    const metaId = card.getAttribute("data-metamagic-id") || "";
+                    const maxCount = this.getMaxMetamagicCount();
+                    if (this.state.metamagic.includes(metaId)) {
+                        this.state.metamagic = this.state.metamagic.filter((m) => m !== metaId);
+                    } else if (this.state.metamagic.length < maxCount) {
+                        this.state.metamagic.push(metaId);
+                    }
+                    this.renderStep(3);
+                });
+            });
+
+            document.querySelectorAll(".invocation-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    const invId = card.getAttribute("data-invocation-id") || "";
+                    const maxCount = this.getMaxInvocationsCount();
+                    if (this.state.invocations.includes(invId)) {
+                        this.state.invocations = this.state.invocations.filter((i) => i !== invId);
+                    } else if (this.state.invocations.length < maxCount) {
+                        this.state.invocations.push(invId);
+                    }
+                    this.renderStep(3);
+                });
+            });
+
+            document.querySelectorAll(".maneuver-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    const manId = card.getAttribute("data-maneuver-id") || "";
+                    const maxCount = this.getMaxManeuversCount();
+                    if (this.state.maneuvers.includes(manId)) {
+                        this.state.maneuvers = this.state.maneuvers.filter((m) => m !== manId);
+                    } else if (this.state.maneuvers.length < maxCount) {
+                        this.state.maneuvers.push(manId);
+                    }
+                    this.renderStep(3);
+                });
+            });
         } else if (step === 4) {
             document.querySelectorAll(".background-card").forEach((card) => {
                 card.addEventListener("click", () => {
@@ -1782,6 +2322,60 @@ export class CharacterCreatorController {
                 this.renderStep(5);
                 this.updateLiveSummary();
             });
+
+            // ASI / Feats controls
+            document.querySelectorAll(".asi-type-radio").forEach((radio) => {
+                radio.addEventListener("change", (e) => {
+                    const target = e.target as HTMLInputElement;
+                    const lvl = Number(target.getAttribute("data-asi-level"));
+                    const newType = target.value as "single" | "dual" | "feat";
+                    this.ensureAsiChoices();
+                    if (this.state.asiChoices[lvl]) {
+                        this.state.asiChoices[lvl].type = newType;
+                        if (newType === "feat" && !this.state.asiChoices[lvl].featId) {
+                            const isEpic = lvl >= 19;
+                            const feats = isEpic ? GENERAL_FEATS_2024 : GENERAL_FEATS_2024.filter((f) => !f.isEpicBoon);
+                            const defaultFeat = feats[0];
+                            this.state.asiChoices[lvl].featId = defaultFeat?.id || "alert-general";
+                            this.state.asiChoices[lvl].statA = defaultFeat?.allowedStats[0] || "str";
+                        }
+                    }
+                    this.renderStep(5);
+                    this.updateLiveSummary();
+                });
+            });
+
+            document.querySelectorAll(".asi-stat-select").forEach((select) => {
+                select.addEventListener("change", (e) => {
+                    const target = e.target as HTMLSelectElement;
+                    const lvl = Number(target.getAttribute("data-asi-level"));
+                    const field = target.getAttribute("data-asi-field") as "statA" | "statB";
+                    this.ensureAsiChoices();
+                    if (this.state.asiChoices[lvl] && field) {
+                        this.state.asiChoices[lvl][field] = target.value as AbilityName;
+                    }
+                    this.renderStep(5);
+                    this.updateLiveSummary();
+                });
+            });
+
+            document.querySelectorAll(".asi-feat-select").forEach((select) => {
+                select.addEventListener("change", (e) => {
+                    const target = e.target as HTMLSelectElement;
+                    const lvl = Number(target.getAttribute("data-asi-level"));
+                    const featId = target.value;
+                    this.ensureAsiChoices();
+                    if (this.state.asiChoices[lvl]) {
+                        this.state.asiChoices[lvl].featId = featId;
+                        const featDef = GENERAL_FEATS_2024.find((f) => f.id === featId);
+                        if (featDef && (!this.state.asiChoices[lvl].statA || !featDef.allowedStats.includes(this.state.asiChoices[lvl].statA!))) {
+                            this.state.asiChoices[lvl].statA = featDef.allowedStats[0];
+                        }
+                    }
+                    this.renderStep(5);
+                    this.updateLiveSummary();
+                });
+            });
         } else if (step === 6) {
             document.querySelectorAll(".skill-checkbox-card:not(.locked)").forEach((card) => {
                 card.addEventListener("click", () => {
@@ -1792,6 +2386,19 @@ export class CharacterCreatorController {
                         this.state.classSkills = this.state.classSkills.filter((s) => s !== skName);
                     } else if (this.state.classSkills.length < maxCount) {
                         this.state.classSkills.push(skName);
+                    }
+                    this.renderStep(6);
+                });
+            });
+
+            document.querySelectorAll(".expertise-skill-card").forEach((card) => {
+                card.addEventListener("click", () => {
+                    const skName = card.getAttribute("data-skill-name") || "";
+                    const maxCount = this.getMaxExpertiseCount();
+                    if (this.state.expertiseSkills.includes(skName)) {
+                        this.state.expertiseSkills = this.state.expertiseSkills.filter((s) => s !== skName);
+                    } else if (this.state.expertiseSkills.length < maxCount) {
+                        this.state.expertiseSkills.push(skName);
                     }
                     this.renderStep(6);
                 });
@@ -1953,7 +2560,9 @@ export class CharacterCreatorController {
         const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
         if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
+            submitBtn.innerHTML = this.state.savedId
+                ? `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`
+                : `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
         }
 
         try {
@@ -2055,7 +2664,6 @@ export class CharacterCreatorController {
                     description: "Shield (+2 AC)"
                 });
             }
-            // Add backpack / adventuring gear
             equipmentPayload.push({
                 name: "Explorer's Pack",
                 quantity: 1,
@@ -2086,7 +2694,7 @@ export class CharacterCreatorController {
                 }
             }
 
-            // Features (Species traits + Class Level 1 features + Origin Feat)
+            // Features (Species traits + Class Level features + Origin Feat + Progression choices)
             const featuresPayload: any[] = [];
             species.traits.forEach((t) => {
                 featuresPayload.push({
@@ -2112,6 +2720,118 @@ export class CharacterCreatorController {
                     type: "Feat",
                     description: originFeat.benefits.join(" ")
                 });
+            }
+
+            // Subclass features
+            if (this.state.subclassId) {
+                const sub = cls.subclasses.find((s) => s.id === this.state.subclassId);
+                if (sub) {
+                    featuresPayload.push({
+                        name: `Subclass: ${sub.name}`,
+                        source: cls.name,
+                        type: "Subclass",
+                        description: sub.description
+                    });
+                }
+            }
+
+            // Fighting Style
+            if (this.state.fightingStyle) {
+                const fs = FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle);
+                if (fs) {
+                    featuresPayload.push({
+                        name: `Fighting Style: ${fs.name}`,
+                        source: cls.name,
+                        type: "Class",
+                        description: fs.description
+                    });
+                }
+            }
+
+            // Divine Order / Primal Order
+            if (this.state.divineOrder && this.state.classId === "cleric") {
+                const ord = DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder);
+                if (ord) {
+                    featuresPayload.push({
+                        name: `Divine Order: ${ord.name}`,
+                        source: cls.name,
+                        type: "Class",
+                        description: ord.description
+                    });
+                }
+            }
+            if (this.state.primalOrder && this.state.classId === "druid") {
+                const ord = PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder);
+                if (ord) {
+                    featuresPayload.push({
+                        name: `Primal Order: ${ord.name}`,
+                        source: cls.name,
+                        type: "Class",
+                        description: ord.description
+                    });
+                }
+            }
+
+            // Metamagic
+            if (this.state.metamagic.length > 0) {
+                this.state.metamagic.forEach((mId) => {
+                    const meta = METAMAGIC_OPTIONS.find((m) => m.id === mId);
+                    if (meta) {
+                        featuresPayload.push({
+                            name: `Metamagic: ${meta.name}`,
+                            source: cls.name,
+                            type: "Class",
+                            description: meta.description
+                        });
+                    }
+                });
+            }
+
+            // Invocations
+            if (this.state.invocations.length > 0) {
+                this.state.invocations.forEach((invId) => {
+                    const inv = ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
+                    if (inv) {
+                        featuresPayload.push({
+                            name: `Eldritch Invocation: ${inv.name}`,
+                            source: cls.name,
+                            type: "Class",
+                            description: inv.description
+                        });
+                    }
+                });
+            }
+
+            // Maneuvers
+            if (this.state.maneuvers.length > 0) {
+                this.state.maneuvers.forEach((mId) => {
+                    const man = BATTLE_MASTER_MANEUVERS.find((m) => m.id === mId);
+                    if (man) {
+                        featuresPayload.push({
+                            name: `Maneuver: ${man.name}`,
+                            source: cls.name,
+                            type: "Subclass",
+                            description: man.description
+                        });
+                    }
+                });
+            }
+
+            // ASI Feats
+            const asiLevels = this.getAsiLevels();
+            for (const lvl of asiLevels) {
+                const choice = this.state.asiChoices[lvl];
+                if (choice?.type === "feat" && choice.featId) {
+                    const featDef = GENERAL_FEATS_2024.find((f) => f.id === choice.featId);
+                    if (featDef) {
+                        featuresPayload.push({
+                            name: featDef.name,
+                            source: featDef.isEpicBoon ? "Epic Boon" : "General Feat",
+                            type: "Feat",
+                            description: featDef.benefits.join(" ")
+                        });
+                    }
+                }
             }
 
             // Class Resources
@@ -2183,28 +2903,41 @@ export class CharacterCreatorController {
                 classResources: resourcesPayload,
                 spellSlots: cls.spellcasting ? {
                     level1: { total: 2, label: "1st Level" }
-                } : {}
+                } : {},
+                creatorState: {
+                    ...this.state
+                }
             };
 
-            const response = await postData<any>("/save-character", {
+            const saveBody: any = {
                 name: this.state.name,
                 source: "site",
                 character: characterPayload
-            });
+            };
+            if (this.state.savedId) {
+                saveBody.savedId = this.state.savedId;
+                characterPayload.savedCharacterId = this.state.savedId;
+            }
+
+            const response = await postData<any>("/save-character", saveBody);
 
             if (response && response.savedCharacter?.siteCharacterId) {
                 window.location.href = `/character-sheet/${response.savedCharacter.siteCharacterId}`;
             } else if (response && response.character?.siteCharacterId) {
                 window.location.href = `/character-sheet/${response.character.siteCharacterId}`;
+            } else if (this.state.savedId) {
+                window.location.href = `/character-sheet/${this.state.savedId}`;
             } else {
                 window.location.href = "/character-sheet";
             }
         } catch (err: any) {
-            console.error("Error creating character:", err);
+            console.error("Error creating/saving character:", err);
             this.showAlert("Failed to save character. Please verify your connection or login status.");
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="fa-solid fa-check"></i> Create Character`;
+                submitBtn.innerHTML = this.state.savedId
+                    ? `<i class="fa-solid fa-floppy-disk"></i> Save Changes`
+                    : `<i class="fa-solid fa-check"></i> Create Character`;
             }
         }
     }
