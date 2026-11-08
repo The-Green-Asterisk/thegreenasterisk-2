@@ -1667,4 +1667,43 @@ describe("CharacterCreatorController", () => {
         ctrl.updateMulticlassBarPositions();
         expect(bottomBar.classList.contains("docked")).toBe(true);
     });
+
+    it("disables selections within locked levels and enables them when unlocked", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter at level 1 (levels 2-20 are locked)
+        ctrl.state.subclassId = "champion";
+        ctrl.state.classes = [
+            { classId: "fighter", level: 1, subclassId: "champion" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const lvl3Box = document.querySelector('.level-progression-box[data-level="3"]') as HTMLElement;
+        expect(lvl3Box).not.toBeNull();
+        expect(lvl3Box.classList.contains("locked")).toBe(true);
+
+        const battleMasterCard = lvl3Box.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
+        expect(battleMasterCard).not.toBeNull();
+
+        // Clicking battle master card in locked level 3 should do nothing
+        battleMasterCard.click();
+        expect(ctrl.state.classes[0].subclassId).toBe("champion");
+
+        // Now unlock level 3 by clicking the level 3 badge
+        const lvl3Badge = lvl3Box.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
+        expect(lvl3Badge).not.toBeNull();
+        lvl3Badge.click();
+
+        expect(ctrl.state.classes[0].level).toBe(3);
+        const updatedLvl3Box = document.querySelector('.level-progression-box[data-level="3"]') as HTMLElement;
+        expect(updatedLvl3Box.classList.contains("unlocked")).toBe(true);
+
+        // Clicking battle master card in unlocked level 3 now selects it
+        const unlockedBattleMasterCard = updatedLvl3Box.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
+        unlockedBattleMasterCard.click();
+        expect(ctrl.state.classes[0].subclassId).toBe("battle-master");
+    });
 });

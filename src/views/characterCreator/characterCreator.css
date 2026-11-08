@@ -1644,7 +1644,67 @@ el-character-creator,
 
 .level-progression-box.locked {
     border-left: 4px solid var(--border-soft);
-    opacity: 0.88;
+    opacity: 0.82;
+}
+
+/* Selections inside locked levels are disabled */
+.level-progression-box.locked .level-choice-box {
+    opacity: 0.55;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px dashed var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    cursor: not-allowed;
+}
+
+:root[data-theme="dark"] .level-progression-box.locked .level-choice-box {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.level-progression-box.locked .select-card,
+.level-progression-box.locked .skill-checkbox-card,
+.level-progression-box.locked select,
+.level-progression-box.locked input,
+.level-progression-box.locked button:not(.progression-lvl-badge),
+.select-card.disabled,
+.skill-checkbox-card.disabled {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.55 !important;
+    filter: grayscale(0.6);
+    user-select: none;
+}
+
+.level-progression-box.locked .select-card:hover,
+.level-progression-box.locked .skill-checkbox-card:hover,
+.select-card.disabled:hover,
+.skill-checkbox-card.disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: var(--border-soft) !important;
+}
+
+.level-progression-box .progression-lvl-badge {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.choice-locked-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text-muted);
+    border: 1px solid var(--border-soft);
+    margin-left: auto;
+}
+
+:root[data-theme="dark"] .choice-locked-tag {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 /* Multiclassing Layout & Sticky Navigation Bars */

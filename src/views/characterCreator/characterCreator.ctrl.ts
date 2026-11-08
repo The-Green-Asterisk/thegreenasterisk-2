@@ -1938,7 +1938,7 @@ export class CharacterCreatorController {
         return "";
     }
 
-    private renderLevelChoices(cls: ClassDefinition, lvl: number, classIdx: number = 0, activeSubId?: string): string {
+    private renderLevelChoices(cls: ClassDefinition, lvl: number, classIdx: number = 0, activeSubId?: string, isUnlocked: boolean = true): string {
         const choices: string[] = [];
         const currentSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || "";
 
@@ -2875,6 +2875,15 @@ export class CharacterCreatorController {
             `);
         }
 
+        if (!isUnlocked) {
+            return choices.map((c) =>
+                c.replace(
+                    '<div class="level-choice-box">',
+                    '<div class="level-choice-box locked-choice" aria-disabled="true">'
+                )
+            ).join("");
+        }
+
         return choices.join("");
     }
 
@@ -2935,7 +2944,7 @@ export class CharacterCreatorController {
                 ];
             }
 
-            const choicesHtml = this.renderLevelChoices(cls, lvl, classIdx, resolvedSubId);
+            const choicesHtml = this.renderLevelChoices(cls, lvl, classIdx, resolvedSubId, isUnlocked);
 
             const boxHtml = `
                 <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-class-index="${classIdx}" data-level="${lvl}">
@@ -3930,6 +3939,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".subclass-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
                     const subId = card.getAttribute("data-subclass-id") || "";
                     if (this.state.classes[cIdx]) {
@@ -3997,6 +4007,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".mastery-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const wName = card.getAttribute("data-weapon-name") || "";
                     const maxM = this.getMaxWeaponMasteriesCount();
                     if (this.state.weaponMasteries.includes(wName)) {
@@ -4010,6 +4021,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".fighting-style-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     this.state.fightingStyle = card.getAttribute("data-fighting-style-id") || "";
                     this.renderStep(3);
                 });
@@ -4017,6 +4029,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".divine-order-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     this.state.divineOrder = card.getAttribute("data-divine-order-id") || "";
                     this.renderStep(3);
                 });
@@ -4024,6 +4037,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".primal-order-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     this.state.primalOrder = card.getAttribute("data-primal-order-id") || "";
                     this.renderStep(3);
                 });
@@ -4031,6 +4045,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".metamagic-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const metaId = card.getAttribute("data-metamagic-id") || "";
                     const maxCount = this.getMaxMetamagicCount();
                     if (this.state.metamagic.includes(metaId)) {
@@ -4044,6 +4059,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".invocation-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const invId = card.getAttribute("data-invocation-id") || "";
                     const maxCount = this.getMaxInvocationsCount();
                     if (this.state.invocations.includes(invId)) {
@@ -4057,6 +4073,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".maneuver-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const manId = card.getAttribute("data-maneuver-id") || "";
                     const maxCount = this.getMaxManeuversCount();
                     if (this.state.maneuvers.includes(manId)) {
@@ -4078,6 +4095,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".subclass-feature-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const key = card.getAttribute("data-feature-key");
                     const choice = card.getAttribute("data-feature-choice");
                     if (key && choice) {
