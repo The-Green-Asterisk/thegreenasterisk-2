@@ -1566,4 +1566,39 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getMaxInvocationsCount()).toBe(3);
         expect(ctrl.getMaxManeuversCount()).toBe(3);
     });
+
+    it("positions multiclass-top-bar directly at the bottom of the site nav bar when visible, and at 0px when hidden", () => {
+        document.body.innerHTML = `
+            <nav style="height: 70px;"></nav>
+            <div id="creator-step-panels"></div>
+        `;
+
+        ctrl.state.classes = [
+            { classId: "fighter", level: 5, subclassId: "champion" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const nav = document.querySelector("nav") as HTMLElement;
+        const topBar = document.getElementById("multiclass-top-bar") as HTMLElement;
+        expect(topBar).not.toBeNull();
+
+        // Visible nav bar: bottom should be at 70px
+        expect(ctrl.getNavBottom()).toBe(70);
+        ctrl.updateMulticlassBarPositions();
+        expect(topBar.style.top).toBe("70px");
+
+        // Hidden nav bar (style.display = 'none')
+        nav.style.display = "none";
+        expect(ctrl.getNavBottom()).toBe(0);
+        ctrl.updateMulticlassBarPositions();
+        expect(topBar.style.top).toBe("0px");
+
+        // Nav bar removed
+        nav.remove();
+        expect(ctrl.getNavBottom()).toBe(0);
+        ctrl.updateMulticlassBarPositions();
+        expect(topBar.style.top).toBe("0px");
+    });
 });

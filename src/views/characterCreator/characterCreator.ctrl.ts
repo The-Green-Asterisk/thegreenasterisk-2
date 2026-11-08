@@ -286,6 +286,16 @@ export class CharacterCreatorController {
         return this.state.classes.reduce((sum, c) => sum + (c.level || 1), 0);
     }
 
+    public getNavBottom(): number {
+        const siteNav = document.querySelector("nav") as HTMLElement;
+        if (!siteNav) return 0;
+        const isHidden = siteNav.style.display === "none"
+            || (typeof window !== "undefined" && window.getComputedStyle(siteNav).display === "none");
+        if (isHidden) return 0;
+        const navRect = siteNav.getBoundingClientRect();
+        return Math.round(navRect.bottom || siteNav.offsetHeight || 70);
+    }
+
     public updateMulticlassBarPositions() {
         const bottomBar = document.getElementById("multiclass-bottom-bar");
         const topBar = document.getElementById("multiclass-top-bar");
@@ -302,11 +312,8 @@ export class CharacterCreatorController {
         }
 
         if (topBar) {
-            const siteNav = document.querySelector("nav") as HTMLElement;
-            const navHeight = siteNav ? siteNav.offsetHeight : 0;
-            const minTop = navHeight > 0 ? (navHeight + 6) : 10;
-            const topOffset = Math.max(minTop, panelRect.top);
-            topBar.style.top = `${topOffset}px`;
+            const navBottom = this.getNavBottom();
+            topBar.style.top = `${navBottom}px`;
         }
     }
 
@@ -318,6 +325,8 @@ export class CharacterCreatorController {
 
         const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
         const topBarHeight = topBar?.offsetHeight || 60;
+        const navBottom = this.getNavBottom();
+        const topThreshold = navBottom + topBarHeight;
 
         const aboveButtons: Array<{ idx: number; name: string }> = [];
         const belowButtons: Array<{ idx: number; name: string }> = [];
@@ -345,7 +354,7 @@ export class CharacterCreatorController {
 
             const rect = el.getBoundingClientRect();
             // If section's bottom has scrolled above the top threshold
-            if (rect.bottom < topBarHeight + 60) {
+            if (rect.bottom < topThreshold) {
                 aboveButtons.push({ idx, name });
             }
             // If section's top is below the viewport bottom
@@ -482,6 +491,32 @@ export class CharacterCreatorController {
                 this.updateMulticlassNavBars();
             }
         }, { passive: true });
+
+        // Observe navigation bar visibility changes (e.g. toggled display or body padding)
+        if (typeof MutationObserver !== "undefined") {
+            const navObserver = new MutationObserver(() => {
+                if (this.state.currentStep === 3) {
+                    this.updateMulticlassBarPositions();
+                    this.updateMulticlassNavBars();
+                }
+            });
+            const siteNav = document.querySelector("nav");
+            if (siteNav) {
+                navObserver.observe(siteNav, { attributes: true, attributeFilter: ["style", "class"] });
+            }
+            if (typeof document !== "undefined" && document.body) {
+                navObserver.observe(document.body, { attributes: true, attributeFilter: ["style", "class"] });
+            }
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && this.state.currentStep === 3) {
+                setTimeout(() => {
+                    this.updateMulticlassBarPositions();
+                    this.updateMulticlassNavBars();
+                }, 10);
+            }
+        });
     }
 
     public showAlert(msg: string, type: "error" | "warning" = "error") {

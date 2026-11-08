@@ -1647,7 +1647,7 @@ el-character-creator,
     gap: 1.25rem;
     margin-bottom: 2.5rem;
     position: relative;
-    scroll-margin-top: 100px;
+    scroll-margin-top: 130px;
 }
 
 .multiclass-section-header {
@@ -1681,7 +1681,7 @@ el-character-creator,
 /* Sticky Top Bar for scrolling up to earlier classes */
 .multiclass-top-bar {
     position: fixed;
-    top: 65px;
+    top: 70px;
     left: 0;
     right: 0;
     margin: 0 auto;
@@ -1690,6 +1690,7 @@ el-character-creator,
     z-index: 951;
     background: var(--surface);
     border: 1px solid var(--border);
+    border-top: none;
     border-radius: 0 0 var(--radius-md) var(--radius-md);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
     padding: 0.65rem 1.25rem;
