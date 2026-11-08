@@ -1601,4 +1601,70 @@ describe("CharacterCreatorController", () => {
         ctrl.updateMulticlassBarPositions();
         expect(topBar.style.top).toBe("0px");
     });
+
+    it("provides scroll to bottom buttons and docks multiclass bottom bar when scrolled to bottom", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        ctrl.state.classes = [
+            { classId: "fighter", level: 5, subclassId: "champion" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const primaryScrollBtn = document.getElementById("primary-class-scroll-bottom-btn");
+        const topBarScrollBtn = document.getElementById("top-bar-scroll-bottom-btn");
+        const floatingScrollBtn = document.getElementById("floating-scroll-bottom-btn");
+        const bottomBar = document.getElementById("multiclass-bottom-bar") as HTMLElement;
+        const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
+
+        expect(primaryScrollBtn).not.toBeNull();
+        expect(topBarScrollBtn).not.toBeNull();
+        expect(floatingScrollBtn).not.toBeNull();
+        expect(bottomBar).not.toBeNull();
+
+        let scrolledToTop = -1;
+        let scrolledBehavior = "";
+        window.scrollTo = ((options: any) => {
+            scrolledToTop = options.top;
+            scrolledBehavior = options.behavior;
+        }) as any;
+
+        primaryScrollBtn?.click();
+        expect(scrolledToTop).toBeGreaterThanOrEqual(0);
+        expect(scrolledBehavior).toBe("smooth");
+
+        // When panel bottom is below viewport, bottom bar is fixed to viewport (not docked)
+        vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+            bottom: 1200,
+            top: 100,
+            left: 0,
+            right: 1000,
+            width: 1000,
+            height: 1100,
+            x: 0,
+            y: 100,
+            toJSON: () => {}
+        });
+        ctrl.updateMulticlassBarPositions();
+        expect(bottomBar.classList.contains("docked")).toBe(false);
+        expect(bottomBar.style.bottom).toBe("0px");
+
+        // When panel bottom reaches or enters viewport (scrolled all the way to bottom)
+        vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+            bottom: 750, // <= viewport height 800
+            top: -350,
+            left: 0,
+            right: 1000,
+            width: 1000,
+            height: 1100,
+            x: 0,
+            y: -350,
+            toJSON: () => {}
+        });
+        ctrl.updateMulticlassBarPositions();
+        expect(bottomBar.classList.contains("docked")).toBe(true);
+    });
 });

@@ -302,15 +302,37 @@ export class CharacterCreatorController {
         const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
         if (!panel) return;
 
-        // Position of the bottom bar is handled purely by CSS position: sticky to stick to the viewport
-        // and stop at the bottom of the multiclass panel without scroll delay or animation lag.
-        if (bottomBar && bottomBar.style.bottom) {
-            bottomBar.style.bottom = "";
+        const panelRect = panel.getBoundingClientRect();
+        const viewportHeight = typeof window !== "undefined" ? (window.innerHeight || document.documentElement.clientHeight || 800) : 800;
+
+        if (bottomBar) {
+            // When panelRect.bottom <= viewportHeight, the end of the multiclass panel has reached the viewport.
+            // Stick to the page (docked) at the bottom of the panel with zero transition lag!
+            // When panelRect.bottom > viewportHeight, keep it fixed to the bottom of the viewport.
+            if (panelRect.bottom <= viewportHeight) {
+                bottomBar.classList.add("docked");
+                bottomBar.style.bottom = "";
+            } else {
+                bottomBar.classList.remove("docked");
+                bottomBar.style.bottom = "0px";
+            }
         }
 
         if (topBar) {
             const navBottom = this.getNavBottom();
             topBar.style.top = `${navBottom}px`;
+        }
+
+        const floatingBtn = document.getElementById("floating-scroll-bottom-btn");
+        if (floatingBtn && typeof window !== "undefined") {
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            const scrollHeight = document.documentElement.scrollHeight || 1000;
+            const isNearBottom = (viewportHeight + scrollY) >= (scrollHeight - 160);
+            if (isNearBottom) {
+                floatingBtn.classList.add("hidden");
+            } else {
+                floatingBtn.classList.remove("hidden");
+            }
         }
     }
 
@@ -381,7 +403,7 @@ export class CharacterCreatorController {
         `).join("");
 
         // Attach click handlers to newly rendered navigation buttons
-        const navButtons = document.querySelectorAll(".nav-to-class-btn");
+        const navButtons = document.querySelectorAll(".nav-to-class-btn[data-target-class]");
         navButtons.forEach((btn) => {
             btn.addEventListener("click", (e) => {
                 const targetIdx = Number((e.currentTarget as HTMLElement).getAttribute("data-target-class"));
@@ -1787,7 +1809,11 @@ export class CharacterCreatorController {
                                 <button type="button" class="creator-btn danger-btn remove-class-btn" data-class-index="${classIdx}" title="Remove this class">
                                     <i class="fa-solid fa-trash-can"></i> Remove Class
                                 </button>
-                            ` : ""}
+                            ` : `
+                                <button type="button" class="creator-btn secondary-btn scroll-to-bottom-btn" id="primary-class-scroll-bottom-btn" title="Scroll all the way to the bottom">
+                                    <i class="fa-solid fa-arrow-down"></i> Scroll to Bottom
+                                </button>
+                            `}
                         </div>
                         <p class="panel-desc">
                             ${isPrimary
@@ -1823,6 +1849,9 @@ export class CharacterCreatorController {
                 <div class="multiclass-top-bar hidden" id="multiclass-top-bar">
                     <span class="multiclass-bar-label"><i class="fa-solid fa-arrow-up"></i> Jump to:</span>
                     <div class="multiclass-nav-buttons" id="multiclass-top-nav-buttons"></div>
+                    <button type="button" class="creator-btn nav-to-class-btn top-nav-btn scroll-to-bottom-btn" id="top-bar-scroll-bottom-btn" title="Scroll all the way to the bottom">
+                        <i class="fa-solid fa-arrow-down"></i> Bottom
+                    </button>
                 </div>
 
                 ${classSectionsHtml}
@@ -1834,6 +1863,11 @@ export class CharacterCreatorController {
                     </button>
                     <div class="multiclass-bottom-nav" id="multiclass-bottom-nav"></div>
                 </div>
+
+                <!-- Floating Quick Scroll to Bottom Button -->
+                <button type="button" class="floating-scroll-bottom-btn scroll-to-bottom-btn" id="floating-scroll-bottom-btn" title="Scroll all the way to the bottom" aria-label="Scroll all the way to the bottom">
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
             </div>
         `;
     }
@@ -4053,6 +4087,17 @@ export class CharacterCreatorController {
                         this.state.subclassFeatureChoices[key] = choice;
                         this.renderStep(3);
                         this.updateLiveSummary();
+                    }
+                });
+            });
+
+            document.querySelectorAll(".scroll-to-bottom-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    if (typeof window !== "undefined") {
+                        window.scrollTo({
+                            top: document.documentElement.scrollHeight,
+                            behavior: "smooth"
+                        });
                     }
                 });
             });
