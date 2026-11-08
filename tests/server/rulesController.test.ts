@@ -520,4 +520,199 @@ describe("RulesController", () => {
             expect(subclasses[0].classSlug).toBeDefined();
         });
     });
+
+    describe("multiclass feature separation and cross-class contamination prevention", () => {
+        it("does not leak Bard features into Warlock (Great Old One) or Warlock features into Bard (Glamour) during upsertRulesFromDndBeyond", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
+
+            const savedClasses: any[] = [];
+            const mockClassRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedClasses.find((c) => c.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    const idx = savedClasses.findIndex((c) => c.slug === e.slug);
+                    if (idx >= 0) savedClasses[idx] = e;
+                    else savedClasses.push(e);
+                    return e;
+                })
+            };
+
+            vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
+                if (entity === RuleClass) return mockClassRepo as any;
+                return {
+                    findOne: vi.fn().mockResolvedValue(null),
+                    create: vi.fn().mockImplementation((e) => e),
+                    save: vi.fn().mockResolvedValue({})
+                } as any;
+            });
+
+            const multiclassCharacter = {
+                classes: [
+                    {
+                        definition: {
+                            id: 1,
+                            name: "Bard",
+                            classFeatures: [
+                                { definition: { id: 101, name: "Bardic Inspiration", requiredLevel: 1 } }
+                            ]
+                        },
+                        subclassDefinition: {
+                            id: 757,
+                            name: "College of Glamour",
+                            classFeatures: [
+                                { definition: { id: 102, name: "Mantle of Inspiration", requiredLevel: 3 } },
+                                { definition: { id: 103, name: "Beguiling Magic", requiredLevel: 3 } }
+                            ]
+                        },
+                        classFeatures: [
+                            { definition: { id: 101, classId: 1, name: "Bardic Inspiration", requiredLevel: 1 } },
+                            { definition: { id: 102, classId: 757, name: "Mantle of Inspiration", requiredLevel: 3 } },
+                            // Cross-class feature from Warlock on character:
+                            { definition: { id: 202, classId: 800, name: "Awakened Mind", requiredLevel: 3, isSubclassFeature: true } }
+                        ]
+                    },
+                    {
+                        definition: {
+                            id: 7,
+                            name: "Warlock",
+                            classFeatures: [
+                                { definition: { id: 201, name: "Pact Magic", requiredLevel: 1 } }
+                            ]
+                        },
+                        subclassDefinition: {
+                            id: 800,
+                            name: "Great Old One Patron",
+                            classFeatures: [
+                                { definition: { id: 202, name: "Awakened Mind", requiredLevel: 3 } },
+                                { definition: { id: 203, name: "Psychic Spells", requiredLevel: 3 } }
+                            ]
+                        },
+                        classFeatures: [
+                            { definition: { id: 201, classId: 7, name: "Pact Magic", requiredLevel: 1 } },
+                            { definition: { id: 202, classId: 800, name: "Awakened Mind", requiredLevel: 3 } },
+                            // Cross-class feature from Bard on character:
+                            { definition: { id: 102, classId: 757, name: "Mantle of Inspiration", requiredLevel: 3, isSubclassFeature: true } }
+                        ]
+                    }
+                ]
+            };
+
+            await RulesController.upsertRulesFromDndBeyond(multiclassCharacter);
+
+            const bard = savedClasses.find((c) => c.slug === "bard");
+            const warlock = savedClasses.find((c) => c.slug === "warlock");
+
+            expect(bard).toBeDefined();
+            expect(warlock).toBeDefined();
+
+            const bardSubs = JSON.parse(bard.subclassesJson);
+            const glamour = bardSubs.find((s: any) => s.id === "college-of-glamour" || s.name === "College of Glamour");
+            expect(glamour).toBeDefined();
+            const glamourFeatNames = glamour.features.map((f: any) => f.name);
+            expect(glamourFeatNames).toContain("Mantle of Inspiration");
+            expect(glamourFeatNames).not.toContain("Awakened Mind");
+            expect(glamourFeatNames).not.toContain("Psychic Spells");
+
+            const warlockSubs = JSON.parse(warlock.subclassesJson);
+            const goo = warlockSubs.find((s: any) => s.id === "great-old-one-patron" || s.name === "Great Old One Patron");
+            expect(goo).toBeDefined();
+            const gooFeatNames = goo.features.map((f: any) => f.name);
+            expect(gooFeatNames).toContain("Awakened Mind");
+            expect(gooFeatNames).not.toContain("Mantle of Inspiration");
+            expect(gooFeatNames).not.toContain("Beguiling Magic");
+        });
+
+        it("separates subclass features when saving a multiclass character payload", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
+
+            const savedClasses: any[] = [];
+            const mockClassRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedClasses.find((c) => c.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    const idx = savedClasses.findIndex((c) => c.slug === e.slug);
+                    if (idx >= 0) savedClasses[idx] = e;
+                    else savedClasses.push(e);
+                    return e;
+                })
+            };
+
+            vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
+                if (entity === RuleClass) return mockClassRepo as any;
+                return {
+                    findOne: vi.fn().mockResolvedValue(null),
+                    create: vi.fn().mockImplementation((e) => e),
+                    save: vi.fn().mockResolvedValue({})
+                } as any;
+            });
+
+            const payload = {
+                classes: [
+                    { name: "Bard", subclass: "College of Glamour" },
+                    { name: "Warlock", subclass: "Great Old One Patron" }
+                ],
+                features: [
+                    { name: "Bardic Inspiration", source: "Bard", type: "Class" },
+                    { name: "Mantle of Inspiration", source: "College of Glamour", type: "Subclass Feature" },
+                    { name: "Pact Magic", source: "Warlock", type: "Class" },
+                    { name: "Awakened Mind", source: "Great Old One Patron", type: "Subclass Feature" }
+                ]
+            };
+
+            await RulesController.upsertRulesFromCharacter(null, payload);
+
+            const bard = savedClasses.find((c) => c.slug === "bard");
+            const warlock = savedClasses.find((c) => c.slug === "warlock");
+
+            const bardSubs = JSON.parse(bard.subclassesJson);
+            const glamour = bardSubs.find((s: any) => s.name === "College of Glamour");
+            expect(glamour.features.map((f: any) => f.name)).toContain("Mantle of Inspiration");
+            expect(glamour.features.map((f: any) => f.name)).not.toContain("Awakened Mind");
+
+            const warlockSubs = JSON.parse(warlock.subclassesJson);
+            const goo = warlockSubs.find((s: any) => s.name === "Great Old One Patron");
+            expect(goo.features.map((f: any) => f.name)).toContain("Awakened Mind");
+            expect(goo.features.map((f: any) => f.name)).not.toContain("Mantle of Inspiration");
+        });
+
+        it("attributes actions only to their owning class on multiclass characters", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
+
+            const mockSavedRepo = {
+                find: vi.fn().mockResolvedValue([
+                    {
+                        source: "dndbeyond",
+                        payload: JSON.stringify({
+                            classes: [{ name: "Bard" }, { name: "Warlock" }],
+                            features: [
+                                { name: "Mantle of Inspiration", source: "College of Glamour" },
+                                { name: "Awakened Mind", source: "Great Old One Patron" }
+                            ],
+                            actions: [
+                                { name: "Mantle of Inspiration", type: "Bonus Action" },
+                                { name: "Clairvoyant Combat", type: "Special" }
+                            ]
+                        })
+                    }
+                ])
+            };
+
+            vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
+                if (entity === "SavedCharacter" || entity?.name === "SavedCharacter") return mockSavedRepo as any;
+                return { find: vi.fn().mockResolvedValue([]) } as any;
+            });
+
+            const { actionsByClassAndFeature } = await RulesController.collectDndBeyondCanonicalDefinitions();
+
+            expect(actionsByClassAndFeature.has("bard::mantle of inspiration")).toBe(true);
+            expect(actionsByClassAndFeature.has("warlock::mantle of inspiration")).toBe(false);
+
+            expect(actionsByClassAndFeature.has("warlock::clairvoyant combat")).toBe(true);
+            expect(actionsByClassAndFeature.has("bard::clairvoyant combat")).toBe(false);
+        });
+    });
 });

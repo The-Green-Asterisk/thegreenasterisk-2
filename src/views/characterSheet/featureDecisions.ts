@@ -2104,6 +2104,12 @@ export function extractFeaturesAndApplyDecisions(
                 });
             }
 
+            const otherClasses = (raw.classes || []).filter((otherCl: any) => otherCl !== cl);
+            const otherClassIds = new Set<any>(otherClasses.map((oc: any) => oc.definition?.id).filter(Boolean));
+            const otherSubclassIds = new Set<any>(otherClasses.map((oc: any) => oc.subclassDefinition?.id).filter(Boolean));
+            const otherClassNames = new Set<string>(otherClasses.map((oc: any) => String(oc.definition?.name || "").toLowerCase()).filter(Boolean));
+            const otherSubclassNames = new Set<string>(otherClasses.map((oc: any) => String(oc.subclassDefinition?.name || "").toLowerCase()).filter(Boolean));
+
             cl.classFeatures.forEach((cf: any) => {
                 const def = cf.definition || cf;
                 if (!def?.name) return;
@@ -2112,10 +2118,28 @@ export function extractFeaturesAndApplyDecisions(
                 const cfNameLower = String(def.name).toLowerCase();
                 if (BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) return;
 
+                const cfClassId = def.classId || def.subclassId || cf.classId || cf.subclassId;
+                const cfSourceLower = String(def.source || cf.source || "").toLowerCase().trim();
+
+                // Reject features explicitly belonging to other classes or subclasses on this character
+                if (cfClassId && (otherClassIds.has(cfClassId) || otherSubclassIds.has(cfClassId))) return;
+                if (cfSourceLower && (otherClassNames.has(cfSourceLower) || otherSubclassNames.has(cfSourceLower))) return;
+
                 const isBase = baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
-                const isSub = !isBase && ((subId && (def.classId === subId || def.subclassId === subId)) ||
-                    def.isSubclassFeature === true ||
-                    (def.source && String(def.source).toLowerCase() === subName.toLowerCase()));
+                const subFeaturesList = Array.isArray(cl.subclassDefinition?.classFeatures) ? cl.subclassDefinition.classFeatures : [];
+                const isSubFeatureByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === cfNameLower);
+                const isSub = !isBase && (
+                    (subId && (cfClassId === subId)) ||
+                    (subName && cfSourceLower === subName.toLowerCase()) ||
+                    isSubFeatureByName
+                );
+
+                if (!isBase && !isSub) {
+                    if (cfClassId && cfClassId !== cl.definition?.id && cfClassId !== subId) {
+                        return;
+                    }
+                }
+
                 const targetName = isSub ? subName : cName;
                 const targetType = isSub ? "Subclass" : "Class";
 

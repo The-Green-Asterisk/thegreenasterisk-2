@@ -31,6 +31,56 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
+const SHARED_CLASS_FEATURE_NAMES = new Set([
+    "ability score improvement",
+    "subclass feature",
+    "extra attack",
+    "spellcasting",
+    "channel divinity",
+    "fighting style",
+    "weapon mastery",
+    "epic boon"
+]);
+
+// Canonical subclass feature mapping: featureNameLower -> { classSlug: string, subId: string, subName: string }
+const CANONICAL_SUBCLASS_FEATURE_MAP = new Map<string, { classSlug: string; subId: string; subName: string }>();
+
+// Canonical base class feature mapping: featureNameLower -> Set of classSlugs
+const CANONICAL_BASE_CLASS_FEATURE_MAP = new Map<string, Set<string>>();
+
+// Canonical subclass ownership: subId / subName / cleanSubName -> classSlug
+const CANONICAL_SUBCLASS_OWNER_MAP = new Map<string, string>();
+
+for (const sc of SEED_CLASSES) {
+    for (const f of sc.features || []) {
+        const fn = String(f.name || "").trim().toLowerCase();
+        if (fn) {
+            if (!CANONICAL_BASE_CLASS_FEATURE_MAP.has(fn)) {
+                CANONICAL_BASE_CLASS_FEATURE_MAP.set(fn, new Set());
+            }
+            CANONICAL_BASE_CLASS_FEATURE_MAP.get(fn)!.add(sc.id);
+        }
+    }
+    for (const sub of sc.subclasses || []) {
+        const rawName = String(sub.name || "").trim().toLowerCase();
+        const cleanName = rawName.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
+        if (sub.id) CANONICAL_SUBCLASS_OWNER_MAP.set(sub.id.toLowerCase(), sc.id);
+        if (rawName) CANONICAL_SUBCLASS_OWNER_MAP.set(rawName, sc.id);
+        if (cleanName) CANONICAL_SUBCLASS_OWNER_MAP.set(cleanName, sc.id);
+
+        for (const sf of sub.features || []) {
+            const sfn = String(sf.name || "").trim().toLowerCase();
+            if (sfn) {
+                CANONICAL_SUBCLASS_FEATURE_MAP.set(sfn, {
+                    classSlug: sc.id,
+                    subId: sub.id,
+                    subName: sub.name
+                });
+            }
+        }
+    }
+}
+
 export default class RulesController extends BaseController {
     /**
      * Seeds the default rules into the database if the tables are empty.
@@ -42,7 +92,7 @@ export default class RulesController extends BaseController {
         }
         const text = description || "";
         const match = text.match(/\b(?:starting at|beginning at|at|gain(?:s)? at)\s+(\d+)(?:st|nd|rd|th)?\s+level\b/i) ||
-                      text.match(/\b(\d+)(?:st|nd|rd|th)\s+level\b/i);
+            text.match(/\b(\d+)(?:st|nd|rd|th)\s+level\b/i);
         if (match) {
             const parsed = parseInt(match[1], 10);
             if (parsed >= 1 && parsed <= 20) {
@@ -103,6 +153,15 @@ export default class RulesController extends BaseController {
                     });
                     for (const cf of currentFeatures) {
                         if (cf?.fromDndBeyond && !mergedFeatures.some((mf) => String(mf.name || "").toLowerCase() === String(cf.name || "").toLowerCase())) {
+                            const cfNameLower = String(cf.name || "").trim().toLowerCase();
+                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(cfNameLower);
+                            if (canonBase && !canonBase.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(cfNameLower)) {
+                                continue;
+                            }
+                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(cfNameLower);
+                            if (canonSub) {
+                                continue;
+                            }
                             mergedFeatures.push(cf);
                         }
                     }
@@ -127,23 +186,55 @@ export default class RulesController extends BaseController {
                         });
                         for (const esf of existingSubFeatures) {
                             if (esf?.fromDndBeyond && !mergedSubFeatures.some((msf) => String(msf.name || "").toLowerCase() === String(esf.name || "").toLowerCase())) {
+                                const esfNameLower = String(esf.name || "").trim().toLowerCase();
+                                const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(esfNameLower);
+                                if (canonSub && (canonSub.classSlug !== rc.slug || canonSub.subId !== ss.id)) {
+                                    continue;
+                                }
+                                const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(esfNameLower);
+                                if (canonBase && !canonBase.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(esfNameLower)) {
+                                    continue;
+                                }
                                 mergedSubFeatures.push({
                                     ...esf,
                                     level: this.inferFeatureLevel(esf.name, esf.description, esf.level)
                                 });
                             }
                         }
+
+                        // Clean mergedSubFeatures of any cross-contaminated features
+                        const cleanSubFeatures = mergedSubFeatures.filter((f: any) => {
+                            const fNameLower = String(f.name || "").trim().toLowerCase();
+                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
+                            if (canonSub && (canonSub.classSlug !== rc.slug || canonSub.subId !== ss.id)) {
+                                return false;
+                            }
+                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
+                            if (canonBase && !canonBase.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) {
+                                return false;
+                            }
+                            return true;
+                        });
+
                         return {
                             ...ss,
                             description: existingSub.fromDndBeyond && existingSub.description ? existingSub.description : ss.description,
                             fromDndBeyond: existingSub.fromDndBeyond || false,
                             dndBeyondActions: existingSub.dndBeyondActions || undefined,
-                            features: mergedSubFeatures
+                            features: cleanSubFeatures
                         };
                     });
 
                     for (const cs of currentSubs) {
                         if (cs && !mergedSubs.some((ms) => ms.id === cs.id || String(ms.name || "").toLowerCase() === String(cs.name || "").toLowerCase())) {
+                            const csNameLower = String(cs.name || "").trim().toLowerCase();
+                            const csClean = csNameLower.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                            const owner = CANONICAL_SUBCLASS_OWNER_MAP.get(cs.id?.toLowerCase()) ||
+                                CANONICAL_SUBCLASS_OWNER_MAP.get(csNameLower) ||
+                                CANONICAL_SUBCLASS_OWNER_MAP.get(csClean);
+                            if (owner && owner !== rc.slug) {
+                                continue;
+                            }
                             mergedSubs.push(cs);
                         }
                     }
@@ -163,32 +254,60 @@ export default class RulesController extends BaseController {
                 }
             }
 
-            if (typeof subclassRepo.count === "function") {
-                const subCount = await subclassRepo.count();
-                if (subCount === 0 && typeof classRepo.find === "function") {
-                    const dbClasses = await classRepo.find();
-                    const subEntities: RuleSubclass[] = [];
-                    for (const cls of dbClasses) {
-                        const seedCls = SEED_CLASSES.find((sc) => sc.id === cls.slug);
-                        const rawSubs = this.safeParse(cls.subclassesJson, seedCls?.subclasses || []);
-                        for (const sub of rawSubs) {
-                            const subProgression = buildSubclassProgression(cls.slug, sub);
-                            subEntities.push(subclassRepo.create({
+            if (typeof subclassRepo.find === "function" && typeof classRepo.find === "function") {
+                const dbClasses = await classRepo.find();
+                const existingSubclasses = await subclassRepo.find();
+                const subEntitiesToSave: RuleSubclass[] = [];
+
+                for (const cls of dbClasses) {
+                    const rawSubs = this.safeParse(cls.subclassesJson, []);
+                    for (const sub of rawSubs) {
+                        const subSlug = sub.id || slugify(sub.name);
+                        const existingSubEntity = existingSubclasses.find(
+                            (se) => se.classId === cls.id && (se.slug === subSlug || se.name.toLowerCase() === sub.name.toLowerCase())
+                        );
+                        const subProgression = buildSubclassProgression(cls.slug, sub);
+                        const desiredProgressionJson = JSON.stringify(subProgression);
+                        const desiredSpellcastingOverride = sub.spellcastingOverride ? JSON.stringify(sub.spellcastingOverride) : undefined;
+
+                        if (existingSubEntity) {
+                            if (
+                                existingSubEntity.progressionJson !== desiredProgressionJson ||
+                                existingSubEntity.description !== (sub.description || "") ||
+                                existingSubEntity.spellcastingOverrideJson !== desiredSpellcastingOverride
+                            ) {
+                                existingSubEntity.description = sub.description || "";
+                                existingSubEntity.progressionJson = desiredProgressionJson;
+                                existingSubEntity.spellcastingOverrideJson = desiredSpellcastingOverride;
+                                subEntitiesToSave.push(existingSubEntity);
+                            }
+                        } else {
+                            subEntitiesToSave.push(subclassRepo.create({
                                 classId: cls.id,
                                 classSlug: cls.slug,
-                                slug: sub.id || slugify(sub.name),
+                                slug: subSlug,
                                 name: sub.name,
                                 description: sub.description || "",
-                                progressionJson: JSON.stringify(subProgression),
-                                spellcastingOverrideJson: sub.spellcastingOverride ? JSON.stringify(sub.spellcastingOverride) : undefined,
+                                progressionJson: desiredProgressionJson,
+                                spellcastingOverrideJson: desiredSpellcastingOverride,
                                 source: "2024 Core Rules",
                                 isCustom: false
                             }));
                         }
                     }
-                    if (subEntities.length > 0) {
-                        await subclassRepo.save(subEntities);
+                }
+
+                // Remove cross-class contaminated records from rule_subclasses table
+                for (const se of existingSubclasses) {
+                    const owner = CANONICAL_SUBCLASS_OWNER_MAP.get(se.slug?.toLowerCase()) ||
+                        CANONICAL_SUBCLASS_OWNER_MAP.get(se.name?.toLowerCase());
+                    if (owner && owner !== se.classSlug && typeof subclassRepo.remove === "function") {
+                        await subclassRepo.remove(se);
                     }
+                }
+
+                if (subEntitiesToSave.length > 0) {
+                    await subclassRepo.save(subEntitiesToSave);
                 }
             }
 
@@ -346,11 +465,32 @@ export default class RulesController extends BaseController {
                 const rawSubs = this.safeParse(rc.subclassesJson, []);
                 const baseFeats = new Set((seedCls?.features || []).map((f: any) => String(f.name || "").toLowerCase()));
                 const subclasses = Array.isArray(rawSubs)
-                    ? rawSubs.map((sub: any) => {
-                          const seedSub = seedCls?.subclasses?.find((ss: any) => ss.id === sub.id || ss.name === sub.name);
-                          const feats = (Array.isArray(sub.features) && sub.features.length > 0)
-                              ? sub.features
-                                    .filter((f: any) => !baseFeats.has(String(f.name || "").toLowerCase()))
+                    ? rawSubs
+                        .filter((sub: any) => {
+                            const rawName = String(sub.name || "").trim().toLowerCase();
+                            const cleanName = rawName.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
+                            const owner = CANONICAL_SUBCLASS_OWNER_MAP.get(sub.id?.toLowerCase()) ||
+                                CANONICAL_SUBCLASS_OWNER_MAP.get(rawName) ||
+                                CANONICAL_SUBCLASS_OWNER_MAP.get(cleanName);
+                            return !owner || owner === rc.slug;
+                        })
+                        .map((sub: any) => {
+                            const seedSub = seedCls?.subclasses?.find((ss: any) => ss.id === sub.id || ss.name === sub.name);
+                            const feats = (Array.isArray(sub.features) && sub.features.length > 0)
+                                ? sub.features
+                                    .filter((f: any) => {
+                                        const fnLower = String(f.name || "").toLowerCase().trim();
+                                        if (baseFeats.has(fnLower)) return false;
+                                        const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
+                                        if (cs && (cs.classSlug !== rc.slug || cs.subId !== sub.id)) {
+                                            return false;
+                                        }
+                                        const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
+                                        if (cb && !cb.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) {
+                                            return false;
+                                        }
+                                        return true;
+                                    })
                                     .map((f: any) => {
                                         const seedFeat = seedSub?.features?.find((sf: any) => sf.name.toLowerCase() === f.name.toLowerCase());
                                         return {
@@ -358,16 +498,16 @@ export default class RulesController extends BaseController {
                                             level: seedFeat?.level || this.inferFeatureLevel(f.name, f.description, f.level)
                                         };
                                     })
-                              : (seedSub?.features || []);
-                          feats.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
-                          const subProg = buildSubclassProgression(rc.slug, { ...sub, features: feats });
-                          return {
-                              ...sub,
-                              classSlug: rc.slug,
-                              progression: subProg,
-                              features: feats
-                          };
-                      })
+                                : (seedSub?.features || []);
+                            feats.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
+                            const subProg = buildSubclassProgression(rc.slug, { ...sub, features: feats });
+                            return {
+                                ...sub,
+                                classSlug: rc.slug,
+                                progression: subProg,
+                                features: feats
+                            };
+                        })
                     : (seedCls?.subclasses ? [...seedCls.subclasses] : []);
 
                 if (seedCls?.subclasses) {
@@ -534,6 +674,12 @@ export default class RulesController extends BaseController {
                     const subDef = c.subclassDefinition;
                     const classFeatures: any[] = Array.isArray(c.classFeatures) ? c.classFeatures : [];
 
+                    const otherClasses = (rawCharacter.classes || []).filter((otherC: any) => otherC !== c);
+                    const otherClassIds = new Set<any>(otherClasses.map((oc: any) => oc.definition?.id).filter(Boolean));
+                    const otherSubclassIds = new Set<any>(otherClasses.map((oc: any) => oc.subclassDefinition?.id).filter(Boolean));
+                    const otherClassNames = new Set<string>(otherClasses.map((oc: any) => String(oc.definition?.name || "").toLowerCase()).filter(Boolean));
+                    const otherSubclassNames = new Set<string>(otherClasses.map((oc: any) => String(oc.subclassDefinition?.name || "").toLowerCase()).filter(Boolean));
+
                     // Extract base class features from def.classFeatures and c.classFeatures
                     const extractedFeatures: Array<{ level: number; name: string; description: string; htmlDescription: string; fromDndBeyond: boolean }> = [];
                     const defClassFeatures: any[] = Array.isArray(def.classFeatures) ? def.classFeatures : [];
@@ -545,23 +691,41 @@ export default class RulesController extends BaseController {
 
                     for (const cf of [...defClassFeatures, ...classFeatures]) {
                         const fDef = cf.definition || cf;
-                        if (fDef && fDef.name) {
-                            const isSub = (subDef?.id && (fDef.classId === subDef.id || fDef.subclassId === subDef.id)) ||
-                                fDef.isSubclassFeature === true ||
-                                (subDef?.name && String(fDef.source || "").toLowerCase() === subDef.name.toLowerCase());
-                            if (!isSub) {
-                                const fName = String(fDef.name).trim();
-                                baseFeatureNames.add(fName.toLowerCase());
-                                const rawHtml = String(fDef.description || fDef.snippet || "").trim();
-                                if (!extractedFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
-                                    extractedFeatures.push({
-                                        level: Number(fDef.requiredLevel || fDef.level) || 1,
-                                        name: fName,
-                                        description: cleanHtmlTags(rawHtml),
-                                        htmlDescription: rawHtml,
-                                        fromDndBeyond: true
-                                    });
-                                }
+                        if (!fDef || !fDef.name) continue;
+                        const fName = String(fDef.name).trim();
+                        const fNameLower = fName.toLowerCase();
+                        const fClassId = fDef.classId || fDef.subclassId || cf.classId || cf.subclassId;
+                        const fSourceLower = String(fDef.source || cf.source || "").toLowerCase().trim();
+
+                        if (fClassId && (otherClassIds.has(fClassId) || otherSubclassIds.has(fClassId))) continue;
+                        if (fSourceLower && (otherClassNames.has(fSourceLower) || otherSubclassNames.has(fSourceLower))) continue;
+
+                        const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
+                        if (canonSub && canonSub.classSlug !== slug) continue;
+                        const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
+                        if (canonBase && !canonBase.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) continue;
+
+                        const rawSubName = subDef?.name ? String(subDef.name).trim().toLowerCase() : "";
+                        const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
+                        const subFeaturesList = Array.isArray(subDef?.classFeatures) ? subDef.classFeatures : [];
+                        const isSubByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === fNameLower);
+
+                        const isSub = (subDef?.id && fClassId === subDef.id) ||
+                            (rawSubName && (fSourceLower === rawSubName || fSourceLower === cleanSubName)) ||
+                            isSubByName ||
+                            (canonSub && canonSub.classSlug === slug);
+
+                        if (!isSub) {
+                            baseFeatureNames.add(fNameLower);
+                            const rawHtml = String(fDef.description || fDef.snippet || "").trim();
+                            if (!extractedFeatures.some((f) => f.name.toLowerCase() === fNameLower)) {
+                                extractedFeatures.push({
+                                    level: Number(fDef.requiredLevel || fDef.level) || 1,
+                                    name: fName,
+                                    description: cleanHtmlTags(rawHtml),
+                                    htmlDescription: rawHtml,
+                                    fromDndBeyond: true
+                                });
                             }
                         }
                     }
@@ -571,17 +735,65 @@ export default class RulesController extends BaseController {
                     if (subDef && subDef.name) {
                         const rawSubName = String(subDef.name).trim();
                         const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                        const rawSubLower = rawSubName.toLowerCase();
+                        const cleanSubLower = cleanSubName.toLowerCase();
                         const subFeaturesList = Array.isArray(subDef.classFeatures) ? subDef.classFeatures : [];
+
                         for (const scf of subFeaturesList) {
                             const fDef = scf.definition || scf;
-                            if (fDef && fDef.name) {
-                                const fName = String(fDef.name).trim();
-                                // Avoid base class features leaking into subclass features
-                                if (baseFeatureNames.has(fName.toLowerCase())) continue;
+                            if (!fDef || !fDef.name) continue;
+                            const fName = String(fDef.name).trim();
+                            const fNameLower = fName.toLowerCase();
+                            if (baseFeatureNames.has(fNameLower)) continue;
+
+                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
+                            if (canonSub && canonSub.classSlug !== slug) continue;
+                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
+                            if (canonBase && !canonBase.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) continue;
+
+                            const rawHtml = String(fDef.description || fDef.snippet || "").trim();
+                            if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fNameLower)) {
+                                extractedSubclassFeatures.push({
+                                    level: this.inferFeatureLevel(fName, rawHtml, Number(fDef.requiredLevel || fDef.level || scf.requiredLevel || scf.level)),
+                                    name: fName,
+                                    description: cleanHtmlTags(rawHtml),
+                                    htmlDescription: rawHtml,
+                                    fromDndBeyond: true
+                                });
+                            }
+                        }
+
+                        for (const cf of classFeatures) {
+                            const fDef = cf.definition || cf;
+                            if (!fDef || !fDef.name) continue;
+                            const fName = String(fDef.name).trim();
+                            const fNameLower = fName.toLowerCase();
+                            if (baseFeatureNames.has(fNameLower)) continue;
+
+                            const fClassId = fDef.classId || fDef.subclassId || cf.classId || cf.subclassId;
+                            const fSourceLower = String(fDef.source || cf.source || "").toLowerCase().trim();
+
+                            if (fClassId && (otherClassIds.has(fClassId) || otherSubclassIds.has(fClassId))) continue;
+                            if (fSourceLower && (otherClassNames.has(fSourceLower) || otherSubclassNames.has(fSourceLower))) continue;
+
+                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
+                            if (canonSub && (canonSub.classSlug !== slug || (canonSub.subId !== slugify(cleanSubName) && canonSub.subId !== slugify(rawSubName) && canonSub.subName.toLowerCase() !== rawSubLower && canonSub.subName.toLowerCase() !== cleanSubLower))) {
+                                continue;
+                            }
+                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
+                            if (canonBase && !canonBase.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) continue;
+
+                            const isSubByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === fNameLower);
+                            const isSub = (subDef.id && fClassId === subDef.id) ||
+                                (fSourceLower && (fSourceLower === rawSubLower || fSourceLower === cleanSubLower)) ||
+                                isSubByName ||
+                                (canonSub && canonSub.classSlug === slug);
+
+                            if (isSub) {
                                 const rawHtml = String(fDef.description || fDef.snippet || "").trim();
-                                if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
+                                if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fNameLower)) {
                                     extractedSubclassFeatures.push({
-                                        level: this.inferFeatureLevel(fName, rawHtml, Number(fDef.requiredLevel || fDef.level || scf.requiredLevel || scf.level)),
+                                        level: this.inferFeatureLevel(fName, rawHtml, Number(fDef.requiredLevel || fDef.level || cf.requiredLevel || cf.level)),
                                         name: fName,
                                         description: cleanHtmlTags(rawHtml),
                                         htmlDescription: rawHtml,
@@ -590,40 +802,18 @@ export default class RulesController extends BaseController {
                                 }
                             }
                         }
-                        for (const cf of classFeatures) {
-                            const fDef = cf.definition || cf;
-                            if (fDef && fDef.name) {
-                                const fName = String(fDef.name).trim();
-                                if (baseFeatureNames.has(fName.toLowerCase())) continue;
-                                const isSub = (subDef.id && (fDef.classId === subDef.id || fDef.subclassId === subDef.id)) ||
-                                    fDef.isSubclassFeature === true ||
-                                    (def.id && fDef.classId && fDef.classId !== def.id) ||
-                                    (fDef.source && (String(fDef.source).toLowerCase() === rawSubName.toLowerCase() || String(fDef.source).toLowerCase() === cleanSubName.toLowerCase()));
-                                if (isSub) {
-                                    const rawHtml = String(fDef.description || fDef.snippet || "").trim();
-                                    if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fName.toLowerCase())) {
-                                        extractedSubclassFeatures.push({
-                                            level: this.inferFeatureLevel(fName, rawHtml, Number(fDef.requiredLevel || fDef.level || cf.requiredLevel || cf.level)),
-                                            name: fName,
-                                            description: cleanHtmlTags(rawHtml),
-                                            htmlDescription: rawHtml,
-                                            fromDndBeyond: true
-                                        });
-                                    }
-                                }
-                            }
-                        }
                     }
 
                     let ruleClass = await classRepo.findOne({ where: { slug } });
                     if (ruleClass) {
                         let subclasses: any[] = this.safeParse(ruleClass.subclassesJson, []);
+                        let targetSub: any = null;
                         if (subDef && subDef.name) {
                             const rawSubName = String(subDef.name).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
                             const subSlug = slugify(cleanSubName);
                             const rawSubSlug = slugify(rawSubName);
-                            let targetSub = subclasses.find((s: any) =>
+                            targetSub = subclasses.find((s: any) =>
                                 s.id === subSlug ||
                                 s.id === rawSubSlug ||
                                 s.name.toLowerCase() === cleanSubName.toLowerCase() ||
@@ -642,12 +832,10 @@ export default class RulesController extends BaseController {
                             } else {
                                 targetSub.name = cleanSubName;
                                 if (!Array.isArray(targetSub.features)) targetSub.features = [];
-                                let subFeatsChanged = false;
                                 for (const sf of extractedSubclassFeatures) {
                                     const existingIdx = targetSub.features.findIndex((f: any) => f.name.toLowerCase() === sf.name.toLowerCase());
                                     if (existingIdx === -1) {
                                         targetSub.features.push(sf);
-                                        subFeatsChanged = true;
                                         count++;
                                     } else {
                                         const existing = targetSub.features[existingIdx];
@@ -660,14 +848,26 @@ export default class RulesController extends BaseController {
                                                 htmlDescription: sf.htmlDescription || existing.htmlDescription,
                                                 fromDndBeyond: true
                                             };
-                                            subFeatsChanged = true;
                                             count++;
                                         }
                                     }
                                 }
-                                targetSub.features = targetSub.features.filter((f: any) => !baseFeatureNames.has(String(f.name || "").toLowerCase()));
-                                targetSub.features.sort((a: any, b: any) => a.level - b.level);
                             }
+                            // Clean targetSub.features of base class features or cross-class features
+                            targetSub.features = targetSub.features.filter((f: any) => {
+                                const fnLower = String(f.name || "").trim().toLowerCase();
+                                if (baseFeatureNames.has(fnLower)) return false;
+                                const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
+                                if (cs && (cs.classSlug !== slug || (cs.subId !== targetSub.id && cs.subName.toLowerCase() !== targetSub.name.toLowerCase()))) {
+                                    return false;
+                                }
+                                const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
+                                if (cb && !cb.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) {
+                                    return false;
+                                }
+                                return true;
+                            });
+                            targetSub.features.sort((a: any, b: any) => a.level - b.level);
                             ruleClass.subclassesJson = JSON.stringify(subclasses);
                         }
 
@@ -690,12 +890,51 @@ export default class RulesController extends BaseController {
                                 count++;
                             }
                         }
-                        if (featuresChanged) {
-                            existingFeatures.sort((a, b) => a.level - b.level);
-                            ruleClass.featuresJson = JSON.stringify(existingFeatures);
-                        }
+                        // Clean existingFeatures of any cross-class or subclass features
+                        existingFeatures = existingFeatures.filter((f: any) => {
+                            const fnLower = String(f.name || "").trim().toLowerCase();
+                            const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
+                            if (cb && !cb.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) return false;
+                            const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
+                            if (cs) return false;
+                            return true;
+                        });
+                        existingFeatures.sort((a, b) => a.level - b.level);
+                        ruleClass.featuresJson = JSON.stringify(existingFeatures);
+                        ruleClass.progressionJson = JSON.stringify(buildClassProgression(ruleClass.slug, existingFeatures));
 
                         await classRepo.save(ruleClass);
+
+                        // Also upsert RuleSubclass entity in database
+                        if (targetSub) {
+                            try {
+                                const subclassRepo = AppDataSource.getRepository(RuleSubclass);
+                                if (subclassRepo && typeof subclassRepo.findOne === "function" && typeof subclassRepo.save === "function") {
+                                    const subSlug = targetSub.id || slugify(targetSub.name);
+                                    let subEntity = await subclassRepo.findOne({ where: { classId: ruleClass.id, slug: subSlug } });
+                                    const subProgression = buildSubclassProgression(ruleClass.slug, targetSub);
+                                    if (!subEntity) {
+                                        const subData = {
+                                            classId: ruleClass.id,
+                                            classSlug: ruleClass.slug,
+                                            slug: subSlug,
+                                            name: targetSub.name,
+                                            description: targetSub.description || "",
+                                            progressionJson: JSON.stringify(subProgression),
+                                            source: "D&D Beyond",
+                                            isCustom: false
+                                        };
+                                        subEntity = typeof subclassRepo.create === "function" ? subclassRepo.create(subData) : subData as any;
+                                    } else {
+                                        subEntity.description = targetSub.description || subEntity.description;
+                                        subEntity.progressionJson = JSON.stringify(subProgression);
+                                    }
+                                    await subclassRepo.save(subEntity);
+                                }
+                            } catch (subErr) {
+                                console.warn("Could not sync RuleSubclass in upsertRulesFromDndBeyond:", subErr);
+                            }
+                        }
                     } else {
                         const subclasses: any[] = [];
                         if (subDef && subDef.name) {
@@ -957,18 +1196,47 @@ export default class RulesController extends BaseController {
                             ...existingClassFeatures.map((f: any) => String(f.name || "").trim().toLowerCase())
                         ].filter(Boolean));
 
+                        const otherClasses = (payloadToSave.classes || []).filter((c: any) => c !== cls);
+                        const otherClassNames = new Set<string>(otherClasses.map((c: any) => String(c.name || "").toLowerCase()).filter(Boolean));
+                        const otherSubclassNames = new Set<string>();
+                        for (const oc of otherClasses) {
+                            if (oc.subclass) {
+                                const raw = String(oc.subclass).trim().toLowerCase();
+                                const clean = raw.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
+                                if (raw) otherSubclassNames.add(raw);
+                                if (clean) otherSubclassNames.add(clean);
+                            }
+                        }
+
                         for (const feat of payloadToSave.features) {
                             if (!feat || !feat.name) continue;
                             const featType = String(feat.type || "").toLowerCase();
-                            const featSource = String(feat.source || "").toLowerCase();
+                            const featSource = String(feat.source || "").toLowerCase().trim();
                             const featName = String(feat.name).trim();
+                            const featNameLower = featName.toLowerCase();
                             const rawHtml = String(feat.description || "").trim();
                             const rawSubName = cls.subclass ? String(cls.subclass).trim().toLowerCase() : "";
                             const cleanSubName = cls.subclass ? String(cls.subclass).replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase() : "";
-                            const isBaseClassFeature = baseFeatureNames.has(featName.toLowerCase());
+                            const isBaseClassFeature = baseFeatureNames.has(featNameLower);
 
-                            if (targetSub && !isBaseClassFeature && (featType.includes("subclass") || featSource === rawSubName || featSource === cleanSubName || (targetSub.name && featSource === targetSub.name.toLowerCase()))) {
-                                const existingIdx = targetSub.features.findIndex((f: any) => f.name.toLowerCase() === featName.toLowerCase());
+                            if (otherClassNames.has(featSource) || otherSubclassNames.has(featSource)) continue;
+
+                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(featNameLower);
+                            if (canonSub && canonSub.classSlug !== ruleClass.slug) continue;
+                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(featNameLower);
+                            if (canonBase && !canonBase.has(ruleClass.slug) && !SHARED_CLASS_FEATURE_NAMES.has(featNameLower)) continue;
+
+                            const isMatchesThisSub = (
+                                featSource === rawSubName ||
+                                featSource === cleanSubName ||
+                                (targetSub?.name && featSource === targetSub.name.toLowerCase()) ||
+                                (canonSub && canonSub.classSlug === ruleClass.slug && (
+                                    targetSub && (canonSub.subId === targetSub.id || canonSub.subName.toLowerCase() === targetSub.name.toLowerCase())
+                                ))
+                            );
+
+                            if (targetSub && !isBaseClassFeature && isMatchesThisSub) {
+                                const existingIdx = targetSub.features.findIndex((f: any) => f.name.toLowerCase() === featNameLower);
                                 const featLvl = RulesController.inferFeatureLevel(featName, rawHtml, feat.level);
                                 if (existingIdx === -1) {
                                     targetSub.features.push({
@@ -997,8 +1265,13 @@ export default class RulesController extends BaseController {
                                         count++;
                                     }
                                 }
-                            } else if (featType === "class" || featSource === name.toLowerCase() || isBaseClassFeature) {
-                                const existingIdx = existingClassFeatures.findIndex((f: any) => f.name.toLowerCase() === featName.toLowerCase());
+                            } else if (
+                                featSource === name.toLowerCase() ||
+                                isBaseClassFeature ||
+                                (canonBase && canonBase.has(ruleClass.slug)) ||
+                                (featType === "class" && !canonSub && !otherClassNames.has(featSource) && !otherSubclassNames.has(featSource))
+                            ) {
+                                const existingIdx = existingClassFeatures.findIndex((f: any) => f.name.toLowerCase() === featNameLower);
                                 const featLvl = RulesController.inferFeatureLevel(featName, rawHtml, feat.level || 1);
                                 if (existingIdx === -1) {
                                     existingClassFeatures.push({
@@ -1032,7 +1305,19 @@ export default class RulesController extends BaseController {
 
                         if (targetSub && Array.isArray(targetSub.features)) {
                             const originalLen = targetSub.features.length;
-                            targetSub.features = targetSub.features.filter((f: any) => !baseFeatureNames.has(String(f.name || "").toLowerCase()));
+                            targetSub.features = targetSub.features.filter((f: any) => {
+                                const fnLower = String(f.name || "").trim().toLowerCase();
+                                if (baseFeatureNames.has(fnLower)) return false;
+                                const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
+                                if (cs && (cs.classSlug !== ruleClass.slug || (cs.subId !== targetSub.id && cs.subName.toLowerCase() !== targetSub.name.toLowerCase()))) {
+                                    return false;
+                                }
+                                const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
+                                if (cb && !cb.has(ruleClass.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) {
+                                    return false;
+                                }
+                                return true;
+                            });
                             if (targetSub.features.length !== originalLen) {
                                 subsChanged = true;
                             }
@@ -1045,6 +1330,39 @@ export default class RulesController extends BaseController {
                         if (featsChanged) {
                             existingClassFeatures.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
                             ruleClass.featuresJson = JSON.stringify(existingClassFeatures);
+                        }
+                        if (subsChanged || featsChanged) {
+                            ruleClass.progressionJson = JSON.stringify(buildClassProgression(ruleClass.slug, existingClassFeatures));
+                        }
+
+                        if (targetSub && subsChanged) {
+                            try {
+                                const subclassRepo = AppDataSource.getRepository(RuleSubclass);
+                                if (subclassRepo && typeof subclassRepo.findOne === "function" && typeof subclassRepo.save === "function") {
+                                    const subSlug = targetSub.id || slugify(targetSub.name);
+                                    let subEntity = await subclassRepo.findOne({ where: { classId: ruleClass.id, slug: subSlug } });
+                                    const subProgression = buildSubclassProgression(ruleClass.slug, targetSub);
+                                    if (!subEntity) {
+                                        const subData = {
+                                            classId: ruleClass.id,
+                                            classSlug: ruleClass.slug,
+                                            slug: subSlug,
+                                            name: targetSub.name,
+                                            description: targetSub.description || "",
+                                            progressionJson: JSON.stringify(subProgression),
+                                            source: isDndBeyondPayload ? "D&D Beyond" : "Custom",
+                                            isCustom: !isDndBeyondPayload
+                                        };
+                                        subEntity = typeof subclassRepo.create === "function" ? subclassRepo.create(subData) : subData as any;
+                                    } else {
+                                        subEntity.description = targetSub.description || subEntity.description;
+                                        subEntity.progressionJson = JSON.stringify(subProgression);
+                                    }
+                                    await subclassRepo.save(subEntity);
+                                }
+                            } catch (subErr) {
+                                console.warn("Could not sync RuleSubclass in upsertRulesFromCharacter:", subErr);
+                            }
                         }
                         if ((subsChanged || featsChanged) && typeof classRepo.save === "function") {
                             await classRepo.save(ruleClass);
@@ -1274,8 +1592,9 @@ export default class RulesController extends BaseController {
                         // Map action to its governing feature key (e.g., "Wild Resurgence: Regain Wild Shape" -> "wild resurgence", "Wild Shape: Circle Forms" -> "circle forms", "Leave Druidic Message" -> "druidic")
                         let featureTriggerKey = aNameLower.split(":")[0].trim();
                         const afterColon = aNameLower.includes(":") ? aNameLower.split(":").slice(1).join(":").trim() : "";
+                        const parsedFeatures: any[] = Array.isArray(parsed.features) ? parsed.features : [];
                         const parsedFeatureNames = new Set(
-                            (Array.isArray(parsed.features) ? parsed.features : []).map((f: any) => String(f?.name || "").toLowerCase().trim())
+                            parsedFeatures.map((f: any) => String(f?.name || "").toLowerCase().trim())
                         );
                         if (afterColon && parsedFeatureNames.has(afterColon)) {
                             featureTriggerKey = afterColon;
@@ -1285,7 +1604,44 @@ export default class RulesController extends BaseController {
                             featureTriggerKey = "font of inspiration";
                         }
 
-                        for (const clsLower of charClasses) {
+                        // Determine owning class(es)
+                        let targetClasses: string[] = [];
+                        const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(featureTriggerKey) || CANONICAL_SUBCLASS_FEATURE_MAP.get(aNameLower);
+                        if (canonSub) {
+                            targetClasses = [canonSub.classSlug];
+                        } else {
+                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(featureTriggerKey) || CANONICAL_BASE_CLASS_FEATURE_MAP.get(aNameLower);
+                            if (canonBase) {
+                                targetClasses = charClasses.filter((c) => canonBase.has(c));
+                            }
+                        }
+
+                        if (targetClasses.length === 0) {
+                            const matchedFeature = parsedFeatures.find((f: any) => {
+                                const fn = String(f?.name || "").toLowerCase().trim();
+                                return fn === featureTriggerKey || fn === aNameLower;
+                            });
+                            if (matchedFeature && matchedFeature.source) {
+                                const srcLower = String(matchedFeature.source).toLowerCase().trim();
+                                const srcClean = srcLower.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                                const ownerFromSub = CANONICAL_SUBCLASS_OWNER_MAP.get(srcLower) || CANONICAL_SUBCLASS_OWNER_MAP.get(srcClean);
+                                if (ownerFromSub) {
+                                    targetClasses = [ownerFromSub];
+                                } else if (charClasses.includes(srcLower)) {
+                                    targetClasses = [srcLower];
+                                }
+                            }
+                        }
+
+                        if (targetClasses.length === 0) {
+                            if (charClasses.length === 1) {
+                                targetClasses = charClasses;
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        for (const clsLower of targetClasses) {
                             const mapKey = `${clsLower}::${featureTriggerKey}`;
                             const dedupeKey = `${mapKey}::${aNameLower}`;
                             if (seenActionByClassKey.has(dedupeKey)) continue;
