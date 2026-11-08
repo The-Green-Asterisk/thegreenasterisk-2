@@ -81,6 +81,7 @@ export interface CreatorState {
     lineageId: string;
     humanExtraSkill: string;
     humanExtraFeatId: string;
+    elfKeenSkill: string;
     classId: string;
     subclassId: string;
     weaponMasteries: string[];
@@ -145,6 +146,7 @@ export class CharacterCreatorController {
         lineageId: "",
         humanExtraSkill: "Perception",
         humanExtraFeatId: "alert",
+        elfKeenSkill: "Perception",
         classId: "fighter",
         subclassId: "",
         weaponMasteries: ["Longsword", "Greatsword", "Shortbow"],
@@ -1394,6 +1396,22 @@ export class CharacterCreatorController {
                                 <label class="creator-label">Versatile (Choose 1 Extra Origin Feat)</label>
                                 <select id="human-feat-select" class="creator-select">
                                     ${this.originFeats.map((f) => `<option value="${f.id}" ${this.state.humanExtraFeatId === f.id ? "selected" : ""}>${f.name}</option>`).join("")}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                ` : ""}
+
+                ${currentSpecies.id === "elf" ? `
+                    <div class="creator-detail-box">
+                        <h4>Elf Keen Senses</h4>
+                        <div class="creator-form-grid">
+                            <div class="creator-form-group">
+                                <label class="creator-label">Keen Senses (Choose 1 Skill Proficiency)</label>
+                                <select id="elf-skill-select" class="creator-select">
+                                    <option value="Perception" ${this.state.elfKeenSkill === "Perception" ? "selected" : ""}>Perception (WIS)</option>
+                                    <option value="Insight" ${this.state.elfKeenSkill === "Insight" ? "selected" : ""}>Insight (WIS)</option>
+                                    <option value="Survival" ${this.state.elfKeenSkill === "Survival" ? "selected" : ""}>Survival (WIS)</option>
                                 </select>
                             </div>
                         </div>
@@ -2872,10 +2890,11 @@ export class CharacterCreatorController {
                     ${ALL_SKILLS.map((sk) => {
                         const isBgSkill = bgSkills.includes(sk.name);
                         const isHumanExtra = this.state.speciesId === "human" && this.state.humanExtraSkill === sk.name;
+                        const isElfKeen = this.state.speciesId === "elf" && (this.state.elfKeenSkill || "Perception") === sk.name;
                         const isClassSkill = this.state.classSkills.includes(sk.name);
                         const isAllowedByClass = classAllowed.includes(sk.name);
-                        const isSelected = isBgSkill || isHumanExtra || isClassSkill;
-                        const isLocked = isBgSkill || isHumanExtra;
+                        const isSelected = isBgSkill || isHumanExtra || isElfKeen || isClassSkill;
+                        const isLocked = isBgSkill || isHumanExtra || isElfKeen;
 
                         return `
                             <div class="skill-checkbox-card ${isSelected ? "selected" : ""} ${isLocked ? "locked" : ""}" data-skill-name="${sk.name}" data-allowed="${isAllowedByClass}">
@@ -2884,7 +2903,7 @@ export class CharacterCreatorController {
                                     <span class="skill-name">${sk.name}</span>
                                 </div>
                                 <span class="skill-stat-badge">
-                                    ${isBgSkill ? "Background" : isHumanExtra ? "Human" : sk.stat.toUpperCase()}
+                                    ${isBgSkill ? "Background" : isHumanExtra ? "Human" : isElfKeen ? "Elf" : sk.stat.toUpperCase()}
                                 </span>
                             </div>
                         `;
@@ -2899,8 +2918,9 @@ export class CharacterCreatorController {
                             ${ALL_SKILLS.filter((sk) => {
                                 const isBgSkill = bgSkills.includes(sk.name);
                                 const isHumanExtra = this.state.speciesId === "human" && this.state.humanExtraSkill === sk.name;
+                                const isElfKeen = this.state.speciesId === "elf" && (this.state.elfKeenSkill || "Perception") === sk.name;
                                 const isClassSkill = this.state.classSkills.includes(sk.name);
-                                return isBgSkill || isHumanExtra || isClassSkill;
+                                return isBgSkill || isHumanExtra || isElfKeen || isClassSkill;
                             }).map((sk) => {
                                 const isExpert = this.state.expertiseSkills.includes(sk.name);
                                 return `
@@ -3497,6 +3517,12 @@ export class CharacterCreatorController {
                 this.state.humanExtraFeatId = (e.target as HTMLSelectElement).value;
                 this.updateLiveSummary();
             });
+
+            const elfSkill = document.getElementById("elf-skill-select") as HTMLSelectElement;
+            elfSkill?.addEventListener("change", (e) => {
+                this.state.elfKeenSkill = (e.target as HTMLSelectElement).value;
+                this.updateLiveSummary();
+            });
         } else if (step === 3) {
             document.querySelectorAll(".class-card").forEach((card) => {
                 card.addEventListener("click", () => {
@@ -4079,7 +4105,8 @@ export class CharacterCreatorController {
             // Skills
             const bgSkills = bg.skills;
             const humanExtra = this.state.speciesId === "human" ? [this.state.humanExtraSkill] : [];
-            const allProfSkills = Array.from(new Set([...this.state.classSkills, ...bgSkills, ...humanExtra]));
+            const elfKeen = this.state.speciesId === "elf" ? [this.state.elfKeenSkill || "Perception"] : [];
+            const allProfSkills = Array.from(new Set([...this.state.classSkills, ...bgSkills, ...humanExtra, ...elfKeen]));
 
             const skillsPayload = ALL_SKILLS.map((sk) => {
                 const isProf = allProfSkills.includes(sk.name);
@@ -4177,6 +4204,46 @@ export class CharacterCreatorController {
                 }
             }
 
+            // Species and Lineage innate spells
+            const selectedLineage = species.lineages?.find((l) => l.id === this.state.lineageId);
+            const speciesSpells: Array<{ name: string; level: number }> = [];
+            if (species.id === "aasimar") {
+                speciesSpells.push({ name: "Light", level: 0 });
+            }
+            if (species.id === "tiefling") {
+                speciesSpells.push({ name: "Thaumaturgy", level: 0 });
+            }
+            if (selectedLineage && Array.isArray(selectedLineage.spellsGranted)) {
+                selectedLineage.spellsGranted.forEach((sg: any) => {
+                    if (this.state.level >= sg.level) {
+                        const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === sg.spellName.toLowerCase());
+                        speciesSpells.push({
+                            name: sg.spellName,
+                            level: spDef ? spDef.level : (sg.level === 1 ? 0 : 1)
+                        });
+                    }
+                });
+            }
+            for (const spItem of speciesSpells) {
+                if (!spellsPayload.some((s) => s.name.toLowerCase() === spItem.name.toLowerCase())) {
+                    const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spItem.name.toLowerCase());
+                    spellsPayload.push({
+                        name: spItem.name,
+                        level: spDef ? spDef.level : spItem.level,
+                        school: spDef?.school || "Evocation",
+                        source: "Species",
+                        prepared: true,
+                        castingTime: spDef?.castingTime || "1 Action",
+                        range: spDef?.range || "Self",
+                        duration: spDef?.duration || "Instantaneous",
+                        components: spDef?.components || "V, S",
+                        concentration: spDef?.concentration || false,
+                        ritual: spDef?.ritual || false,
+                        description: spDef?.description || `Granted by ${species.name} traits.`
+                    });
+                }
+            }
+
             const wrapHtmlParagraph = (text: string): string => {
                 const trimmed = (text || "").trim();
                 if (!trimmed) return "";
@@ -4248,6 +4315,26 @@ export class CharacterCreatorController {
                     description: wrapHtmlParagraph(t.description)
                 });
             });
+
+            if (selectedLineage) {
+                if (selectedLineage.traits && selectedLineage.traits.length > 0) {
+                    selectedLineage.traits.forEach((t) => {
+                        speciesTraitsList.push({
+                            name: t.name,
+                            source: `${species.name} (${selectedLineage.name})`,
+                            type: "Species",
+                            description: wrapHtmlParagraph(t.description)
+                        });
+                    });
+                } else if (selectedLineage.description) {
+                    speciesTraitsList.push({
+                        name: selectedLineage.name,
+                        source: species.name,
+                        type: "Species",
+                        description: wrapHtmlParagraph(selectedLineage.description)
+                    });
+                }
+            }
 
             const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
             const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);

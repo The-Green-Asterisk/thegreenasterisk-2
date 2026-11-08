@@ -38,7 +38,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Keen Senses",
-                description: "You have proficiency in the Perception skill."
+                description: "You have proficiency in the Insight, Perception, or Survival skill."
             },
             {
                 name: "Trance",
@@ -208,12 +208,20 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         darkvision: "Darkvision 60 ft.",
         traits: [
             {
+                name: "Draconic Ancestry",
+                description: "Your lineage stems from a dragon progenitor. Choose the kind of dragon from the Draconic Ancestors table. Your choice affects your Breath Weapon and Damage Resistance traits as well as your appearance."
+            },
+            {
                 name: "Breath Weapon",
-                description: "When you take the Attack action, you can replace one of your attacks with an exhalation of magical energy in a 15-foot cone or 30-foot line (1d10 damage of your draconic ancestry type, scaling to 2d10 at 5th, 3d10 at 11th, 4d10 at 17th level). Usable PB times per Long Rest."
+                description: "When you take the Attack action, you can replace one of your attacks with an exhalation of magical energy in a 15-foot cone or 30-foot line (1d10 damage of your draconic ancestry type, scaling to 2d10 at 5th, 3d10 at 11th, and 4d10 at 17th level; Dex save DC 8 + Con mod + PB). Usable PB times per Long Rest."
             },
             {
                 name: "Damage Resistance",
                 description: "You have Resistance to the damage type associated with your Draconic Ancestry."
+            },
+            {
+                name: "Darkvision",
+                description: "You have Darkvision with a range of 60 feet."
             },
             {
                 name: "Draconic Flight (Level 5)",
@@ -292,7 +300,15 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         traits: [
             {
                 name: "Adrenaline Rush",
-                description: "You can take the Dash action as a Bonus Action a number of times equal to your Proficiency Bonus per Long Rest. When you do, you gain Temporary Hit Points equal to your Proficiency Bonus."
+                description: "You can take the Dash action as a Bonus Action a number of times equal to your Proficiency Bonus per Short or Long Rest. When you do so, you gain Temporary Hit Points equal to your Proficiency Bonus."
+            },
+            {
+                name: "Darkvision",
+                description: "You have Darkvision with a range of 120 feet."
+            },
+            {
+                name: "Powerful Build",
+                description: "You count as one size larger when determining your carrying capacity and the weight you can push, drag, or lift."
             },
             {
                 name: "Relentless Endurance",
@@ -342,8 +358,12 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 description: "You have Resistance to Necrotic damage and Radiant damage."
             },
             {
+                name: "Darkvision",
+                description: "You have Darkvision with a range of 60 feet."
+            },
+            {
                 name: "Healing Hands",
-                description: "As an Action, you can touch a creature and roll a number of d4s equal to your Proficiency Bonus. The creature regains Hit Points equal to the total rolled. Once per Long Rest."
+                description: "As a Magic action, you can touch a creature and roll a number of d4s equal to your Proficiency Bonus. The creature regains Hit Points equal to the total rolled. Once per Long Rest."
             },
             {
                 name: "Light Bearer",
@@ -351,7 +371,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Celestial Revelation (Level 3)",
-                description: "At level 3, you can transform for 1 minute as a Bonus Action once per Long Rest, choosing Heavenly Wings (Fly Speed), Inner Radiance (radiant aura damage), or Necrotic Shroud (frighten foes and deal necrotic damage)."
+                description: "At level 3, you can transform for 1 minute as a Bonus Action once per Long Rest, choosing Heavenly Wings (Fly Speed and radiant damage), Inner Radiance (radiant aura damage), or Necrotic Shroud (frighten foes and deal necrotic damage)."
             }
         ]
     }

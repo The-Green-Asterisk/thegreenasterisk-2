@@ -1356,4 +1356,68 @@ describe("CharacterCreatorController", () => {
         postSpy.mockRestore();
         putSpy.mockRestore();
     });
+
+    it("correctly grants 2024 background skills and species lineage traits/spells upon creation", async () => {
+        const requestModule = await import("../../../src/services/request");
+        let capturedPayload: any = null;
+        const postSpy = vi.spyOn(requestModule, "postData").mockImplementation(async (_url: string, payload: any) => {
+            capturedPayload = payload;
+            return { savedCharacter: { id: 999, siteCharacterId: "tga-test-origins" } } as any;
+        });
+
+        // Setup character with 2024 Sailor background and High Elf lineage
+        ctrl.state.name = "Aelion Stargazer";
+        ctrl.state.level = 5;
+        ctrl.state.speciesId = "elf";
+        ctrl.state.lineageId = "high-elf";
+        ctrl.state.elfKeenSkill = "Insight";
+        ctrl.state.backgroundId = "sailor";
+        ctrl.state.classId = "wizard";
+        ctrl.state.classSkills = ["Arcana", "History"];
+
+        // Verify Step 2 renders Elf Keen Senses choice
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+        ctrl.renderStep(2);
+        const elfSelect = document.getElementById("elf-skill-select") as HTMLSelectElement;
+        expect(elfSelect).toBeTruthy();
+        expect(elfSelect.value).toBe("Insight");
+
+        // Verify Step 6 locks Sailor skills (Acrobatics, Perception) and Elf Keen skill (Insight)
+        ctrl.renderStep(6);
+        const acrobaticsCard = document.querySelector('.skill-checkbox-card[data-skill-name="Acrobatics"]') as HTMLElement;
+        const perceptionCard = document.querySelector('.skill-checkbox-card[data-skill-name="Perception"]') as HTMLElement;
+        const insightCard = document.querySelector('.skill-checkbox-card[data-skill-name="Insight"]') as HTMLElement;
+        expect(acrobaticsCard.classList.contains("selected")).toBe(true);
+        expect(perceptionCard.classList.contains("selected")).toBe(true);
+        expect(insightCard.classList.contains("selected")).toBe(true);
+        expect(acrobaticsCard.textContent).toContain("Background");
+        expect(perceptionCard.textContent).toContain("Background");
+        expect(insightCard.textContent).toContain("Elf");
+
+        // Submit character and verify built payload
+        await ctrl.submitCharacter();
+        expect(capturedPayload).toBeTruthy();
+        const char = capturedPayload.character || capturedPayload;
+
+        // 1. Sailor background skills in payload
+        const profSkills = char.skills.filter((s: any) => s.proficiency === "proficient").map((s: any) => s.name);
+        expect(profSkills).toContain("Acrobatics");
+        expect(profSkills).toContain("Perception");
+        expect(profSkills).toContain("Insight");
+
+        // 2. High Elf lineage traits in features
+        const speciesFeatures = char.features.filter((f: any) => f.type === "Species").map((f: any) => f.name);
+        expect(speciesFeatures).toContain("Fey Ancestry");
+        expect(speciesFeatures).toContain("Keen Senses");
+        expect(speciesFeatures).toContain("Trance");
+        expect(speciesFeatures).toContain("High Elf Magic");
+
+        // 3. Innate High Elf spells at level 5 (Prestidigitation, Detect Magic, Misty Step)
+        const innateSpells = char.spells.filter((s: any) => s.source === "Species").map((s: any) => s.name);
+        expect(innateSpells).toContain("Prestidigitation");
+        expect(innateSpells).toContain("Detect Magic");
+        expect(innateSpells).toContain("Misty Step");
+
+        postSpy.mockRestore();
+    });
 });

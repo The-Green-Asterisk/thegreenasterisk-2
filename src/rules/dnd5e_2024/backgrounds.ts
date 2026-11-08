@@ -124,12 +124,12 @@ export const BACKGROUNDS_2024: BackgroundDefinition[] = [
     {
         id: "sailor",
         name: "Sailor",
-        description: "You spent years serving aboard seagoing vessels, battling wind, tides, and tavern brawls.",
+        description: "You called the open water your home, surviving some of the sea's harshest storms and learning to respect the power of nature.",
         allowedAbilities: ["str", "dex", "wis"],
-        skills: ["Athletics", "Perception"],
+        skills: ["Acrobatics", "Perception"],
         tool: "Navigator's Tools",
         originFeatId: "tavern-brawler",
-        equipmentSummary: "A belaying pin (club), 50 feet of silk rope, a lucky charm, common clothes, and 10 GP."
+        equipmentSummary: "A dagger, navigator's tools, 50 feet of silk rope, traveler's clothes, and 10 GP; or 50 GP."
     },
     {
         id: "scribe",
