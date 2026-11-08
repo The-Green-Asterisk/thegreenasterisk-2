@@ -31,56 +31,6 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
-const SHARED_CLASS_FEATURE_NAMES = new Set([
-    "ability score improvement",
-    "subclass feature",
-    "extra attack",
-    "spellcasting",
-    "channel divinity",
-    "fighting style",
-    "weapon mastery",
-    "epic boon"
-]);
-
-// Canonical subclass feature mapping: featureNameLower -> { classSlug: string, subId: string, subName: string }
-const CANONICAL_SUBCLASS_FEATURE_MAP = new Map<string, { classSlug: string; subId: string; subName: string }>();
-
-// Canonical base class feature mapping: featureNameLower -> Set of classSlugs
-const CANONICAL_BASE_CLASS_FEATURE_MAP = new Map<string, Set<string>>();
-
-// Canonical subclass ownership: subId / subName / cleanSubName -> classSlug
-const CANONICAL_SUBCLASS_OWNER_MAP = new Map<string, string>();
-
-for (const sc of SEED_CLASSES) {
-    for (const f of sc.features || []) {
-        const fn = String(f.name || "").trim().toLowerCase();
-        if (fn) {
-            if (!CANONICAL_BASE_CLASS_FEATURE_MAP.has(fn)) {
-                CANONICAL_BASE_CLASS_FEATURE_MAP.set(fn, new Set());
-            }
-            CANONICAL_BASE_CLASS_FEATURE_MAP.get(fn)!.add(sc.id);
-        }
-    }
-    for (const sub of sc.subclasses || []) {
-        const rawName = String(sub.name || "").trim().toLowerCase();
-        const cleanName = rawName.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
-        if (sub.id) CANONICAL_SUBCLASS_OWNER_MAP.set(sub.id.toLowerCase(), sc.id);
-        if (rawName) CANONICAL_SUBCLASS_OWNER_MAP.set(rawName, sc.id);
-        if (cleanName) CANONICAL_SUBCLASS_OWNER_MAP.set(cleanName, sc.id);
-
-        for (const sf of sub.features || []) {
-            const sfn = String(sf.name || "").trim().toLowerCase();
-            if (sfn) {
-                CANONICAL_SUBCLASS_FEATURE_MAP.set(sfn, {
-                    classSlug: sc.id,
-                    subId: sub.id,
-                    subName: sub.name
-                });
-            }
-        }
-    }
-}
-
 const BOILERPLATE_CLASS_FEATURES = new Set([
     "hit points",
     "proficiencies",
@@ -99,51 +49,6 @@ const BOILERPLATE_CLASS_FEATURES = new Set([
     "core warlock traits",
     "core wizard traits"
 ]);
-
-const ADDITIONAL_CANONICAL_SUBCLASS_FEATURES: Record<string, { classSlug: string; subId: string; subName: string }> = {
-    "entropic ward": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "awakened mind": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "thought shield": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "create thrall": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "psychic spells": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "clairvoyant combat": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "clairvoyant combatant": { classSlug: "warlock", subId: "great-old-one", subName: "Great Old One Patron" },
-    "beguiling magic": { classSlug: "bard", subId: "glamour", subName: "College of Glamour" },
-    "mantle of inspiration": { classSlug: "bard", subId: "glamour", subName: "College of Glamour" },
-    "mantle of majesty": { classSlug: "bard", subId: "glamour", subName: "College of Glamour" },
-    "unbreakable majesty": { classSlug: "bard", subId: "glamour", subName: "College of Glamour" },
-    "enthralling performance": { classSlug: "bard", subId: "glamour", subName: "College of Glamour" },
-};
-
-const ADDITIONAL_CANONICAL_BASE_FEATURES: Record<string, string> = {
-    "otherworldly patron": "warlock",
-    "eldritch invocations": "warlock",
-    "pact boon": "warlock",
-    "mystic arcanum": "warlock",
-    "magical cunning": "warlock",
-    "eldritch master": "warlock",
-    "contact patron": "warlock",
-    "bardic inspiration": "bard",
-    "jack of all trades": "bard",
-    "countercharm": "bard",
-    "font of inspiration": "bard",
-    "magical secrets": "bard",
-    "superior inspiration": "bard",
-    "words of creation": "bard"
-};
-
-for (const [feat, meta] of Object.entries(ADDITIONAL_CANONICAL_SUBCLASS_FEATURES)) {
-    CANONICAL_SUBCLASS_FEATURE_MAP.set(feat, meta);
-}
-for (const [feat, cls] of Object.entries(ADDITIONAL_CANONICAL_BASE_FEATURES)) {
-    if (!CANONICAL_BASE_CLASS_FEATURE_MAP.has(feat)) {
-        CANONICAL_BASE_CLASS_FEATURE_MAP.set(feat, new Set());
-    }
-    CANONICAL_BASE_CLASS_FEATURE_MAP.get(feat)!.add(cls);
-}
-
-CANONICAL_SUBCLASS_OWNER_MAP.set("the-great-old-one", "warlock");
-CANONICAL_SUBCLASS_OWNER_MAP.set("the great old one", "warlock");
 
 export default class RulesController extends BaseController {
     /**
@@ -213,10 +118,6 @@ export default class RulesController extends BaseController {
                         const fnLower = String(cf?.name || "").trim().toLowerCase();
                         if (BOILERPLATE_CLASS_FEATURES.has(fnLower)) return false;
                         if (/^\d+:\s*/.test(fnLower)) return false;
-                        const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
-                        if (canonBase && !canonBase.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) return false;
-                        const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
-                        if (canonSub) return false;
                         return true;
                     });
                     const mergedFeatures = (seedCls.features || []).map((sf) => {
@@ -236,8 +137,7 @@ export default class RulesController extends BaseController {
                         const existingSub = currentSubs.find(
                             (cs) => cs?.id === ss.id ||
                                     slugify(String(cs?.name || "")) === ss.id ||
-                                    String(cs?.name || "").toLowerCase() === ss.name.toLowerCase() ||
-                                    (ss.id === "great-old-one" && (cs?.id === "the-great-old-one" || String(cs?.name || "").toLowerCase() === "the great old one"))
+                                    String(cs?.name || "").toLowerCase() === ss.name.toLowerCase()
                         );
                         if (!existingSub) return ss;
                         const existingSubFeatures: any[] = Array.isArray(existingSub.features) ? existingSub.features : [];
@@ -257,14 +157,6 @@ export default class RulesController extends BaseController {
                                 const esfNameLower = String(esf.name || "").trim().toLowerCase();
                                 if (BOILERPLATE_CLASS_FEATURES.has(esfNameLower)) continue;
                                 if (/^\d+:\s*/.test(esfNameLower)) continue;
-                                const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(esfNameLower);
-                                if (canonSub && (canonSub.classSlug !== rc.slug || canonSub.subId !== ss.id)) {
-                                    continue;
-                                }
-                                const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(esfNameLower);
-                                if (canonBase && !canonBase.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(esfNameLower)) {
-                                    continue;
-                                }
                                 mergedSubFeatures.push({
                                     ...esf,
                                     level: this.inferFeatureLevel(esf.name, esf.description, esf.level)
@@ -272,19 +164,11 @@ export default class RulesController extends BaseController {
                             }
                         }
 
-                        // Clean mergedSubFeatures of any cross-contaminated features
+                        // Clean mergedSubFeatures of any boilerplate or numbered artifacts
                         const cleanSubFeatures = mergedSubFeatures.filter((f: any) => {
                             const fNameLower = String(f.name || "").trim().toLowerCase();
                             if (BOILERPLATE_CLASS_FEATURES.has(fNameLower)) return false;
                             if (/^\d+:\s*/.test(fNameLower)) return false;
-                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
-                            if (canonSub && (canonSub.classSlug !== rc.slug || canonSub.subId !== ss.id)) {
-                                return false;
-                            }
-                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
-                            if (canonBase && !canonBase.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) {
-                                return false;
-                            }
                             return true;
                         });
 
@@ -299,20 +183,11 @@ export default class RulesController extends BaseController {
 
                     for (const cs of currentSubs) {
                         if (!cs) continue;
-                        const csId = String(cs.id || "").toLowerCase();
                         const csNameLower = String(cs.name || "").trim().toLowerCase();
-                        const csClean = csNameLower.replace(/\s*\([^)]+\)\s*$/, "").trim();
-                        if (csId === "the-great-old-one" || csNameLower === "the great old one") {
-                            continue;
-                        }
-                        const owner = CANONICAL_SUBCLASS_OWNER_MAP.get(csId) ||
-                            CANONICAL_SUBCLASS_OWNER_MAP.get(csNameLower) ||
-                            CANONICAL_SUBCLASS_OWNER_MAP.get(csClean);
-                        if (owner && owner !== rc.slug) {
-                            continue;
-                        }
                         if (!mergedSubs.some((ms) => ms.id === cs.id || String(ms.name || "").toLowerCase() === csNameLower)) {
-                            mergedSubs.push(cs);
+                            if (cs.isCustom || cs.classSlug === rc.slug || cs.classId === rc.id) {
+                                mergedSubs.push(cs);
+                            }
                         }
                     }
 
@@ -374,12 +249,10 @@ export default class RulesController extends BaseController {
                     }
                 }
 
-                // Remove cross-class contaminated or duplicate records from rule_subclasses table
+                // Remove records from rule_subclasses table where the subclass doesn't belong to the class
                 for (const se of existingSubclasses) {
-                    const owner = CANONICAL_SUBCLASS_OWNER_MAP.get(se.slug?.toLowerCase()) ||
-                        CANONICAL_SUBCLASS_OWNER_MAP.get(se.name?.toLowerCase());
-                    const isDuplicateAlias = (se.classSlug === "warlock" && se.slug === "the-great-old-one");
-                    if ((isDuplicateAlias || (owner && owner !== se.classSlug)) && typeof subclassRepo.remove === "function") {
+                    const parentClass = dbClasses.find(c => c.id === se.classId || c.slug === se.classSlug);
+                    if (!parentClass && typeof subclassRepo.remove === "function") {
                         await subclassRepo.remove(se);
                     }
                 }
@@ -545,16 +418,10 @@ export default class RulesController extends BaseController {
                 const subclasses = Array.isArray(rawSubs)
                     ? rawSubs
                         .filter((sub: any) => {
-                            const subIdLower = String(sub.id || "").toLowerCase();
-                            const rawName = String(sub.name || "").trim().toLowerCase();
-                            const cleanName = rawName.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
-                            if (rc.slug === "warlock" && (subIdLower === "the-great-old-one" || cleanName === "the great old one")) {
+                            if (sub.classSlug && sub.classSlug !== rc.slug) {
                                 return false;
                             }
-                            const owner = CANONICAL_SUBCLASS_OWNER_MAP.get(subIdLower) ||
-                                CANONICAL_SUBCLASS_OWNER_MAP.get(rawName) ||
-                                CANONICAL_SUBCLASS_OWNER_MAP.get(cleanName);
-                            return !owner || owner === rc.slug;
+                            return true;
                         })
                         .map((sub: any) => {
                             const seedSub = seedCls?.subclasses?.find((ss: any) => ss.id === sub.id || ss.name === sub.name);
@@ -565,14 +432,6 @@ export default class RulesController extends BaseController {
                                         if (baseFeats.has(fnLower)) return false;
                                         if (BOILERPLATE_CLASS_FEATURES.has(fnLower)) return false;
                                         if (/^\d+:\s*/.test(fnLower)) return false;
-                                        const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
-                                        if (cs && (cs.classSlug !== rc.slug || cs.subId !== sub.id)) {
-                                            return false;
-                                        }
-                                        const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
-                                        if (cb && !cb.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) {
-                                            return false;
-                                        }
                                         return true;
                                     })
                                     .map((f: any) => {
@@ -608,7 +467,6 @@ export default class RulesController extends BaseController {
 
                 // If loadedSubclasses has entries for this class, merge in any custom/new subclasses
                 for (const lsub of loadedSubclasses.filter((ls) => ls.classSlug === rc.slug || ls.classId === rc.id)) {
-                    if (rc.slug === "warlock" && lsub.slug === "the-great-old-one") continue;
                     if (!subclasses.some((s: any) => s.id === lsub.slug || s.slug === lsub.slug)) {
                         subclasses.push(lsub);
                     }
@@ -618,10 +476,6 @@ export default class RulesController extends BaseController {
                     const fnLower = String(f?.name || "").toLowerCase().trim();
                     if (BOILERPLATE_CLASS_FEATURES.has(fnLower)) return false;
                     if (/^\d+:\s*/.test(fnLower)) return false;
-                    const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
-                    if (cb && !cb.has(rc.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) return false;
-                    const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
-                    if (cs) return false;
                     return true;
                 });
                 const progression = rc.progressionJson
@@ -788,16 +642,13 @@ export default class RulesController extends BaseController {
                         if (!fDef || !fDef.name) continue;
                         const fName = String(fDef.name).trim();
                         const fNameLower = fName.toLowerCase();
+                        if (BOILERPLATE_CLASS_FEATURES.has(fNameLower) || /^\d+:\s*/.test(fNameLower)) continue;
+
                         const fClassId = fDef.classId || fDef.subclassId || cf.classId || cf.subclassId;
                         const fSourceLower = String(fDef.source || cf.source || "").toLowerCase().trim();
 
                         if (fClassId && (otherClassIds.has(fClassId) || otherSubclassIds.has(fClassId))) continue;
                         if (fSourceLower && (otherClassNames.has(fSourceLower) || otherSubclassNames.has(fSourceLower))) continue;
-
-                        const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
-                        if (canonSub && canonSub.classSlug !== slug) continue;
-                        const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
-                        if (canonBase && !canonBase.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) continue;
 
                         const rawSubName = subDef?.name ? String(subDef.name).trim().toLowerCase() : "";
                         const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase();
@@ -806,8 +657,7 @@ export default class RulesController extends BaseController {
 
                         const isSub = (subDef?.id && fClassId === subDef.id) ||
                             (rawSubName && (fSourceLower === rawSubName || fSourceLower === cleanSubName)) ||
-                            isSubByName ||
-                            (canonSub && canonSub.classSlug === slug);
+                            isSubByName;
 
                         if (!isSub) {
                             baseFeatureNames.add(fNameLower);
@@ -838,12 +688,8 @@ export default class RulesController extends BaseController {
                             if (!fDef || !fDef.name) continue;
                             const fName = String(fDef.name).trim();
                             const fNameLower = fName.toLowerCase();
+                            if (BOILERPLATE_CLASS_FEATURES.has(fNameLower) || /^\d+:\s*/.test(fNameLower)) continue;
                             if (baseFeatureNames.has(fNameLower)) continue;
-
-                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
-                            if (canonSub && canonSub.classSlug !== slug) continue;
-                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
-                            if (canonBase && !canonBase.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) continue;
 
                             const rawHtml = String(fDef.description || fDef.snippet || "").trim();
                             if (!extractedSubclassFeatures.some((f) => f.name.toLowerCase() === fNameLower)) {
@@ -862,6 +708,7 @@ export default class RulesController extends BaseController {
                             if (!fDef || !fDef.name) continue;
                             const fName = String(fDef.name).trim();
                             const fNameLower = fName.toLowerCase();
+                            if (BOILERPLATE_CLASS_FEATURES.has(fNameLower) || /^\d+:\s*/.test(fNameLower)) continue;
                             if (baseFeatureNames.has(fNameLower)) continue;
 
                             const fClassId = fDef.classId || fDef.subclassId || cf.classId || cf.subclassId;
@@ -870,18 +717,10 @@ export default class RulesController extends BaseController {
                             if (fClassId && (otherClassIds.has(fClassId) || otherSubclassIds.has(fClassId))) continue;
                             if (fSourceLower && (otherClassNames.has(fSourceLower) || otherSubclassNames.has(fSourceLower))) continue;
 
-                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(fNameLower);
-                            if (canonSub && (canonSub.classSlug !== slug || (canonSub.subId !== slugify(cleanSubName) && canonSub.subId !== slugify(rawSubName) && canonSub.subName.toLowerCase() !== rawSubLower && canonSub.subName.toLowerCase() !== cleanSubLower))) {
-                                continue;
-                            }
-                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fNameLower);
-                            if (canonBase && !canonBase.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fNameLower)) continue;
-
                             const isSubByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === fNameLower);
                             const isSub = (subDef.id && fClassId === subDef.id) ||
                                 (fSourceLower && (fSourceLower === rawSubLower || fSourceLower === cleanSubLower)) ||
-                                isSubByName ||
-                                (canonSub && canonSub.classSlug === slug);
+                                isSubByName;
 
                             if (isSub) {
                                 const rawHtml = String(fDef.description || fDef.snippet || "").trim();
@@ -951,14 +790,7 @@ export default class RulesController extends BaseController {
                             targetSub.features = targetSub.features.filter((f: any) => {
                                 const fnLower = String(f.name || "").trim().toLowerCase();
                                 if (baseFeatureNames.has(fnLower)) return false;
-                                const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
-                                if (cs && (cs.classSlug !== slug || (cs.subId !== targetSub.id && cs.subName.toLowerCase() !== targetSub.name.toLowerCase()))) {
-                                    return false;
-                                }
-                                const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
-                                if (cb && !cb.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) {
-                                    return false;
-                                }
+                                if (BOILERPLATE_CLASS_FEATURES.has(fnLower) || /^\d+:\s*/.test(fnLower)) return false;
                                 return true;
                             });
                             targetSub.features.sort((a: any, b: any) => a.level - b.level);
@@ -987,10 +819,8 @@ export default class RulesController extends BaseController {
                         // Clean existingFeatures of any cross-class or subclass features
                         existingFeatures = existingFeatures.filter((f: any) => {
                             const fnLower = String(f.name || "").trim().toLowerCase();
-                            const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
-                            if (cb && !cb.has(slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) return false;
-                            const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
-                            if (cs) return false;
+                            if (BOILERPLATE_CLASS_FEATURES.has(fnLower) || /^\d+:\s*/.test(fnLower)) return false;
+                            if (targetSub?.features?.some((sf: any) => String(sf.name || "").trim().toLowerCase() === fnLower)) return false;
                             return true;
                         });
                         existingFeatures.sort((a, b) => a.level - b.level);
@@ -1308,6 +1138,7 @@ export default class RulesController extends BaseController {
                             const featSource = String(feat.source || "").toLowerCase().trim();
                             const featName = String(feat.name).trim();
                             const featNameLower = featName.toLowerCase();
+                            if (BOILERPLATE_CLASS_FEATURES.has(featNameLower) || /^\d+:\s*/.test(featNameLower)) continue;
                             const rawHtml = String(feat.description || "").trim();
                             const rawSubName = cls.subclass ? String(cls.subclass).trim().toLowerCase() : "";
                             const cleanSubName = cls.subclass ? String(cls.subclass).replace(/\s*\([^)]+\)\s*$/, "").trim().toLowerCase() : "";
@@ -1315,18 +1146,10 @@ export default class RulesController extends BaseController {
 
                             if (otherClassNames.has(featSource) || otherSubclassNames.has(featSource)) continue;
 
-                            const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(featNameLower);
-                            if (canonSub && canonSub.classSlug !== ruleClass.slug) continue;
-                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(featNameLower);
-                            if (canonBase && !canonBase.has(ruleClass.slug) && !SHARED_CLASS_FEATURE_NAMES.has(featNameLower)) continue;
-
                             const isMatchesThisSub = (
                                 featSource === rawSubName ||
                                 featSource === cleanSubName ||
-                                (targetSub?.name && featSource === targetSub.name.toLowerCase()) ||
-                                (canonSub && canonSub.classSlug === ruleClass.slug && (
-                                    targetSub && (canonSub.subId === targetSub.id || canonSub.subName.toLowerCase() === targetSub.name.toLowerCase())
-                                ))
+                                (targetSub?.name && featSource === targetSub.name.toLowerCase())
                             );
 
                             if (targetSub && !isBaseClassFeature && isMatchesThisSub) {
@@ -1362,8 +1185,7 @@ export default class RulesController extends BaseController {
                             } else if (
                                 featSource === name.toLowerCase() ||
                                 isBaseClassFeature ||
-                                (canonBase && canonBase.has(ruleClass.slug)) ||
-                                (featType === "class" && !canonSub && !otherClassNames.has(featSource) && !otherSubclassNames.has(featSource))
+                                (featType === "class" && !isMatchesThisSub && !otherClassNames.has(featSource) && !otherSubclassNames.has(featSource))
                             ) {
                                 const existingIdx = existingClassFeatures.findIndex((f: any) => f.name.toLowerCase() === featNameLower);
                                 const featLvl = RulesController.inferFeatureLevel(featName, rawHtml, feat.level || 1);
@@ -1402,14 +1224,7 @@ export default class RulesController extends BaseController {
                             targetSub.features = targetSub.features.filter((f: any) => {
                                 const fnLower = String(f.name || "").trim().toLowerCase();
                                 if (baseFeatureNames.has(fnLower)) return false;
-                                const cs = CANONICAL_SUBCLASS_FEATURE_MAP.get(fnLower);
-                                if (cs && (cs.classSlug !== ruleClass.slug || (cs.subId !== targetSub.id && cs.subName.toLowerCase() !== targetSub.name.toLowerCase()))) {
-                                    return false;
-                                }
-                                const cb = CANONICAL_BASE_CLASS_FEATURE_MAP.get(fnLower);
-                                if (cb && !cb.has(ruleClass.slug) && !SHARED_CLASS_FEATURE_NAMES.has(fnLower)) {
-                                    return false;
-                                }
+                                if (BOILERPLATE_CLASS_FEATURES.has(fnLower) || /^\d+:\s*/.test(fnLower)) return false;
                                 return true;
                             });
                             if (targetSub.features.length !== originalLen) {
@@ -1593,19 +1408,59 @@ export default class RulesController extends BaseController {
         try {
             // 1. From RuleClass, RuleSpecies, RuleFeat
             const classRepo = AppDataSource.getRepository(RuleClass);
+            const subclassRepo = AppDataSource.getRepository(RuleSubclass);
             const speciesRepo = AppDataSource.getRepository(RuleSpecies);
             const featRepo = AppDataSource.getRepository(RuleFeat);
 
-            const [dbClasses, dbSpecies, dbFeats] = await Promise.all([
+            const [dbClasses, dbSubclasses, dbSpecies, dbFeats] = await Promise.all([
                 typeof classRepo.find === "function" ? classRepo.find() : Promise.resolve([]),
+                typeof subclassRepo?.find === "function" ? subclassRepo.find() : Promise.resolve([]),
                 typeof speciesRepo.find === "function" ? speciesRepo.find() : Promise.resolve([]),
                 typeof featRepo.find === "function" ? featRepo.find() : Promise.resolve([])
             ]);
 
+            // Dynamically index classes, subclasses, and their features from database (and seed fallback)
+            const subclassToClassMap = new Map<string, string>();
+            const featureToClassMap = new Map<string, Set<string>>();
+
+            const registerClassFeature = (featName: string, classSlug: string) => {
+                const fn = String(featName || "").trim().toLowerCase();
+                if (!fn) return;
+                if (!featureToClassMap.has(fn)) {
+                    featureToClassMap.set(fn, new Set());
+                }
+                featureToClassMap.get(fn)!.add(classSlug.toLowerCase());
+            };
+
+            const registerSubclass = (subNameOrSlug: string, classSlug: string) => {
+                const raw = String(subNameOrSlug || "").trim().toLowerCase();
+                if (!raw) return;
+                subclassToClassMap.set(raw, classSlug.toLowerCase());
+                const clean = raw.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                if (clean) subclassToClassMap.set(clean, classSlug.toLowerCase());
+            };
+
+            // Seed defaults
+            for (const sc of SEED_CLASSES) {
+                const cSlug = sc.id;
+                for (const f of sc.features || []) {
+                    if (f.name) registerClassFeature(f.name, cSlug);
+                }
+                for (const sub of sc.subclasses || []) {
+                    if (sub.name) registerSubclass(sub.name, cSlug);
+                    if (sub.id) registerSubclass(sub.id, cSlug);
+                    for (const sf of sub.features || []) {
+                        if (sf.name) registerClassFeature(sf.name, cSlug);
+                    }
+                }
+            }
+
             for (const rc of dbClasses) {
+                const cSlug = rc.slug;
                 const cNameLower = String(rc.name || "").toLowerCase();
                 const cFeats: any[] = this.safeParse(rc.featuresJson, []);
                 for (const cf of cFeats) {
+                    if (cf?.name) registerClassFeature(cf.name, cSlug);
                     if (cf?.fromDndBeyond && (cf.htmlDescription || cf.description)) {
                         const desc = cf.htmlDescription || `<p>${cf.description}</p>`;
                         featuresByKey.set(`${cNameLower}::${String(cf.name).toLowerCase()}`, { description: desc });
@@ -1614,13 +1469,27 @@ export default class RulesController extends BaseController {
                 }
                 const subs: any[] = this.safeParse(rc.subclassesJson, []);
                 for (const sub of subs) {
+                    if (sub?.name) registerSubclass(sub.name, cSlug);
+                    if (sub?.id) registerSubclass(sub.id, cSlug);
                     const sNameLower = String(sub?.name || "").toLowerCase();
                     for (const sf of Array.isArray(sub?.features) ? sub.features : []) {
+                        if (sf?.name) registerClassFeature(sf.name, cSlug);
                         if (sf?.fromDndBeyond && (sf.htmlDescription || sf.description)) {
                             const desc = sf.htmlDescription || `<p>${sf.description}</p>`;
                             featuresByKey.set(`${sNameLower}::${String(sf.name).toLowerCase()}`, { description: desc });
                             featuresByKey.set(`any::${String(sf.name).toLowerCase()}`, { description: desc });
                         }
+                    }
+                }
+            }
+
+            for (const lsub of dbSubclasses) {
+                if (lsub.classSlug) {
+                    if (lsub.name) registerSubclass(lsub.name, lsub.classSlug);
+                    if (lsub.slug) registerSubclass(lsub.slug, lsub.classSlug);
+                    const sFeats: any[] = this.safeParse(lsub.featuresJson, []);
+                    for (const sf of sFeats) {
+                        if (sf?.name) registerClassFeature(sf.name, lsub.classSlug);
                     }
                 }
             }
@@ -1700,30 +1569,34 @@ export default class RulesController extends BaseController {
 
                         // Determine owning class(es)
                         let targetClasses: string[] = [];
-                        const canonSub = CANONICAL_SUBCLASS_FEATURE_MAP.get(featureTriggerKey) || CANONICAL_SUBCLASS_FEATURE_MAP.get(aNameLower);
-                        if (canonSub) {
-                            targetClasses = [canonSub.classSlug];
-                        } else {
-                            const canonBase = CANONICAL_BASE_CLASS_FEATURE_MAP.get(featureTriggerKey) || CANONICAL_BASE_CLASS_FEATURE_MAP.get(aNameLower);
-                            if (canonBase) {
-                                targetClasses = charClasses.filter((c) => canonBase.has(c));
+                        const matchedFeature = parsedFeatures.find((f: any) => {
+                            const fn = String(f?.name || "").toLowerCase().trim();
+                            return fn === featureTriggerKey || fn === aNameLower;
+                        });
+                        if (matchedFeature && matchedFeature.source) {
+                            const srcLower = String(matchedFeature.source).toLowerCase().trim();
+                            const srcClean = srcLower.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                            const ownerFromSub = subclassToClassMap.get(srcLower) || subclassToClassMap.get(srcClean);
+                            if (ownerFromSub) {
+                                targetClasses = [ownerFromSub];
+                            } else {
+                                const owningClassBySub = (parsed.classes || []).find((c: any) => {
+                                    const sub = String(c.subclass || "").toLowerCase().trim();
+                                    const cleanSub = sub.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                                    return sub === srcLower || cleanSub === srcClean || sub === srcClean || cleanSub === srcLower;
+                                });
+                                if (owningClassBySub) {
+                                    targetClasses = [String(owningClassBySub.name).toLowerCase().trim()];
+                                } else if (charClasses.includes(srcLower)) {
+                                    targetClasses = [srcLower];
+                                }
                             }
                         }
 
                         if (targetClasses.length === 0) {
-                            const matchedFeature = parsedFeatures.find((f: any) => {
-                                const fn = String(f?.name || "").toLowerCase().trim();
-                                return fn === featureTriggerKey || fn === aNameLower;
-                            });
-                            if (matchedFeature && matchedFeature.source) {
-                                const srcLower = String(matchedFeature.source).toLowerCase().trim();
-                                const srcClean = srcLower.replace(/\s*\([^)]+\)\s*$/, "").trim();
-                                const ownerFromSub = CANONICAL_SUBCLASS_OWNER_MAP.get(srcLower) || CANONICAL_SUBCLASS_OWNER_MAP.get(srcClean);
-                                if (ownerFromSub) {
-                                    targetClasses = [ownerFromSub];
-                                } else if (charClasses.includes(srcLower)) {
-                                    targetClasses = [srcLower];
-                                }
+                            const ownersFromFeatures = featureToClassMap.get(featureTriggerKey) || featureToClassMap.get(aNameLower);
+                            if (ownersFromFeatures) {
+                                targetClasses = charClasses.filter((c) => ownersFromFeatures.has(c));
                             }
                         }
 
