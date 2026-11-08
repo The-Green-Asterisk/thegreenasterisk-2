@@ -2,7 +2,7 @@ import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
 
 export function renderActions(data: CharacterData): string {
-    return data.actions.map((action, index) => {
+    return (data.actions || []).map((action, index) => {
         const spellBtn = action.spellName
             ? `<button class="action-spell-link" data-spell-name="${encodeURIComponent(action.spellName)}" title="Click to view spell details">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> View Spell

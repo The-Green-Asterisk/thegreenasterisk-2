@@ -1336,8 +1336,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
 
         if (modalSource) {
+            const isDndBeyond = ctx.getCharacter()?.source === "dndbeyond";
             modalSource.innerHTML = hasCharacterPullDefinition
-                ? `<strong>Source:</strong> Character Pull (${localSpell?.source || "D&D Beyond"})`
+                ? `<strong>Source:</strong> Character Pull (${localSpell?.source || (isDndBeyond ? "D&D Beyond" : "Class")})`
                 : `<i class="fa-solid fa-spinner fa-spin"></i> Loading spell info from database...`;
         }
 
@@ -1755,7 +1756,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                       entityName: displayName
                   })
                 : `<p>Standard D&amp;D 5.5 (2024) action rule for <strong>${displayName}</strong>.</p>`;
-            const externalLinkHtml = `<p class="action-modal-external-link-row"><a href="${dndBeyondUrl}" class="inline-rule-link" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-book"></i> View ${displayName} on D&amp;D Beyond</a></p>`;
+            const isDndBeyond = activeCharacter?.source === "dndbeyond";
+            const externalLinkHtml = isDndBeyond
+                ? `<p class="action-modal-external-link-row"><a href="${dndBeyondUrl}" class="inline-rule-link" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-book"></i> View ${displayName} on D&amp;D Beyond</a></p>`
+                : "";
             modalActionNotes.innerHTML = `${descHtml}${externalLinkHtml}`;
         }
 

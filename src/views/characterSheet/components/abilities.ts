@@ -5,7 +5,7 @@ export function renderAbilityCards(data: CharacterData): string {
         const modSign = ability.modifier >= 0 ? `+${ability.modifier}` : `${ability.modifier}`;
         const saveSign = ability.save >= 0 ? `+${ability.save}` : `${ability.save}`;
         const profBadge = ability.proficientSave ? '<span class="prof-dot" title="Proficient saving throw">● Prof</span>' : '';
-        const isLocked = !!data.lockedFields?.[`abilities.${ability.abbr}`] || !!data.lockedFields?.[`abilities.${index}`];
+        const isLocked = data.source === "dndbeyond" && (!!data.lockedFields?.[`abilities.${ability.abbr}`] || !!data.lockedFields?.[`abilities.${index}`]);
         const lockBadge = isLocked ? '<span class="ability-locked-indicator" title="Base score locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : '';
         return `
             <div class="ability-card ${ability.proficientSave ? 'is-proficient' : ''}">

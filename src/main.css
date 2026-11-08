@@ -90,6 +90,7 @@ html {
     scroll-behavior: smooth;
     background-color: var(--page-bg);
     color: var(--text);
+    overflow-anchor: none;
 }
 html:has(el-links) {
     background-color: var(--ui-color);
@@ -104,9 +105,13 @@ body {
     background-repeat: no-repeat;
     background-attachment: fixed;
     margin: 0;
+    overflow-anchor: none;
 }
-* {
+*,
+*::before,
+*::after {
     transition: all 0.35s;
+    overflow-anchor: none;
 }
 a {
     text-decoration: none;

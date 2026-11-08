@@ -63,6 +63,7 @@ export interface FeatureItem {
     scaleValue?: string;
     limitedUse?: string;
     decisions?: FeatureDecision[];
+    level?: number;
 }
 
 export interface EquipmentItem {
@@ -197,8 +198,12 @@ export interface CharacterData {
             isStable?: boolean;
         };
         savingThrowNotes?: string[];
+        damageResistances?: string[];
+        conditionImmunities?: string[];
     };
     savingThrowNotes?: string[];
+    damageResistances?: string[];
+    conditionImmunities?: string[];
     abilities: AbilityScore[];
     skills: SkillItem[];
     spellSlots: {

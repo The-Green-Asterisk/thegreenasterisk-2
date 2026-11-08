@@ -71,19 +71,20 @@ export function renderHeroSection(data: CharacterData): string {
         .map(c => `<strong>${c.name} ${c.level}</strong>${c.subclass ? ` (${c.subclass})` : ''}`)
         .join(' / ');
 
-    const nameLockBadge = data.lockedFields?.["name"]
+    const isDndBeyond = data.source === "dndbeyond";
+    const nameLockBadge = isDndBeyond && data.lockedFields?.["name"]
         ? '<span class="field-locked-indicator" title="Name is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>'
         : '';
-    const classLockBadge = data.lockedFields?.["classes"]
+    const classLockBadge = isDndBeyond && data.lockedFields?.["classes"]
         ? '<span class="field-locked-indicator" title="Class is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>'
         : '';
-    const raceLockBadge = data.lockedFields?.["race"]
+    const raceLockBadge = isDndBeyond && data.lockedFields?.["race"]
         ? ' <i class="fa-solid fa-lock field-locked-indicator" title="Species is locked from D&D Beyond refresh"></i>'
         : '';
-    const bgLockBadge = data.lockedFields?.["background"]
+    const bgLockBadge = isDndBeyond && data.lockedFields?.["background"]
         ? ' <i class="fa-solid fa-lock field-locked-indicator" title="Background is locked from D&D Beyond refresh"></i>'
         : '';
-    const alignLockBadge = data.lockedFields?.["alignment"]
+    const alignLockBadge = isDndBeyond && data.lockedFields?.["alignment"]
         ? ' <i class="fa-solid fa-lock field-locked-indicator" title="Alignment is locked from D&D Beyond refresh"></i>'
         : '';
 
@@ -112,9 +113,11 @@ export function renderHeroSection(data: CharacterData): string {
                         <span class="tag"><i class="fa-solid fa-dna"></i> ${data.race}${raceLockBadge}</span>
                         <span class="tag"><i class="fa-solid fa-masks-theater"></i> ${data.background}${bgLockBadge}</span>
                         <span class="tag"><i class="fa-solid fa-scale-balanced"></i> ${data.alignment}${alignLockBadge}</span>
-                        <a href="${data.dndBeyondUrl}" target="_blank" rel="noopener noreferrer" class="tag tag-link">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i> D&D Beyond
-                        </a>
+                        ${isDndBeyond && data.dndBeyondUrl ? `
+                            <a href="${data.dndBeyondUrl}" target="_blank" rel="noopener noreferrer" class="tag tag-link">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> D&D Beyond
+                            </a>
+                        ` : ''}
                     </div>
                 </div>
             </div>

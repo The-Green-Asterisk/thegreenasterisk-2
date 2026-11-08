@@ -471,10 +471,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }
 
         try {
-            const response = await putData<{
-                savedCharacter?: { id: number; name: string; siteCharacterId?: string; source?: "site" | "dndbeyond"; externalCharacterId?: string };
-                character?: CharacterData;
-            }>("/save-character", {
+            const isUpdatingExisting = Boolean(activeCharacter.savedCharacterId || activeCharacter.siteCharacterId);
+            const savePayload = {
                 savedId: activeCharacter.savedCharacterId,
                 siteCharacterId: activeCharacter.siteCharacterId,
                 source: activeCharacter.source || (activeCharacterId && /^\d+$/.test(activeCharacterId) ? "dndbeyond" : "site"),
@@ -484,7 +482,16 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                         : undefined,
                 name: activeCharacter.name,
                 character: activeCharacter
-            });
+            };
+            const response = isUpdatingExisting
+                ? await putData<{
+                    savedCharacter?: { id: number; name: string; siteCharacterId?: string; source?: "site" | "dndbeyond"; externalCharacterId?: string };
+                    character?: CharacterData;
+                }>("/save-character", savePayload)
+                : await postData<{
+                    savedCharacter?: { id: number; name: string; siteCharacterId?: string; source?: "site" | "dndbeyond"; externalCharacterId?: string };
+                    character?: CharacterData;
+                }>("/create-character", savePayload);
 
             if (response?.savedCharacter?.id) {
                 activeCharacter.savedCharacterId = response.savedCharacter.id;
@@ -615,6 +622,17 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeRawDndBeyondPayload = undefined;
             currentEquipOverrides = [];
             activeCharacter = response.character;
+            if (!Array.isArray(activeCharacter.actions)) activeCharacter.actions = [];
+            if (!Array.isArray(activeCharacter.spells)) activeCharacter.spells = [];
+            if (!Array.isArray(activeCharacter.weapons)) activeCharacter.weapons = [];
+            if (!Array.isArray(activeCharacter.equipment)) activeCharacter.equipment = [];
+            if (!Array.isArray(activeCharacter.features)) activeCharacter.features = [];
+            if (!Array.isArray(activeCharacter.skills)) activeCharacter.skills = [];
+            if (!Array.isArray(activeCharacter.abilities)) activeCharacter.abilities = [];
+            if (!activeCharacter.spellSlots || typeof activeCharacter.spellSlots !== "object") activeCharacter.spellSlots = {};
+            if (!activeCharacter.proficiencies || typeof activeCharacter.proficiencies !== "object") {
+                activeCharacter.proficiencies = { armor: [], weapons: [], tools: [], languages: ["Common"] };
+            }
             ensureClassResourcesOnCharacter(activeCharacter);
             ensureSavingThrowNotesOnCharacter(activeCharacter);
             ensureFeatureDecisionsOnCharacterData(activeCharacter);
@@ -642,6 +660,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (activeCharacter.weapons?.length || activeCharacter.equipment?.length) {
                 void postData("/sync-character-items", { weapons: activeCharacter.weapons, equipment: activeCharacter.equipment }).catch(() => { });
             }
+            void postData("/sync-character-rules", { character: activeCharacter }).catch(() => { });
 
             if (activeCharacter.source === "dndbeyond") {
                 const externalId =
@@ -739,22 +758,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     }
 
     function beginNewSiteCharacter() {
-        if (!el.isAuth) {
-            showStatus("You must be logged in to create a new character.", true);
-            return;
-        }
-        activeRawDndBeyondPayload = undefined;
-        currentEquipOverrides = [];
-        activeCharacter = createEmptySiteCharacter();
-        activeCharacterId = "";
-        currentHp = activeCharacter.vitals.currentHp;
-        maxHp = activeCharacter.vitals.maxHp;
-        tempHp = Number(activeCharacter.vitals.tempHp) || 0;
-        isEditMode = true;
-        if (idInput) idInput.value = "";
-        hideDndBeyondNote();
-        renderActiveCharacterView();
-        showStatus("Started a new site character. Edit fields and click Save Character.");
+        window.location.href = "/character-sheet/creator";
     }
 
     function syncSheetVitalsAndStatsToDom() {
@@ -1198,7 +1202,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         );
 
         try {
-            const rawData = await getData<any>(`/get-dndbeyond-character?id=${extractedId}`);
+            const freshParam = options?.refreshed ? "&fresh=true" : "";
+            const rawData = await getData<any>(`/get-dndbeyond-character?id=${extractedId}${freshParam}`);
             activeRawDndBeyondPayload = rawData;
             currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
@@ -1215,6 +1220,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (parsed.weapons?.length || parsed.equipment?.length) {
                 void postData("/sync-character-items", { weapons: parsed.weapons, equipment: parsed.equipment }).catch(() => { });
             }
+            void postData("/sync-character-rules", {
+                character: parsed,
+                rawCharacter: (rawData as any)?.data || rawData
+            }).catch(() => { });
             activeCharacterId = extractedId;
             activeCharacter = parsed;
             activeCharacter.source = "dndbeyond";

@@ -27,12 +27,12 @@ export function renderLoaderBar(): string {
                     <button type="button" id="load-character-btn" class="load-btn">
                         <i class="fa-solid fa-bolt"></i> Load Character
                     </button>
-                    <button type="button" id="create-character-btn" class="load-btn secondary hidden" title="Create a brand new site character sheet">
-                        <i class="fa-solid fa-user-plus"></i> New Character
-                    </button>
-                    <button type="button" id="edit-character-fields-btn" class="load-btn secondary hidden" title="Edit character fields in-place">
-                        <i class="fa-solid fa-pen"></i> Edit Fields
-                    </button>
+                    <a href="/character-sheet/creator" id="launch-character-creator-btn" class="load-btn secondary" title="Launch the 5.5e Character Creation Wizard" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Character Creator
+                    </a>
+                    <a href="/character-sheet/creator" id="edit-in-wizard-btn" class="load-btn secondary hidden" title="Edit this character in the 5.5e Creation Wizard" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Edit in Wizard
+                    </a>
                     <button type="button" id="export-pdf-sheet-btn" class="load-btn secondary hidden" title="Export black & white printable PDF with fillable HP and spell slots">
                         <i class="fa-solid fa-file-pdf"></i> Export B&W PDF
                     </button>

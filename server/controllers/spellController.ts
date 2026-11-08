@@ -78,7 +78,7 @@ export default class SpellController extends BaseController {
                     const castingTime = normalizeCastingTime(rawSpell.castingTime);
                     const range = String(rawSpell.range || "Self").slice(0, 100);
                     const duration = String(rawSpell.duration || "Instantaneous").slice(0, 100);
-                    const components = String(rawSpell.components || "V, S").slice(0, 255);
+                    const components = String(rawSpell.components || "V, S");
                     const imageUrl = rawSpell.imageUrl ? String(rawSpell.imageUrl).slice(0, 500) : undefined;
 
                     if (!existing) {
@@ -624,7 +624,7 @@ export default class SpellController extends BaseController {
                         castingTime: String(match.casting_time || "1 Action").slice(0, 100),
                         range: String(match.range || "Self").slice(0, 100),
                         duration: String(match.duration || "Instantaneous").slice(0, 100),
-                        components: String(match.components || "V, S").slice(0, 255),
+                        components: String(match.components || "V, S"),
                         concentration: match.concentration === "yes" || match.concentration === true,
                         ritual: match.ritual === "yes" || match.ritual === true,
                         description: descHtml
@@ -654,7 +654,7 @@ export default class SpellController extends BaseController {
                         castingTime: String(candidate.castingTime || "1 Action").slice(0, 100),
                         range: String(candidate.range || "Self").slice(0, 100),
                         duration: String(candidate.duration || "Instantaneous").slice(0, 100),
-                        components: String(candidate.components || "V, S").slice(0, 255),
+                        components: String(candidate.components || "V, S"),
                         concentration: !!candidate.concentration,
                         ritual: !!candidate.ritual,
                         description: candidate.description || "<p>No description provided.</p>",

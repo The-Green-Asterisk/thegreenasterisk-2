@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
 import characterSheet from '../../../src/views/characterSheet/characterSheet.ctrl';
 import characterSheetTemplate from '../../../src/views/characterSheet/characterSheet.template';
 import contactTemplate from '../../../src/views/contact/contact.template';
@@ -43,6 +44,16 @@ describe('Frontend View Templates', () => {
         expect(contact.querySelector('input[name="name"]')).not.toBeNull();
         expect(contact.querySelector('input[name="email"]')).not.toBeNull();
         expect(contact.querySelector('textarea[name="message"]')).not.toBeNull();
+    });
+
+    it('renders characterCreatorTemplate with wizard structure and stepper', () => {
+        const creator = characterCreatorTemplate();
+        expect(creator.tagName.toLowerCase()).toBe('el-character-creator');
+        expect(creator.querySelector('.creator-title')?.textContent).toContain('Character Creator');
+        expect(creator.querySelectorAll('.stepper-item').length).toBe(9);
+        expect(creator.querySelector('#creator-prev-btn')).not.toBeNull();
+        expect(creator.querySelector('#creator-next-btn')).not.toBeNull();
+        expect(creator.querySelector('#creator-submit-btn')).not.toBeNull();
     });
 
     it('renders characterSheetTemplate with empty sheet before any ID is loaded', () => {
@@ -855,13 +866,13 @@ describe('Frontend View Templates', () => {
         expect(conInitial.proficientSave).toBe(true);
         expect(initialChar.vitals.armorClass).toBe(13); // 10 + 2 (DEX) + 1 (Defense Fighting Style)
 
-        // Verify dropdowns render in features HTML
+        // Verify features HTML renders feature cards without sheet-level decision dropdowns
         const featuresHtml = renderFeatures(initialChar);
-        expect(featuresHtml).toContain('feature-decision-select');
-        expect(featuresHtml).toContain('data-feature-decision-id="feat:war-caster:0:asi:0"');
-        expect(featuresHtml).toContain('data-feature-decision-id="feat:resilient:1:resilient:0"');
-        expect(featuresHtml).toContain('data-feature-decision-id="class:bard:expertise:2:skill-exp:0"');
-        expect(featuresHtml).toContain('data-feature-decision-id="class:bard:fighting-style:2:fighting-style:0"');
+        expect(featuresHtml).not.toContain('feature-decision-select');
+        expect(featuresHtml).toContain('War Caster');
+        expect(featuresHtml).toContain('Resilient');
+        expect(featuresHtml).toContain('Expertise');
+        expect(featuresHtml).toContain('Fighting Style');
 
         // Now change decisions:
         // 1) War Caster ASI from Charisma (+1 CHA) -> Wisdom (+1 WIS)
@@ -2524,5 +2535,119 @@ describe('Frontend View Templates', () => {
         legacyChar.abilities.forEach((a: any) => {
             expect(a.notes).toBeUndefined();
         });
+    });
+
+    it('accounts for 2024 species and feat actions, expendable resources, and damage resistances', async () => {
+        const { parseDndBeyondCharacter, ensureClassResourcesOnCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+
+        const mockDragonbornFighter = {
+            id: 888123,
+            name: 'Balthazar Flametongue',
+            baseHitPoints: 44,
+            stats: [
+                { id: 1, value: 16 },
+                { id: 2, value: 14 },
+                { id: 3, value: 16 },
+                { id: 4, value: 10 },
+                { id: 5, value: 12 },
+                { id: 6, value: 8 }
+            ],
+            bonusStats: [],
+            overrideStats: [],
+            classes: [
+                {
+                    level: 5,
+                    definition: { name: 'Fighter' }
+                }
+            ],
+            race: {
+                fullName: 'Dragonborn',
+                weightSpeeds: { normal: { walk: 30 } }
+            },
+            modifiers: {
+                race: [
+                    { type: 'resistance', subType: 'fire', isGranted: true }
+                ],
+                class: [],
+                feat: [],
+                item: []
+            },
+            actions: {
+                race: [
+                    {
+                        name: 'Breath Weapon',
+                        activation: { activationType: 1 },
+                        range: { rangeValue: 15 },
+                        snippet: 'Exhale energy in a 15-foot cone.',
+                        limitedUse: { maxUses: 3, resetType: 2 }
+                    }
+                ],
+                class: [
+                    {
+                        name: 'Second Wind',
+                        activation: { activationType: 3 },
+                        snippet: 'Regain 1d10 + level HP.',
+                        limitedUse: { maxUses: 3, resetType: 1 }
+                    }
+                ],
+                feat: [
+                    {
+                        name: 'Tavern Brawler: Furniture Blow',
+                        activation: { activationType: 1 },
+                        snippet: 'Hit with improvised weapon.',
+                        limitedUse: null
+                    }
+                ]
+            },
+            inventory: []
+        };
+
+        const char = parseDndBeyondCharacter(mockDragonbornFighter, '888123');
+
+        // 1. Actions include species action (Breath Weapon) and feat action (Tavern Brawler) alongside class action (Second Wind)
+        const actionNames = char.actions.map(a => a.name);
+        expect(actionNames).toContain('Breath Weapon');
+        expect(actionNames).toContain('Second Wind');
+        expect(actionNames).toContain('Tavern Brawler: Furniture Blow');
+
+        const breathAction = char.actions.find(a => a.name === 'Breath Weapon');
+        expect(breathAction?.type).toBe('Action');
+        expect(breathAction?.rangeOrReach).toBe('15 ft.');
+
+        const secondWindAction = char.actions.find(a => a.name === 'Second Wind');
+        expect(secondWindAction?.type).toBe('Bonus Action');
+
+        // 2. Class resources include species resources (Breath Weapon PB uses, Draconic Flight at lvl 5)
+        const resourceNames = char.classResources.map(r => r.name);
+        expect(resourceNames).toContain('Second Wind');
+        expect(resourceNames).toContain('Breath Weapon');
+        expect(resourceNames).toContain('Draconic Flight');
+
+        const bwRes = char.classResources.find(r => r.name === 'Breath Weapon');
+        expect(bwRes?.total).toBe(3);
+        expect(bwRes?.resetOn).toBe('long');
+
+        // 3. Damage resistances extracted and rendered
+        expect(char.damageResistances).toContain('Fire');
+        expect(char.vitals.damageResistances).toContain('Fire');
+
+        const html = renderSheetContent(char);
+        expect(html).toContain('damage-resistances-row');
+        expect(html).toContain('Resistances:');
+        expect(html).toContain('Fire');
+
+        // 4. ensureClassResourcesOnCharacter heals species resources on legacy characters
+        const legacyOrc: any = {
+            name: 'Grom',
+            race: 'Orc',
+            level: 4,
+            vitals: { proficiencyBonus: 2 },
+            classResources: []
+        };
+        ensureClassResourcesOnCharacter(legacyOrc);
+        const orcResNames = legacyOrc.classResources.map((r: any) => r.name);
+        expect(orcResNames).toContain('Adrenaline Rush');
+        expect(orcResNames).toContain('Relentless Endurance');
     });
 });

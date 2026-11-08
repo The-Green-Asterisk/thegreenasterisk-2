@@ -143,7 +143,7 @@ export function renderVitalsSection(data: CharacterData): string {
                     <div id="hp-normal-mode" class="hp-mode-container ${isDying ? 'hidden' : ''}">
                         <div class="vital-header">
                             <span class="vital-title"><i class="fa-solid fa-heart-pulse"></i> HIT POINTS</span>
-                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
+                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.source === "dndbeyond" && data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
                         </div>
                         <div class="hp-gauge">
                             <div class="hp-bar-fill" id="hp-bar-fill" style="width: ${Math.round((data.vitals.currentHp / data.vitals.maxHp) * 100)}%;"></div>
@@ -315,12 +315,37 @@ export function renderVitalsSection(data: CharacterData): string {
 
 export function renderSavingThrowNotes(data: CharacterData): string {
     const notes = data.savingThrowNotes || data.vitals?.savingThrowNotes || [];
-    if (!notes.length) return "";
+    const resistances = data.damageResistances || data.vitals?.damageResistances || [];
+    const immunities = data.conditionImmunities || data.vitals?.conditionImmunities || [];
 
-    return `
-        <div class="saving-throw-notes-row" aria-label="Saving Throw Modifiers">
-            <span class="saving-throw-notes-label"><i class="fa-solid fa-shield-halved"></i> Saving Throws:</span>
-            <span class="saving-throw-notes-text">${notes.join("; ")}</span>
-        </div>
-    `;
+    const blocks: string[] = [];
+
+    if (notes.length > 0) {
+        blocks.push(`
+            <div class="saving-throw-notes-row" aria-label="Saving Throw Modifiers">
+                <span class="saving-throw-notes-label"><i class="fa-solid fa-shield-halved"></i> Saving Throws:</span>
+                <span class="saving-throw-notes-text">${notes.join("; ")}</span>
+            </div>
+        `);
+    }
+
+    if (resistances.length > 0) {
+        blocks.push(`
+            <div class="saving-throw-notes-row damage-resistances-row" aria-label="Damage Resistances">
+                <span class="saving-throw-notes-label"><i class="fa-solid fa-shield-virus"></i> Resistances:</span>
+                <span class="saving-throw-notes-text">${resistances.join(", ")}</span>
+            </div>
+        `);
+    }
+
+    if (immunities.length > 0) {
+        blocks.push(`
+            <div class="saving-throw-notes-row condition-immunities-row" aria-label="Condition Immunities">
+                <span class="saving-throw-notes-label"><i class="fa-solid fa-shield-heart"></i> Immunities:</span>
+                <span class="saving-throw-notes-text">${immunities.join(", ")}</span>
+            </div>
+        `);
+    }
+
+    return blocks.join("");
 }

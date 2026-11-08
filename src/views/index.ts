@@ -6,6 +6,8 @@ import nav from '@views/nav/nav.ctrl';
 import navTemplate from '@views/nav/nav.template';
 import characterSheet from './characterSheet/characterSheet.ctrl';
 import characterSheetTemplate from './characterSheet/characterSheet.template';
+import characterCreator from './characterCreator/characterCreator.ctrl';
+import characterCreatorTemplate from './characterCreator/characterCreator.template';
 import contact from './contact/contact.ctrl';
 import contactTemplate from './contact/contact.template';
 import cookieBanner from './cookieBanner/cookieBanner.ctrl';
@@ -38,6 +40,8 @@ export { default as nav } from '@views/nav/nav.ctrl';
 export { default as navTemplate } from '@views/nav/nav.template';
 export { default as characterSheet } from './characterSheet/characterSheet.ctrl';
 export { default as characterSheetTemplate } from './characterSheet/characterSheet.template';
+export { default as characterCreator } from './characterCreator/characterCreator.ctrl';
+export { default as characterCreatorTemplate } from './characterCreator/characterCreator.template';
 export { default as contact } from './contact/contact.ctrl';
 export { default as contactTemplate } from './contact/contact.template';
 export { default as cookieBanner } from './cookieBanner/cookieBanner.ctrl';
@@ -93,6 +97,8 @@ const views = {
     contact,
     contactTemplate,
     characterSheet,
-    characterSheetTemplate
+    characterSheetTemplate,
+    characterCreator,
+    characterCreatorTemplate
 };
 export default views;

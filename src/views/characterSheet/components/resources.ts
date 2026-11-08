@@ -2,9 +2,10 @@ import { CharacterData } from "../characterData";
 
 export function renderSpellSlotsAndResources(data: CharacterData): string {
     const slotTrackers: string[] = [];
+    const spellSlots = data.spellSlots || {};
 
     for (let lvl = 1; lvl <= 9; lvl++) {
-        const slot = data.spellSlots[`level${lvl}`];
+        const slot = spellSlots[`level${lvl}`];
         if (slot && slot.total > 0) {
             const pips = Array.from({ length: slot.total })
                 .map((_, i) => `<button class="pip active" data-pip-lvl="${lvl}" data-pip-idx="${i}" aria-label="Level ${lvl} slot ${i + 1}"></button>`)
@@ -23,8 +24,8 @@ export function renderSpellSlotsAndResources(data: CharacterData): string {
         }
     }
 
-    if (data.spellSlots.pact && data.spellSlots.pact.total > 0) {
-        const pact = data.spellSlots.pact;
+    if (spellSlots.pact && spellSlots.pact.total > 0) {
+        const pact = spellSlots.pact;
         const pips = Array.from({ length: pact.total })
             .map((_, i) => `<button class="pip active pact-pip" data-pip-lvl="pact" data-pip-idx="${i}" aria-label="Pact slot ${i + 1}"></button>`)
             .join('');

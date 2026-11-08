@@ -128,7 +128,9 @@ export function parseDndBeyondCharacter(
     const classes = (raw.classes || []).map((c: any) => ({
         name: c.definition?.name || "Adventurer",
         level: Number(c.level) || 1,
-        subclass: c.subclassDefinition?.name || undefined
+        subclass: c.subclassDefinition?.name
+            ? c.subclassDefinition.name.replace(/\s*\([^)]+\)\s*$/, "").trim()
+            : undefined
     }));
     const totalLevel = classes.reduce((sum: number, c: any) => sum + c.level, 0) || 1;
 
@@ -571,6 +573,49 @@ export function parseDndBeyondCharacter(
         savingThrowNotes.push("Advantage on Constitution saves (to maintain Concentration)");
     }
 
+    // Damage Resistances & Condition Immunities (from modifiers, species traits, or saved data)
+    const damageResistances: string[] = [];
+    allMods.forEach(m => {
+        if (m.type === "resistance" && m.subType) {
+            const rawSub = String(m.subType).toLowerCase();
+            const dmgName = rawSub.charAt(0).toUpperCase() + rawSub.slice(1);
+            if (!damageResistances.includes(dmgName)) {
+                damageResistances.push(dmgName);
+            }
+        }
+    });
+    if (Array.isArray(raw.damageResistances)) {
+        raw.damageResistances.forEach((r: string) => {
+            if (r && !damageResistances.includes(r)) damageResistances.push(r);
+        });
+    }
+    if (Array.isArray(raw.vitals?.damageResistances)) {
+        raw.vitals.damageResistances.forEach((r: string) => {
+            if (r && !damageResistances.includes(r)) damageResistances.push(r);
+        });
+    }
+
+    const conditionImmunities: string[] = [];
+    allMods.forEach(m => {
+        if (m.type === "immunity" && m.subType) {
+            const rawSub = String(m.subType).toLowerCase();
+            const condName = rawSub.charAt(0).toUpperCase() + rawSub.slice(1);
+            if (!conditionImmunities.includes(condName)) {
+                conditionImmunities.push(condName);
+            }
+        }
+    });
+    if (Array.isArray(raw.conditionImmunities)) {
+        raw.conditionImmunities.forEach((ci: string) => {
+            if (ci && !conditionImmunities.includes(ci)) conditionImmunities.push(ci);
+        });
+    }
+    if (Array.isArray(raw.vitals?.conditionImmunities)) {
+        raw.vitals.conditionImmunities.forEach((ci: string) => {
+            if (ci && !conditionImmunities.includes(ci)) conditionImmunities.push(ci);
+        });
+    }
+
     // 4. Hit Points (including hit-points-per-level from Tough, Dwarven Toughness, Draconic Resilience, etc.)
     const baseHp = Number(raw.baseHitPoints) || 10;
     const bonusHp = Number(raw.bonusHitPoints) || 0;
@@ -918,6 +963,16 @@ export function parseDndBeyondCharacter(
 
     walkSpeed += speedBonus + unarmoredMoveBonus;
 
+    // Feat-based speed bonuses fallback (Speedy/Mobile +10 ft, Boon of Speed +30 ft) if not already included in modifiers
+    const hasBoonOfSpeed = hasFeat("Boon of Speed") || (features || []).some((f: any) => /boon of speed/i.test(f.name || ""));
+    if (hasBoonOfSpeed && !allMods.some(m => /boon of speed/i.test(m.friendlySubtypeName || ""))) {
+        walkSpeed += 30;
+    }
+    const hasSpeedy = hasFeat("Speedy") || hasFeat("Mobile") || (features || []).some((f: any) => /^(speedy|mobile)$/i.test(f.name || ""));
+    if (hasSpeedy && !allMods.some(m => /(speedy|mobile)/i.test(m.friendlySubtypeName || ""))) {
+        walkSpeed += 10;
+    }
+
     // Custom walking speed override from customSpeeds (movementId 1 = Walk)
     if (Array.isArray(raw.customSpeeds)) {
         const customWalk = raw.customSpeeds.find((s: any) => Number(s.movementId) === 1 && Number(s.distance) > 0);
@@ -990,6 +1045,16 @@ export function parseDndBeyondCharacter(
                 if (text.includes("120")) return "120 ft.";
                 return "60 ft.";
             }
+        }
+
+        // 4. Feat fallbacks (e.g. Boon of Truesight -> 60 ft., Blind Fighting -> 10 ft., Skulker -> 10 ft.)
+        if (senseName === "truesight") {
+            const hasTruesightFeat = hasFeat("Boon of Truesight") || (features || []).some((f: any) => /boon of truesight/i.test(f.name || ""));
+            if (hasTruesightFeat) return "60 ft.";
+        }
+        if (senseName === "blindsight") {
+            const hasBlindsightFeat = hasFeat("Blind Fighting") || hasFeat("Skulker") || (features || []).some((f: any) => /blind fighting|skulker/i.test(f.name || ""));
+            if (hasBlindsightFeat) return "10 ft.";
         }
 
         return fallback;
@@ -1589,24 +1654,68 @@ export function parseDndBeyondCharacter(
         }
     });
 
-    // Class specific actions
-    const classActions = raw.actions?.class || [];
-    classActions.forEach((a: any) => {
-        const type: "Action" | "Bonus Action" | "Reaction" | "Special" =
-            a.activation?.activationType === 3
-                ? "Bonus Action"
-                : a.activation?.activationType === 4
-                  ? "Reaction"
-                  : "Action";
-        actions.push({
-            name: a.name,
-            type,
-            rangeOrReach: a.range?.rangeValue ? `${a.range.rangeValue} ft.` : "Special",
-            hitOrDc: a.saveDcAbilityId ? `DC ${spellSaveDc}` : "Special",
-            damageOrEffect: a.snippet || "Class Feature",
-            notes: a.description || a.snippet || ""
+    // 10. Actions from Class, Species/Race, Feat, Item, and direct actions list
+    const seenActionNames = new Set<string>(actions.map(a => a.name.toLowerCase()));
+
+    if (Array.isArray(raw.actions)) {
+        raw.actions.forEach((a: any) => {
+            if (!a || !a.name) return;
+            const nameLower = a.name.toLowerCase();
+            if (seenActionNames.has(nameLower)) return;
+            seenActionNames.add(nameLower);
+            actions.push(a);
+        });
+    }
+
+    const rawActionCategories: Array<{ list: any[]; defaultSource: string }> = [
+        { list: raw.actions?.class || [], defaultSource: "Class Feature" },
+        { list: raw.actions?.race || [], defaultSource: "Species Feature" },
+        { list: raw.actions?.feat || [], defaultSource: "Feat" },
+        { list: raw.actions?.item || [], defaultSource: "Item" }
+    ];
+
+    rawActionCategories.forEach(({ list, defaultSource }) => {
+        list.forEach((a: any) => {
+            if (!a || !a.name) return;
+            const nameLower = a.name.toLowerCase();
+            if (seenActionNames.has(nameLower)) return;
+            seenActionNames.add(nameLower);
+
+            const type: "Action" | "Bonus Action" | "Reaction" | "Special" =
+                a.activation?.activationType === 3
+                    ? "Bonus Action"
+                    : a.activation?.activationType === 4
+                      ? "Reaction"
+                      : a.activation?.activationType === 1 || a.activation?.activationType === 8
+                        ? "Action"
+                        : "Action";
+            actions.push({
+                name: a.name,
+                type,
+                rangeOrReach: a.range?.rangeValue ? `${a.range.rangeValue} ft.` : "Special",
+                hitOrDc: a.saveDcAbilityId ? `DC ${spellSaveDc}` : "Special",
+                damageOrEffect: a.snippet || defaultSource,
+                notes: a.description || a.snippet || ""
+            });
         });
     });
+
+    // Check Druid Circle of the Stars: Cosmic Omen Reaction
+    const druidClassDef = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "druid");
+    const druidSubName = String(druidClassDef?.subclassDefinition?.name || raw.subclass || "").toLowerCase();
+    if (druidClassDef && (druidClassDef.level || 0) >= 6 && druidSubName.includes("stars")) {
+        if (!seenActionNames.has("cosmic omen")) {
+            seenActionNames.add("cosmic omen");
+            actions.push({
+                name: "Cosmic Omen",
+                type: "Reaction",
+                rangeOrReach: "30 ft.",
+                hitOrDc: "Special",
+                damageOrEffect: "Roll 1d6: Add (Weal) or Subtract (Woe) from d20 Test",
+                notes: "Whenever you finish a Long Rest, consult your Star Map for omens and roll a die. Until your next Long Rest, you gain a special Reaction: Weal (Even) - roll 1d6 and add to creature's D20 Test; Woe (Odd) - roll 1d6 and subtract from creature's D20 Test. Uses: Wisdom modifier (min 1), regained on Long Rest."
+            });
+        }
+    }
 
     // 11. Features & Invocations & Feats (already extracted with interactive decisions above)
     // 12. Equipment & Weapons
@@ -1949,6 +2058,18 @@ export function parseDndBeyondCharacter(
             total: totalUses,
             resetOn: "short"
         });
+
+        // Circle of the Stars: Cosmic Omen (Wisdom modifier uses, min 1, resets on Long Rest)
+        const subName = String(druid.subclassDefinition?.name || raw.subclass || "").toLowerCase();
+        if (druid.level >= 6 && subName.includes("stars")) {
+            const cosmicUses = getActionMaxUses("Cosmic Omen") ?? Math.max(1, wisMod);
+            classResources.push({
+                name: "Cosmic Omen",
+                total: cosmicUses,
+                resetOn: "long",
+                dieOrType: "1d6"
+            });
+        }
     }
 
     // Check Fighter Action Surge & Second Wind
@@ -2006,6 +2127,81 @@ export function parseDndBeyondCharacter(
             name: "Sorcery Points",
             total: sorcerer.level,
             resetOn: "long"
+        });
+    }
+
+    // Species / Feat Resources (from actions with limitedUse or 2024 traits)
+    const existingResourceNames = new Set(classResources.map(r => r.name.toLowerCase()));
+    const addResourceIfMissing = (name: string, total: number, resetOn: "short" | "long", dieOrType?: string) => {
+        const lower = name.toLowerCase();
+        if (!existingResourceNames.has(lower) && total > 0) {
+            existingResourceNames.add(lower);
+            classResources.push({ name, total, resetOn, dieOrType });
+        }
+    };
+
+    const raceNameLower = String(raw.race?.fullName || raw.race?.baseRaceName || raw.species || "").toLowerCase();
+
+    // 1. Dragonborn Breath Weapon & Draconic Flight
+    const breathWeaponUses = getActionMaxUses("Breath Weapon");
+    if (breathWeaponUses != null || raceNameLower.includes("dragonborn")) {
+        addResourceIfMissing("Breath Weapon", breathWeaponUses ?? profBonus, "long");
+        if (totalLevel >= 5) {
+            addResourceIfMissing("Draconic Flight", 1, "long");
+        }
+    }
+
+    // 2. Dwarf Stonecunning
+    const stonecunningUses = getActionMaxUses("Stonecunning");
+    if (stonecunningUses != null || raceNameLower.includes("dwarf")) {
+        addResourceIfMissing("Stonecunning", stonecunningUses ?? profBonus, "long");
+    }
+
+    // 3. Orc Adrenaline Rush & Relentless Endurance
+    const adrenalineUses = getActionMaxUses("Adrenaline Rush");
+    if (adrenalineUses != null || raceNameLower.includes("orc")) {
+        addResourceIfMissing("Adrenaline Rush", adrenalineUses ?? profBonus, "short");
+        addResourceIfMissing("Relentless Endurance", 1, "long");
+    }
+
+    // 4. Goliath Giant Ancestry & Large Form
+    const giantAncestryUses =
+        getActionMaxUses("Giant Ancestry") ??
+        getActionMaxUses("Stone's Endurance") ??
+        getActionMaxUses("Cloud's Jaunt") ??
+        getActionMaxUses("Frost's Chill") ??
+        getActionMaxUses("Fire's Burn") ??
+        getActionMaxUses("Hill's Tumble") ??
+        getActionMaxUses("Storm's Thunder");
+    if (giantAncestryUses != null || raceNameLower.includes("goliath")) {
+        addResourceIfMissing("Giant Ancestry", giantAncestryUses ?? profBonus, "long");
+        if (totalLevel >= 5) {
+            addResourceIfMissing("Large Form", 1, "long");
+        }
+    }
+
+    // 5. Aasimar Healing Hands & Celestial Revelation
+    const healingHandsUses = getActionMaxUses("Healing Hands");
+    if (healingHandsUses != null || raceNameLower.includes("aasimar")) {
+        addResourceIfMissing("Healing Hands", healingHandsUses ?? 1, "long");
+        if (totalLevel >= 3) {
+            addResourceIfMissing("Celestial Revelation", 1, "long");
+        }
+    }
+
+    // 6. Feat: Lucky
+    const luckUses = getActionMaxUses("Lucky") ?? getActionMaxUses("Luck Points");
+    if (luckUses != null || hasFeat("Lucky")) {
+        addResourceIfMissing("Luck Points", luckUses ?? profBonus, "long");
+    }
+
+    // Merge any resources already present in raw.classResources (e.g. from site character)
+    if (Array.isArray(raw.classResources)) {
+        raw.classResources.forEach((r: any) => {
+            if (r?.name && !existingResourceNames.has(r.name.toLowerCase()) && Number(r.total) > 0) {
+                existingResourceNames.add(r.name.toLowerCase());
+                classResources.push(r);
+            }
         });
     }
 
@@ -2094,9 +2290,13 @@ export function parseDndBeyondCharacter(
             spellSaveDc,
             spellAttackBonus,
             spellcastingAbility: `${ABILITY_NAMES[spellcastingAbilityId]?.name || "Charisma"} (+${spellMod})`,
-            savingThrowNotes
+            savingThrowNotes,
+            damageResistances,
+            conditionImmunities
         },
         savingThrowNotes,
+        damageResistances,
+        conditionImmunities,
         abilities,
         skills,
         spellSlots,
@@ -2327,6 +2527,95 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
         character.classResources = [];
     }
 
+    // Auto-heal missing or truncated spellSlots based on character.classes
+    if (Array.isArray(character.classes) && character.classes.length > 0) {
+        const FULL_CASTER_SLOTS: number[][] = [
+            [2, 0, 0, 0, 0, 0, 0, 0, 0], // 1
+            [3, 0, 0, 0, 0, 0, 0, 0, 0], // 2
+            [4, 2, 0, 0, 0, 0, 0, 0, 0], // 3
+            [4, 3, 0, 0, 0, 0, 0, 0, 0], // 4
+            [4, 3, 2, 0, 0, 0, 0, 0, 0], // 5
+            [4, 3, 3, 0, 0, 0, 0, 0, 0], // 6
+            [4, 3, 3, 1, 0, 0, 0, 0, 0], // 7
+            [4, 3, 3, 2, 0, 0, 0, 0, 0], // 8
+            [4, 3, 3, 3, 1, 0, 0, 0, 0], // 9
+            [4, 3, 3, 3, 2, 0, 0, 0, 0], // 10
+            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 11
+            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 12
+            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 13
+            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 14
+            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 15
+            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 16
+            [4, 3, 3, 3, 2, 1, 1, 1, 1], // 17
+            [4, 3, 3, 3, 3, 1, 1, 1, 1], // 18
+            [4, 3, 3, 3, 3, 2, 1, 1, 1], // 19
+            [4, 3, 3, 3, 3, 2, 2, 1, 1]  // 20
+        ];
+        const WARLOCK_PACT_SLOTS: Array<{ count: number; level: number }> = [
+            { count: 1, level: 1 }, { count: 2, level: 1 }, { count: 2, level: 2 }, { count: 2, level: 2 },
+            { count: 2, level: 3 }, { count: 2, level: 3 }, { count: 2, level: 4 }, { count: 2, level: 4 },
+            { count: 2, level: 5 }, { count: 2, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 },
+            { count: 3, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 },
+            { count: 4, level: 5 }, { count: 4, level: 5 }, { count: 4, level: 5 }, { count: 4, level: 5 }
+        ];
+        const getOrd = (n: number) => (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th");
+
+        let effectiveCasterLevel = 0;
+        let warlockLevel = 0;
+        for (const cls of character.classes) {
+            const cName = String(cls?.name || "").toLowerCase().trim();
+            const cSub = String(cls?.subclass || "").toLowerCase().trim();
+            const cLvl = Math.max(1, Math.min(20, Number(cls?.level) || 1));
+            if (["bard", "cleric", "druid", "sorcerer", "wizard"].includes(cName)) {
+                effectiveCasterLevel += cLvl;
+            } else if (["paladin", "ranger", "artificer"].includes(cName)) {
+                effectiveCasterLevel += Math.ceil(cLvl / 2);
+            } else if (
+                (cName === "fighter" && cSub.includes("eldritch knight")) ||
+                (cName === "rogue" && cSub.includes("arcane trickster"))
+            ) {
+                if (cLvl >= 3) effectiveCasterLevel += Math.ceil(cLvl / 3);
+            } else if (cName === "warlock") {
+                warlockLevel += cLvl;
+            }
+        }
+
+        if (!character.spellSlots || typeof character.spellSlots !== "object") {
+            character.spellSlots = {};
+        }
+
+        if (effectiveCasterLevel > 0) {
+            const row = FULL_CASTER_SLOTS[Math.max(0, Math.min(19, effectiveCasterLevel - 1))] || [];
+            row.forEach((total, idx) => {
+                if (total > 0) {
+                    const slotLvl = idx + 1;
+                    const key = `level${slotLvl}`;
+                    const existing = character.spellSlots[key];
+                    if (!existing || typeof existing.total !== "number" || existing.total < total) {
+                        character.spellSlots[key] = {
+                            total,
+                            label: `${slotLvl}${getOrd(slotLvl)} Level`
+                        };
+                    }
+                }
+            });
+        }
+
+        if (warlockLevel > 0) {
+            const pact = WARLOCK_PACT_SLOTS[Math.max(0, Math.min(19, warlockLevel - 1))];
+            if (pact && pact.count > 0) {
+                const existingPact = character.spellSlots.pact;
+                if (!existingPact || existingPact.total < pact.count || existingPact.level !== pact.level) {
+                    character.spellSlots.pact = {
+                        level: pact.level,
+                        total: pact.count,
+                        label: `Pact Magic (${pact.level}${getOrd(pact.level)} Level)`
+                    };
+                }
+            }
+        }
+    }
+
     // Check if raw actions provides maxUses
     let rawWildShapeUses: number | undefined;
     if (raw && typeof raw === "object" && raw.actions) {
@@ -2367,6 +2656,55 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
                 resetOn: "short"
             });
         }
+
+        const druidSub = String((druidClass as any).subclassDefinition?.name || (druidClass as any).subclass || "").toLowerCase();
+        if (druidClass.level >= 6 && druidSub.includes("stars")) {
+            const wisMod = character.abilities?.find(a => a.abbr === "WIS")?.modifier ?? 0;
+            const expectedCosmic = Math.max(1, wisMod);
+            const existingCosmic = character.classResources.find(r => r?.name?.toLowerCase() === "cosmic omen");
+            if (existingCosmic) {
+                if (existingCosmic.total < expectedCosmic) {
+                    existingCosmic.total = expectedCosmic;
+                }
+            } else {
+                character.classResources.push({
+                    name: "Cosmic Omen",
+                    total: expectedCosmic,
+                    resetOn: "long",
+                    dieOrType: "1d6"
+                });
+            }
+        }
+    }
+
+    // Auto-heal species resources if missing
+    if (!character.classResources) {
+        character.classResources = [];
+    }
+    const raceLower = String(character.race || "").toLowerCase();
+    const pb = character.vitals?.proficiencyBonus || 2;
+    const existingResNames = new Set(character.classResources.map(r => r.name.toLowerCase()));
+    const addIfMissing = (name: string, total: number, resetOn: "short" | "long", dieOrType?: string) => {
+        if (!existingResNames.has(name.toLowerCase()) && total > 0) {
+            existingResNames.add(name.toLowerCase());
+            character.classResources!.push({ name, total, resetOn, dieOrType });
+        }
+    };
+
+    if (raceLower.includes("dragonborn")) {
+        addIfMissing("Breath Weapon", pb, "long");
+        if ((character.level || 1) >= 5) addIfMissing("Draconic Flight", 1, "long");
+    } else if (raceLower.includes("dwarf")) {
+        addIfMissing("Stonecunning", pb, "long");
+    } else if (raceLower.includes("orc")) {
+        addIfMissing("Adrenaline Rush", pb, "short");
+        addIfMissing("Relentless Endurance", 1, "long");
+    } else if (raceLower.includes("goliath")) {
+        addIfMissing("Giant Ancestry", pb, "long");
+        if ((character.level || 1) >= 5) addIfMissing("Large Form", 1, "long");
+    } else if (raceLower.includes("aasimar")) {
+        addIfMissing("Healing Hands", 1, "long");
+        if ((character.level || 1) >= 3) addIfMissing("Celestial Revelation", 1, "long");
     }
 }
 
@@ -2377,6 +2715,18 @@ export function ensureSavingThrowNotesOnCharacter(character: CharacterData, raw?
     }
     if (character.vitals && !Array.isArray(character.vitals.savingThrowNotes)) {
         character.vitals.savingThrowNotes = character.savingThrowNotes;
+    }
+    if (!Array.isArray(character.damageResistances)) {
+        character.damageResistances = character.vitals?.damageResistances || [];
+    }
+    if (character.vitals && !Array.isArray(character.vitals.damageResistances)) {
+        character.vitals.damageResistances = character.damageResistances;
+    }
+    if (!Array.isArray(character.conditionImmunities)) {
+        character.conditionImmunities = character.vitals?.conditionImmunities || [];
+    }
+    if (character.vitals && !Array.isArray(character.vitals.conditionImmunities)) {
+        character.vitals.conditionImmunities = character.conditionImmunities;
     }
 
     // Check if abilities have repeated saving throw notes from older saved payloads

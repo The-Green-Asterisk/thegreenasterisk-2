@@ -20,17 +20,17 @@ export class Spell {
     @Column({ type: "varchar", length: 255, default: "Custom" })
     source!: string;
 
-    @Column({ type: "varchar", length: 150, default: "1 Action" })
+    @Column({ type: "varchar", length: 255, default: "1 Action" })
     castingTime!: string;
 
-    @Column({ type: "varchar", length: 150, default: "Self" })
+    @Column({ type: "varchar", length: 255, default: "Self" })
     range!: string;
 
-    @Column({ type: "varchar", length: 150, default: "Instantaneous" })
+    @Column({ type: "varchar", length: 255, default: "Instantaneous" })
     duration!: string;
 
-    @Column({ type: "varchar", length: 255, default: "V, S" })
-    components!: string;
+    @Column({ type: "text", nullable: true })
+    components?: string;
 
     @Column({ type: "boolean", default: false })
     concentration!: boolean;

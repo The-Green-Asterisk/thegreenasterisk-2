@@ -7,6 +7,7 @@ import LinkController from 'controllers/linkController';
 import PrDigestController from 'controllers/prDigestController';
 import ProfileController from 'controllers/profileController';
 import PushController from 'controllers/pushController';
+import RulesController from 'controllers/rulesController';
 import SessionController from 'controllers/sessionController';
 import SpellController from 'controllers/spellController';
 import StorageController from 'controllers/storageController';
@@ -289,9 +290,19 @@ export default class Routes {
         return CharacterController.getSavedCharacter(req, res);
     }
 
+    @Method('POST')
+    private ['/create-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.createCharacter(req, res);
+    }
+
     @Method('PUT')
     private ['/save-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return CharacterController.saveCharacter(req, res);
+    }
+
+    @Method('PUT')
+    private ['/update-character'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return CharacterController.updateCharacter(req, res);
     }
 
     @Method('DELETE')
@@ -335,6 +346,11 @@ export default class Routes {
     }
 
     @Method('POST')
+    private ['/sync-character-rules'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return RulesController.syncCharacterRules(req, res);
+    }
+
+    @Method('POST')
     private ['/create-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ItemController.createCustomItem(req, res);
     }
@@ -342,6 +358,11 @@ export default class Routes {
     @Method('GET')
     private ['/get-conditions'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ConditionController.getConditions(req, res);
+    }
+
+    @Method('GET')
+    private ['/get-rules'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return RulesController.getRules(req, res);
     }
 
     get response(): ResponsePromise {

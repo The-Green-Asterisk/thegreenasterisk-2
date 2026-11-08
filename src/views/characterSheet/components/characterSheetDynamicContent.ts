@@ -11,11 +11,12 @@ import { renderSavingThrowNotes, renderVitalsSection } from "./vitals";
 import { renderWeapons } from "./weapons";
 
 export function renderSheetContent(data: CharacterData): string {
-    const cantripsCount = data.spells.filter(s => s.level === 0).length;
-    const lvl1Count = data.spells.filter(s => s.level === 1).length;
-    const lvl2Count = data.spells.filter(s => s.level === 2).length;
-    const lvl3Count = data.spells.filter(s => s.level === 3).length;
-    const highLevelCount = data.spells.filter(s => s.level >= 4).length;
+    const spellsList = data.spells || [];
+    const cantripsCount = spellsList.filter(s => s.level === 0).length;
+    const lvl1Count = spellsList.filter(s => s.level === 1).length;
+    const lvl2Count = spellsList.filter(s => s.level === 2).length;
+    const lvl3Count = spellsList.filter(s => s.level === 3).length;
+    const highLevelCount = spellsList.filter(s => s.level >= 4).length;
 
     return `
         ${renderHeroSection(data)}
@@ -177,10 +178,10 @@ export function renderSheetContent(data: CharacterData): string {
                             </div>
                             <div class="sense-card">
                                 <h4>Training & Languages</h4>
-                                <p><strong>Armor:</strong> ${data.proficiencies.armor.length ? data.proficiencies.armor.join(', ') : 'None'}</p>
-                                <p><strong>Weapons:</strong> ${data.proficiencies.weapons.length ? data.proficiencies.weapons.join(', ') : 'None'}</p>
-                                <p><strong>Tools & Instruments:</strong> ${data.proficiencies.tools.length ? data.proficiencies.tools.join(', ') : 'None'}</p>
-                                <p><strong>Languages:</strong> ${data.proficiencies.languages.length ? data.proficiencies.languages.join(', ') : 'None'}</p>
+                                <p><strong>Armor:</strong> ${data.proficiencies?.armor?.length ? data.proficiencies.armor.join(', ') : 'None'}</p>
+                                <p><strong>Weapons:</strong> ${data.proficiencies?.weapons?.length ? data.proficiencies.weapons.join(', ') : 'None'}</p>
+                                <p><strong>Tools & Instruments:</strong> ${data.proficiencies?.tools?.length ? data.proficiencies.tools.join(', ') : 'None'}</p>
+                                <p><strong>Languages:</strong> ${data.proficiencies?.languages?.length ? data.proficiencies.languages.join(', ') : 'None'}</p>
                             </div>
                         </div>
                     </div>
