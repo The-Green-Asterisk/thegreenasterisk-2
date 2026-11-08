@@ -4,6 +4,9 @@ import {
     FeatureDecision,
     FeatureItem
 } from "./characterData";
+import { applyStatModifier, applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
+import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
+import { getCanonicalClassForFeature, getCanonicalSubclassForFeature } from "../../rules/dnd5e_2024/classes";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -2103,6 +2106,12 @@ export function extractFeaturesAndApplyDecisions(
                 });
             }
 
+            const otherClasses = (raw.classes || []).filter((otherCl: any) => otherCl !== cl);
+            const otherClassIds = new Set<any>(otherClasses.map((oc: any) => oc.definition?.id).filter(Boolean));
+            const otherSubclassIds = new Set<any>(otherClasses.map((oc: any) => oc.subclassDefinition?.id).filter(Boolean));
+            const otherClassNames = new Set<string>(otherClasses.map((oc: any) => String(oc.definition?.name || "").toLowerCase()).filter(Boolean));
+            const otherSubclassNames = new Set<string>(otherClasses.map((oc: any) => String(oc.subclassDefinition?.name || "").toLowerCase()).filter(Boolean));
+
             cl.classFeatures.forEach((cf: any) => {
                 const def = cf.definition || cf;
                 if (!def?.name) return;
@@ -2111,10 +2120,41 @@ export function extractFeaturesAndApplyDecisions(
                 const cfNameLower = String(def.name).toLowerCase();
                 if (BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) return;
 
-                const isBase = baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
-                const isSub = !isBase && ((subId && (def.classId === subId || def.subclassId === subId)) ||
-                    def.isSubclassFeature === true ||
-                    (def.source && String(def.source).toLowerCase() === subName.toLowerCase()));
+                const cfClassId = def.classId || def.subclassId || cf.classId || cf.subclassId;
+                const cfSourceLower = String(def.source || cf.source || "").toLowerCase().trim();
+
+                const canonCls = getCanonicalClassForFeature(def.name);
+                const canonSub = getCanonicalSubclassForFeature(def.name);
+                const classSlug = slugifyKey(cName);
+                const subSlug = slugifyKey(subName);
+
+                // Reject features canonically belonging to other classes or other subclasses
+                if (canonCls && canonCls !== classSlug) return;
+                if (canonSub && (canonSub.classSlug !== classSlug || (canonSub.subSlug !== subSlug && canonSub.subName.toLowerCase() !== subName.toLowerCase()))) return;
+
+                // Reject features explicitly belonging to other classes or subclasses on this character
+                if (cfClassId && (otherClassIds.has(cfClassId) || otherSubclassIds.has(cfClassId))) return;
+                if (cfSourceLower && (otherClassNames.has(cfSourceLower) || otherSubclassNames.has(cfSourceLower))) return;
+
+                const isBase = (canonCls === classSlug) || baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
+                const subFeaturesList = Array.isArray(cl.subclassDefinition?.classFeatures) ? cl.subclassDefinition.classFeatures : [];
+                const isSubFeatureByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === cfNameLower);
+                const isSub = !isBase && (
+                    (canonSub && canonSub.classSlug === classSlug) ||
+                    (subId && (cfClassId === subId)) ||
+                    (subName && cfSourceLower === subName.toLowerCase()) ||
+                    isSubFeatureByName
+                );
+
+                if (!isBase && !isSub) {
+                    if (cfClassId && cfClassId !== cl.definition?.id && cfClassId !== subId) {
+                        return;
+                    }
+                    if (raw.classes && raw.classes.length > 1 && !canonCls) {
+                        return;
+                    }
+                }
+
                 const targetName = isSub ? subName : cName;
                 const targetType = isSub ? "Subclass" : "Class";
 
@@ -2224,32 +2264,147 @@ export function ensureFeatureDecisionsOnCharacterData(character: CharacterData):
                 selectedValue: "none",
                 options: [{ value: "none", label: "— Select Choice —" }, ...buildResilientChoiceOptions()]
             });
+        } else if (nameLower.includes("fighting style")) {
+            let selectedVal = character.featureChoices?.[`${prefix}:fighting-style:0`] || character.creatorState?.fightingStyle;
+            if (!selectedVal || !FIGHTING_STYLE_OPTIONS.some(o => o.value === selectedVal)) {
+                const matched = FIGHTING_STYLE_OPTIONS.find(o => nameLower.includes(o.label.toLowerCase().split(" ")[0]));
+                selectedVal = matched ? matched.value : FIGHTING_STYLE_OPTIONS[0].value;
+            }
+            decisions.push({
+                id: `${prefix}:fighting-style:0`,
+                label: "Fighting Style",
+                selectedValue: selectedVal,
+                options: FIGHTING_STYLE_OPTIONS
+            });
+        } else if (nameLower.includes("divine order") || nameLower === "protector" || nameLower === "thaumaturge") {
+            let selectedVal = character.featureChoices?.[`${prefix}:divine-order:0`] || (nameLower.includes("thaumaturge") ? "divine-order:thaumaturge" : "divine-order:protector");
+            decisions.push({
+                id: `${prefix}:divine-order:0`,
+                label: "Divine Order",
+                selectedValue: selectedVal,
+                options: DIVINE_ORDER_OPTIONS
+            });
+        } else if (nameLower.includes("primal order") || nameLower === "warden" || nameLower === "magician") {
+            let selectedVal = character.featureChoices?.[`${prefix}:primal-order:0`] || (nameLower.includes("magician") ? "primal-order:magician" : "primal-order:warden");
+            decisions.push({
+                id: `${prefix}:primal-order:0`,
+                label: "Primal Order",
+                selectedValue: selectedVal,
+                options: PRIMAL_ORDER_OPTIONS
+            });
+        } else if (nameLower.includes("pact boon") || nameLower.startsWith("pact of the")) {
+            let selectedVal = character.featureChoices?.[`${prefix}:pact-boon:0`] || (nameLower.includes("blade") ? "pact-boon:blade" : nameLower.includes("tome") ? "pact-boon:tome" : "pact-boon:chain");
+            decisions.push({
+                id: `${prefix}:pact-boon:0`,
+                label: "Pact Boon",
+                selectedValue: selectedVal,
+                options: PACT_BOON_OPTIONS
+            });
+        } else if (nameLower.includes("elemental fury")) {
+            let selectedVal = character.featureChoices?.[`${prefix}:elemental-fury:0`] || (nameLower.includes("strike") ? "elemental-fury:primal-strike" : "elemental-fury:potent-spellcasting");
+            decisions.push({
+                id: `${prefix}:elemental-fury:0`,
+                label: "Elemental Fury",
+                selectedValue: selectedVal,
+                options: ELEMENTAL_FURY_OPTIONS
+            });
+        } else if (nameLower.includes("blessed strikes")) {
+            let selectedVal = character.featureChoices?.[`${prefix}:blessed-strikes:0`] || (nameLower.includes("strike") ? "blessed-strikes:divine-strike" : "blessed-strikes:potent-spellcasting");
+            decisions.push({
+                id: `${prefix}:blessed-strikes:0`,
+                label: "Blessed Strikes",
+                selectedValue: selectedVal,
+                options: BLESSED_STRIKES_OPTIONS
+            });
+        } else if (nameLower.includes("aspect of the beast") || nameLower.includes("barbarian aspect")) {
+            const matched = BARBARIAN_ASPECT_OPTIONS.find(o => nameLower.includes(o.label.toLowerCase().split(" ")[0]));
+            let selectedVal = character.featureChoices?.[`${prefix}:aspect:0`] || (matched ? matched.value : BARBARIAN_ASPECT_OPTIONS[0].value);
+            decisions.push({
+                id: `${prefix}:aspect:0`,
+                label: "Aspect of the Beast",
+                selectedValue: selectedVal,
+                options: BARBARIAN_ASPECT_OPTIONS
+            });
+        } else if (nameLower.includes("land biome") || nameLower.includes("circle of the land")) {
+            const matched = DRUID_LAND_BIOME_OPTIONS.find(o => nameLower.includes(o.label.toLowerCase().split(" ")[0]));
+            let selectedVal = character.featureChoices?.[`${prefix}:land-biome:0`] || (matched ? matched.value : DRUID_LAND_BIOME_OPTIONS[0].value);
+            decisions.push({
+                id: `${prefix}:land-biome:0`,
+                label: "Land Biome",
+                selectedValue: selectedVal,
+                options: DRUID_LAND_BIOME_OPTIONS
+            });
         } else {
-            const allowedStats = inferAllowedAbilityIdsFromFeature(feat.name, desc);
-            if (allowedStats && allowedStats.length >= 2) {
-                const isFullAsi =
-                    nameLower.includes("ability score improvement") ||
-                    nameLower.includes("ability score increase");
-                if (isFullAsi) {
-                    decisions.push({
-                        id: `${prefix}:asi:0`,
-                        label: "Ability Score Increase #1 (+1)",
-                        selectedValue: "none",
-                        options: [{ value: "none", label: "— Select Choice —" }, ...buildAbilityChoiceOptions(allowedStats, 1)]
-                    });
-                    decisions.push({
-                        id: `${prefix}:asi:1`,
-                        label: "Ability Score Increase #2 (+1)",
-                        selectedValue: "none",
-                        options: [{ value: "none", label: "— Select Choice —" }, ...buildAbilityChoiceOptions(allowedStats, 1)]
-                    });
-                } else {
-                    decisions.push({
-                        id: `${prefix}:asi:0`,
-                        label: "Ability Score Increase (+1)",
-                        selectedValue: "none",
-                        options: [{ value: "none", label: "— Select Choice —" }, ...buildAbilityChoiceOptions(allowedStats, 1)]
-                    });
+            // Check dynamic progression choices on character's classes
+            let dynamicChoiceFound = false;
+            const classesToInspect = [
+                ...(character.creatorState?.classes || []),
+                ...(character.classes || [])
+            ];
+            for (const c of classesToInspect) {
+                const allProgressions = [
+                    ...(c.progression || []),
+                    ...((c.subclasses || []).flatMap((s: any) => s.progression || []))
+                ];
+                for (const pl of allProgressions) {
+                    for (const ch of pl.choices || []) {
+                        const chNameLower = String(ch.featureName || ch.name || "").toLowerCase();
+                        if (chNameLower && (nameLower.includes(chNameLower) || chNameLower.includes(nameLower))) {
+                            const choicePrefix = `${ch.choiceId || slugifyKey(chNameLower)}`;
+                            const savedVal = character.featureChoices?.[choicePrefix] ||
+                                character.subclassFeatureChoices?.[choicePrefix] ||
+                                character.creatorState?.subclassFeatureChoices?.[choicePrefix];
+                            const options: FeatureChoiceOption[] = (ch.options || []).map((o: any) => ({
+                                value: `${choicePrefix}:${o.id}`,
+                                label: o.name
+                            }));
+                            let selectedVal = options.find(o => o.value.endsWith(`:${savedVal}`))?.value;
+                            if (!selectedVal) {
+                                const matchedOpt = options.find(o => nameLower.includes(o.label.toLowerCase()));
+                                selectedVal = matchedOpt ? matchedOpt.value : (options[0]?.value || "none");
+                            }
+                            decisions.push({
+                                id: `${prefix}:${choicePrefix}:0`,
+                                label: ch.prompt || ch.featureName || feat.name,
+                                selectedValue: selectedVal,
+                                options
+                            });
+                            dynamicChoiceFound = true;
+                            break;
+                        }
+                    }
+                    if (dynamicChoiceFound) break;
+                }
+                if (dynamicChoiceFound) break;
+            }
+
+            if (!dynamicChoiceFound) {
+                const allowedStats = inferAllowedAbilityIdsFromFeature(feat.name, desc);
+                if (allowedStats && allowedStats.length >= 2) {
+                    const isFullAsi =
+                        nameLower.includes("ability score improvement") ||
+                        nameLower.includes("ability score increase");
+                    if (isFullAsi) {
+                        decisions.push({
+                            id: `${prefix}:asi:0`,
+                            label: "Ability Score Increase #1 (+1)",
+                            selectedValue: "none",
+                            options: [{ value: "none", label: "— Select Choice —" }, ...buildAbilityChoiceOptions(allowedStats, 1)]
+                        });
+                        decisions.push({
+                            id: `${prefix}:asi:1`,
+                            label: "Ability Score Increase #2 (+1)",
+                            selectedValue: "none",
+                            options: [{ value: "none", label: "— Select Choice —" }, ...buildAbilityChoiceOptions(allowedStats, 1)]
+                        });
+                    } else {
+                        decisions.push({
+                            id: `${prefix}:asi:0`,
+                            label: "Ability Score Increase (+1)",
+                            selectedValue: "none",
+                            options: [{ value: "none", label: "— Select Choice —" }, ...buildAbilityChoiceOptions(allowedStats, 1)]
+                        });
+                    }
                 }
             }
         }
@@ -2358,26 +2513,24 @@ export function applyFeatureDecisionOnCharacterData(
         if (!val || val === "none") return;
         const parts = val.split(":");
         const kind = parts[0];
+        const optId = parts[1];
 
         if (kind === "ability") {
             const statId = Number(parts[1]) || 6;
             const bonus = Number(parts[2]) || 1;
             adjustAbilityScore(statId, sign * bonus);
+            return;
         } else if (kind === "resilient") {
             const statId = Number(parts[1]) || 3;
             adjustAbilityScore(statId, sign * 1);
             adjustSaveProficiency(statId, sign === 1);
+            return;
         } else if (kind === "skill-prof") {
             adjustSkillTier(parts[1], "prof", sign === 1);
+            return;
         } else if (kind === "skill-exp") {
             adjustSkillTier(parts[1], "exp", sign === 1);
-        } else if (kind === "fighting-style") {
-            const style = parts[1];
-            if (style === "defense") {
-                character.vitals.armorClass += sign * 1;
-            } else if (style === "blind-fighting") {
-                character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
-            }
+            return;
         } else if (kind === "resistance") {
             const dmgKey = parts[1];
             const dmgMeta = DAMAGE_RESISTANCE_TYPES.find(d => d.key === dmgKey);
@@ -2394,6 +2547,53 @@ export function applyFeatureDecisionOnCharacterData(
                 }
                 character.proficiencies.defenses = currentDefs;
             }
+            return;
+        }
+
+        // Progression-driven option lookup and application
+        const classOption = findClassOption(kind, optId);
+        if (classOption) {
+            applyProgressionChoiceOption(character, classOption, sign);
+            return;
+        }
+
+        // Dynamic search in character's classes or creatorState progressions
+        const classesToSearch = [
+            ...(character.creatorState?.classes || []),
+            ...(character.classes || [])
+        ];
+        for (const c of classesToSearch) {
+            const allProgressions = [
+                ...(c.progression || []),
+                ...((c.subclasses || []).flatMap((s: any) => s.progression || []))
+            ];
+            for (const pl of allProgressions) {
+                for (const ch of pl.choices || []) {
+                    if (ch.choiceId === kind || ch.id === kind || ch.featureName?.toLowerCase() === kind.toLowerCase()) {
+                        const opt = ch.options?.find((o: any) => o.id === optId || o.id === val);
+                        if (opt) {
+                            applyProgressionChoiceOption(character, opt, sign);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallbacks for any unregistered edge cases
+        if (kind === "fighting-style") {
+            const style = parts[1];
+            if (style === "defense") {
+                character.vitals.armorClass += sign * 1;
+            } else if (style === "blind-fighting") {
+                character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
+            }
+        } else if (kind === "student-of-war" || kind === "fey-wanderer-glamour") {
+            const skillName = parts[1];
+            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "proficient" }, sign);
+        } else if (kind === "wizard-scholar") {
+            const skillName = parts[1];
+            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "expertise" }, sign);
         }
     };
 
@@ -2417,12 +2617,18 @@ export function applyFeatureDecisionOnCharacterData(
         character.vitals.currentHp = Math.max(0, Math.min(character.vitals.maxHp, character.vitals.currentHp + hpDelta));
     }
 
-    // Recompute all skill bonuses and passive senses
-    character.skills.forEach(skill => {
-        const abMod = getMod(skill.stat);
-        const mult = skill.proficiency === "expertise" ? 2 : skill.proficiency === "proficient" ? 1 : 0;
-        skill.bonus = abMod + mult * profBonus;
-    });
+    // Recompute skill bonuses when ability modifiers change
+    for (const ability of character.abilities) {
+        const oldMod = oldAbilityMods[ability.abbr] ?? ability.modifier;
+        const delta = ability.modifier - oldMod;
+        if (delta !== 0) {
+            character.skills.forEach(skill => {
+                if (skill.stat.toUpperCase() === ability.abbr.toUpperCase()) {
+                    skill.bonus += delta;
+                }
+            });
+        }
+    }
 
     const getSkillBonus = (name: string) =>
         character.skills.find(s => s.name.toLowerCase() === name.toLowerCase())?.bonus ?? 0;

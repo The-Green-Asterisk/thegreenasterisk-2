@@ -23,6 +23,7 @@ import {
     ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
     FIENDISH_RESILIENCE_DAMAGE_TYPES,
     FIGHTING_STYLES,
+    findClassOption,
     GENERAL_FEATS_2024,
     GeneralFeatDefinition,
     HUNTER_DEFENSIVE_TACTICS,
@@ -58,7 +59,15 @@ import {
     STEPS_OF_THE_FEY_OPTIONS,
     FEY_WANDERER_GLAMOUR_SKILLS,
     HUNTER_SUPERIOR_DEFENSE_OPTIONS,
-    ABERRANT_REVELATION_OPTIONS
+    ABERRANT_REVELATION_OPTIONS,
+    MULTICLASS_PREREQUISITES_2024,
+    MULTICLASS_PROFICIENCIES_2024,
+    checkClassPrerequisite,
+    getMulticlassCasterInfo,
+    calculateMulticlassSpellSlots,
+    MulticlassCasterClassInfo,
+    MulticlassSpellSlotsResult,
+    applyProgressionChoiceOption
 } from "../../rules/dnd5e_2024";
 
 export interface AsiChoice {
@@ -66,6 +75,12 @@ export interface AsiChoice {
     statA?: AbilityName;
     statB?: AbilityName;
     featId?: string;
+}
+
+export interface CharacterClassChoice {
+    classId: string;
+    level: number;
+    subclassId?: string;
 }
 
 export interface CreatorState {
@@ -84,6 +99,7 @@ export interface CreatorState {
     elfKeenSkill: string;
     classId: string;
     subclassId: string;
+    classes: CharacterClassChoice[];
     weaponMasteries: string[];
     // Class-specific progression choices:
     fightingStyle?: string;
@@ -149,6 +165,9 @@ export class CharacterCreatorController {
         elfKeenSkill: "Perception",
         classId: "fighter",
         subclassId: "",
+        classes: [
+            { classId: "fighter", level: 1, subclassId: "" }
+        ],
         weaponMasteries: ["Longsword", "Greatsword", "Shortbow"],
         backgroundId: "soldier",
         backgroundOption: "two-and-one",
@@ -173,41 +192,7 @@ export class CharacterCreatorController {
         metamagic: [],
         invocations: [],
         maneuvers: [],
-        subclassFeatureChoices: {
-            "wizard-2-scholar": "arcana",
-            "barbarian-3-wild-heart": "bear",
-            "barbarian-3-zealot": "radiant",
-            "monk-3-elements": "fire",
-            "monk-3-open-hand": "addle",
-            "ranger-3-hunter": "colossus-slayer",
-            "ranger-3-beast-master": "land",
-            "ranger-3-fey-wanderer": "Deception",
-            "sorcerer-3-draconic": "gold",
-            "warlock-3-archfey": "taunting-step",
-            "druid-3-stars": "archer",
-            "druid-3-sea": "cold",
-            "druid-3-moon": "radiant",
-            "fighter-3-battle-master-student": "History",
-            "rogue-5-cunning-strike": "trip",
-            "druid-6-land": "arid",
-            "cleric-6-war": "shield-of-faith",
-            "barbarian-6-wild-heart": "elephant",
-            "ranger-6-hunter": "multiattack-defense",
-            "druid-7": "potent-spellcasting",
-            "cleric-7": "potent-spellcasting",
-            "fighter-7-champion": "defense",
-            "fighter-7-psi-warrior": "push",
-            "barbarian-9-brutal-strike": "forceful-blow",
-            "fighter-9-tactical-master": "push",
-            "barbarian-10-world-tree": "push",
-            "warlock-10-fiend": "fire",
-            "wizard-10-diviner": "darkvision",
-            "barbarian-13-brutal-strike": "staggering-blow",
-            "barbarian-14-wild-heart": "falcon",
-            "rogue-14-devious-strike": "knock-out",
-            "sorcerer-14-aberrant": "flight",
-            "ranger-15-hunter": "evasion"
-        },
+        subclassFeatureChoices: {},
         classSkills: ["Athletics", "Perception"],
         expertiseSkills: [],
         selectedWeapons: ["Longsword", "Light Crossbow"],
@@ -225,10 +210,296 @@ export class CharacterCreatorController {
     public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
 
     public activeSpellLevelFilter: number | "all" = "all";
+    public activeSpellClassFilter: string = "all";
     public spellSearchQuery: string = "";
     public progressionExpanded: boolean = false;
     public progressionFilter: "all" | "unlocked" = "all";
     public spellsWarningDismissed: boolean = false;
+
+    public syncStateClassProperties() {
+        if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
+            this.state.classes = [{
+                classId: this.state.classId || "fighter",
+                level: this.state.level || 1,
+                subclassId: this.state.subclassId || ""
+            }];
+        }
+        const primary = this.state.classes[0];
+        if (this.state.classes.length === 1) {
+            // Single-class: sync direct state modifications into primary:
+            if (this.state.classId && this.state.classId !== primary.classId) {
+                primary.classId = this.state.classId;
+            } else {
+                this.state.classId = primary.classId;
+            }
+
+            if (this.state.subclassId !== undefined && this.state.subclassId !== primary.subclassId) {
+                primary.subclassId = this.state.subclassId;
+            } else {
+                this.state.subclassId = primary.subclassId || "";
+            }
+
+            if (this.state.level && this.state.level !== primary.level) {
+                primary.level = this.state.level;
+            }
+        } else {
+            // Multiclass: primary class in state is derived from classes[0]
+            this.state.classId = primary.classId;
+            this.state.subclassId = primary.subclassId || "";
+        }
+
+        this.state.level = this.getTotalLevel();
+        this.sanitizeClassProgressionSelections();
+    }
+
+    public sanitizeClassProgressionSelections(): void {
+        if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) return;
+
+        // 1. Subclasses: Subclass unlocks at Level 3 in D&D 2024
+        for (let i = 0; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            if ((cc.level || 1) < 3) {
+                cc.subclassId = "";
+                if (i === 0) {
+                    this.state.subclassId = "";
+                }
+            }
+        }
+
+        // 2. Fighting Style:
+        // Requires Fighter (lvl >= 1), Paladin (lvl >= 2), or Ranger (lvl >= 2).
+        const hasFightingStyle = this.state.classes.some((c) => {
+            if (c.classId === "fighter" && (c.level || 1) >= 1) return true;
+            if (c.classId === "paladin" && (c.level || 1) >= 2) return true;
+            if (c.classId === "ranger" && (c.level || 1) >= 2) return true;
+            return false;
+        });
+        if (!hasFightingStyle) {
+            this.state.fightingStyle = "";
+        }
+
+        // 3. Divine Order: Requires Cleric (lvl >= 1)
+        const hasCleric = this.state.classes.some((c) => c.classId === "cleric" && (c.level || 1) >= 1);
+        if (!hasCleric) {
+            this.state.divineOrder = "";
+        }
+
+        // 4. Primal Order: Requires Druid (lvl >= 1)
+        const hasDruid = this.state.classes.some((c) => c.classId === "druid" && (c.level || 1) >= 1);
+        if (!hasDruid) {
+            this.state.primalOrder = "";
+        }
+
+        // 5. Metamagic: Requires Sorcerer (lvl >= 2)
+        const maxMetamagic = this.getMaxMetamagicCount();
+        if (maxMetamagic <= 0) {
+            this.state.metamagic = [];
+        } else if (this.state.metamagic && this.state.metamagic.length > maxMetamagic) {
+            this.state.metamagic = this.state.metamagic.slice(0, maxMetamagic);
+        }
+
+        // 6. Invocations: Requires Warlock (lvl >= 1)
+        const warlock = this.state.classes.find((c) => c.classId === "warlock");
+        const warlockLvl = warlock ? (warlock.level || 1) : 0;
+        const maxInvocations = this.getMaxInvocationsCount();
+        if (warlockLvl <= 0 || maxInvocations <= 0) {
+            this.state.invocations = [];
+        } else if (this.state.invocations) {
+            this.state.invocations = this.state.invocations.filter((id) => {
+                const invDef = ELDRITCH_INVOCATIONS.find((inv) => inv.id === id);
+                return !invDef?.minLevel || warlockLvl >= invDef.minLevel;
+            });
+            if (this.state.invocations.length > maxInvocations) {
+                this.state.invocations = this.state.invocations.slice(0, maxInvocations);
+            }
+        }
+
+        // 7. Battle Master Maneuvers: Requires Fighter Battle Master (lvl >= 3)
+        const maxManeuvers = this.getMaxManeuversCount();
+        if (maxManeuvers <= 0) {
+            this.state.maneuvers = [];
+        } else if (this.state.maneuvers && this.state.maneuvers.length > maxManeuvers) {
+            this.state.maneuvers = this.state.maneuvers.slice(0, maxManeuvers);
+        }
+
+        // 8. Weapon Masteries:
+        const maxWM = this.getMaxWeaponMasteriesCount();
+        if (this.state.weaponMasteries && this.state.weaponMasteries.length > maxWM) {
+            this.state.weaponMasteries = this.state.weaponMasteries.slice(0, maxWM);
+        }
+
+        // 9. Subclass Feature Choices (subclassFeatureChoices)
+        if (this.state.subclassFeatureChoices) {
+            for (const key of Object.keys(this.state.subclassFeatureChoices)) {
+                const parts = key.split("-");
+                const classId = parts[0];
+                const choiceLvl = parseInt(parts[1], 10);
+                const classChoice = this.state.classes.find((c) => c.classId === classId);
+
+                // If class does not exist or class level is below this feature's unlock level:
+                if (!classChoice || (classChoice.level || 1) < choiceLvl) {
+                    delete this.state.subclassFeatureChoices[key];
+                    continue;
+                }
+
+                // If feature is tied to a specific subclass:
+                const clsDef = this.classes.find((x) => x.id === classId);
+                const subDef = clsDef?.subclasses?.find((s) => key.includes(`-${s.id}`));
+                if (subDef) {
+                    if (classChoice.subclassId !== subDef.id) {
+                        delete this.state.subclassFeatureChoices[key];
+                    }
+                }
+            }
+        }
+
+        // 10. ASI Choices:
+        if (this.state.asiChoices) {
+            const asiLevels = this.getAsiLevels();
+            for (const lvlStr of Object.keys(this.state.asiChoices)) {
+                const lvlNum = parseInt(lvlStr, 10);
+                if (!asiLevels.includes(lvlNum) || lvlNum > this.state.level) {
+                    delete this.state.asiChoices[lvlNum];
+                }
+            }
+        }
+    }
+
+    public getTotalLevel(): number {
+        if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
+            return this.state.level || 1;
+        }
+        return this.state.classes.reduce((sum, c) => sum + (c.level || 1), 0);
+    }
+
+    public getNavBottom(): number {
+        const siteNav = document.querySelector("nav") as HTMLElement;
+        if (!siteNav) return 0;
+        const isHidden = siteNav.style.display === "none"
+            || (typeof window !== "undefined" && window.getComputedStyle(siteNav).display === "none");
+        if (isHidden) return 0;
+        const navRect = siteNav.getBoundingClientRect();
+        return Math.round(navRect.bottom || siteNav.offsetHeight || 70);
+    }
+
+    public updateMulticlassBarPositions() {
+        const bottomBar = document.getElementById("multiclass-bottom-bar");
+        const topBar = document.getElementById("multiclass-top-bar");
+        const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
+        if (!panel) return;
+
+        const panelRect = panel.getBoundingClientRect();
+        const viewportHeight = typeof window !== "undefined" ? (window.innerHeight || document.documentElement.clientHeight || 800) : 800;
+
+        if (bottomBar) {
+            // When panelRect.bottom <= viewportHeight, the end of the multiclass panel has reached the viewport.
+            // Stick to the page (docked) at the bottom of the panel with zero transition lag!
+            // When panelRect.bottom > viewportHeight, keep it fixed to the bottom of the viewport.
+            if (panelRect.bottom <= viewportHeight) {
+                bottomBar.classList.add("docked");
+                bottomBar.style.bottom = "";
+            } else {
+                bottomBar.classList.remove("docked");
+                bottomBar.style.bottom = "0px";
+            }
+        }
+
+        if (topBar) {
+            const navBottom = this.getNavBottom();
+            topBar.style.top = `${navBottom}px`;
+        }
+
+        const floatingBtn = document.getElementById("floating-scroll-bottom-btn");
+        if (floatingBtn && typeof window !== "undefined") {
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            const scrollHeight = document.documentElement.scrollHeight || 1000;
+            const isNearBottom = (viewportHeight + scrollY) >= (scrollHeight - 160);
+            if (isNearBottom) {
+                floatingBtn.classList.add("hidden");
+            } else {
+                floatingBtn.classList.remove("hidden");
+            }
+        }
+    }
+
+    public updateMulticlassNavBars() {
+        const topNavContainer = document.getElementById("multiclass-top-nav-buttons");
+        const topBar = document.getElementById("multiclass-top-bar");
+        const bottomNavContainer = document.getElementById("multiclass-bottom-nav");
+        if (!bottomNavContainer || !Array.isArray(this.state.classes)) return;
+
+        const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+        const topBarHeight = topBar?.offsetHeight || 60;
+        const navBottom = this.getNavBottom();
+        const topThreshold = navBottom + topBarHeight;
+
+        const aboveButtons: Array<{ idx: number; name: string }> = [];
+        const belowButtons: Array<{ idx: number; name: string }> = [];
+
+        const allZero = this.state.classes.every((_, i) => {
+            const el = document.getElementById(`class-section-${i}`);
+            if (!el) return true;
+            const r = el.getBoundingClientRect();
+            return r.top === 0 && r.bottom === 0;
+        });
+
+        this.state.classes.forEach((c, idx) => {
+            const el = document.getElementById(`class-section-${idx}`);
+            if (!el) return;
+            const clsDef = this.classes.find((x) => x.id === c.classId);
+            const name = clsDef?.name || c.classId;
+
+            if (allZero) {
+                // In headless / jsdom environments without layout engine, classes after primary are below view
+                if (idx > 0) {
+                    belowButtons.push({ idx, name });
+                }
+                return;
+            }
+
+            const rect = el.getBoundingClientRect();
+            // If section's bottom has scrolled above the top threshold
+            if (rect.bottom < topThreshold) {
+                aboveButtons.push({ idx, name });
+            }
+            // If section's top is below the viewport bottom
+            else if (rect.top > viewportHeight - 100) {
+                belowButtons.push({ idx, name });
+            }
+        });
+
+        if (topNavContainer && topBar) {
+            if (aboveButtons.length > 0) {
+                topBar.classList.remove("hidden");
+                topNavContainer.innerHTML = aboveButtons.map((b) => `
+                    <button type="button" class="creator-btn nav-to-class-btn top-nav-btn" data-target-class="${b.idx}">
+                        <i class="fa-solid fa-arrow-up"></i> ${b.name}
+                    </button>
+                `).join("");
+            } else {
+                topBar.classList.add("hidden");
+                topNavContainer.innerHTML = "";
+            }
+        }
+
+        bottomNavContainer.innerHTML = belowButtons.map((b) => `
+            <button type="button" class="creator-btn nav-to-class-btn bottom-nav-btn" data-target-class="${b.idx}">
+                <i class="fa-solid fa-arrow-down"></i> ${b.name}
+            </button>
+        `).join("");
+
+        // Attach click handlers to newly rendered navigation buttons
+        const navButtons = document.querySelectorAll(".nav-to-class-btn[data-target-class]");
+        navButtons.forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                const targetIdx = Number((e.currentTarget as HTMLElement).getAttribute("data-target-class"));
+                const targetEl = document.getElementById(`class-section-${targetIdx}`);
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            });
+        });
+    }
 
     public async init(query?: any) {
         this.bindEvents();
@@ -251,9 +522,25 @@ export class CharacterCreatorController {
                                 features:
                                     Array.isArray(sub.features) && sub.features.length > 0
                                         ? sub.features
-                                        : (fallbackSub?.features || [])
+                                        : (fallbackSub?.features || []),
+                                progression: sub.progression || fallbackSub?.progression
                             };
                         });
+                        const classSlug = rc.id || rc.slug;
+                        if (Array.isArray(rules.subclasses)) {
+                            for (const gs of rules.subclasses) {
+                                if (gs.classSlug === classSlug || gs.classId === rc.id) {
+                                    const existingIdx = enrichedSubs.findIndex(
+                                        (s: any) => s.id === gs.id || s.slug === gs.slug || s.name.toLowerCase() === gs.name.toLowerCase()
+                                    );
+                                    if (existingIdx === -1) {
+                                        enrichedSubs.push(gs);
+                                    } else if (!enrichedSubs[existingIdx].progression || enrichedSubs[existingIdx].progression.length === 0) {
+                                        enrichedSubs[existingIdx].progression = gs.progression;
+                                    }
+                                }
+                            }
+                        }
                         if (fallbackCls?.subclasses) {
                             for (const fs of fallbackCls.subclasses) {
                                 if (!enrichedSubs.some((s: any) => s.id === fs.id || s.name.toLowerCase() === fs.name.toLowerCase())) {
@@ -264,10 +551,11 @@ export class CharacterCreatorController {
                         return {
                             ...rc,
                             features:
-                                fallbackCls?.features && fallbackCls.features.length > 0
-                                    ? fallbackCls.features
-                                    : (rc.features || []),
-                            subclasses: enrichedSubs
+                                Array.isArray(rc.features) && rc.features.length > 0
+                                    ? rc.features
+                                    : (fallbackCls?.features || []),
+                            subclasses: enrichedSubs,
+                            progression: rc.progression || fallbackCls?.progression
                         };
                     });
                 }
@@ -309,6 +597,47 @@ export class CharacterCreatorController {
                     }
                 }
             });
+        });
+
+        // Multiclass scroll and resize observer
+        window.addEventListener("scroll", () => {
+            if (this.state.currentStep === 3) {
+                this.updateMulticlassBarPositions();
+                this.updateMulticlassNavBars();
+            }
+        }, { passive: true });
+
+        window.addEventListener("resize", () => {
+            if (this.state.currentStep === 3) {
+                this.updateMulticlassBarPositions();
+                this.updateMulticlassNavBars();
+            }
+        }, { passive: true });
+
+        // Observe navigation bar visibility changes (e.g. toggled display or body padding)
+        if (typeof MutationObserver !== "undefined") {
+            const navObserver = new MutationObserver(() => {
+                if (this.state.currentStep === 3) {
+                    this.updateMulticlassBarPositions();
+                    this.updateMulticlassNavBars();
+                }
+            });
+            const siteNav = document.querySelector("nav");
+            if (siteNav) {
+                navObserver.observe(siteNav, { attributes: true, attributeFilter: ["style", "class"] });
+            }
+            if (typeof document !== "undefined" && document.body) {
+                navObserver.observe(document.body, { attributes: true, attributeFilter: ["style", "class"] });
+            }
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && this.state.currentStep === 3) {
+                setTimeout(() => {
+                    this.updateMulticlassBarPositions();
+                    this.updateMulticlassNavBars();
+                }, 10);
+            }
         });
     }
 
@@ -367,6 +696,20 @@ export class CharacterCreatorController {
                     const spellCount = this.state.selectedSpellsLevel1.length;
                     const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
                     const className = cls?.name || "Spellcaster";
+
+                    if ((maxCantrips > 0 && cantripCount > maxCantrips) || (maxPrepared > 0 && spellCount > maxPrepared)) {
+                        let warnMsg = "";
+                        if (cantripCount > maxCantrips && spellCount > maxPrepared) {
+                            warnMsg = `Warning: You have selected more spells than your allotment (${cantripCount}/${maxCantrips} cantrips, ${spellCount}/${maxPrepared} prepared spells). Click Next again to proceed anyway, or adjust your selections below.`;
+                        } else if (cantripCount > maxCantrips) {
+                            warnMsg = `Warning: You have selected more cantrips (${cantripCount}) than your allotment (${maxCantrips}). Click Next again to proceed anyway, or adjust your selections below.`;
+                        } else {
+                            warnMsg = `Warning: You have selected more prepared spells (${spellCount}) than your allotment (${maxPrepared}). Click Next again to proceed anyway, or adjust your selections below.`;
+                        }
+                        this.showAlert(warnMsg, "warning");
+                        this.spellsWarningDismissed = true;
+                        return false;
+                    }
 
                     if (cantripCount === 0 && spellCount === 0) {
                         this.showAlert(
@@ -536,16 +879,81 @@ export class CharacterCreatorController {
         }
     }
 
+    public getMaxWeaponMasteriesCount(): number {
+        let count = 0;
+        if (Array.isArray(this.state.classes) && this.state.classes.length > 0) {
+            for (const c of this.state.classes) {
+                const cls = this.classes.find((x) => x.id === c.classId);
+                if (!cls || !cls.weaponMasteryCount || c.level < 1) continue;
+                let mCount = cls.weaponMasteryCount;
+                if (cls.id === "fighter") {
+                    if (c.level >= 16) mCount = 6;
+                    else if (c.level >= 10) mCount = 5;
+                    else if (c.level >= 4) mCount = 4;
+                    else mCount = 3;
+                } else if (cls.id === "barbarian") {
+                    if (c.level >= 10) mCount = 4;
+                    else if (c.level >= 4) mCount = 3;
+                    else mCount = 2;
+                }
+                count += mCount;
+            }
+        }
+        if (count === 0) {
+            const primaryCls = this.classes.find((x) => x.id === this.state.classId);
+            if (primaryCls?.weaponMasteryCount) {
+                let mCount = primaryCls.weaponMasteryCount;
+                if (primaryCls.id === "fighter") {
+                    if (this.state.level >= 16) mCount = 6;
+                    else if (this.state.level >= 10) mCount = 5;
+                    else if (this.state.level >= 4) mCount = 4;
+                    else mCount = 3;
+                } else if (primaryCls.id === "barbarian") {
+                    if (this.state.level >= 10) mCount = 4;
+                    else if (this.state.level >= 4) mCount = 3;
+                    else mCount = 2;
+                }
+                count = mCount;
+            }
+        }
+        return count;
+    }
+
     public getMaxMetamagicCount(): number {
-        if (this.state.classId !== "sorcerer" || this.state.level < 2) return 0;
-        if (this.state.level >= 17) return 4;
-        if (this.state.level >= 10) return 3;
+        if (this.state.classes && this.state.classes.length > 1) {
+            const sorc = this.state.classes.find((c) => c.classId === "sorcerer");
+            if (!sorc || sorc.level < 2) return 0;
+            const lvl = sorc.level;
+            if (lvl >= 17) return 4;
+            if (lvl >= 10) return 3;
+            return 2;
+        }
+        const isSorc = this.state.classId === "sorcerer" || this.state.classes?.[0]?.classId === "sorcerer";
+        const lvl = Math.max(this.state.level || 0, this.state.classes?.[0]?.level || 0);
+        if (!isSorc || lvl < 2) return 0;
+        if (lvl >= 17) return 4;
+        if (lvl >= 10) return 3;
         return 2;
     }
 
     public getMaxInvocationsCount(): number {
-        if (this.state.classId !== "warlock") return 0;
-        const lvl = this.state.level;
+        if (this.state.classes && this.state.classes.length > 1) {
+            const warlock = this.state.classes.find((c) => c.classId === "warlock");
+            if (!warlock || warlock.level < 1) return 0;
+            const lvl = warlock.level;
+            if (lvl >= 18) return 10;
+            if (lvl >= 15) return 9;
+            if (lvl >= 12) return 8;
+            if (lvl >= 9) return 7;
+            if (lvl >= 7) return 6;
+            if (lvl >= 5) return 5;
+            if (lvl >= 2) return 3;
+            return 1;
+        }
+        const isWarlock = this.state.classId === "warlock" || this.state.classes?.[0]?.classId === "warlock";
+        if (!isWarlock) return 0;
+        const lvl = Math.max(this.state.level || 0, this.state.classes?.[0]?.level || 0);
+        if (lvl < 1) return 0;
         if (lvl >= 18) return 10;
         if (lvl >= 15) return 9;
         if (lvl >= 12) return 8;
@@ -557,8 +965,19 @@ export class CharacterCreatorController {
     }
 
     public getMaxManeuversCount(): number {
-        if (this.state.classId !== "fighter" || this.state.subclassId !== "battle-master" || this.state.level < 3) return 0;
-        const lvl = this.state.level;
+        if (this.state.classes && this.state.classes.length > 1) {
+            const fighter = this.state.classes.find((c) => c.classId === "fighter");
+            if (!fighter || fighter.subclassId !== "battle-master" || fighter.level < 3) return 0;
+            const lvl = fighter.level;
+            if (lvl >= 15) return 9;
+            if (lvl >= 10) return 7;
+            if (lvl >= 7) return 5;
+            return 3;
+        }
+        const isFighter = this.state.classId === "fighter" || this.state.classes?.[0]?.classId === "fighter";
+        const isBattleMaster = this.state.subclassId === "battle-master" || this.state.classes?.[0]?.subclassId === "battle-master";
+        const lvl = Math.max(this.state.level || 0, this.state.classes?.[0]?.level || 0);
+        if (!isFighter || !isBattleMaster || lvl < 3) return 0;
         if (lvl >= 15) return 9;
         if (lvl >= 10) return 7;
         if (lvl >= 7) return 5;
@@ -566,9 +985,25 @@ export class CharacterCreatorController {
     }
 
     public getMaxExpertiseCount(): number {
-        const { classId, level } = this.state;
+        if (this.state.classes && this.state.classes.length > 1) {
+            let count = 0;
+            for (const c of this.state.classes) {
+                if (c.classId === "rogue") {
+                    count += c.level >= 6 ? 4 : (c.level >= 1 ? 2 : 0);
+                } else if (c.classId === "bard") {
+                    if (c.level >= 9) count += 4;
+                    else if (c.level >= 2) count += 2;
+                } else if (c.classId === "ranger") {
+                    if (c.level >= 9) count += 2;
+                    else if (c.level >= 2) count += 1;
+                }
+            }
+            return count;
+        }
+        const classId = this.state.classId || this.state.classes?.[0]?.classId;
+        const level = Math.max(this.state.level || 0, this.state.classes?.[0]?.level || 0);
         if (classId === "rogue") {
-            return level >= 6 ? 4 : 2;
+            return level >= 6 ? 4 : (level >= 1 ? 2 : 0);
         }
         if (classId === "bard") {
             if (level >= 9) return 4;
@@ -612,6 +1047,27 @@ export class CharacterCreatorController {
                 Object.assign(this.state, char.creatorState);
                 if (savedId) this.state.savedId = Number(savedId);
                 if (siteCharacterId) this.state.siteCharacterId = String(siteCharacterId);
+                if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
+                    if (Array.isArray(char.classes) && char.classes.length > 0) {
+                        this.state.classes = char.classes.map((c: any) => {
+                            const clsName = (c.name || "").toLowerCase();
+                            const matchedCls = this.classes.find((x) => x.name.toLowerCase() === clsName || x.id === clsName);
+                            const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
+                            let subclassId = "";
+                            if (c.subclass && matchedCls) {
+                                const subName = String(c.subclass).toLowerCase();
+                                const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
+                                if (matchedSub) subclassId = matchedSub.id;
+                            }
+                            return {
+                                classId,
+                                level: Number(c.level) || 1,
+                                subclassId
+                            };
+                        });
+                    }
+                }
+                this.syncStateClassProperties();
             } else {
                 if (char.name) this.state.name = char.name;
                 if (char.level) this.state.level = Number(char.level);
@@ -624,17 +1080,26 @@ export class CharacterCreatorController {
                 if (matchedSp) this.state.speciesId = matchedSp.id;
 
                 if (Array.isArray(char.classes) && char.classes.length > 0) {
-                    const primaryClass = char.classes[0];
-                    const clsName = (primaryClass.name || "").toLowerCase();
-                    const matchedCls = this.classes.find((c) => c.name.toLowerCase() === clsName || c.id === clsName);
-                    if (matchedCls) {
-                        this.state.classId = matchedCls.id;
-                        if (primaryClass.subclass) {
-                            const subName = primaryClass.subclass.toLowerCase();
+                    this.state.classes = char.classes.map((c: any) => {
+                        const clsName = (c.name || "").toLowerCase();
+                        const matchedCls = this.classes.find((x) => x.name.toLowerCase() === clsName || x.id === clsName);
+                        const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
+                        let subclassId = "";
+                        if (c.subclass && matchedCls) {
+                            const subName = String(c.subclass).toLowerCase();
                             const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
-                            if (matchedSub) this.state.subclassId = matchedSub.id;
+                            if (matchedSub) subclassId = matchedSub.id;
                         }
-                    }
+                        return {
+                            classId,
+                            level: Number(c.level) || 1,
+                            subclassId
+                        };
+                    });
+                    this.syncStateClassProperties();
+                } else {
+                    this.state.classes = [{ classId: "fighter", level: Number(char.level) || 1, subclassId: "" }];
+                    this.syncStateClassProperties();
                 }
 
                 if (char.background) {
@@ -723,32 +1188,46 @@ export class CharacterCreatorController {
     }
 
     public getMaxHp(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+        this.syncStateClassProperties();
         const conMod = this.getAbilityModifier("con");
-        const hitDie = cls.hitDie;
-        const level = this.state.level;
+        const classChoices = (this.state.classes && this.state.classes.length > 0)
+            ? this.state.classes
+            : [{ classId: this.state.classId || "fighter", level: this.state.level || 1 }];
 
-        // Level 1: max hit die + Con mod
-        let hp = hitDie + conMod;
-        // Higher levels: average die + Con mod per level
-        if (level > 1) {
+        let hp = 0;
+        classChoices.forEach((choice, idx) => {
+            const cls = this.classes.find((c) => c.id === choice.classId) || this.classes[0];
+            const hitDie = cls.hitDie;
+            const level = choice.level || 1;
             const avgDie = Math.floor(hitDie / 2) + 1;
-            hp += (level - 1) * (avgDie + conMod);
-        }
 
+            if (idx === 0) {
+                // First class Level 1: full hit die + Con mod
+                hp += hitDie + conMod;
+                if (level > 1) {
+                    hp += (level - 1) * (avgDie + conMod);
+                }
+            } else {
+                // Additional classes: average hit die + Con mod for each level
+                hp += level * (avgDie + conMod);
+            }
+        });
+
+        const totalLevel = this.getTotalLevel();
         // Tough feat bonus (+2 HP per level)
         if (this.state.originFeatId === "tough" || (this.state.speciesId === "human" && this.state.humanExtraFeatId === "tough")) {
-            hp += 2 * level;
+            hp += 2 * totalLevel;
         }
 
         // Dwarven Toughness (+1 HP per level)
         if (this.state.speciesId === "dwarf") {
-            hp += level;
+            hp += totalLevel;
         }
 
         // Draconic Sorcerer (+1 HP per level starting at level 3)
-        if (this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && level >= 3) {
-            hp += level;
+        const sorcererChoice = classChoices.find((c) => c.classId === "sorcerer");
+        if (sorcererChoice && (sorcererChoice.subclassId === "draconic" || this.state.subclassId === "draconic") && sorcererChoice.level >= 3) {
+            hp += sorcererChoice.level;
         }
 
         return Math.max(1, hp);
@@ -854,33 +1333,157 @@ export class CharacterCreatorController {
         return base;
     }
 
+    public canMulticlassInto(candidateClassId: string, classIndex: number): { allowed: boolean; reason?: string; prereqLabel?: string; currentScoreText?: string } {
+        // If candidate class is already taken by another class slot:
+        const isDuplicate = this.state.classes.some((c, idx) => idx !== classIndex && c.classId === candidateClassId);
+        if (isDuplicate) {
+            return {
+                allowed: false,
+                reason: "Already chosen"
+            };
+        }
+
+        // D&D 2024 Rule: Must meet prerequisites for BOTH existing class(es) and the new class.
+        // 1. Check all other existing classes:
+        for (let idx = 0; idx < this.state.classes.length; idx++) {
+            if (idx === classIndex) continue;
+            const existing = this.state.classes[idx];
+            const check = checkClassPrerequisite(existing.classId, (stat) => this.getEffectiveAbilityScore(stat));
+            if (!check.met) {
+                const existingCls = this.classes.find((c) => c.id === existing.classId);
+                const roleName = idx === 0 ? "Primary class" : "Current class";
+                return {
+                    allowed: false,
+                    reason: `${roleName} (${existingCls?.name || existing.classId}) requires ${check.label} (Current: ${check.currentScoreText}) to multiclass`,
+                    prereqLabel: check.label,
+                    currentScoreText: check.currentScoreText
+                };
+            }
+        }
+
+        // 2. Check candidate class prerequisite:
+        const candidateCheck = checkClassPrerequisite(candidateClassId, (stat) => this.getEffectiveAbilityScore(stat));
+        if (!candidateCheck.met) {
+            return {
+                allowed: false,
+                reason: `Requires ${candidateCheck.label} (Current: ${candidateCheck.currentScoreText})`,
+                prereqLabel: candidateCheck.label,
+                currentScoreText: candidateCheck.currentScoreText
+            };
+        }
+
+        return {
+            allowed: true,
+            prereqLabel: candidateCheck.label,
+            currentScoreText: candidateCheck.currentScoreText
+        };
+    }
+
+    public getAllArmorProficiencies(): string[] {
+        this.syncStateClassProperties();
+        const profs = new Set<string>();
+        const primary = this.state.classes[0];
+        const primaryId = primary?.classId || this.state.classId;
+        if (primaryId) {
+            const cls = this.classes.find((c) => c.id === primaryId);
+            cls?.armorProficiencies.forEach((p) => profs.add(p));
+        }
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            multi?.armor.forEach((p) => profs.add(p));
+        }
+        return Array.from(profs);
+    }
+
+    public getAllWeaponProficiencies(): string[] {
+        this.syncStateClassProperties();
+        const profs = new Set<string>();
+        const primary = this.state.classes[0];
+        const primaryId = primary?.classId || this.state.classId;
+        if (primaryId) {
+            const cls = this.classes.find((c) => c.id === primaryId);
+            cls?.weaponProficiencies.forEach((p) => profs.add(p));
+        }
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            multi?.weapons.forEach((p) => profs.add(p));
+        }
+        return Array.from(profs);
+    }
+
+    public getAllToolProficiencies(): string[] {
+        this.syncStateClassProperties();
+        const tools = new Set<string>();
+        if (this.state.bgTool) tools.add(this.state.bgTool);
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            multi?.tools.forEach((t) => tools.add(t));
+        }
+        return Array.from(tools);
+    }
+
+    public getMaxClassSkillCount(): number {
+        this.syncStateClassProperties();
+        const primary = this.state.classes[0];
+        const primaryCls = this.classes.find((c) => c.id === (primary?.classId || this.state.classId));
+        let count = primaryCls?.skillChoices.count || 2;
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            if (multi?.skills?.count) {
+                count += multi.skills.count;
+            }
+        }
+        return count;
+    }
+
+    public getAllowedClassSkills(): string[] {
+        this.syncStateClassProperties();
+        const primary = this.state.classes[0];
+        const primaryCls = this.classes.find((c) => c.id === (primary?.classId || this.state.classId));
+        const allowed = new Set<string>(primaryCls?.skillChoices.from || []);
+
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            if (multi?.skills) {
+                if (multi.skills.from) {
+                    multi.skills.from.forEach((s) => allowed.add(s));
+                } else {
+                    ALL_SKILLS.forEach((s) => allowed.add(s.name));
+                }
+            }
+        }
+        return Array.from(allowed);
+    }
+
     public isProficientWithArmor(armorName: string): boolean {
         if (!armorName || armorName === "None") return true;
         const armor = BASE_ARMOR_2024.find((a) => a.name === armorName);
         if (!armor) return true;
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return true;
-        const profs = cls.armorProficiencies;
+        const profs = this.getAllArmorProficiencies();
         if (profs.includes("All Armor")) return true;
         return profs.some((p) => p.toLowerCase().includes(armor.category.toLowerCase()));
     }
 
     public isProficientWithShield(): boolean {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return true;
-        return cls.armorProficiencies.includes("Shields") || cls.armorProficiencies.includes("All Armor");
+        const profs = this.getAllArmorProficiencies();
+        return profs.includes("Shields") || profs.includes("All Armor");
     }
 
     public isProficientWithWeapon(weaponName: string): boolean {
         const weapon = BASE_WEAPONS_2024.find((w) => w.name === weaponName);
         if (!weapon) return true;
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return true;
-        const profs = cls.weaponProficiencies;
+        const profs = this.getAllWeaponProficiencies();
         if (profs.includes("Martial Weapons") || profs.includes("Simple Weapons, Martial Weapons")) return true;
         if (weapon.category.startsWith("Simple") && profs.some((p) => p.includes("Simple"))) return true;
-        if (cls.id === "rogue" && (weapon.properties.includes("Finesse") || weapon.properties.includes("Light"))) return true;
-        if (cls.id === "monk" && weapon.properties.includes("Light")) return true;
+        const hasRogue = this.state.classes.some((c) => c.classId === "rogue");
+        if (hasRogue && (weapon.properties.includes("Finesse") || weapon.properties.includes("Light"))) return true;
+        const hasMonk = this.state.classes.some((c) => c.classId === "monk");
+        if (hasMonk && weapon.properties.includes("Light")) return true;
         return false;
     }
 
@@ -961,19 +1564,35 @@ export class CharacterCreatorController {
         return true;
     }
 
-    public getMaxCantrips(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return 0;
-        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-        let count = cls.spellcasting?.cantripsKnownByLevel?.[lvlIdx] || 0;
-
-        // Subclass third-casters at level 3+
-        if (this.state.level >= 3) {
-            if (this.state.classId === "fighter" && this.state.subclassId === "eldritch-knight") {
-                count += (this.state.level >= 10 ? 3 : 2);
-            } else if (this.state.classId === "rogue" && this.state.subclassId === "arcane-trickster") {
-                count += (this.state.level >= 10 ? 4 : 3);
+    public getSpellcasterInfos(): MulticlassCasterClassInfo[] {
+        this.syncStateClassProperties();
+        if (Array.isArray(this.state.classes) && this.state.classes.length === 1) {
+            if (this.state.classId && this.state.classes[0].classId !== this.state.classId) {
+                this.state.classes[0].classId = this.state.classId;
             }
+            if (this.state.subclassId !== undefined && this.state.classes[0].subclassId !== this.state.subclassId) {
+                this.state.classes[0].subclassId = this.state.subclassId;
+            }
+            if (this.state.level && this.state.classes[0].level !== this.state.level) {
+                this.state.classes[0].level = this.state.level;
+            }
+        }
+        const infos: MulticlassCasterClassInfo[] = [];
+        for (const cc of this.state.classes || []) {
+            const classDef = this.classes.find((x) => x.id === (cc.classId || "").toLowerCase());
+            const info = getMulticlassCasterInfo(cc, classDef);
+            if (info) {
+                infos.push(info);
+            }
+        }
+        return infos;
+    }
+
+    public getMaxCantrips(): number {
+        const infos = this.getSpellcasterInfos();
+        let count = 0;
+        for (const info of infos) {
+            count += info.maxCantrips;
         }
 
         // Origin Feat bonus: Magic Initiate grants 2 cantrips
@@ -985,19 +1604,10 @@ export class CharacterCreatorController {
     }
 
     public getMaxPreparedSpells(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return 0;
-        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-        let count = cls.spellcasting?.preparedSpellsByLevel?.[lvlIdx] || 0;
-
-        // Subclass third-casters at level 3+
-        if (this.state.level >= 3) {
-            const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
-            if (this.state.classId === "fighter" && this.state.subclassId === "eldritch-knight") {
-                count += thirdCasterSpells[lvlIdx];
-            } else if (this.state.classId === "rogue" && this.state.subclassId === "arcane-trickster") {
-                count += thirdCasterSpells[lvlIdx];
-            }
+        const infos = this.getSpellcasterInfos();
+        let count = 0;
+        for (const info of infos) {
+            count += info.maxPrepared;
         }
 
         // Origin Feat bonus: Magic Initiate grants 1 prepared 1st-level spell
@@ -1010,12 +1620,13 @@ export class CharacterCreatorController {
 
     public getAllowedSpellClasses(): string[] {
         const list: string[] = [];
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (cls?.spellcasting) {
-            list.push(cls.name);
-        }
-        if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
-            if (!list.includes("Wizard")) list.push("Wizard");
+        const infos = this.getSpellcasterInfos();
+        for (const info of infos) {
+            if (info.type === "third") {
+                if (!list.includes("Wizard")) list.push("Wizard");
+            } else if (!list.includes(info.className)) {
+                list.push(info.className);
+            }
         }
         if (this.state.originFeatId === "magic-initiate-cleric" && !list.includes("Cleric")) list.push("Cleric");
         if (this.state.originFeatId === "magic-initiate-druid" && !list.includes("Druid")) list.push("Druid");
@@ -1024,23 +1635,16 @@ export class CharacterCreatorController {
     }
 
     public getMaxSpellLevel(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls?.spellcasting) {
-            if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
-                if (this.state.level >= 19) return 4;
-                if (this.state.level >= 13) return 3;
-                if (this.state.level >= 7) return 2;
-                return 1;
-            }
+        const infos = this.getSpellcasterInfos();
+        if (infos.length === 0) {
             if (this.state.originFeatId.startsWith("magic-initiate")) return 1;
             return 0;
         }
-        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-        const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
-        for (let i = slotsRow.length - 1; i >= 0; i--) {
-            if (slotsRow[i] > 0) return i + 1;
+        let maxLvl = Math.max(...infos.map((i) => i.maxSpellLevel), 0);
+        if (this.state.originFeatId.startsWith("magic-initiate") && maxLvl < 1) {
+            maxLvl = 1;
         }
-        return 1;
+        return maxLvl;
     }
 
     public getAvailableSpells(): { cantrips: RuleSpellDefinition[]; leveledSpells: RuleSpellDefinition[]; spellsLvl1: RuleSpellDefinition[] } {
@@ -1048,9 +1652,38 @@ export class CharacterCreatorController {
         if (allowed.length === 0) {
             return { cantrips: [], leveledSpells: [], spellsLvl1: [] };
         }
-        const maxLevel = this.getMaxSpellLevel();
-        const cantrips = SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.some((c) => allowed.includes(c)));
-        const leveledSpells = SPELLS_2024.filter((sp) => sp.level >= 1 && sp.level <= maxLevel && sp.classes.some((c) => allowed.includes(c)));
+        const infos = this.getSpellcasterInfos();
+        const hasMagicInitiate = this.state.originFeatId.startsWith("magic-initiate");
+        const miClass = this.state.originFeatId === "magic-initiate-cleric"
+            ? "Cleric"
+            : this.state.originFeatId === "magic-initiate-druid"
+              ? "Druid"
+              : this.state.originFeatId === "magic-initiate-wizard"
+                ? "Wizard"
+                : "";
+
+        const cantrips = SPELLS_2024.filter((sp) => {
+            if (sp.level !== 0) return false;
+            return sp.classes.some((c) => allowed.includes(c));
+        });
+
+        const leveledSpells = SPELLS_2024.filter((sp) => {
+            if (sp.level < 1) return false;
+            // D&D 2024 Multiclassing: prepare spells individually per class, up to that class's max spell level
+            const canPrepareFromClass = infos.some((info) => {
+                const targetClassName = info.type === "third" ? "Wizard" : info.className;
+                return sp.classes.includes(targetClassName) && sp.level <= info.maxSpellLevel;
+            });
+            if (canPrepareFromClass) return true;
+
+            // Granted by Magic Initiate (1st-level spell from selected spell list)
+            if (hasMagicInitiate && sp.level === 1 && miClass && sp.classes.includes(miClass)) {
+                return true;
+            }
+
+            return false;
+        });
+
         return { cantrips, leveledSpells, spellsLvl1: leveledSpells };
     }
 
@@ -1067,16 +1700,6 @@ export class CharacterCreatorController {
 
         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => validCantripNames.has(s));
         this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => validLeveledNames.has(s));
-
-        const maxCantrips = this.getMaxCantrips();
-        if (this.state.selectedCantrips.length > maxCantrips) {
-            this.state.selectedCantrips = this.state.selectedCantrips.slice(0, maxCantrips);
-        }
-
-        const maxPrepared = this.getMaxPreparedSpells();
-        if (this.state.selectedSpellsLevel1.length > maxPrepared) {
-            this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.slice(0, maxPrepared);
-        }
     }
 
     public getSmartAutoFillSpells(): { cantrips: string[]; prepared: string[] } {
@@ -1085,15 +1708,31 @@ export class CharacterCreatorController {
         const maxPrepared = this.getMaxPreparedSpells();
         const maxLevel = this.getMaxSpellLevel();
 
-        let classKey = (this.state.classId || "wizard").toLowerCase();
-        if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") {
-            classKey = "wizard";
+        const infos = this.getSpellcasterInfos();
+        const activeClassKeys = infos.map((i) => i.type === "third" ? "wizard" : i.classId.toLowerCase());
+        if (activeClassKeys.length === 0) {
+            activeClassKeys.push((this.state.classId || "wizard").toLowerCase());
         }
-        const priorities = CLASS_SPELL_PRIORITIES[classKey] || CLASS_SPELL_PRIORITIES["wizard"];
+
+        const combinedPriorities = {
+            cantrips: [] as string[],
+            leveled: [] as string[]
+        };
+        for (const ck of activeClassKeys) {
+            const p = CLASS_SPELL_PRIORITIES[ck];
+            if (p) {
+                p.cantrips.forEach((name) => {
+                    if (!combinedPriorities.cantrips.includes(name)) combinedPriorities.cantrips.push(name);
+                });
+                p.leveled.forEach((name) => {
+                    if (!combinedPriorities.leveled.includes(name)) combinedPriorities.leveled.push(name);
+                });
+            }
+        }
 
         // 1. Smart Cantrips: rank by class priorities, then alphabetical
         const cantripRank = (sp: RuleSpellDefinition) => {
-            const idx = priorities.cantrips.indexOf(sp.name);
+            const idx = combinedPriorities.cantrips.indexOf(sp.name);
             return idx >= 0 ? idx : 999;
         };
         const sortedCantrips = [...available.cantrips].sort((a, b) => {
@@ -1106,7 +1745,7 @@ export class CharacterCreatorController {
 
         // 2. Smart Prepared Spells: ensure coverage across available spell levels, prioritizing staples
         const leveledRank = (sp: RuleSpellDefinition) => {
-            const idx = priorities.leveled.indexOf(sp.name);
+            const idx = combinedPriorities.leveled.indexOf(sp.name);
             return idx >= 0 ? idx : 999;
         };
 
@@ -1125,7 +1764,7 @@ export class CharacterCreatorController {
 
         const selectedPreparedSet = new Set<string>();
 
-        if (maxLevel === 1) {
+        if (maxLevel <= 1) {
             // Level 1 only: take top priorities
             const topLvl1 = (byLevel[1] || []).slice(0, maxPrepared);
             topLvl1.forEach((s) => selectedPreparedSet.add(s.name));
@@ -1183,46 +1822,82 @@ export class CharacterCreatorController {
     }
 
     public getSpellcastingAbility(): AbilityName | null {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (cls?.spellcasting) return cls.spellcasting.ability;
-        if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") return "int";
+        const infos = this.getSpellcasterInfos();
+        if (infos.length > 0) {
+            const primary = infos.find((i) => i.classId === this.state.classId);
+            if (primary) return primary.ability;
+            return infos[0].ability;
+        }
         if (this.state.originFeatId === "magic-initiate-wizard") return "int";
         if (this.state.originFeatId === "magic-initiate-cleric" || this.state.originFeatId === "magic-initiate-druid") return "wis";
         return null;
     }
 
-    public getSpellSaveDc(): number | null {
-        const ability = this.getSpellcastingAbility();
+    public getSpellSaveDc(abilityOverride?: AbilityName): number | null {
+        const ability = abilityOverride || this.getSpellcastingAbility();
         if (!ability) return null;
         return 8 + this.getProficiencyBonus() + this.getAbilityModifier(ability);
     }
 
-    public getSpellAttackModifier(): number | null {
-        const ability = this.getSpellcastingAbility();
+    public getSpellAttackModifier(abilityOverride?: AbilityName): number | null {
+        const ability = abilityOverride || this.getSpellcastingAbility();
         if (!ability) return null;
         return this.getProficiencyBonus() + this.getAbilityModifier(ability);
     }
 
     public getSpellSlotsSummary(): string {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (cls?.spellcasting) {
-            const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-            const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
-            if (cls.spellcasting.type === "pact") {
-                const count = slotsRow.find((s) => s > 0) || 1;
-                const pactLvl = slotsRow.findIndex((s) => s > 0) + 1;
-                return `${count} x Lvl ${pactLvl} (Pact Magic)`;
-            }
-            const pairs: string[] = [];
-            slotsRow.forEach((c, idx) => {
-                if (c > 0) pairs.push(`${c} × Lvl ${idx + 1}`);
-            });
-            return pairs.join(", ") || "None";
+        this.syncStateClassProperties();
+        const slotsResult = calculateMulticlassSpellSlots(this.state.classes, this.classes);
+        const parts: string[] = [];
+
+        const standardPairs: string[] = [];
+        slotsResult.standardSlots.forEach((c, idx) => {
+            if (c > 0) standardPairs.push(`${c} × Lvl ${idx + 1}`);
+        });
+
+        if (standardPairs.length > 0) {
+            parts.push(standardPairs.join(", "));
         }
-        if (this.state.originFeatId.startsWith("magic-initiate")) {
+
+        if (slotsResult.pactSlotCount > 0) {
+            parts.push(`${slotsResult.pactSlotCount} × Lvl ${slotsResult.pactSlotLevel} (Pact Magic)`);
+        }
+
+        if (parts.length === 0 && this.state.originFeatId.startsWith("magic-initiate")) {
             return "1 × Lvl 1 (1/Long Rest from Feat)";
         }
-        return "None";
+
+        return parts.join("; ") || "None";
+    }
+
+    public getSpellcasterStatsList(): Array<{
+        classId: string;
+        className: string;
+        level: number;
+        ability: AbilityName;
+        abilityMod: number;
+        saveDc: number;
+        attackMod: number;
+        maxCantrips: number;
+        maxPrepared: number;
+        maxSpellLevel: number;
+    }> {
+        const infos = this.getSpellcasterInfos();
+        return infos.map((info) => {
+            const mod = this.getAbilityModifier(info.ability);
+            return {
+                classId: info.classId,
+                className: info.className,
+                level: info.level,
+                ability: info.ability,
+                abilityMod: mod,
+                saveDc: 8 + this.getProficiencyBonus() + mod,
+                attackMod: this.getProficiencyBonus() + mod,
+                maxCantrips: info.maxCantrips,
+                maxPrepared: info.maxPrepared,
+                maxSpellLevel: info.maxSpellLevel
+            };
+        });
     }
 
     public updateLiveSummary() {
@@ -1289,6 +1964,11 @@ export class CharacterCreatorController {
         panelsContainer.innerHTML = panelHtml;
         this.attachStepEvents(step);
 
+        if (step === 3) {
+            this.updateMulticlassBarPositions();
+            this.updateMulticlassNavBars();
+        }
+
         if (preserveScroll && typeof window !== "undefined" && window.scrollY !== prevScrollY) {
             window.scrollTo({ top: prevScrollY, behavior: "instant" as any });
         }
@@ -1299,16 +1979,12 @@ export class CharacterCreatorController {
             <div class="step-panel active">
                 <div class="panel-header">
                     <h3 class="panel-title">Character Identity & Basics</h3>
-                    <p class="panel-desc">Give your hero a name, starting level, alignment, and appearance.</p>
+                    <p class="panel-desc">Give your hero a name, alignment, and appearance.</p>
                 </div>
                 <div class="creator-form-grid">
                     <div class="creator-form-group">
                         <label class="creator-label" for="char-name-input">Character Name *</label>
                         <input type="text" id="char-name-input" class="creator-input" placeholder="e.g. San Te, Lyra Silverleaf" value="${this.escape(this.state.name)}" required />
-                    </div>
-                    <div class="creator-form-group">
-                        <label class="creator-label" for="char-level-input">Starting Level (1 - 20)</label>
-                        <input type="number" id="char-level-input" class="creator-input" min="1" max="20" value="${this.state.level}" />
                     </div>
                     <div class="creator-form-group">
                         <label class="creator-label" for="char-alignment-select">Alignment</label>
@@ -1428,27 +2104,120 @@ export class CharacterCreatorController {
     }
 
     private renderStep3Class(): string {
-        const currentClass = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
-        return `
-            <div class="step-panel active">
-                <div class="panel-header">
-                    <h3 class="panel-title">Choose Class</h3>
-                    <p class="panel-desc">Select your character's class. Classes grant Hit Dice, proficiencies, weapon masteries, and starting features.</p>
-                </div>
-                <div class="card-select-grid">
-                    ${this.classes.map((cls) => `
-                        <div class="select-card class-card ${this.state.classId === cls.id ? "selected" : ""}" data-class-id="${cls.id}">
-                            <div class="card-title-row">
-                                <h4 class="card-title">${cls.name}</h4>
-                                <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                            </div>
-                            <span class="card-tag">Hit Die: d${cls.hitDie} • Saves: ${cls.savingThrows.map((s) => s.toUpperCase()).join(", ")}</span>
-                            <p class="card-body">${cls.description}</p>
+        this.syncStateClassProperties();
+
+        const classSectionsHtml = this.state.classes.map((classChoice, classIdx) => {
+            const cls = this.classes.find((c) => c.id === classChoice.classId) || this.classes[0];
+            const isPrimary = classIdx === 0;
+
+            return `
+                <div class="multiclass-section" id="class-section-${classIdx}" data-class-index="${classIdx}">
+                    <div class="panel-header multiclass-section-header">
+                        <div class="multiclass-title-row">
+                            <h3 class="panel-title">
+                                ${isPrimary ? `Primary Class: ${cls.name}` : `Multiclass ${classIdx + 1}: ${cls.name}`}
+                                <span class="multiclass-lvl-pill">Level ${classChoice.level}</span>
+                            </h3>
+                            ${!isPrimary ? `
+                                <button type="button" class="creator-btn danger-btn remove-class-btn" data-class-index="${classIdx}" title="Remove this class">
+                                    <i class="fa-solid fa-trash-can"></i> Remove Class
+                                </button>
+                            ` : `
+                                <button type="button" class="creator-btn secondary-btn scroll-to-bottom-btn" id="primary-class-scroll-bottom-btn" title="Scroll all the way to the bottom">
+                                    <i class="fa-solid fa-arrow-down"></i> Scroll to Bottom
+                                </button>
+                            `}
                         </div>
-                    `).join("")}
+                        <p class="panel-desc">
+                            ${isPrimary
+                                ? "Select your character's primary class. Primary classes grant starting Hit Dice, saving throws, weapon masteries, proficiencies, and starting features."
+                                : `Select your additional class. Progression and abilities for ${cls.name} are tracked below.`}
+                        </p>
+                    </div>
+
+                    <div class="card-select-grid">
+                        ${this.classes.map((c) => {
+                            const isSelected = classChoice.classId === c.id;
+                            let isDisabled = false;
+                            let badgeHtml = "";
+                            let reasonTitle = "";
+
+                            if (!isPrimary) {
+                                const check = this.canMulticlassInto(c.id, classIdx);
+                                if (!check.allowed) {
+                                    isDisabled = true;
+                                    reasonTitle = check.reason || "Prerequisites not met";
+                                    badgeHtml = `<div class="class-prereq-badge locked" title="${reasonTitle}"><i class="fa-solid fa-lock"></i> ${check.reason}</div>`;
+                                } else {
+                                    badgeHtml = `<div class="class-prereq-badge met"><i class="fa-solid fa-circle-check"></i> Prereq Met: ${check.prereqLabel}</div>`;
+                                }
+                            } else {
+                                const prereq = MULTICLASS_PREREQUISITES_2024[c.id.toLowerCase()];
+                                if (prereq) {
+                                    badgeHtml = `<div class="class-prereq-badge info"><i class="fa-solid fa-circle-info"></i> Multiclass: ${prereq.label}</div>`;
+                                }
+                            }
+
+                            return `
+                                <div class="select-card class-card ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}" 
+                                     data-class-index="${classIdx}" 
+                                     data-class-id="${c.id}"
+                                     ${isDisabled ? `aria-disabled="true" title="${reasonTitle}"` : ""}>
+                                    <div class="card-title-row">
+                                        <h4 class="card-title">${c.name}</h4>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <span class="card-tag">Hit Die: d${c.hitDie} • Saves: ${c.savingThrows.map((s) => s.toUpperCase()).join(", ")}</span>
+                                    <p class="card-body">${c.description}</p>
+                                    ${badgeHtml}
+                                </div>
+                            `;
+                        }).join("")}
+                    </div>
+
+                    ${!isPrimary && !this.canMulticlassInto(classChoice.classId, classIdx).allowed ? `
+                        <div class="equipment-stat-alert danger" style="margin-top: 1rem;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <div>
+                                <strong>Multiclass Prerequisite Not Met:</strong>
+                                ${this.canMulticlassInto(classChoice.classId, classIdx).reason}. Increase ability score or choose an eligible class.
+                            </div>
+                        </div>
+                    ` : ""}
+
+                    ${this.renderClassProgression(cls, classChoice.level, classIdx, classChoice.subclassId)}
+                </div>
+            `;
+        }).join("");
+
+        const nextIdx = this.state.classes.length;
+        const canAddAnyClass = this.classes.some((c) => this.canMulticlassInto(c.id, nextIdx).allowed);
+
+        return `
+            <div class="step-panel active multiclass-step-panel">
+                <!-- Sticky Top Bar for scrolling up to earlier classes -->
+                <div class="multiclass-top-bar hidden" id="multiclass-top-bar">
+                    <span class="multiclass-bar-label"><i class="fa-solid fa-arrow-up"></i> Jump to:</span>
+                    <div class="multiclass-nav-buttons" id="multiclass-top-nav-buttons"></div>
+                    <button type="button" class="creator-btn nav-to-class-btn top-nav-btn scroll-to-bottom-btn" id="top-bar-scroll-bottom-btn" title="Scroll all the way to the bottom">
+                        <i class="fa-solid fa-arrow-down"></i> Bottom
+                    </button>
                 </div>
 
-                ${this.renderClassProgression(currentClass)}
+                ${classSectionsHtml}
+
+                <!-- Sticky Bottom Bar for adding class and scrolling down to later classes -->
+                <div class="multiclass-bottom-bar" id="multiclass-bottom-bar">
+                    <button type="button" class="creator-btn primary-btn add-class-btn ${!canAddAnyClass ? "disabled" : ""}" id="add-class-btn" ${!canAddAnyClass ? "disabled title='Prerequisites not met to add another class'" : ""}>
+                        <i class="fa-solid fa-plus"></i> Add Class
+                    </button>
+                    <div class="multiclass-bottom-nav" id="multiclass-bottom-nav"></div>
+                </div>
+
+                <!-- Floating Quick Scroll to Bottom Button -->
+                <button type="button" class="floating-scroll-bottom-btn scroll-to-bottom-btn" id="floating-scroll-bottom-btn" title="Scroll all the way to the bottom" aria-label="Scroll all the way to the bottom">
+                    <i class="fa-solid fa-arrow-down"></i>
+                </button>
             </div>
         `;
     }
@@ -1499,7 +2268,10 @@ export class CharacterCreatorController {
         return s[(v - 20) % 10] || s[v] || s[0];
     }
 
-    private getFeatureTagHtml(featureName: string, level: number, isSubclassFeature = false): string {
+    private getFeatureTagHtml(featureName: string, level: number, isSubclassFeature = false, isGrantedSpell = false): string {
+        if (isGrantedSpell) {
+            return `<span class="progression-feature-tag magic"><i class="fa-solid fa-wand-magic-sparkles"></i> Always Prepared</span>`;
+        }
         const lower = featureName.toLowerCase();
         if (lower.includes("ability score improvement")) {
             return `<span class="progression-feature-tag asi"><i class="fa-solid fa-arrow-up-right-dots"></i> ASI / Feat</span>`;
@@ -1519,8 +2291,9 @@ export class CharacterCreatorController {
         return "";
     }
 
-    private renderLevelChoices(cls: ClassDefinition, lvl: number): string {
+    private renderLevelChoices(cls: ClassDefinition, lvl: number, classIdx: number = 0, activeSubId?: string, isUnlocked: boolean = true): string {
         const choices: string[] = [];
+        const currentSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || "";
 
         // Level 1 choices
         if (lvl === 1) {
@@ -1528,13 +2301,13 @@ export class CharacterCreatorController {
             if (cls.weaponMasteryCount > 0) {
                 choices.push(`
                     <div class="level-choice-box">
-                        <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Weapon Masteries (Choose up to ${cls.weaponMasteryCount})</h5>
+                        <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Weapon Masteries (Chosen: ${this.state.weaponMasteries.length} of ${this.getMaxWeaponMasteriesCount()})</h5>
                         <p class="card-body">Your martial training unlocks tactical weapon mastery properties (Push, Vex, Nick, Topple, Cleave, Graze, Sap, Slow).</p>
                         <div class="skills-select-grid">
                             ${BASE_WEAPONS_2024.filter((w) => cls.weaponProficiencies.some((p) => p.includes("Martial") || w.category.includes("Simple"))).map((w) => {
                                 const isSelected = this.state.weaponMasteries.includes(w.name);
                                 return `
-                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}">
+                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}" data-class-index="${classIdx}">
                                         <div class="skill-info">
                                             <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                             <span class="skill-name">${w.name}</span>
@@ -1656,11 +2429,12 @@ export class CharacterCreatorController {
 
             // Eldritch Invocations for Warlock
             if (cls.id === "warlock") {
+                const warlockLvl = this.state.classes?.find((c) => c.classId === "warlock")?.level || (this.state.classId === "warlock" ? this.state.level : 1);
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h5>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || this.state.level >= inv.minLevel).map((inv) => {
+                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || warlockLvl >= inv.minLevel).map((inv) => {
                                 const isSelected = this.state.invocations.includes(inv.id);
                                 return `
                                     <div class="select-card invocation-card ${isSelected ? "selected" : ""}" data-invocation-id="${inv.id}">
@@ -1680,7 +2454,7 @@ export class CharacterCreatorController {
 
             // Wizard Scholar (Level 2)
             if (cls.id === "wizard") {
-                const currentChoice = this.state.subclassFeatureChoices?.["wizard-2-scholar"] || "arcana";
+                const currentChoice = this.state.subclassFeatureChoices?.["wizard-2-scholar"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-graduation-cap"></i> Scholar Academic Skill</h5>
@@ -1709,7 +2483,7 @@ export class CharacterCreatorController {
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> Subclass Selection (Level 3)</h5>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                             ${cls.subclasses.map((sub) => `
-                                <div class="select-card subclass-card ${this.state.subclassId === sub.id ? "selected" : ""}" data-subclass-id="${sub.id}">
+                                <div class="select-card subclass-card ${currentSubId === sub.id ? "selected" : ""}" data-class-index="${classIdx}" data-subclass-id="${sub.id}">
                                     <div class="card-title-row">
                                         <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
@@ -1723,7 +2497,7 @@ export class CharacterCreatorController {
             }
 
             // Battle Master Maneuvers
-            if (cls.id === "fighter" && this.state.subclassId === "battle-master") {
+            if (cls.id === "fighter" && currentSubId === "battle-master") {
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-dice-d20"></i> Battle Master Maneuvers (Choose up to ${this.getMaxManeuversCount()})</h5>
@@ -1746,8 +2520,8 @@ export class CharacterCreatorController {
             }
 
             // Barbarian Wild Heart: Rage of the Wilds
-            if (cls.id === "barbarian" && this.state.subclassId === "wild-heart") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-wild-heart"] || "bear";
+            if (cls.id === "barbarian" && currentSubId === "wild-heart") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-wild-heart"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Rage of the Wilds</h5>
@@ -1767,8 +2541,8 @@ export class CharacterCreatorController {
             }
 
             // Barbarian Zealot: Divine Fury
-            if (cls.id === "barbarian" && this.state.subclassId === "zealot") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-zealot"] || "radiant";
+            if (cls.id === "barbarian" && currentSubId === "zealot") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-zealot"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Divine Fury Energy</h5>
@@ -1788,8 +2562,8 @@ export class CharacterCreatorController {
             }
 
             // Monk Warrior of Elements: Elemental Attunement
-            if (cls.id === "monk" && this.state.subclassId === "elements") {
-                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-elements"] || "fire";
+            if (cls.id === "monk" && currentSubId === "elements") {
+                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-elements"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-fire"></i> Elemental Attunement</h5>
@@ -1809,8 +2583,8 @@ export class CharacterCreatorController {
             }
 
             // Ranger Beast Master: Primal Companion
-            if (cls.id === "ranger" && this.state.subclassId === "beast-master") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-beast-master"] || "land";
+            if (cls.id === "ranger" && currentSubId === "beast-master") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-beast-master"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Primal Companion</h5>
@@ -1830,8 +2604,8 @@ export class CharacterCreatorController {
             }
 
             // Ranger Hunter: Hunter's Prey
-            if (cls.id === "ranger" && this.state.subclassId === "hunter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-hunter"] || "colossus-slayer";
+            if (cls.id === "ranger" && currentSubId === "hunter") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-hunter"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Hunter's Prey</h5>
@@ -1851,8 +2625,8 @@ export class CharacterCreatorController {
             }
 
             // Sorcerer Draconic: Draconic Ancestor
-            if (cls.id === "sorcerer" && this.state.subclassId === "draconic") {
-                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] || "gold";
+            if (cls.id === "sorcerer" && currentSubId === "draconic") {
+                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-dragon"></i> Draconic Ancestor</h5>
@@ -1872,8 +2646,8 @@ export class CharacterCreatorController {
             }
 
             // Fighter Battle Master: Student of War
-            if (cls.id === "fighter" && this.state.subclassId === "battle-master") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-3-battle-master-student"] || "History";
+            if (cls.id === "fighter" && currentSubId === "battle-master") {
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-3-battle-master-student"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-graduation-cap"></i> Student of War Bonus Skill</h5>
@@ -1893,8 +2667,8 @@ export class CharacterCreatorController {
             }
 
             // Monk Open Hand: Open Hand Technique
-            if (cls.id === "monk" && this.state.subclassId === "open-hand") {
-                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-open-hand"] || "addle";
+            if (cls.id === "monk" && currentSubId === "open-hand") {
+                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-open-hand"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-hand-fist"></i> Open Hand Technique Primary Tactic</h5>
@@ -1914,8 +2688,8 @@ export class CharacterCreatorController {
             }
 
             // Ranger Fey Wanderer: Otherworldly Glamour
-            if (cls.id === "ranger" && this.state.subclassId === "fey-wanderer") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-fey-wanderer"] || "Deception";
+            if (cls.id === "ranger" && currentSubId === "fey-wanderer") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-fey-wanderer"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Otherworldly Glamour Skill</h5>
@@ -1935,8 +2709,8 @@ export class CharacterCreatorController {
             }
 
             // Warlock Archfey: Steps of the Fey
-            if (cls.id === "warlock" && this.state.subclassId === "archfey") {
-                const currentChoice = this.state.subclassFeatureChoices?.["warlock-3-archfey"] || "taunting-step";
+            if (cls.id === "warlock" && currentSubId === "archfey") {
+                const currentChoice = this.state.subclassFeatureChoices?.["warlock-3-archfey"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shoe-prints"></i> Steps of the Fey Teleport Effect</h5>
@@ -1956,8 +2730,8 @@ export class CharacterCreatorController {
             }
 
             // Druid Circle of the Stars: Starry Form
-            if (cls.id === "druid" && this.state.subclassId === "stars") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-stars"] || "archer";
+            if (cls.id === "druid" && currentSubId === "stars") {
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-stars"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-star"></i> Starry Form Primary Constellation</h5>
@@ -1977,8 +2751,8 @@ export class CharacterCreatorController {
             }
 
             // Druid Circle of the Sea: Wrath of the Sea
-            if (cls.id === "druid" && this.state.subclassId === "sea") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-sea"] || "cold";
+            if (cls.id === "druid" && currentSubId === "sea") {
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-sea"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-water"></i> Wrath of the Sea Damage Manifestation</h5>
@@ -1998,8 +2772,8 @@ export class CharacterCreatorController {
             }
 
             // Druid Circle of the Moon: Circle Forms Strike
-            if (cls.id === "druid" && this.state.subclassId === "moon") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-moon"] || "radiant";
+            if (cls.id === "druid" && currentSubId === "moon") {
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-moon"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-moon"></i> Circle Forms Natural Attack Damage</h5>
@@ -2023,7 +2797,7 @@ export class CharacterCreatorController {
         if (lvl === 5) {
             // Rogue Cunning Strike
             if (cls.id === "rogue") {
-                const currentChoice = this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] || "trip";
+                const currentChoice = this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-bolt"></i> Cunning Strike Primary Focus</h5>
@@ -2046,8 +2820,8 @@ export class CharacterCreatorController {
         // Level 6 choices
         if (lvl === 6) {
             // Druid Circle of the Land: Biome Affinity
-            if (cls.id === "druid" && this.state.subclassId === "land") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-6-land"] || "arid";
+            if (cls.id === "druid" && currentSubId === "land") {
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-6-land"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-tree"></i> Circle of the Land Biome Affinity</h5>
@@ -2067,8 +2841,8 @@ export class CharacterCreatorController {
             }
 
             // Barbarian Path of the Wild Heart: Aspect of the Beast
-            if (cls.id === "barbarian" && this.state.subclassId === "wild-heart") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] || "elephant";
+            if (cls.id === "barbarian" && currentSubId === "wild-heart") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Aspect of the Beast</h5>
@@ -2088,8 +2862,8 @@ export class CharacterCreatorController {
             }
 
             // Ranger Hunter: Defensive Tactics
-            if (cls.id === "ranger" && this.state.subclassId === "hunter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-6-hunter"] || "multiattack-defense";
+            if (cls.id === "ranger" && currentSubId === "hunter") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-6-hunter"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Defensive Tactics</h5>
@@ -2109,8 +2883,8 @@ export class CharacterCreatorController {
             }
 
             // Cleric War Domain: War God's Blessing
-            if (cls.id === "cleric" && this.state.subclassId === "war") {
-                const currentChoice = this.state.subclassFeatureChoices?.["cleric-6-war"] || "shield-of-faith";
+            if (cls.id === "cleric" && currentSubId === "war") {
+                const currentChoice = this.state.subclassFeatureChoices?.["cleric-6-war"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> War God's Blessing Preferred Spell</h5>
@@ -2134,7 +2908,7 @@ export class CharacterCreatorController {
         if (lvl === 7) {
             // Druid Elemental Fury
             if (cls.id === "druid") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-7"] || "potent-spellcasting";
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-7"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-bolt"></i> Elemental Fury</h5>
@@ -2155,7 +2929,7 @@ export class CharacterCreatorController {
 
             // Cleric Blessed Strikes
             if (cls.id === "cleric") {
-                const currentChoice = this.state.subclassFeatureChoices?.["cleric-7"] || "potent-spellcasting";
+                const currentChoice = this.state.subclassFeatureChoices?.["cleric-7"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Blessed Strikes</h5>
@@ -2175,8 +2949,8 @@ export class CharacterCreatorController {
             }
 
             // Fighter Champion: Additional Fighting Style
-            if (cls.id === "fighter" && this.state.subclassId === "champion") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-champion"] || "defense";
+            if (cls.id === "fighter" && currentSubId === "champion") {
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-champion"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-heart"></i> Additional Fighting Style</h5>
@@ -2196,8 +2970,8 @@ export class CharacterCreatorController {
             }
 
             // Fighter Psi Warrior: Telekinetic Thrust
-            if (cls.id === "fighter" && this.state.subclassId === "psi-warrior") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-psi-warrior"] || "push";
+            if (cls.id === "fighter" && currentSubId === "psi-warrior") {
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-psi-warrior"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-hand"></i> Telekinetic Thrust Preferred Maneuver</h5>
@@ -2221,7 +2995,7 @@ export class CharacterCreatorController {
         if (lvl === 9) {
             // Barbarian Brutal Strike
             if (cls.id === "barbarian") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-9-brutal-strike"] || "forceful-blow";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-9-brutal-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-gavel"></i> Brutal Strike Primary Tactic</h5>
@@ -2242,7 +3016,7 @@ export class CharacterCreatorController {
 
             // Fighter Tactical Master
             if (cls.id === "fighter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-9-tactical-master"] || "push";
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-9-tactical-master"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Tactical Master Primary Swap</h5>
@@ -2265,8 +3039,8 @@ export class CharacterCreatorController {
         // Level 10 choices
         if (lvl === 10) {
             // Warlock Fiend Patron: Fiendish Resilience
-            if (cls.id === "warlock" && this.state.subclassId === "fiend") {
-                const currentChoice = this.state.subclassFeatureChoices?.["warlock-10-fiend"] || "fire";
+            if (cls.id === "warlock" && currentSubId === "fiend") {
+                const currentChoice = this.state.subclassFeatureChoices?.["warlock-10-fiend"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-virus"></i> Fiendish Resilience Damage Resistance</h5>
@@ -2286,8 +3060,8 @@ export class CharacterCreatorController {
             }
 
             // Barbarian Path of the World Tree: Battering Roots
-            if (cls.id === "barbarian" && this.state.subclassId === "world-tree") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-10-world-tree"] || "push";
+            if (cls.id === "barbarian" && currentSubId === "world-tree") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-10-world-tree"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-tree"></i> Battering Roots Mastery Option</h5>
@@ -2307,8 +3081,8 @@ export class CharacterCreatorController {
             }
 
             // Wizard Diviner: The Third Eye
-            if (cls.id === "wizard" && this.state.subclassId === "diviner") {
-                const currentChoice = this.state.subclassFeatureChoices?.["wizard-10-diviner"] || "darkvision";
+            if (cls.id === "wizard" && currentSubId === "diviner") {
+                const currentChoice = this.state.subclassFeatureChoices?.["wizard-10-diviner"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> The Third Eye Primary Benefit</h5>
@@ -2332,7 +3106,7 @@ export class CharacterCreatorController {
         if (lvl === 13) {
             // Barbarian Improved Brutal Strike
             if (cls.id === "barbarian") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-13-brutal-strike"] || "staggering-blow";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-13-brutal-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-hammer"></i> Improved Brutal Strike Mastery</h5>
@@ -2355,8 +3129,8 @@ export class CharacterCreatorController {
         // Level 14 choices
         if (lvl === 14) {
             // Barbarian Wild Heart: Totemic Attunement
-            if (cls.id === "barbarian" && this.state.subclassId === "wild-heart") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-14-wild-heart"] || "falcon";
+            if (cls.id === "barbarian" && currentSubId === "wild-heart") {
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-14-wild-heart"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-feather"></i> Totemic Attunement</h5>
@@ -2377,7 +3151,7 @@ export class CharacterCreatorController {
 
             // Rogue Devious Strikes
             if (cls.id === "rogue") {
-                const currentChoice = this.state.subclassFeatureChoices?.["rogue-14-devious-strike"] || "knock-out";
+                const currentChoice = this.state.subclassFeatureChoices?.["rogue-14-devious-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-skull"></i> Devious Strike Primary Focus</h5>
@@ -2397,8 +3171,8 @@ export class CharacterCreatorController {
             }
 
             // Sorcerer Aberrant: Revelation in Flesh
-            if (cls.id === "sorcerer" && this.state.subclassId === "aberrant") {
-                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-14-aberrant"] || "flight";
+            if (cls.id === "sorcerer" && currentSubId === "aberrant") {
+                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-14-aberrant"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-dna"></i> Revelation in Flesh Primary Adaptation</h5>
@@ -2421,8 +3195,8 @@ export class CharacterCreatorController {
         // Level 15 choices
         if (lvl === 15) {
             // Ranger Hunter: Superior Hunter's Defense
-            if (cls.id === "ranger" && this.state.subclassId === "hunter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-15-hunter"] || "evasion";
+            if (cls.id === "ranger" && currentSubId === "hunter") {
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-15-hunter"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Superior Hunter's Defense</h5>
@@ -2454,20 +3228,136 @@ export class CharacterCreatorController {
             `);
         }
 
+        // Dynamic choices from class or subclass progression JSON
+        const subForChoices = currentSubId
+            ? (cls.subclasses?.find((s: any) => s.id === currentSubId) || CLASSES_2024.find((c) => c.id === cls.id)?.subclasses?.find((s) => s.id === currentSubId))
+            : undefined;
+        const clsProgLvl = cls.progression?.find((p) => p.level === lvl);
+        const subProgLvl = subForChoices?.progression?.find((p: any) => p.level === lvl);
+        const dynamicChoices = [
+            ...(clsProgLvl?.choices || []),
+            ...(subProgLvl?.choices || [])
+        ];
+
+        const handledChoiceKeys = new Set<string>([
+            "fighting-style",
+            "divine-order",
+            "primal-order",
+            "metamagic",
+            "invocation",
+            "wizard-2-scholar",
+            "battle-master-maneuvers",
+            "barbarian-3-wild-heart",
+            "wild-heart-rage",
+            "barbarian-3-zealot",
+            "divine-fury",
+            "monk-3-elements",
+            "elements-attunement",
+            "ranger-3-beast-master",
+            "beast-master-companion",
+            "ranger-3-hunter",
+            "hunter-prey",
+            "sorcerer-3-draconic",
+            "draconic-ancestor",
+            "fighter-3-battle-master-student",
+            "battle-master-student",
+            "monk-3-open-hand",
+            "open-hand-technique",
+            "ranger-3-fey-wanderer",
+            "fey-wanderer-glamour",
+            "warlock-3-archfey",
+            "archfey-steps",
+            "druid-3-stars",
+            "starry-form",
+            "druid-3-sea",
+            "sea-wrath",
+            "druid-3-moon",
+            "moon-forms",
+            "rogue-5-cunning-strike",
+            "cunning-strike",
+            "druid-6-land",
+            "land-biome",
+            "barbarian-6-wild-heart",
+            "wild-heart-aspect",
+            "ranger-6-hunter",
+            "hunter-defense",
+            "cleric-6-war",
+            "war-god-blessing",
+            "druid-7",
+            "elemental-fury",
+            "cleric-7",
+            "blessed-strikes",
+            "fighter-7-champion",
+            "champion-fighting-style",
+            "fighter-7-psi-warrior",
+            "psi-warrior-thrust",
+            "barbarian-9-brutal-strike",
+            "brutal-strike",
+            "fighter-9-tactical-master",
+            "tactical-master",
+            "warlock-10-fiend",
+            "fiend-resilience",
+            "barbarian-10-world-tree",
+            "world-tree-roots",
+            "wizard-10-diviner",
+            "diviner-third-eye",
+            "barbarian-13-brutal-strike",
+            "improved-brutal-strike",
+            "barbarian-14-wild-heart",
+            "wild-heart-totem",
+            "rogue-14-devious-strike",
+            "devious-strike",
+            "sorcerer-14-aberrant",
+            "aberrant-revelation",
+            "ranger-15-hunter",
+            "hunter-superior-defense"
+        ]);
+
+        for (const ch of dynamicChoices) {
+            const chId = ch.choiceId || ch.id;
+            if (handledChoiceKeys.has(chId) || (ch.id && handledChoiceKeys.has(ch.id))) continue;
+            const currentChoice = this.state.subclassFeatureChoices?.[chId] || "";
+            choices.push(`
+                <div class="level-choice-box">
+                    <h5 class="level-choice-title"><i class="fa-solid fa-code-branch"></i> ${ch.name} (Choose ${ch.chooseCount || 1})</h5>
+                    ${(ch.description || ch.prompt) ? `<p class="card-body">${ch.description || ch.prompt}</p>` : ""}
+                    <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                        ${(ch.options || []).map((opt) => `
+                            <div class="select-card subclass-feature-card ${currentChoice === opt.id ? "selected" : ""}" data-feature-key="${chId}" data-feature-choice="${opt.id}">
+                                <div class="card-title-row">
+                                    <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
+                                    <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                </div>
+                                <p class="card-body">${opt.description}</p>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `);
+        }
+
+        if (!isUnlocked) {
+            return choices.map((c) =>
+                c.replace(
+                    '<div class="level-choice-box">',
+                    '<div class="level-choice-box locked-choice" aria-disabled="true">'
+                )
+            ).join("");
+        }
+
         return choices.join("");
     }
 
-    private renderClassProgression(cls: ClassDefinition): string {
-        const charLevel = this.state.level;
-        const unlockedBoxes: string[] = [];
-        const lockedBoxes: string[] = [];
+    private renderClassProgression(cls: ClassDefinition, classLevel: number = 1, classIdx: number = 0, activeSubId?: string): string {
+        const charLevel = classLevel;
+        const boxes: string[] = [];
 
         const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
-        const activeSubId = this.state.subclassId || cls.subclasses?.[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
-        const sub = activeSubId
-            ? (cls.subclasses?.find((s: any) => s.id === activeSubId) || fallbackCls?.subclasses?.find((s) => s.id === activeSubId))
+        const resolvedSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || cls.subclasses?.[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
+        const sub = resolvedSubId
+            ? (cls.subclasses?.find((s: any) => s.id === resolvedSubId) || fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId))
             : undefined;
-        const fallbackSub = activeSubId ? fallbackCls?.subclasses?.find((s) => s.id === activeSubId) : undefined;
+        const fallbackSub = resolvedSubId ? fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId) : undefined;
         const resolvedSubFeatures = (sub?.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
         const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
 
@@ -2490,7 +3380,6 @@ export class CharacterCreatorController {
             }
 
             const isUnlocked = lvl <= charLevel;
-            const isHidden = !isUnlocked && !this.progressionExpanded;
             let featuresAtLvl: Array<ClassLevelFeature & { isSubclassFeature?: boolean }> = resolvedClsFeatures
                 .filter((f: ClassLevelFeature) => f.level === lvl)
                 .map((f: ClassLevelFeature) => ({ ...f }));
@@ -2516,13 +3405,38 @@ export class CharacterCreatorController {
                 ];
             }
 
-            const choicesHtml = this.renderLevelChoices(cls, lvl);
+            // Progression-granted spells for this level (from cls.progression and sub.progression)
+            const clsProgLvl = cls.progression?.find((p) => p.level === lvl);
+            const subProgLvl = sub?.progression?.find((p: any) => p.level === lvl);
+            const grantedSpellsAtLvl = [
+                ...((clsProgLvl?.grantedSpells || []).map((sp: any) => ({
+                    name: typeof sp === "string" ? sp : (sp.name || sp.spellId),
+                    source: cls.name
+                }))),
+                ...((subProgLvl?.grantedSpells || []).map((sp: any) => ({
+                    name: typeof sp === "string" ? sp : (sp.name || sp.spellId),
+                    source: sub ? sub.name : "Subclass"
+                })))
+            ].filter((s) => Boolean(s.name));
+
+            if (grantedSpellsAtLvl.length > 0) {
+                const spellCards = grantedSpellsAtLvl.map((sp) => ({
+                    level: lvl,
+                    name: `${sp.name} (Granted Spell)`,
+                    description: `Automatically granted and always prepared by ${sp.source}.`,
+                    isSubclassFeature: sp.source !== cls.name,
+                    isGrantedSpell: true
+                }));
+                featuresAtLvl.push(...(spellCards as any));
+            }
+
+            const choicesHtml = this.renderLevelChoices(cls, lvl, classIdx, resolvedSubId, isUnlocked);
 
             const boxHtml = `
-                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}${isHidden ? " hidden" : ""}" data-level="${lvl}">
+                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-class-index="${classIdx}" data-level="${lvl}">
                     <div class="level-card-header">
                         <div class="level-header-title">
-                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}">
+                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" role="button" tabindex="0" title="${isUnlocked ? (lvl === charLevel ? `Click to lock ${cls.name} Level ${lvl}` : `Click to set ${cls.name} to Level ${lvl}`) : `Click to unlock ${cls.name} Level ${lvl}`}" data-class-index="${classIdx}" data-level="${lvl}">
                                 ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Level ${lvl}
                             </span>
                             <h4 class="level-title-text">${cls.name} Level ${lvl} Abilities</h4>
@@ -2531,7 +3445,7 @@ export class CharacterCreatorController {
                             <span class="progression-pb-tag">PB +${pb}</span>
                             ${statBadge ? `<span class="progression-stat-badge"><i class="fa-solid fa-bolt"></i> ${statBadge}</span>` : ""}
                             <span class="progression-status-pill ${isUnlocked ? "status-unlocked" : "status-locked"}">
-                                ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Unlocks at Level ${lvl}`}
+                                ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Click badge to unlock`}
                             </span>
                         </div>
                     </div>
@@ -2542,7 +3456,7 @@ export class CharacterCreatorController {
                                 <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
                                     <div class="card-title-row">
                                         <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
-                                        ${this.getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature))}
+                                        ${this.getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature), Boolean((f as any).isGrantedSpell))}
                                     </div>
                                     <p class="card-body">${f.description}</p>
                                 </div>
@@ -2554,42 +3468,7 @@ export class CharacterCreatorController {
                 </div>
             `;
 
-            if (isUnlocked) {
-                unlockedBoxes.push(boxHtml);
-            } else {
-                lockedBoxes.push(boxHtml);
-            }
-        }
-
-        const hasLocked = lockedBoxes.length > 0;
-        let toggleLinkTop = "";
-        let toggleLinkBottom = "";
-
-        if (hasLocked) {
-            if (!this.progressionExpanded) {
-                toggleLinkTop = `
-                    <div class="progression-load-more-container">
-                        <a href="javascript:void(0)" class="progression-toggle-link load-more" id="progression-load-more-link" role="button">
-                            <i class="fa-solid fa-chevron-down"></i> Load more
-                        </a>
-                    </div>
-                `;
-            } else {
-                toggleLinkTop = `
-                    <div class="progression-load-more-container">
-                        <a href="javascript:void(0)" class="progression-toggle-link show-less" id="progression-load-more-link" role="button">
-                            <i class="fa-solid fa-chevron-up"></i> Show less
-                        </a>
-                    </div>
-                `;
-                toggleLinkBottom = `
-                    <div class="progression-load-more-container progression-load-more-bottom">
-                        <a href="javascript:void(0)" class="progression-toggle-link show-less" id="progression-show-less-bottom-link" role="button">
-                            <i class="fa-solid fa-chevron-up"></i> Show less
-                        </a>
-                    </div>
-                `;
-            }
+            boxes.push(boxHtml);
         }
 
         return `
@@ -2600,16 +3479,13 @@ export class CharacterCreatorController {
                             <i class="fa-solid fa-layer-group"></i> ${cls.name} Level Progression (Levels 1–20)
                         </h4>
                         <p class="card-body" style="margin: 0.25rem 0 0;">
-                            New abilities, features, and choices gained at each level for the ${cls.name} class. Features active at your current level (Level ${charLevel}) are marked Active.
+                            New abilities, features, and choices gained at each level for the ${cls.name} class. Click a level badge to unlock or set your level in this class. Currently Level ${charLevel}.
                         </p>
                     </div>
                 </div>
             </div>
 
-            ${unlockedBoxes.join("")}
-            ${toggleLinkTop}
-            ${lockedBoxes.join("")}
-            ${toggleLinkBottom}
+            ${boxes.join("")}
         `;
     }
 
@@ -2882,14 +3758,14 @@ export class CharacterCreatorController {
         const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
         const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
         const bgSkills = bg.skills;
-        const classAllowed = cls.skillChoices.from;
-        const maxClassCount = cls.skillChoices.count;
+        const classAllowed = this.getAllowedClassSkills();
+        const maxClassCount = this.getMaxClassSkillCount();
 
         return `
             <div class="step-panel active">
                 <div class="panel-header">
                     <h3 class="panel-title">Skills & Proficiencies</h3>
-                    <p class="panel-desc">Choose ${maxClassCount} skills from your class list. Background skills are granted automatically.</p>
+                    <p class="panel-desc">Choose ${maxClassCount} skills from your class list(s). Background skills are granted automatically.</p>
                 </div>
 
                 <div class="skills-select-grid">
@@ -3100,6 +3976,7 @@ export class CharacterCreatorController {
         const maxPrepared = this.getMaxPreparedSpells();
         const maxSpellLevel = this.getMaxSpellLevel();
         const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;
+        const casterStats = this.getSpellcasterStatsList();
 
         if (!hasSpellcasting) {
             return `
@@ -3122,22 +3999,33 @@ export class CharacterCreatorController {
         }
 
         const available = this.getAvailableSpells();
-        const ability = this.getSpellcastingAbility();
-        const abilityMod = ability ? this.getAbilityModifier(ability) : 0;
-        const saveDc = this.getSpellSaveDc();
-        const attackMod = this.getSpellAttackModifier();
         const slotsSummary = this.getSpellSlotsSummary();
 
         const cantripsChosen = this.state.selectedCantrips.length;
         const spellsChosen = this.state.selectedSpellsLevel1.length;
+        const isCantripsOver = maxCantrips > 0 && cantripsChosen > maxCantrips;
+        const isSpellsOver = maxPrepared > 0 && spellsChosen > maxPrepared;
+        const isMulticlass = casterStats.length > 1;
+
+        const displayedCantrips = this.activeSpellClassFilter === "all"
+            ? available.cantrips
+            : available.cantrips.filter((s) => s.classes.includes(this.activeSpellClassFilter));
+
+        const leveledByClass = this.activeSpellClassFilter === "all"
+            ? available.leveledSpells
+            : available.leveledSpells.filter((s) => s.classes.includes(this.activeSpellClassFilter));
+
+        const displayedLeveled = this.activeSpellLevelFilter === "all"
+            ? leveledByClass
+            : leveledByClass.filter((s) => s.level === this.activeSpellLevelFilter);
 
         return `
             <div class="step-panel active">
                 <div class="panel-header">
                     <div class="spells-header-row">
                         <div>
-                            <h3 class="panel-title">Spells (${cls.name})</h3>
-                            <p class="panel-desc">Select cantrips and prepared spells according to your class limits at Level ${this.state.level}.</p>
+                            <h3 class="panel-title">${isMulticlass ? `Spells & Magic (${casterStats.map((c) => `${c.className} ${c.level}`).join(" / ")})` : `Spells (${casterStats[0]?.className || cls.name})`}</h3>
+                            <p class="panel-desc">${isMulticlass ? "Multiclass spellcasting: prepare spells individually per class at your class levels, sharing your multiclass spell slots." : `Select cantrips and prepared spells according to your class limits at Level ${this.state.level}.`}</p>
                         </div>
                         <div class="spells-actions-row">
                             <button type="button" class="creator-nav-btn secondary-btn auto-spells-btn">
@@ -3151,26 +4039,14 @@ export class CharacterCreatorController {
                 </div>
 
                 <div class="spellcaster-stats-banner">
-                    ${ability ? `
+                    ${casterStats.map((c) => `
                         <div class="stat-badge">
-                            <span class="label">Spell Ability</span>
-                            <strong>${ability.toUpperCase()} (${abilityMod >= 0 ? "+" : ""}${abilityMod})</strong>
+                            <span class="label">${isMulticlass ? `${c.className} (Lvl ${c.level})` : "Spell Ability"}</span>
+                            <strong>${c.ability.toUpperCase()} (${c.abilityMod >= 0 ? "+" : ""}${c.abilityMod}) • DC ${c.saveDc} • Atk ${c.attackMod >= 0 ? `+${c.attackMod}` : c.attackMod}</strong>
                         </div>
-                    ` : ""}
-                    ${saveDc != null ? `
-                        <div class="stat-badge">
-                            <span class="label">Spell Save DC</span>
-                            <strong>${saveDc}</strong>
-                        </div>
-                    ` : ""}
-                    ${attackMod != null ? `
-                        <div class="stat-badge">
-                            <span class="label">Spell Attack</span>
-                            <strong>${attackMod >= 0 ? "+" : ""}${attackMod}</strong>
-                        </div>
-                    ` : ""}
+                    `).join("")}
                     <div class="stat-badge">
-                        <span class="label">Spell Slots</span>
+                        <span class="label">${isMulticlass ? "Multiclass Slots" : "Spell Slots"}</span>
                         <strong>${slotsSummary}</strong>
                     </div>
                 </div>
@@ -3179,13 +4055,13 @@ export class CharacterCreatorController {
                     <div class="box-header-with-badge">
                         <h4>Cantrips (Level 0)</h4>
                         ${maxCantrips > 0 ? `
-                            <span class="spell-count-badge ${cantripsChosen === maxCantrips ? "maxed" : "info"}">
-                                <i class="fa-solid ${cantripsChosen === maxCantrips ? "fa-check" : "fa-sparkles"}"></i>
+                            <span class="spell-count-badge ${isCantripsOver ? "over-limit" : cantripsChosen === maxCantrips ? "maxed" : "info"}">
+                                <i class="fa-solid ${isCantripsOver ? "fa-triangle-exclamation" : cantripsChosen === maxCantrips ? "fa-check" : "fa-sparkles"}"></i>
                                 ${cantripsChosen} / ${maxCantrips} Chosen
                             </span>
                         ` : `
                             <span class="spell-count-badge zero">
-                                <i class="fa-solid fa-ban"></i> 0 Cantrips for ${cls.name}
+                                <i class="fa-solid fa-ban"></i> 0 Cantrips
                             </span>
                         `}
                     </div>
@@ -3193,21 +4069,20 @@ export class CharacterCreatorController {
                     ${maxCantrips === 0 ? `
                         <p class="creator-empty-notice">
                             <i class="fa-solid fa-circle-info"></i>
-                            ${cls.name} does not prepare cantrips at Level ${this.state.level}.
+                            Your class features do not grant cantrips at current level.
                         </p>
                     ` : `
                         <div class="item-select-list">
-                            ${available.cantrips.map((sp) => {
+                            ${displayedCantrips.map((sp) => {
                                 const isSelected = this.state.selectedCantrips.includes(sp.name);
-                                const isLimitReached = !isSelected && cantripsChosen >= maxCantrips;
+                                const sourceBadges = sp.classes.filter((c) => casterStats.some((cs) => cs.className === c));
                                 return `
-                                    <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
-                                         data-spell-name="${sp.name}"
-                                         ${isLimitReached ? 'title="Cantrip limit reached. Deselect one to choose this cantrip."' : ""}>
+                                    <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""}" 
+                                         data-spell-name="${sp.name}">
                                         <div class="item-row-left">
                                             <div class="item-row-title">
-                                                ${sp.name} (${sp.school})
-                                                ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
+                                                <span>${sp.name} (${sp.school})</span>
+                                                ${isMulticlass && sourceBadges.length > 0 ? sourceBadges.map((c) => `<span class="stat-req-pill met">${c}</span>`).join(" ") : ""}
                                             </div>
                                             <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
                                             <div class="item-row-desc">${sp.description}</div>
@@ -3224,13 +4099,13 @@ export class CharacterCreatorController {
                     <div class="box-header-with-badge">
                         <h4>Prepared Spells ${maxSpellLevel > 1 ? `(Levels 1–${maxSpellLevel})` : "(Level 1)"}</h4>
                         ${maxPrepared > 0 ? `
-                            <span class="spell-count-badge ${spellsChosen === maxPrepared ? "maxed" : "info"}">
-                                <i class="fa-solid ${spellsChosen === maxPrepared ? "fa-check" : "fa-book"}"></i>
+                            <span class="spell-count-badge ${isSpellsOver ? "over-limit" : spellsChosen === maxPrepared ? "maxed" : "info"}">
+                                <i class="fa-solid ${isSpellsOver ? "fa-triangle-exclamation" : spellsChosen === maxPrepared ? "fa-check" : "fa-book"}"></i>
                                 ${spellsChosen} / ${maxPrepared} Prepared
                             </span>
                         ` : `
                             <span class="spell-count-badge zero">
-                                <i class="fa-solid fa-ban"></i> 0 Spells for ${cls.name}
+                                <i class="fa-solid fa-ban"></i> 0 Spells
                             </span>
                         `}
                     </div>
@@ -3238,7 +4113,7 @@ export class CharacterCreatorController {
                     ${maxPrepared === 0 ? `
                         <p class="creator-empty-notice">
                             <i class="fa-solid fa-circle-info"></i>
-                            ${cls.name} does not prepare spells at Level ${this.state.level}.
+                            Your class features do not prepare spells at current level.
                         </p>
                     ` : `
                         <div class="spells-filter-bar">
@@ -3246,13 +4121,28 @@ export class CharacterCreatorController {
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <input type="text" id="spell-search-input" class="creator-input" placeholder="Search spells by name or school..." value="${this.spellSearchQuery}" />
                             </div>
+                            ${isMulticlass ? `
+                                <div class="spell-class-tabs" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                                    <button type="button" class="creator-nav-btn secondary-btn spell-class-tab-btn ${this.activeSpellClassFilter === "all" ? "active" : ""}" data-class="all" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                                        All Classes (${available.leveledSpells.length})
+                                    </button>
+                                    ${casterStats.map((cs) => {
+                                        const classCount = available.leveledSpells.filter((s) => s.classes.includes(cs.className)).length;
+                                        return `
+                                            <button type="button" class="creator-nav-btn secondary-btn spell-class-tab-btn ${this.activeSpellClassFilter === cs.className ? "active" : ""}" data-class="${cs.className}" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                                                ${cs.className} (Lvl ${cs.level} • Max Lvl ${cs.maxSpellLevel}) [${classCount}]
+                                            </button>
+                                        `;
+                                    }).join("")}
+                                </div>
+                            ` : ""}
                             ${maxSpellLevel > 1 ? `
                                 <div class="spell-level-tabs">
                                     <button type="button" class="spell-tab-btn ${this.activeSpellLevelFilter === "all" ? "active" : ""}" data-level="all">
-                                        All (${available.leveledSpells.length})
+                                        All Levels (${leveledByClass.length})
                                     </button>
                                     ${Array.from({ length: maxSpellLevel }, (_, i) => i + 1).map((lvl) => {
-                                        const count = available.leveledSpells.filter((s) => s.level === lvl).length;
+                                        const count = leveledByClass.filter((s) => s.level === lvl).length;
                                         if (count === 0) return "";
                                         const prepCount = this.state.selectedSpellsLevel1.filter((name) => {
                                             const s = SPELLS_2024.find((sp) => sp.name === name);
@@ -3269,23 +4159,22 @@ export class CharacterCreatorController {
                         </div>
 
                         <div class="item-select-list">
-                            ${(this.activeSpellLevelFilter === "all" ? available.leveledSpells : available.leveledSpells.filter((s) => s.level === this.activeSpellLevelFilter)).map((sp) => {
+                            ${displayedLeveled.map((sp) => {
                                 const isSelected = this.state.selectedSpellsLevel1.includes(sp.name);
-                                const isLimitReached = !isSelected && spellsChosen >= maxPrepared;
+                                const sourceBadges = sp.classes.filter((c) => casterStats.some((cs) => cs.className === c));
                                 return `
-                                    <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
+                                    <div class="item-check-row spell1-row ${isSelected ? "selected" : ""}" 
                                          data-spell-name="${sp.name}"
                                          data-spell-school="${sp.school}"
-                                         data-spell-level="${sp.level}"
-                                         ${isLimitReached ? 'title="Prepared spell limit reached. Deselect one to prepare this spell."' : ""}>
+                                         data-spell-level="${sp.level}">
                                         <div class="item-row-left">
                                             <div class="item-row-title">
                                                 <span>${sp.name}</span>
                                                 <span class="stat-req-pill met">Lvl ${sp.level}</span>
                                                 <span class="stat-req-pill">${sp.school}</span>
+                                                ${isMulticlass && sourceBadges.length > 0 ? sourceBadges.map((c) => `<span class="stat-req-pill met">${c}</span>`).join(" ") : ""}
                                                 ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
                                                 ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain"></i> Conc.</span>' : ""}
-                                                ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
                                             </div>
                                             <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
                                             <div class="item-row-desc">${sp.description}</div>
@@ -3380,6 +4269,29 @@ export class CharacterCreatorController {
                         ${this.state.metamagic.length > 0 ? `<div class="review-row"><span class="label">Metamagic:</span><strong>${this.state.metamagic.map((m) => METAMAGIC_OPTIONS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
                         ${this.state.invocations.length > 0 ? `<div class="review-row"><span class="label">Invocations:</span><strong>${this.state.invocations.map((i) => ELDRITCH_INVOCATIONS.find((o) => o.id === i)?.name || i).join(", ")}</strong></div>` : ""}
                         ${this.state.maneuvers.length > 0 ? `<div class="review-row"><span class="label">Maneuvers:</span><strong>${this.state.maneuvers.map((m) => BATTLE_MASTER_MANEUVERS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
+                        ${(() => {
+                            const handledReviewKeys = new Set([
+                                "wizard-2-scholar", "barbarian-3-wild-heart", "barbarian-3-zealot", "monk-3-elements",
+                                "ranger-3-beast-master", "ranger-3-hunter", "fighter-3-battle-master-student", "monk-3-open-hand",
+                                "ranger-3-fey-wanderer", "warlock-3-archfey", "druid-3-stars", "druid-3-sea", "druid-3-moon",
+                                "sorcerer-3-draconic", "rogue-5-cunning-strike", "druid-6-land", "cleric-6-war", "barbarian-6-wild-heart",
+                                "ranger-6-hunter", "druid-7", "cleric-7", "fighter-7-champion", "fighter-7-psi-warrior",
+                                "barbarian-9-brutal-strike", "fighter-9-tactical-master", "barbarian-10-world-tree", "warlock-10-fiend",
+                                "wizard-10-diviner", "barbarian-13-brutal-strike", "barbarian-14-wild-heart", "rogue-14-devious-strike",
+                                "sorcerer-14-aberrant", "ranger-15-hunter"
+                            ]);
+                            const rows: string[] = [];
+                            if (this.state.subclassFeatureChoices) {
+                                for (const [key, val] of Object.entries(this.state.subclassFeatureChoices)) {
+                                    if (handledReviewKeys.has(key)) continue;
+                                    const opt = findClassOption(key, val);
+                                    if (opt) {
+                                        rows.push(`<div class="review-row"><span class="label">${opt.name}:</span><strong>Selected</strong></div>`);
+                                    }
+                                }
+                            }
+                            return rows.join("");
+                        })()}
                         ${this.state.expertiseSkills.length > 0 ? `<div class="review-row"><span class="label">Expertise Skills:</span><strong>${this.state.expertiseSkills.join(", ")}</strong></div>` : ""}
                         ${this.getAsiLevels().length > 0 ? `
                             <div class="review-row" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
@@ -3403,9 +4315,43 @@ export class CharacterCreatorController {
                             const sp = SPELLS_2024.find((s) => s.name === name);
                             return sp ? `${name} (Lvl ${sp.level})` : name;
                         }).join(", ") || "None"}</strong></div>
-                        ${spellAbility ? `
-                            <div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Max Slot Level: ${this.getMaxSpellLevel()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>
-                        ` : ""}
+                        ${(() => {
+                            const grantedList: string[] = [];
+                            for (const c of this.state.classes) {
+                                const clsDef = this.classes.find((x) => x.id === c.classId);
+                                const subDef = clsDef?.subclasses?.find((s) => s.id === c.subclassId);
+                                for (const pl of clsDef?.progression || []) {
+                                    if (pl.level <= c.level) {
+                                        for (const sp of pl.grantedSpells || []) {
+                                            const name = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                                            if (name && !grantedList.includes(name)) grantedList.push(name);
+                                        }
+                                    }
+                                }
+                                for (const pl of subDef?.progression || []) {
+                                    if (pl.level <= c.level) {
+                                        for (const sp of pl.grantedSpells || []) {
+                                            const name = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                                            if (name && !grantedList.includes(name)) grantedList.push(name);
+                                        }
+                                    }
+                                }
+                            }
+                            if (grantedList.length > 0) {
+                                return `<div class="review-row"><span class="label">Granted Spells (Always Prepared):</span><strong>${grantedList.join(", ")}</strong></div>`;
+                            }
+                            return "";
+                        })()}
+                        ${(() => {
+                            const casterStats = this.getSpellcasterStatsList();
+                            if (casterStats.length > 0) {
+                                return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${casterStats.map((c) => `${c.className}: ${c.ability.toUpperCase()} (Save DC: ${c.saveDc}, Atk: +${c.attackMod}, Max Spell Lvl: ${c.maxSpellLevel})`).join(" | ")} • Slots: ${this.getSpellSlotsSummary()}</strong></div>`;
+                            }
+                            if (spellAbility) {
+                                return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Max Slot Level: ${this.getMaxSpellLevel()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>`;
+                            }
+                            return "";
+                        })()}
                     </div>
                 </div>
             </div>
@@ -3417,14 +4363,6 @@ export class CharacterCreatorController {
             const nameInput = document.getElementById("char-name-input") as HTMLInputElement;
             nameInput?.addEventListener("input", (e) => {
                 this.state.name = (e.target as HTMLInputElement).value;
-                this.updateLiveSummary();
-            });
-
-            const levelInput = document.getElementById("char-level-input") as HTMLInputElement;
-            levelInput?.addEventListener("input", (e) => {
-                const val = Math.max(1, Math.min(20, Number((e.target as HTMLInputElement).value) || 1));
-                this.state.level = val;
-                this.sanitizeSpellSelections();
                 this.updateLiveSummary();
             });
 
@@ -3532,33 +4470,113 @@ export class CharacterCreatorController {
         } else if (step === 3) {
             document.querySelectorAll(".class-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.classList.contains("disabled") || card.getAttribute("aria-disabled") === "true") return;
+                    const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
                     const cId = card.getAttribute("data-class-id") || "";
-                    this.state.classId = cId;
-                    const cls = this.classes.find((c) => c.id === cId);
-                    this.state.subclassId = cls?.subclasses?.[0]?.id || "";
-                    this.state.weaponMasteries = [];
-                    if (cls) {
-                        this.initClassDefaultEquipment(cls);
+                    if (cIdx > 0) {
+                        const check = this.canMulticlassInto(cId, cIdx);
+                        if (!check.allowed) return;
                     }
-                    this.sanitizeSpellSelections();
-                    this.renderStep(3);
-                    this.updateLiveSummary();
+                    if (this.state.classes[cIdx]) {
+                        this.state.classes[cIdx].classId = cId;
+                        const cls = this.classes.find((c) => c.id === cId);
+                        const newSubId = cls?.subclasses?.[0]?.id || "";
+                        this.state.classes[cIdx].subclassId = newSubId;
+                        if (cIdx === 0) {
+                            this.state.classId = cId;
+                            this.state.subclassId = newSubId;
+                            this.state.weaponMasteries = [];
+                            if (cls) {
+                                this.initClassDefaultEquipment(cls);
+                            }
+                        }
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.renderStep(3);
+                        this.updateLiveSummary();
+                    }
                 });
             });
 
             document.querySelectorAll(".subclass-card").forEach((card) => {
                 card.addEventListener("click", () => {
-                    this.state.subclassId = card.getAttribute("data-subclass-id") || "";
-                    this.sanitizeSpellSelections();
-                    this.renderStep(3);
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
+                    const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
+                    const subId = card.getAttribute("data-subclass-id") || "";
+                    if (this.state.classes[cIdx]) {
+                        this.state.classes[cIdx].subclassId = subId;
+                        if (cIdx === 0) {
+                            this.state.subclassId = subId;
+                        }
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.renderStep(3);
+                    }
+                });
+            });
+
+            document.querySelectorAll(".progression-lvl-badge").forEach((badge) => {
+                badge.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const cIdx = parseInt(badge.getAttribute("data-class-index") || "0", 10);
+                    let targetLvl = parseInt(badge.getAttribute("data-level") || "1", 10);
+                    if (this.state.classes[cIdx]) {
+                        const currentLvl = this.state.classes[cIdx].level || 1;
+                        if (targetLvl === currentLvl) {
+                            targetLvl = Math.max(1, currentLvl - 1);
+                        }
+                        this.state.classes[cIdx].level = targetLvl;
+                        if (cIdx === 0) {
+                            this.state.level = targetLvl;
+                        }
+                        this.state.level = this.getTotalLevel();
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.updateLiveSummary();
+                        this.renderStep(3);
+                    }
+                });
+            });
+
+            const addClassBtn = document.getElementById("add-class-btn") as HTMLButtonElement | null;
+            addClassBtn?.addEventListener("click", () => {
+                if (addClassBtn.disabled || addClassBtn.classList.contains("disabled")) return;
+                const nextIdx = this.state.classes.length;
+                const availableCls = this.classes.find((c) => this.canMulticlassInto(c.id, nextIdx).allowed);
+                if (!availableCls) return;
+                const newClassChoice: CharacterClassChoice = {
+                    classId: availableCls.id,
+                    level: 1,
+                    subclassId: ""
+                };
+                this.state.classes.push(newClassChoice);
+                this.syncStateClassProperties();
+                this.updateLiveSummary();
+                this.renderStep(3);
+                this.updateMulticlassBarPositions();
+                this.updateMulticlassNavBars();
+            });
+
+            document.querySelectorAll(".remove-class-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const cIdx = parseInt(btn.getAttribute("data-class-index") || "0", 10);
+                    if (cIdx > 0 && this.state.classes.length > 1) {
+                        this.state.classes.splice(cIdx, 1);
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.updateLiveSummary();
+                        this.renderStep(3);
+                        this.updateMulticlassBarPositions();
+                        this.updateMulticlassNavBars();
+                    }
                 });
             });
 
             document.querySelectorAll(".mastery-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const wName = card.getAttribute("data-weapon-name") || "";
-                    const cls = this.classes.find((c) => c.id === this.state.classId);
-                    const maxM = cls?.weaponMasteryCount || 0;
+                    const maxM = this.getMaxWeaponMasteriesCount();
                     if (this.state.weaponMasteries.includes(wName)) {
                         this.state.weaponMasteries = this.state.weaponMasteries.filter((w) => w !== wName);
                     } else if (this.state.weaponMasteries.length < maxM) {
@@ -3570,6 +4588,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".fighting-style-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     this.state.fightingStyle = card.getAttribute("data-fighting-style-id") || "";
                     this.renderStep(3);
                 });
@@ -3577,6 +4596,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".divine-order-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     this.state.divineOrder = card.getAttribute("data-divine-order-id") || "";
                     this.renderStep(3);
                 });
@@ -3584,6 +4604,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".primal-order-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     this.state.primalOrder = card.getAttribute("data-primal-order-id") || "";
                     this.renderStep(3);
                 });
@@ -3591,6 +4612,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".metamagic-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const metaId = card.getAttribute("data-metamagic-id") || "";
                     const maxCount = this.getMaxMetamagicCount();
                     if (this.state.metamagic.includes(metaId)) {
@@ -3604,6 +4626,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".invocation-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const invId = card.getAttribute("data-invocation-id") || "";
                     const maxCount = this.getMaxInvocationsCount();
                     if (this.state.invocations.includes(invId)) {
@@ -3617,6 +4640,7 @@ export class CharacterCreatorController {
 
             document.querySelectorAll(".maneuver-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const manId = card.getAttribute("data-maneuver-id") || "";
                     const maxCount = this.getMaxManeuversCount();
                     if (this.state.maneuvers.includes(manId)) {
@@ -3636,29 +4660,9 @@ export class CharacterCreatorController {
                 });
             });
 
-            document.querySelectorAll(".progression-toggle-link").forEach((link) => {
-                link.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    const wasExpanded = this.progressionExpanded;
-                    this.progressionExpanded = !this.progressionExpanded;
-                    this.renderStep(3);
-                    if (wasExpanded) {
-                        const toggleLink = document.getElementById("progression-load-more-link");
-                        if (toggleLink && typeof toggleLink.scrollIntoView === "function") {
-                            toggleLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                        }
-                    }
-                });
-            });
-
-            const expandBtn = document.getElementById("progression-toggle-expand-btn");
-            expandBtn?.addEventListener("click", () => {
-                this.progressionExpanded = !this.progressionExpanded;
-                this.renderStep(3);
-            });
-
             document.querySelectorAll(".subclass-feature-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
                     const key = card.getAttribute("data-feature-key");
                     const choice = card.getAttribute("data-feature-choice");
                     if (key && choice) {
@@ -3671,6 +4675,20 @@ export class CharacterCreatorController {
                     }
                 });
             });
+
+            document.querySelectorAll(".scroll-to-bottom-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    if (typeof window !== "undefined") {
+                        window.scrollTo({
+                            top: document.documentElement.scrollHeight,
+                            behavior: "smooth"
+                        });
+                    }
+                });
+            });
+
+            this.updateMulticlassBarPositions();
+            this.updateMulticlassNavBars();
         } else if (step === 4) {
             document.querySelectorAll(".background-card").forEach((card) => {
                 card.addEventListener("click", () => {
@@ -3877,8 +4895,7 @@ export class CharacterCreatorController {
             document.querySelectorAll(".skill-checkbox-card:not(.locked)").forEach((card) => {
                 card.addEventListener("click", () => {
                     const skName = card.getAttribute("data-skill-name") || "";
-                    const cls = this.classes.find((c) => c.id === this.state.classId);
-                    const maxCount = cls?.skillChoices.count || 2;
+                    const maxCount = this.getMaxClassSkillCount();
                     if (this.state.classSkills.includes(skName)) {
                         this.state.classSkills = this.state.classSkills.filter((s) => s !== skName);
                     } else if (this.state.classSkills.length < maxCount) {
@@ -3974,6 +4991,15 @@ export class CharacterCreatorController {
         } else if (step === 8) {
             this.sanitizeSpellSelections();
 
+            // Spell class filter tabs
+            document.querySelectorAll(".spell-class-tab-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const c = btn.getAttribute("data-class") || "all";
+                    this.activeSpellClassFilter = c;
+                    this.renderStep(8);
+                });
+            });
+
             // Spell level filter tabs
             document.querySelectorAll(".spell-tab-btn").forEach((btn) => {
                 btn.addEventListener("click", () => {
@@ -4018,73 +5044,43 @@ export class CharacterCreatorController {
                 this.renderStep(8);
             });
 
-            // Cantrip toggles with strict limit enforcement
+            // Cantrip toggles
             document.querySelectorAll(".cantrip-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
-                    const maxCantrips = this.getMaxCantrips();
                     if (this.state.selectedCantrips.includes(spName)) {
                         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => s !== spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     } else {
-                        if (this.state.selectedCantrips.length >= maxCantrips) {
-                            this.showAlert(`You can only choose ${maxCantrips} cantrip${maxCantrips === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
-                            return;
-                        }
                         this.state.selectedCantrips.push(spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     }
+                    this.spellsWarningDismissed = false;
+                    this.hideAlert();
                     this.renderStep(8);
                 });
             });
 
-            // Prepared spell toggles with strict limit enforcement
+            // Prepared spell toggles
             document.querySelectorAll(".spell1-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
-                    const maxPrepared = this.getMaxPreparedSpells();
                     if (this.state.selectedSpellsLevel1.includes(spName)) {
                         this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => s !== spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     } else {
-                        if (this.state.selectedSpellsLevel1.length >= maxPrepared) {
-                            this.showAlert(`You can only prepare ${maxPrepared} spell${maxPrepared === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
-                            return;
-                        }
                         this.state.selectedSpellsLevel1.push(spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     }
+                    this.spellsWarningDismissed = false;
+                    this.hideAlert();
                     this.renderStep(8);
                 });
             });
         }
     }
 
-    // Submission to API
-    public async submitCharacter() {
-        if (!this.state.name.trim()) {
-            this.goToStep(1);
-            this.showAlert("Please enter a character name.");
-            return;
-        }
-
-        const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = this.state.savedId
-                ? `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`
-                : `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
-        }
-
-        try {
-            const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
-            const species = this.species.find((s) => s.id === this.state.speciesId) || this.species[0];
-            const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
-            const pb = this.getProficiencyBonus();
+    public buildPayload(): any {
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+        const species = this.species.find((s) => s.id === this.state.speciesId) || this.species[0];
+        const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
+        const pb = this.getProficiencyBonus();
 
             const abilityNames: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
             const abilityTitles: Record<AbilityName, string> = {
@@ -4250,6 +5246,155 @@ export class CharacterCreatorController {
                 }
             }
 
+            // Progression-granted spells from selected class and subclass options
+            const selectedProgressionOptions: any[] = [];
+            if (this.state.fightingStyle) {
+                const opt = findClassOption("fighting-style", this.state.fightingStyle);
+                if (opt) selectedProgressionOptions.push(opt);
+            }
+            if (this.state.divineOrder) {
+                const opt = findClassOption("divine-order", this.state.divineOrder);
+                if (opt) selectedProgressionOptions.push(opt);
+            }
+            if (this.state.primalOrder) {
+                const opt = findClassOption("primal-order", this.state.primalOrder);
+                if (opt) selectedProgressionOptions.push(opt);
+            }
+            if (Array.isArray(this.state.invocations)) {
+                for (const invId of this.state.invocations) {
+                    const opt = findClassOption("invocation", invId);
+                    if (opt) selectedProgressionOptions.push(opt);
+                }
+            }
+            const findDynamicProgressionOption = (key: string, val: string): any => {
+                for (const c of this.classes) {
+                    for (const pl of c.progression || []) {
+                        for (const ch of pl.choices || []) {
+                            if (ch.choiceId === key || ch.id === key) {
+                                const opt = ch.options?.find((o: any) => o.id === val);
+                                if (opt) {
+                                    return {
+                                        ...opt,
+                                        choiceName: ch.name,
+                                        source: c.name,
+                                        level: pl.level,
+                                        isSubclass: false
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    for (const sub of c.subclasses || []) {
+                        for (const pl of sub.progression || []) {
+                            for (const ch of pl.choices || []) {
+                                if (ch.choiceId === key || ch.id === key) {
+                                    const opt = ch.options?.find((o: any) => o.id === val);
+                                    if (opt) {
+                                        return {
+                                            ...opt,
+                                            choiceName: ch.name,
+                                            source: sub.name,
+                                            level: pl.level,
+                                            isSubclass: true
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return undefined;
+            };
+
+            if (this.state.subclassFeatureChoices) {
+                for (const [featKey, optVal] of Object.entries(this.state.subclassFeatureChoices)) {
+                    const opt = findClassOption(featKey, optVal) || findDynamicProgressionOption(featKey, optVal);
+                    if (opt) selectedProgressionOptions.push(opt);
+                }
+            }
+
+            for (const opt of selectedProgressionOptions) {
+                if (Array.isArray(opt.grantedSpells)) {
+                    for (const sp of opt.grantedSpells) {
+                        const spName = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                        const spLevel = typeof sp === "string" ? 0 : (sp.level ?? 0);
+                        if (!spName) continue;
+                        if (!spellsPayload.some((s) => s.name.toLowerCase() === spName.toLowerCase())) {
+                            const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase() || s.id.toLowerCase() === spName.toLowerCase());
+                            spellsPayload.push({
+                                name: spDef ? spDef.name : spName,
+                                level: spDef ? spDef.level : spLevel,
+                                school: spDef?.school || "Evocation",
+                                source: (typeof sp === "object" && sp.source) || opt.name || "Class",
+                                prepared: true,
+                                alwaysPrepared: true,
+                                castingTime: spDef?.castingTime || "1 Action",
+                                range: spDef?.range || "Self",
+                                duration: spDef?.duration || "Instantaneous",
+                                components: spDef?.components || "V, S",
+                                concentration: spDef?.concentration || false,
+                                ritual: (typeof sp === "object" && sp.ritual) || spDef?.ritual || false,
+                                description: (typeof sp === "object" && (sp.notes || sp.description)) || spDef?.description || `Granted by ${opt.name}.`
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Collect progression-granted spells from cls.progression and sub.progression for unlocked levels
+            for (const charCls of this.state.classes) {
+                const clsDef = this.classes.find((c) => c.id === charCls.classId);
+                const subId = charCls.subclassId || (charCls === this.state.classes[0] ? this.state.subclassId : "");
+                const subDef = clsDef?.subclasses?.find((s) => s.id === subId);
+                const unlockedLevel = charCls.level || 1;
+
+                const addProgGrantedSpell = (sp: any, defaultSource: string) => {
+                    const spName = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                    if (!spName) return;
+                    const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase() || s.id.toLowerCase() === spName.toLowerCase());
+                    const finalName = spDef ? spDef.name : spName;
+                    if (!spellsPayload.some((s) => s.name.toLowerCase() === finalName.toLowerCase())) {
+                        spellsPayload.push({
+                            name: finalName,
+                            level: spDef ? spDef.level : (typeof sp === "object" ? (sp.level ?? 1) : 1),
+                            school: spDef?.school || "Evocation",
+                            source: (typeof sp === "object" && sp.source) || defaultSource,
+                            prepared: true,
+                            alwaysPrepared: true,
+                            castingTime: spDef?.castingTime || "1 Action",
+                            range: spDef?.range || "Self",
+                            duration: spDef?.duration || "Instantaneous",
+                            components: spDef?.components || "V, S",
+                            concentration: spDef?.concentration || false,
+                            ritual: (typeof sp === "object" && sp.ritual) || spDef?.ritual || false,
+                            description: (typeof sp === "object" && (sp.notes || sp.description)) || spDef?.description || `Granted by ${defaultSource}.`
+                        });
+                    }
+                };
+
+                // From class progression
+                if (Array.isArray(clsDef?.progression)) {
+                    for (const pl of clsDef.progression) {
+                        if (pl.level <= unlockedLevel && Array.isArray(pl.grantedSpells)) {
+                            for (const sp of pl.grantedSpells) {
+                                addProgGrantedSpell(sp, clsDef.name);
+                            }
+                        }
+                    }
+                }
+
+                // From subclass progression
+                if (Array.isArray(subDef?.progression)) {
+                    for (const pl of subDef.progression) {
+                        if (pl.level <= unlockedLevel && Array.isArray(pl.grantedSpells)) {
+                            for (const sp of pl.grantedSpells) {
+                                addProgGrantedSpell(sp, subDef.name);
+                            }
+                        }
+                    }
+                }
+            }
+
             const wrapHtmlParagraph = (text: string): string => {
                 const trimmed = (text || "").trim();
                 if (!trimmed) return "";
@@ -4342,56 +5487,59 @@ export class CharacterCreatorController {
                 }
             }
 
-            const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
-            const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
-            resolvedClsFeatures.filter((f) => {
-                if (f.level > this.state.level) return false;
-                const lowerName = f.name.toLowerCase().trim();
-                if (/\b\d+(?:st|nd|rd|th)-level spells\b/i.test(lowerName)) return false;
-                if (lowerName === "ability score improvement" || lowerName === "epic boon") return false;
-                if (this.state.subclassId && this.state.level >= 3) {
-                    if (lowerName === "subclass feature" || lowerName === "subclass capstone" || lowerName.endsWith(" subclass")) {
-                        return false;
+            this.state.classes.forEach((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId) || this.classes[0];
+                const fbCls = CLASSES_2024.find((c) => c.id === cDef.id);
+                const resolvedFeatures = (cDef.features && cDef.features.length > 0) ? cDef.features : (fbCls?.features || []);
+                resolvedFeatures.filter((f) => {
+                    if (f.level > cc.level) return false;
+                    const lowerName = f.name.toLowerCase().trim();
+                    if (/\b\d+(?:st|nd|rd|th)-level spells\b/i.test(lowerName)) return false;
+                    if (lowerName === "ability score improvement" || lowerName === "epic boon") return false;
+                    if (cc.subclassId && cc.level >= 3) {
+                        if (lowerName === "subclass feature" || lowerName === "subclass capstone" || lowerName.endsWith(" subclass")) {
+                            return false;
+                        }
                     }
-                }
-                return true;
-            }).forEach((f) => {
-                classFeaturesList.push({
-                    name: f.name,
-                    source: cls.name,
-                    type: "Class",
-                    description: wrapHtmlParagraph(f.description)
+                    return true;
+                }).forEach((f) => {
+                    classFeaturesList.push({
+                        name: f.name,
+                        source: cDef.name,
+                        type: "Class",
+                        description: wrapHtmlParagraph(f.description)
+                    });
                 });
-            });
 
-            // Subclass features
-            if (this.state.subclassId) {
-                const sub = cls.subclasses.find((s) => s.id === this.state.subclassId) || fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
-                const fallbackSub = fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
-                if (sub) {
-                    const subFeatures = (sub.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
-                    if (subFeatures.length > 0) {
-                        subFeatures
-                            .filter((sf) => sf.level <= this.state.level)
-                            .forEach((sf) => {
-                                subclassFeaturesList.push({
-                                    name: sf.name,
-                                    source: sub.name,
-                                    type: "Subclass",
-                                    level: sf.level,
-                                    description: wrapHtmlParagraph(sf.description)
+                // Subclass features
+                if (cc.subclassId) {
+                    const sub = cDef.subclasses?.find((s) => s.id === cc.subclassId) || fbCls?.subclasses?.find((s) => s.id === cc.subclassId);
+                    const fallbackSub = fbCls?.subclasses?.find((s) => s.id === cc.subclassId);
+                    if (sub) {
+                        const subFeatures = (sub.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
+                        if (subFeatures.length > 0) {
+                            subFeatures
+                                .filter((sf: any) => sf.level <= cc.level)
+                                .forEach((sf: any) => {
+                                    subclassFeaturesList.push({
+                                        name: sf.name,
+                                        source: sub.name,
+                                        type: "Subclass",
+                                        level: sf.level,
+                                        description: wrapHtmlParagraph(sf.description)
+                                    });
                                 });
+                        } else {
+                            subclassFeaturesList.push({
+                                name: sub.name,
+                                source: sub.name,
+                                type: "Subclass",
+                                description: wrapHtmlParagraph(sub.description)
                             });
-                    } else {
-                        subclassFeaturesList.push({
-                            name: sub.name,
-                            source: sub.name,
-                            type: "Subclass",
-                            description: wrapHtmlParagraph(sub.description)
-                        });
+                        }
                     }
                 }
-            }
+            });
 
             const featuresPayload: any[] = [];
 
@@ -4761,19 +5909,25 @@ export class CharacterCreatorController {
                                 description: opt.description
                             });
                         }
+                    } else {
+                        const dynOpt = findDynamicProgressionOption(key, val);
+                        if (dynOpt) {
+                            featuresPayload.push({
+                                name: `${dynOpt.choiceName || "Choice"}: ${dynOpt.name}`,
+                                source: dynOpt.source || "Class Option",
+                                type: dynOpt.isSubclass ? "Subclass" : "Class",
+                                level: dynOpt.level || 1,
+                                description: dynOpt.description
+                            });
+                        }
                     }
                 }
             }
 
             // Fighting Style
-            if (
-                this.state.fightingStyle &&
-                (this.state.classId === "fighter" ||
-                    (this.state.classId === "paladin" && this.state.level >= 2) ||
-                    (this.state.classId === "ranger" && this.state.level >= 2))
-            ) {
-                const fs = FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle);
-                if (fs) {
+            if (this.state.fightingStyle) {
+                const fs = findClassOption("fighting-style", this.state.fightingStyle) || FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle);
+                if (fs && !featuresPayload.some(f => f.name === `Fighting Style: ${fs.name}`)) {
                     featuresPayload.push({
                         name: `Fighting Style: ${fs.name}`,
                         source: "Class Option / Fighting Style",
@@ -4784,9 +5938,9 @@ export class CharacterCreatorController {
             }
 
             // Divine Order / Primal Order
-            if (this.state.divineOrder && this.state.classId === "cleric") {
-                const ord = DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder);
-                if (ord) {
+            if (this.state.divineOrder) {
+                const ord = findClassOption("divine-order", this.state.divineOrder) || DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder);
+                if (ord && !featuresPayload.some(f => f.name === `Divine Order: ${ord.name}`)) {
                     featuresPayload.push({
                         name: `Divine Order: ${ord.name}`,
                         source: "Class Option / Divine Order",
@@ -4795,9 +5949,9 @@ export class CharacterCreatorController {
                     });
                 }
             }
-            if (this.state.primalOrder && this.state.classId === "druid") {
-                const ord = PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder);
-                if (ord) {
+            if (this.state.primalOrder) {
+                const ord = findClassOption("primal-order", this.state.primalOrder) || PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder);
+                if (ord && !featuresPayload.some(f => f.name === `Primal Order: ${ord.name}`)) {
                     featuresPayload.push({
                         name: `Primal Order: ${ord.name}`,
                         source: "Class Option / Primal Order",
@@ -4808,10 +5962,10 @@ export class CharacterCreatorController {
             }
 
             // Metamagic
-            if (this.state.metamagic.length > 0 && this.state.classId === "sorcerer" && this.state.level >= 2) {
+            if (Array.isArray(this.state.metamagic) && this.state.metamagic.length > 0) {
                 this.state.metamagic.forEach((mId) => {
-                    const meta = METAMAGIC_OPTIONS.find((m) => m.id === mId);
-                    if (meta) {
+                    const meta = findClassOption("metamagic", mId) || METAMAGIC_OPTIONS.find((m) => m.id === mId);
+                    if (meta && !featuresPayload.some(f => f.name === `Metamagic: ${meta.name}`)) {
                         featuresPayload.push({
                             name: `Metamagic: ${meta.name}`,
                             source: "Class Option / Metamagic",
@@ -4823,10 +5977,10 @@ export class CharacterCreatorController {
             }
 
             // Invocations
-            if (this.state.invocations.length > 0 && this.state.classId === "warlock") {
+            if (Array.isArray(this.state.invocations) && this.state.invocations.length > 0) {
                 this.state.invocations.forEach((invId) => {
-                    const inv = ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
-                    if (inv) {
+                    const inv = findClassOption("invocation", invId) || ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
+                    if (inv && !featuresPayload.some(f => f.name === `Eldritch Invocation: ${inv.name}`)) {
                         featuresPayload.push({
                             name: `Eldritch Invocation: ${inv.name}`,
                             source: "Class Option / Invocation",
@@ -4945,11 +6099,16 @@ export class CharacterCreatorController {
             const invSkill = skillsPayload.find((s) => s.name === "Investigation");
             const insSkill = skillsPayload.find((s) => s.name === "Insight");
 
-            const spellAttackMod = this.getSpellAttackModifier() ?? 0;
-            const spellSaveDcVal = this.getSpellSaveDc() ?? 10;
+            const casterStats = this.getSpellcasterStatsList();
+            const defaultSpellAttackMod = this.getSpellAttackModifier() ?? 0;
+            const defaultSpellSaveDcVal = this.getSpellSaveDc() ?? 10;
             const cantripActions: any[] = spellsPayload
                 .filter((sp) => sp.level === 0)
                 .map((sp) => {
+                    const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === sp.name.toLowerCase());
+                    const grantingCaster = casterStats.find((cs) => spDef?.classes.includes(cs.className)) || casterStats[0];
+                    const spellAttackMod = grantingCaster ? grantingCaster.attackMod : defaultSpellAttackMod;
+                    const spellSaveDcVal = grantingCaster ? grantingCaster.saveDc : defaultSpellSaveDcVal;
                     const descLower = (sp.description || "").toLowerCase();
                     let hitOrDc = `${spellAttackMod >= 0 ? `+${spellAttackMod}` : spellAttackMod} to hit`;
                     if (descLower.includes("saving throw") || descLower.includes("save")) {
@@ -5060,7 +6219,7 @@ export class CharacterCreatorController {
                 const rangeOrReach = rangeMatch ? rangeMatch[1].replace(/feet/i, "ft.") : "Special";
                 const forcesSave = /\bmust (?:succeed on|make) a [a-z]+ saving throw\b|\bfailed save\b/i.test(plainDesc);
                 const hitOrDc = forcesSave && (this.getSpellSaveDc() !== null)
-                    ? `DC ${spellSaveDcVal}`
+                    ? `DC ${this.getSpellSaveDc() ?? 10}`
                     : "Special";
                 featureActions.push({
                     name: feat.name,
@@ -5094,46 +6253,25 @@ export class CharacterCreatorController {
             ];
 
             const spellSlotsPayload: Record<string, any> = {};
-            if (cls.spellcasting) {
-                const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-                const slotsRow = cls.spellcasting.spellSlotsByLevel?.[lvlIdx] || [];
-                if (cls.spellcasting.type === "pact") {
-                    const count = slotsRow.find((s: number) => s > 0) || 0;
-                    const pactLvl = slotsRow.findIndex((s: number) => s > 0) + 1;
-                    if (count > 0 && pactLvl > 0) {
-                        spellSlotsPayload.pact = {
-                            level: pactLvl,
-                            total: count,
-                            label: `Pact Magic (${pactLvl}${this.getOrdinalSuffix(pactLvl)} Level)`
-                        };
-                    }
-                } else {
-                    slotsRow.forEach((total: number, idx: number) => {
-                        if (total > 0) {
-                            const slotLvl = idx + 1;
-                            spellSlotsPayload[`level${slotLvl}`] = {
-                                level: slotLvl,
-                                total,
-                                label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
-                            };
-                        }
-                    });
+            const slotsResult = calculateMulticlassSpellSlots(this.state.classes, this.classes);
+            slotsResult.standardSlots.forEach((total, idx) => {
+                if (total > 0) {
+                    const slotLvl = idx + 1;
+                    spellSlotsPayload[`level${slotLvl}`] = {
+                        level: slotLvl,
+                        total,
+                        label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
+                    };
                 }
-            } else if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
-                const thirdCasterEffLvl = Math.ceil(this.state.level / 3);
-                const wizardDef = this.classes.find((c) => c.id === "wizard");
-                const slotsRow = wizardDef?.spellcasting?.spellSlotsByLevel?.[Math.max(0, Math.min(19, thirdCasterEffLvl - 1))] || [];
-                slotsRow.forEach((total: number, idx: number) => {
-                    if (total > 0) {
-                        const slotLvl = idx + 1;
-                        spellSlotsPayload[`level${slotLvl}`] = {
-                            level: slotLvl,
-                            total,
-                            label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
-                        };
-                    }
-                });
-            } else if (this.state.originFeatId.startsWith("magic-initiate")) {
+            });
+            if (slotsResult.pactSlotCount > 0) {
+                spellSlotsPayload.pact = {
+                    level: slotsResult.pactSlotLevel,
+                    total: slotsResult.pactSlotCount,
+                    label: `Pact Magic (${slotsResult.pactSlotLevel}${this.getOrdinalSuffix(slotsResult.pactSlotLevel)} Level)`
+                };
+            }
+            if (Object.keys(spellSlotsPayload).length === 0 && this.state.originFeatId.startsWith("magic-initiate")) {
                 spellSlotsPayload.level1 = {
                     level: 1,
                     total: 1,
@@ -5167,9 +6305,29 @@ export class CharacterCreatorController {
             }
 
             const maxHp = this.getMaxHp();
+            const classSummaries = this.state.classes.map((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId);
+                return `${cDef?.name || cc.classId} ${cc.level}`;
+            }).join(" / ");
+
+            const classesPayload = this.state.classes.map((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId);
+                const subDef = cc.subclassId ? cDef?.subclasses?.find((s) => s.id === cc.subclassId) : undefined;
+                return {
+                    name: cDef?.name || cc.classId,
+                    level: cc.level,
+                    subclass: subDef?.name
+                };
+            });
+
+            const hitDiceStr = this.state.classes.map((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId);
+                return `${cc.level}d${cDef?.hitDie || 8}`;
+            }).join(" + ");
+
             const characterPayload: any = {
                 name: this.state.name,
-                subtitle: `Level ${this.state.level} ${raceLabel} ${cls.name}`,
+                subtitle: `Level ${this.state.level} ${raceLabel} ${classSummaries}`,
                 level: this.state.level,
                 race: raceLabel,
                 species: species.name,
@@ -5178,11 +6336,7 @@ export class CharacterCreatorController {
                 alignment: this.state.alignment,
                 avatarUrl: this.state.avatarUrl,
                 source: "site",
-                classes: [{
-                    name: cls.name,
-                    level: this.state.level,
-                    subclass: this.state.subclassId ? cls.subclasses.find((s) => s.id === this.state.subclassId)?.name : undefined
-                }],
+                classes: classesPayload,
                 damageResistances,
                 vitals: {
                     currentHp: maxHp,
@@ -5196,7 +6350,7 @@ export class CharacterCreatorController {
                     passiveInvestigation: 10 + (invSkill?.bonus || 0),
                     passiveInsight: 10 + (insSkill?.bonus || 0),
                     darkvision: chosenLineage?.darkvision || species.darkvision || "None",
-                    hitDice: `${this.state.level}d${cls.hitDie}`,
+                    hitDice: hitDiceStr,
                     heroicInspiration: false,
                     spellSaveDc: this.getSpellSaveDc() ?? 10,
                     spellAttackBonus: this.getSpellAttackModifier() ?? 0,
@@ -5212,9 +6366,9 @@ export class CharacterCreatorController {
                 features: featuresPayload,
                 actions: actionsPayload,
                 proficiencies: {
-                    armor: cls.armorProficiencies || [],
-                    weapons: cls.weaponProficiencies || [],
-                    tools: this.state.bgTool ? [this.state.bgTool] : [],
+                    armor: this.getAllArmorProficiencies(),
+                    weapons: this.getAllWeaponProficiencies(),
+                    tools: this.getAllToolProficiencies(),
                     languages: ["Common"]
                 },
                 classResources: resourcesPayload,
@@ -5244,6 +6398,31 @@ export class CharacterCreatorController {
                 )
             };
 
+            for (const opt of selectedProgressionOptions) {
+                applyProgressionChoiceOption(characterPayload, opt, 1);
+            }
+
+            return characterPayload;
+        }
+
+    // Submission to API
+    public async submitCharacter() {
+        if (!this.state.name.trim()) {
+            this.goToStep(1);
+            this.showAlert("Please enter a character name.");
+            return;
+        }
+
+        const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = this.state.savedId
+                ? `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`
+                : `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
+        }
+
+        try {
+            const characterPayload = this.buildPayload();
             const saveBody: any = {
                 name: this.state.name,
                 source: "site",

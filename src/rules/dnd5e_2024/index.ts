@@ -7,3 +7,5 @@ export * from "./spells";
 export * from "./equipment";
 export * from "./classOptions";
 export * from "./generalFeats";
+export * from "./multiclass";
+export * from "./statModifierEvaluator";

@@ -381,7 +381,7 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getMaxPreparedSpells()).toBe(1);
     });
 
-    it("sanitizes and truncates excess or invalid spell selections when class or level changes", () => {
+    it("sanitizes invalid spell selections when class changes while preserving extra selections for allotment warnings", () => {
         // As a Level 1 Sorcerer, select 4 cantrips
         ctrl.state.classId = "sorcerer";
         ctrl.state.level = 1;
@@ -393,8 +393,9 @@ describe("CharacterCreatorController", () => {
         ctrl.state.classId = "bard";
         ctrl.sanitizeSpellSelections();
 
-        expect(ctrl.state.selectedCantrips.length).toBeLessThanOrEqual(ctrl.getMaxCantrips());
         expect(ctrl.state.selectedCantrips.includes("Fire Bolt")).toBe(false); // Not on Bard list
+        // Valid bard cantrips are preserved even if exceeding allotment (3 > 2), so wizard can warn on advance
+        expect(ctrl.state.selectedCantrips).toEqual(["Light", "Minor Illusion", "Prestidigitation"]);
 
         // Switch to non-caster Fighter without feat -> spells cleared to empty
         ctrl.state.classId = "fighter";
@@ -704,70 +705,106 @@ describe("CharacterCreatorController", () => {
         expect(container.querySelector(".progression-timeline")).toBeNull();
     });
 
-    it("hides locked higher levels under a load more link and reveals them with show less link", () => {
+    it("unlocks levels by clicking the progression-lvl-badge and supports adding multiclass with navigation buttons", () => {
         const ctrl = new CharacterCreatorController();
         document.body.innerHTML = '<div id="creator-step-panels"></div>';
 
         // Fighter at level 3
         ctrl.state.classId = "fighter";
         ctrl.state.level = 3;
-        ctrl.progressionExpanded = false;
+        ctrl.syncStateClassProperties();
         ctrl.renderStep(3);
 
         const container = document.getElementById("creator-step-panels")!;
 
+        // Load more / show less link should NOT exist
+        expect(container.querySelector("#progression-load-more-link")).toBeNull();
+        expect(container.querySelector(".progression-load-more-container")).toBeNull();
+
         // Unlocked rows: Levels 1, 2, 3
         const unlockedRows = container.querySelectorAll(".progression-row.unlocked");
         expect(unlockedRows.length).toBe(3);
-        unlockedRows.forEach((row) => {
-            expect(row.classList.contains("hidden")).toBe(false);
-        });
 
-        // Locked rows: Levels 4 to 20 should be hidden by default
+        // Locked rows: Levels 4 to 20
         const lockedRows = container.querySelectorAll(".progression-row.locked");
         expect(lockedRows.length).toBe(17);
-        const hiddenLockedRows = container.querySelectorAll(".progression-row.locked.hidden");
-        expect(hiddenLockedRows.length).toBe(17);
 
-        // Load more link should be present with "Load more"
-        const loadMoreLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
-        expect(loadMoreLink).not.toBeNull();
-        expect(loadMoreLink.textContent).toContain("Load more");
+        // Level is determined by clicking progression-lvl-badge to unlock that level
+        const lvl6Badge = container.querySelector('.progression-lvl-badge[data-level="6"]') as HTMLElement;
+        expect(lvl6Badge).not.toBeNull();
+        lvl6Badge.click();
 
-        // Click the load more link
-        loadMoreLink.click();
+        expect(ctrl.state.classes[0].level).toBe(6);
+        expect(ctrl.state.level).toBe(6);
+        expect(container.querySelectorAll(".progression-row.unlocked").length).toBe(6);
+        expect(container.querySelectorAll(".progression-row.locked").length).toBe(14);
 
-        // Now progression should be expanded
-        expect(ctrl.progressionExpanded).toBe(true);
-        const visibleLockedRows = container.querySelectorAll(".progression-row.locked:not(.hidden)");
-        expect(visibleLockedRows.length).toBe(17);
+        // Bottom bar contains "+ Add Class" button
+        const addClassBtn = container.querySelector("#add-class-btn") as HTMLButtonElement;
+        expect(addClassBtn).not.toBeNull();
+        expect(addClassBtn.textContent).toContain("Add Class");
 
-        // Link should now display "Show less"
-        const showLessLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
-        expect(showLessLink).not.toBeNull();
-        expect(showLessLink.textContent).toContain("Show less");
+        // Mock scrollIntoView
+        const scrollIntoViewMock = vi.fn();
+        window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
 
-        // Bottom show less link should also be present when expanded
-        const bottomShowLess = container.querySelector("#progression-show-less-bottom-link") as HTMLAnchorElement;
-        expect(bottomShowLess).not.toBeNull();
-        expect(bottomShowLess.textContent).toContain("Show less");
+        // Click "+ Add Class" button
+        addClassBtn.click();
 
-        // Click show less
-        showLessLink.click();
+        // Now has 2 classes
+        expect(ctrl.state.classes.length).toBe(2);
+        expect(document.getElementById("class-section-0")).not.toBeNull();
+        expect(document.getElementById("class-section-1")).not.toBeNull();
 
-        // Locked rows should be re-hidden and link returns to "Load more"
-        expect(ctrl.progressionExpanded).toBe(false);
-        const rehiddenLockedRows = container.querySelectorAll(".progression-row.locked.hidden");
-        expect(rehiddenLockedRows.length).toBe(17);
-        const reloadedLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
-        expect(reloadedLink.textContent).toContain("Load more");
+        // A navigation button showing the name of that class appears in the bottom nav
+        const bottomNav = document.getElementById("multiclass-bottom-nav")!;
+        const navBtn = bottomNav.querySelector(".nav-to-class-btn") as HTMLButtonElement;
+        expect(navBtn).not.toBeNull();
+        const secondClass = ctrl.classes.find((c) => c.id === ctrl.state.classes[1].classId);
+        expect(navBtn.textContent).toContain(secondClass?.name);
 
-        // If character level is 20, all levels unlocked, no load more link rendered
-        ctrl.state.level = 20;
+        // Clicking the class button scrolls to the new class
+        navBtn.click();
+        expect(scrollIntoViewMock).toHaveBeenCalled();
+
+        // Verify total level sums both classes
+        ctrl.state.classes[1].level = 4;
+        expect(ctrl.getTotalLevel()).toBe(10);
+    });
+
+    it("allows selecting class, subclass, and feature choices on the primary class", () => {
+        const ctrl = new CharacterCreatorController();
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+
         ctrl.renderStep(3);
-        expect(container.querySelector("#progression-load-more-link")).toBeNull();
-        expect(container.querySelectorAll(".progression-row.unlocked").length).toBe(20);
-        expect(container.querySelectorAll(".progression-row.locked").length).toBe(0);
+        const container = document.getElementById("creator-step-panels")!;
+
+        // Primary class is initially Fighter
+        expect(ctrl.state.classId).toBe("fighter");
+
+        // Click Rogue class card on primary class
+        const rogueCard = container.querySelector('.class-card[data-class-id="rogue"][data-class-index="0"]') as HTMLElement;
+        expect(rogueCard).not.toBeNull();
+        rogueCard.click();
+
+        expect(ctrl.state.classes[0].classId).toBe("rogue");
+        expect(ctrl.state.classId).toBe("rogue");
+
+        // Unlock Level 3 for Rogue so subclasses are shown
+        const lvl3Badge = container.querySelector('.progression-lvl-badge[data-level="3"][data-class-index="0"]') as HTMLElement;
+        expect(lvl3Badge).not.toBeNull();
+        lvl3Badge.click();
+
+        expect(ctrl.state.classes[0].level).toBe(3);
+        expect(ctrl.state.level).toBe(3);
+
+        // Select Thief subclass
+        const thiefCard = container.querySelector('.subclass-card[data-subclass-id="thief"][data-class-index="0"]') as HTMLElement;
+        expect(thiefCard).not.toBeNull();
+        thiefCard.click();
+
+        expect(ctrl.state.classes[0].subclassId).toBe("thief");
+        expect(ctrl.state.subclassId).toBe("thief");
     });
 
     it("clearly indicates when a starting equipment kit is equipped", () => {
@@ -1463,5 +1500,714 @@ describe("CharacterCreatorController", () => {
         expect(dfRes).toBeDefined();
 
         postSpy.mockRestore();
+    });
+
+    it("allows selecting weapon masteries when barbarian is chosen as a secondary multiclass", () => {
+        document.body.innerHTML = `<div id="creator-step-panels"></div>`;
+
+        // Start with Bard level 3 as primary class (0 weapon masteries)
+        ctrl.state.classId = "bard";
+        ctrl.state.classes = [
+            { classId: "bard", level: 3, subclassId: "lore" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.state.weaponMasteries = [];
+        ctrl.syncStateClassProperties();
+
+        // Total weapon masteries count should be 2 (from Barbarian)
+        expect(ctrl.getMaxWeaponMasteriesCount()).toBe(2);
+
+        // Render step 3
+        ctrl.renderStep(3);
+
+        const greataxeCard = document.querySelector('.mastery-card[data-weapon-name="Greataxe"]') as HTMLElement;
+        const handaxeCard = document.querySelector('.mastery-card[data-weapon-name="Handaxe"]') as HTMLElement;
+        const daggerCard = document.querySelector('.mastery-card[data-weapon-name="Dagger"]') as HTMLElement;
+
+        expect(greataxeCard).not.toBeNull();
+        expect(handaxeCard).not.toBeNull();
+
+        // Click Greataxe
+        greataxeCard.click();
+        expect(ctrl.state.weaponMasteries).toContain("Greataxe");
+        expect(ctrl.state.weaponMasteries.length).toBe(1);
+
+        // Click Handaxe
+        const updatedHandaxe = document.querySelector('.mastery-card[data-weapon-name="Handaxe"]') as HTMLElement;
+        updatedHandaxe.click();
+        expect(ctrl.state.weaponMasteries).toContain("Handaxe");
+        expect(ctrl.state.weaponMasteries.length).toBe(2);
+
+        // Click Dagger - should not add because limit is 2
+        const updatedDagger = document.querySelector('.mastery-card[data-weapon-name="Dagger"]') as HTMLElement;
+        updatedDagger.click();
+        expect(ctrl.state.weaponMasteries.length).toBe(2);
+        expect(ctrl.state.weaponMasteries).not.toContain("Dagger");
+
+        // Now test multiclass Fighter (3) + Barbarian (2) = 5
+        ctrl.state.classes = [
+            { classId: "fighter", level: 1, subclassId: "champion" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.syncStateClassProperties();
+        expect(ctrl.getMaxWeaponMasteriesCount()).toBe(5);
+    });
+
+    it("calculates multiclass capacities correctly for metamagic, invocations, and maneuvers", () => {
+        // Bard 5 / Sorcerer 3 / Warlock 2 / Fighter (Battle Master) 3
+        ctrl.state.classes = [
+            { classId: "bard", level: 5, subclassId: "lore" },
+            { classId: "sorcerer", level: 3, subclassId: "draconic" },
+            { classId: "warlock", level: 2, subclassId: "fiend" },
+            { classId: "fighter", level: 3, subclassId: "battle-master" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        expect(ctrl.getMaxMetamagicCount()).toBe(2);
+        expect(ctrl.getMaxInvocationsCount()).toBe(3);
+        expect(ctrl.getMaxManeuversCount()).toBe(3);
+    });
+
+    it("positions multiclass-top-bar directly at the bottom of the site nav bar when visible, and at 0px when hidden", () => {
+        document.body.innerHTML = `
+            <nav style="height: 70px;"></nav>
+            <div id="creator-step-panels"></div>
+        `;
+
+        ctrl.state.classes = [
+            { classId: "fighter", level: 5, subclassId: "champion" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const nav = document.querySelector("nav") as HTMLElement;
+        const topBar = document.getElementById("multiclass-top-bar") as HTMLElement;
+        expect(topBar).not.toBeNull();
+
+        // Visible nav bar: bottom should be at 70px
+        expect(ctrl.getNavBottom()).toBe(70);
+        ctrl.updateMulticlassBarPositions();
+        expect(topBar.style.top).toBe("70px");
+
+        // Hidden nav bar (style.display = 'none')
+        nav.style.display = "none";
+        expect(ctrl.getNavBottom()).toBe(0);
+        ctrl.updateMulticlassBarPositions();
+        expect(topBar.style.top).toBe("0px");
+
+        // Nav bar removed
+        nav.remove();
+        expect(ctrl.getNavBottom()).toBe(0);
+        ctrl.updateMulticlassBarPositions();
+        expect(topBar.style.top).toBe("0px");
+    });
+
+    it("provides scroll to bottom buttons and docks multiclass bottom bar when scrolled to bottom", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        ctrl.state.classes = [
+            { classId: "fighter", level: 5, subclassId: "champion" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const primaryScrollBtn = document.getElementById("primary-class-scroll-bottom-btn");
+        const topBarScrollBtn = document.getElementById("top-bar-scroll-bottom-btn");
+        const floatingScrollBtn = document.getElementById("floating-scroll-bottom-btn");
+        const bottomBar = document.getElementById("multiclass-bottom-bar") as HTMLElement;
+        const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
+
+        expect(primaryScrollBtn).not.toBeNull();
+        expect(topBarScrollBtn).not.toBeNull();
+        expect(floatingScrollBtn).not.toBeNull();
+        expect(bottomBar).not.toBeNull();
+
+        let scrolledToTop = -1;
+        let scrolledBehavior = "";
+        window.scrollTo = ((options: any) => {
+            scrolledToTop = options.top;
+            scrolledBehavior = options.behavior;
+        }) as any;
+
+        primaryScrollBtn?.click();
+        expect(scrolledToTop).toBeGreaterThanOrEqual(0);
+        expect(scrolledBehavior).toBe("smooth");
+
+        // When panel bottom is below viewport, bottom bar is fixed to viewport (not docked)
+        vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+            bottom: 1200,
+            top: 100,
+            left: 0,
+            right: 1000,
+            width: 1000,
+            height: 1100,
+            x: 0,
+            y: 100,
+            toJSON: () => {}
+        });
+        ctrl.updateMulticlassBarPositions();
+        expect(bottomBar.classList.contains("docked")).toBe(false);
+        expect(bottomBar.style.bottom).toBe("0px");
+
+        // When panel bottom reaches or enters viewport (scrolled all the way to bottom)
+        vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+            bottom: 750, // <= viewport height 800
+            top: -350,
+            left: 0,
+            right: 1000,
+            width: 1000,
+            height: 1100,
+            x: 0,
+            y: -350,
+            toJSON: () => {}
+        });
+        ctrl.updateMulticlassBarPositions();
+        expect(bottomBar.classList.contains("docked")).toBe(true);
+    });
+
+    it("disables selections within locked levels and enables them when unlocked", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter at level 1 (levels 2-20 are locked)
+        ctrl.state.classes = [
+            { classId: "fighter", level: 1, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const lvl3Box = document.querySelector('.level-progression-box[data-level="3"]') as HTMLElement;
+        expect(lvl3Box).not.toBeNull();
+        expect(lvl3Box.classList.contains("locked")).toBe(true);
+
+        const battleMasterCard = lvl3Box.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
+        expect(battleMasterCard).not.toBeNull();
+
+        // Clicking battle master card in locked level 3 should do nothing
+        battleMasterCard.click();
+        expect(ctrl.state.classes[0].subclassId).toBe("");
+
+        // Now unlock level 3 by clicking the level 3 badge
+        const lvl3Badge = lvl3Box.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
+        expect(lvl3Badge).not.toBeNull();
+        lvl3Badge.click();
+
+        expect(ctrl.state.classes[0].level).toBe(3);
+        const updatedLvl3Box = document.querySelector('.level-progression-box[data-level="3"]') as HTMLElement;
+        expect(updatedLvl3Box.classList.contains("unlocked")).toBe(true);
+
+        // Clicking battle master card in unlocked level 3 now selects it
+        const unlockedBattleMasterCard = updatedLvl3Box.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
+        unlockedBattleMasterCard.click();
+        expect(ctrl.state.classes[0].subclassId).toBe("battle-master");
+    });
+
+    it("unselects selections within a level when that level is re-locked", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter unlocked to level 3 with Battle Master and maneuvers selected
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 3;
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        // Select Battle Master subclass
+        const bmCard = document.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
+        expect(bmCard).not.toBeNull();
+        bmCard.click();
+        expect(ctrl.state.classes[0].subclassId).toBe("battle-master");
+
+        // Select a maneuver
+        const manCard = document.querySelector('.maneuver-card[data-maneuver-id="trip-attack"]') as HTMLElement;
+        if (manCard) manCard.click();
+        expect(ctrl.state.maneuvers).toContain("trip-attack");
+
+        // Select Student of War skill choice (fighter-3-battle-master-student)
+        const studentCard = document.querySelector('.subclass-feature-card[data-feature-key="fighter-3-battle-master-student"][data-feature-choice="History"]') as HTMLElement;
+        if (studentCard) studentCard.click();
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBe("History");
+
+        // Now re-lock level 3 by clicking the level 3 badge
+        const lvl3Badge = document.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
+        expect(lvl3Badge).not.toBeNull();
+        lvl3Badge.click();
+
+        // Level should drop to 2 (level 3 re-locked)
+        expect(ctrl.state.classes[0].level).toBe(2);
+        // Level 3 selections are unselected as though they had never been made
+        expect(ctrl.state.classes[0].subclassId).toBe("");
+        expect(ctrl.state.subclassId).toBe("");
+        expect(ctrl.state.maneuvers).toEqual([]);
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBeUndefined();
+
+        // Re-unlock level 3: selections remain unselected
+        const reUnlockBadge = document.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
+        reUnlockBadge.click();
+        expect(ctrl.state.classes[0].level).toBe(3);
+        expect(ctrl.state.classes[0].subclassId).toBe("");
+        expect(ctrl.state.maneuvers).toEqual([]);
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBeUndefined();
+    });
+
+    it("unselects feature choices when jumping down multiple levels or re-locking higher levels", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Rogue at level 5 with Cunning Strike selected
+        ctrl.state.classId = "rogue";
+        ctrl.state.level = 5;
+        ctrl.state.classes = [
+            { classId: "rogue", level: 5, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const tripCard = document.querySelector('.subclass-feature-card[data-feature-key="rogue-5-cunning-strike"][data-feature-choice="trip"]') as HTMLElement;
+        expect(tripCard).not.toBeNull();
+        tripCard.click();
+        expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBe("trip");
+
+        // Click level 4 badge to set level to 4 (locking level 5)
+        const lvl4Badge = document.querySelector('.progression-lvl-badge[data-level="4"]') as HTMLElement;
+        expect(lvl4Badge).not.toBeNull();
+        lvl4Badge.click();
+
+        expect(ctrl.state.classes[0].level).toBe(4);
+        expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBeUndefined();
+    });
+
+    it("evaluates D&D 2024 multiclass prerequisites accurately for both current and target classes", () => {
+        // Standard setup: Fighter with Str 17, Dex 14, Con 14, Int 12, Wis 10, Cha 8
+        expect(ctrl.state.classes[0].classId).toBe("fighter");
+        expect(ctrl.getEffectiveAbilityScore("str")).toBe(17);
+        expect(ctrl.getEffectiveAbilityScore("dex")).toBe(14);
+        expect(ctrl.getEffectiveAbilityScore("int")).toBe(12);
+        expect(ctrl.getEffectiveAbilityScore("wis")).toBe(10);
+        expect(ctrl.getEffectiveAbilityScore("cha")).toBe(8);
+
+        // Can multiclass into Barbarian (requires Str 13+)
+        const barbCheck = ctrl.canMulticlassInto("barbarian", 1);
+        expect(barbCheck.allowed).toBe(true);
+
+        // Can multiclass into Rogue (requires Dex 13+)
+        const rogueCheck = ctrl.canMulticlassInto("rogue", 1);
+        expect(rogueCheck.allowed).toBe(true);
+
+        // Cannot multiclass into Wizard (requires Int 13+, current is 12)
+        const wizCheck = ctrl.canMulticlassInto("wizard", 1);
+        expect(wizCheck.allowed).toBe(false);
+        expect(wizCheck.reason).toContain("Requires Int 13+");
+
+        // Cannot multiclass into Monk (requires Dex 13+ & Wis 13+, Dex is 14 but Wis is 10)
+        const monkCheck = ctrl.canMulticlassInto("monk", 1);
+        expect(monkCheck.allowed).toBe(false);
+        expect(monkCheck.reason).toContain("Requires Dex 13+ & Wis 13+");
+
+        // Cannot multiclass into Fighter (already chosen as primary)
+        const fighterCheck = ctrl.canMulticlassInto("fighter", 1);
+        expect(fighterCheck.allowed).toBe(false);
+        expect(fighterCheck.reason).toBe("Already chosen");
+
+        // If primary class does not meet prerequisites (e.g. Str 10, Dex 10)
+        ctrl.state.baseAbilities.str = 8;
+        ctrl.state.bgStatA = "int"; // move background bonus away from str
+        ctrl.state.baseAbilities.dex = 10;
+        expect(ctrl.getEffectiveAbilityScore("str")).toBe(8);
+        expect(ctrl.getEffectiveAbilityScore("dex")).toBe(10);
+
+        // Even though Barbarian requires Str 13+, multiclassing into ANY class is blocked because primary class fails
+        const barbBlocked = ctrl.canMulticlassInto("barbarian", 1);
+        expect(barbBlocked.allowed).toBe(false);
+        expect(barbBlocked.reason).toContain("Primary class (Fighter) requires Str 13+ or Dex 13+");
+        expect(barbBlocked.reason).toContain("to multiclass");
+    });
+
+    it("disables secondary class cards in UI when prerequisites are not met and prevents selecting them", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter primary (Str 17, Dex 14, Int 12) + Barbarian secondary (Level 1)
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "battle-master" },
+            { classId: "barbarian", level: 1, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const secSection = document.getElementById("class-section-1")!;
+        expect(secSection).not.toBeNull();
+
+        // Wizard card in secondary section should be disabled because Int < 13
+        const wizCard = secSection.querySelector('.class-card[data-class-id="wizard"]') as HTMLElement;
+        expect(wizCard).not.toBeNull();
+        expect(wizCard.classList.contains("disabled")).toBe(true);
+        expect(wizCard.getAttribute("aria-disabled")).toBe("true");
+        expect(wizCard.innerHTML).toContain("class-prereq-badge locked");
+        expect(wizCard.innerHTML).toContain("Requires Int 13+");
+
+        // Clicking the disabled wizard card should NOT change the secondary class
+        wizCard.click();
+        expect(ctrl.state.classes[1].classId).toBe("barbarian");
+
+        // Rogue card in secondary section should be enabled (Dex 14 >= 13)
+        const rogueCard = secSection.querySelector('.class-card[data-class-id="rogue"]') as HTMLElement;
+        expect(rogueCard).not.toBeNull();
+        expect(rogueCard.classList.contains("disabled")).toBe(false);
+        expect(rogueCard.innerHTML).toContain("class-prereq-badge met");
+
+        // Clicking the eligible rogue card successfully changes the secondary class
+        rogueCard.click();
+        expect(ctrl.state.classes[1].classId).toBe("rogue");
+    });
+
+    it("correctly grants multiclass proficiencies and skills per D&D 2024 rules", () => {
+        // Rogue primary (Light armor, simple weapons, hand crossbows, rapiers, shortswords)
+        ctrl.state.classId = "rogue";
+        ctrl.state.classes = [
+            { classId: "rogue", level: 3, subclassId: "thief" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Single class Rogue lacks medium armor and martial weapons (e.g. Greatsword)
+        expect(ctrl.isProficientWithArmor("Chain Shirt")).toBe(false);
+        expect(ctrl.isProficientWithShield()).toBe(false);
+        expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(false);
+        expect(ctrl.getMaxClassSkillCount()).toBe(4); // Rogue base is 4 skills
+
+        // Multiclass into Fighter (grants Light, Medium, Shields, Martial Weapons)
+        ctrl.state.classes.push({ classId: "fighter", level: 1, subclassId: "" });
+        ctrl.syncStateClassProperties();
+
+        expect(ctrl.getAllArmorProficiencies()).toContain("Medium Armor");
+        expect(ctrl.getAllArmorProficiencies()).toContain("Shields");
+        expect(ctrl.getAllWeaponProficiencies()).toContain("Martial Weapons");
+        expect(ctrl.isProficientWithArmor("Chain Shirt")).toBe(true);
+        expect(ctrl.isProficientWithShield()).toBe(true);
+        expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(true);
+
+        // Multiclass into Bard (grants 1 additional skill of choice, musical instrument)
+        ctrl.state.classes.push({ classId: "bard", level: 1, subclassId: "" });
+        ctrl.syncStateClassProperties();
+
+        expect(ctrl.getMaxClassSkillCount()).toBe(5); // 4 + 1
+        expect(ctrl.getAllToolProficiencies()).toContain("Musical Instrument");
+    });
+
+    it("+ Add Class button picks an eligible class and disables when no class can be added", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter with Str 17, Dex 14
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const addBtn = document.getElementById("add-class-btn") as HTMLButtonElement;
+        expect(addBtn).not.toBeNull();
+        expect(addBtn.disabled).toBe(false);
+
+        // Clicking Add Class should add Barbarian (Str 17 >= 13, first eligible class)
+        addBtn.click();
+        expect(ctrl.state.classes.length).toBe(2);
+        expect(ctrl.state.classes[1].classId).toBe("barbarian");
+
+        // When primary class does not meet multiclass prerequisites:
+        ctrl.state.baseAbilities = { str: 8, dex: 8, con: 10, int: 8, wis: 8, cha: 8 };
+        ctrl.state.bgStatA = "con";
+        ctrl.state.bgStatB = "con";
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const addBtnDisabled = document.getElementById("add-class-btn") as HTMLButtonElement;
+        expect(addBtnDisabled.disabled).toBe(true);
+        expect(addBtnDisabled.classList.contains("disabled")).toBe(true);
+
+        // Clicking disabled button does not add a class
+        addBtnDisabled.click();
+        expect(ctrl.state.classes.length).toBe(1);
+    });
+
+    it("warns player when attempting to advance beyond Step 8 (Spells) with more spells than allotment", () => {
+        document.body.innerHTML = `
+            <div id="creator-validation-alert" class="hidden"></div>
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Level 1 Wizard: max 3 cantrips, max 4 prepared spells
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        ctrl.state.classes = [{ classId: "wizard", level: 1, subclassId: "" }];
+        ctrl.syncStateClassProperties();
+        ctrl.state.currentStep = 8;
+
+        const maxCantrips = ctrl.getMaxCantrips();
+        const maxPrepared = ctrl.getMaxPreparedSpells();
+        expect(maxCantrips).toBe(3);
+        expect(maxPrepared).toBe(4);
+
+        // Select 4 cantrips (1 more than allotment)
+        ctrl.state.selectedCantrips = ["Light", "Mage Hand", "Prestidigitation", "Minor Illusion"];
+        ctrl.state.selectedSpellsLevel1 = ["Shield", "Magic Missile"];
+
+        // Attempting to advance beyond step 8 without dismissing warning should block and show warning
+        const canAdvance = ctrl.validateCurrentStep();
+        expect(canAdvance).toBe(false);
+        const alertBox = document.getElementById("creator-validation-alert")!;
+        expect(alertBox.classList.contains("hidden")).toBe(false);
+        expect(alertBox.classList.contains("warning")).toBe(true);
+        expect(alertBox.textContent).toContain("Warning: You have selected more cantrips (4) than your allotment (3)");
+        expect(alertBox.textContent).toContain("Click Next again to proceed anyway");
+
+        // Clicking Next a second time acknowledges warning and allows advancing
+        const canAdvanceSecondAttempt = ctrl.validateCurrentStep();
+        expect(canAdvanceSecondAttempt).toBe(true);
+
+        // If player deselects back to allotment (3 cantrips), advance succeeds immediately
+        ctrl.state.selectedCantrips = ["Light", "Mage Hand", "Prestidigitation"];
+        ctrl.spellsWarningDismissed = false;
+        expect(ctrl.validateCurrentStep()).toBe(true);
+    });
+
+    it("does not allow the Allowed number of spells to change when chosen spells exceed allotment in Character Sheet", async () => {
+        const { getCharacterSpellLevelLimits } = await import("../../../src/views/characterSheet/components/spells");
+
+        // Character with 3 default cantrips and 2 level 1 slots
+        const charData: any = {
+            level: 1,
+            classes: [{ name: "Wizard", level: 1 }],
+            spellSlots: {
+                level1: { total: 2, used: 0 }
+            },
+            spells: [
+                // 5 cantrips chosen (allotment is 3)
+                { name: "Light", level: 0 },
+                { name: "Mage Hand", level: 0 },
+                { name: "Minor Illusion", level: 0 },
+                { name: "Prestidigitation", level: 0 },
+                { name: "Ray of Frost", level: 0 },
+                // 4 level 1 spells chosen (allotment is 2)
+                { name: "Shield", level: 1 },
+                { name: "Magic Missile", level: 1 },
+                { name: "Find Familiar", level: 1 },
+                { name: "Detect Magic", level: 1 }
+            ]
+        };
+
+        const limits = getCharacterSpellLevelLimits(charData);
+
+        // The allowed numbers must NOT change to 5 and 4! They must remain at their actual allotment (3 and 2)
+        expect(limits.currentByLevel[0].length).toBe(5);
+        expect(limits.allowedByLevel[0]).toBe(3); // strictly allotment, not 5
+
+        expect(limits.currentByLevel[1].length).toBe(4);
+        expect(limits.allowedByLevel[1]).toBe(2); // strictly allotment, not 4
+    });
+
+    it("correctly handles multiclass spellcasting limits and spell availability", () => {
+        // Cleric 2 / Wizard 1
+        ctrl.state.classes = [
+            { classId: "cleric", level: 2, subclassId: "life" },
+            { classId: "wizard", level: 1, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Cantrips: Cleric 2 (3) + Wizard 1 (3) = 6 cantrips
+        expect(ctrl.getMaxCantrips()).toBe(6);
+
+        // Prepared spells: Cleric 2 (5) + Wizard 1 (4) = 9 prepared spells
+        expect(ctrl.getMaxPreparedSpells()).toBe(9);
+
+        // Combined Multiclass Spell Slots:
+        // Cleric 2 + Wizard 1 = Effective Caster Level 3 -> 4 x Lvl 1, 2 x Lvl 2
+        expect(ctrl.getSpellSlotsSummary()).toBe("4 × Lvl 1, 2 × Lvl 2");
+
+        // Allowed spell classes include both Cleric and Wizard
+        expect(ctrl.getAllowedSpellClasses()).toEqual(expect.arrayContaining(["Cleric", "Wizard"]));
+
+        // Available spells:
+        // Cleric max spell level is 1; Wizard max spell level is 1
+        // Even though combined slots have 2nd-level slots, neither class can prepare 2nd-level spells
+        const available = ctrl.getAvailableSpells();
+        const availableNames = available.leveledSpells.map((s) => s.name);
+
+        // 1st level spells available
+        expect(availableNames).toContain("Cure Wounds"); // Cleric 1
+        expect(availableNames).toContain("Bless"); // Cleric 1
+        expect(availableNames).toContain("Shield"); // Wizard 1
+        expect(availableNames).toContain("Magic Missile"); // Wizard 1
+
+        // 2nd level spells NOT available for Cleric 2 / Wizard 1
+        expect(availableNames).not.toContain("Spiritual Weapon"); // Cleric 2
+        expect(availableNames).not.toContain("Aid"); // Cleric 2
+        expect(availableNames).not.toContain("Misty Step"); // Wizard 2
+        expect(availableNames).not.toContain("Scorching Ray"); // Wizard 2
+    });
+
+    it("allows higher-level prepared spells only for classes that qualify by class level", () => {
+        // Cleric 3 / Wizard 1
+        ctrl.state.classes = [
+            { classId: "cleric", level: 3, subclassId: "life" },
+            { classId: "wizard", level: 1, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Cleric 3 (WIS) max spell level = 2; Wizard 1 (INT) max spell level = 1
+        expect(ctrl.getMaxCantrips()).toBe(3 + 3); // 6
+        expect(ctrl.getMaxPreparedSpells()).toBe(6 + 4); // 10
+
+        const available = ctrl.getAvailableSpells();
+        const availableNames = available.leveledSpells.map((s) => s.name);
+
+        // 2nd-level Cleric spells ARE available because Cleric level is 3
+        expect(availableNames).toContain("Spiritual Weapon");
+        expect(availableNames).toContain("Aid");
+
+        // 2nd-level Wizard spells are NOT available because Wizard level is only 1
+        expect(availableNames).not.toContain("Misty Step");
+        expect(availableNames).not.toContain("Scorching Ray");
+
+        // 1st-level Wizard spells ARE available
+        expect(availableNames).toContain("Shield");
+    });
+
+    it("activates Step 8 Spells when a secondary class is a spellcaster even if primary is not", () => {
+        // Fighter 3 (Champion) / Wizard 2 (Evoker)
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "champion" },
+            { classId: "wizard", level: 2, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Wizard 2 grants 3 cantrips and 5 prepared spells
+        expect(ctrl.getMaxCantrips()).toBe(3);
+        expect(ctrl.getMaxPreparedSpells()).toBe(5);
+        expect(ctrl.getMaxSpellLevel()).toBe(1);
+        expect(ctrl.getSpellSlotsSummary()).toBe("3 × Lvl 1");
+
+        // Step 8 renders with spellcasting interface, not the "No Spellcasting" notice
+        const html = ctrl["renderStep8Spells"]();
+        expect(html).toContain("Cantrips (Level 0)");
+        expect(html).toContain("Prepared Spells");
+        expect(html).not.toContain("No Spellcasting");
+    });
+
+    it("correctly separates and combines Pact Magic and Standard Spellcasting slots", () => {
+        // Paladin 2 (half caster) / Warlock 2 (pact caster)
+        ctrl.state.classes = [
+            { classId: "paladin", level: 2, subclassId: "devotion" },
+            { classId: "warlock", level: 2, subclassId: "fiend" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Paladin 2: 0 cantrips, 3 prepared spells, 2 x Lvl 1 standard slots
+        // Warlock 2: 2 cantrips, 3 prepared spells, 2 x Lvl 1 pact slots
+        expect(ctrl.getMaxCantrips()).toBe(2);
+        expect(ctrl.getMaxPreparedSpells()).toBe(6);
+        expect(ctrl.getSpellSlotsSummary()).toBe("2 × Lvl 1; 2 × Lvl 1 (Pact Magic)");
+    });
+
+    describe("dynamic progression & granted spells integration", () => {
+        it("displays progression-granted spells in level progression and includes them in buildPayload", () => {
+            const cleric = ctrl.classes.find((c) => c.id === "cleric");
+            expect(cleric).toBeDefined();
+
+            const lifeSub = cleric!.subclasses.find((s) => s.id === "life");
+            expect(lifeSub).toBeDefined();
+
+            lifeSub!.progression = [
+                {
+                    level: 3,
+                    features: [{ name: "Disciple of Life", description: "Healing spells are more effective." }],
+                    grantedSpells: [
+                        { spellId: "bless", name: "Bless", alwaysPrepared: true },
+                        { spellId: "cure-wounds", name: "Cure Wounds", alwaysPrepared: true }
+                    ]
+                }
+            ];
+
+            ctrl.state.classId = "cleric";
+            ctrl.state.subclassId = "life";
+            ctrl.state.level = 3;
+            ctrl.state.classes = [{ classId: "cleric", level: 3, subclassId: "life" }];
+            ctrl.syncStateClassProperties();
+
+            const html = ctrl["renderClassProgression"](cleric!, 3, 0, "life");
+            expect(html).toContain("Bless (Granted Spell)");
+            expect(html).toContain("Cure Wounds (Granted Spell)");
+            expect(html).toContain("Always Prepared");
+
+            const payload = ctrl["buildPayload"]();
+            const payloadSpells = payload.spells.map((s: any) => s.name);
+            expect(payloadSpells).toContain("Bless");
+            expect(payloadSpells).toContain("Cure Wounds");
+
+            const bless = payload.spells.find((s: any) => s.name === "Bless");
+            expect(bless.alwaysPrepared).toBe(true);
+            expect(bless.prepared).toBe(true);
+        });
+
+        it("dynamically renders custom progression choices and includes selected choices in buildPayload", () => {
+            const cleric = ctrl.classes.find((c) => c.id === "cleric");
+            expect(cleric).toBeDefined();
+
+            const lifeSub = cleric!.subclasses.find((s) => s.id === "life");
+            expect(lifeSub).toBeDefined();
+
+            lifeSub!.progression = [
+                {
+                    level: 3,
+                    features: [],
+                    choices: [
+                        {
+                            id: "custom-divine-rite",
+                            choiceId: "custom-divine-rite",
+                            name: "Rite of Devotion",
+                            prompt: "Select your sacred rite.",
+                            chooseCount: 1,
+                            options: [
+                                { id: "rite-of-dawn", name: "Dawn Radiance", description: "Infuses spells with solar radiance." },
+                                { id: "rite-of-dusk", name: "Dusk Shroud", description: "Infuses spells with twilight warding." }
+                            ]
+                        }
+                    ]
+                }
+            ];
+
+            ctrl.state.classId = "cleric";
+            ctrl.state.subclassId = "life";
+            ctrl.state.level = 3;
+            ctrl.state.classes = [{ classId: "cleric", level: 3, subclassId: "life" }];
+            ctrl.syncStateClassProperties();
+
+            const html = ctrl["renderClassProgression"](cleric!, 3, 0, "life");
+            expect(html).toContain("Rite of Devotion");
+            expect(html).toContain("Dawn Radiance");
+            expect(html).toContain("Dusk Shroud");
+
+            ctrl.state.subclassFeatureChoices["custom-divine-rite"] = "rite-of-dawn";
+
+            const payload = ctrl["buildPayload"]();
+            const choiceFeature = payload.features.find((f: any) => f.name.includes("Dawn Radiance"));
+            expect(choiceFeature).toBeDefined();
+            expect(choiceFeature.description).toContain("solar radiance");
+        });
     });
 });

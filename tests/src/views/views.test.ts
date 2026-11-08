@@ -932,6 +932,65 @@ describe('Frontend View Templates', () => {
         expect(asiChar.abilities.find(a => a.abbr === 'CHA')!.score).toBe(19);
     });
 
+    it('extractFeaturesAndApplyDecisions separates subclass features accurately for multiclass characters', async () => {
+        const { extractFeaturesAndApplyDecisions } = await import('../../../src/views/characterSheet/featureDecisions');
+
+        const multiclassRaw = {
+            classes: [
+                {
+                    level: 6,
+                    definition: { id: 1, name: 'Bard', classFeatures: [{ id: 101, name: 'Bardic Inspiration', requiredLevel: 1 }] },
+                    subclassDefinition: {
+                        id: 757,
+                        name: 'College of Glamour',
+                        classFeatures: [
+                            { id: 102, name: 'Mantle of Inspiration', requiredLevel: 3 },
+                            { id: 103, name: 'Beguiling Magic', requiredLevel: 3 }
+                        ]
+                    },
+                    classFeatures: [
+                        { id: 101, definition: { id: 101, classId: 1, name: 'Bardic Inspiration', requiredLevel: 1 } },
+                        { id: 102, definition: { id: 102, classId: 757, name: 'Mantle of Inspiration', requiredLevel: 3 } },
+                        // Leaked runtime object from other class in D&D Beyond:
+                        { id: 202, definition: { id: 202, classId: 800, name: 'Awakened Mind', requiredLevel: 3, isSubclassFeature: true } }
+                    ]
+                },
+                {
+                    level: 6,
+                    definition: { id: 7, name: 'Warlock', classFeatures: [{ id: 201, name: 'Pact Magic', requiredLevel: 1 }] },
+                    subclassDefinition: {
+                        id: 800,
+                        name: 'Great Old One Patron',
+                        classFeatures: [
+                            { id: 202, name: 'Awakened Mind', requiredLevel: 3 },
+                            { id: 203, name: 'Psychic Spells', requiredLevel: 3 }
+                        ]
+                    },
+                    classFeatures: [
+                        { id: 201, definition: { id: 201, classId: 7, name: 'Pact Magic', requiredLevel: 1 } },
+                        { id: 202, definition: { id: 202, classId: 800, name: 'Awakened Mind', requiredLevel: 3 } },
+                        // Leaked runtime object from other class in D&D Beyond:
+                        { id: 102, definition: { id: 102, classId: 757, name: 'Mantle of Inspiration', requiredLevel: 3, isSubclassFeature: true } }
+                    ]
+                }
+            ],
+            modifiers: { class: [], feat: [], race: [], background: [] },
+            characterValues: []
+        };
+
+        const res = extractFeaturesAndApplyDecisions(multiclassRaw, []);
+        const features = res.features;
+
+        const glamourFeatures = features.filter(f => f.source === 'College of Glamour');
+        const gooFeatures = features.filter(f => f.source === 'Great Old One Patron');
+
+        expect(glamourFeatures.some(f => f.name === 'Mantle of Inspiration')).toBe(true);
+        expect(glamourFeatures.some(f => f.name === 'Awakened Mind')).toBe(false);
+
+        expect(gooFeatures.some(f => f.name === 'Awakened Mind')).toBe(true);
+        expect(gooFeatures.some(f => f.name === 'Mantle of Inspiration')).toBe(false);
+    });
+
     it('replaces exact case-sensitive condition names and [condition] blocks with condition definition modal links', async () => {
         const { linkifyConditionAndSpellTags } = await import('../../../src/views/characterSheet/components/markupLinks');
 

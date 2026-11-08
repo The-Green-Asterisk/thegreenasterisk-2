@@ -365,6 +365,16 @@ export default class Routes {
         return RulesController.getRules(req, res);
     }
 
+    @Method('GET')
+    private ['/api/rules/classes'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return RulesController.getClasses(req, res);
+    }
+
+    @Method('GET')
+    private ['/api/rules/subclasses'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return RulesController.getSubclasses(req, res);
+    }
+
     get response(): ResponsePromise {
         const response = this[this.url] as RouteFunction
         if (typeof response !== 'function') {

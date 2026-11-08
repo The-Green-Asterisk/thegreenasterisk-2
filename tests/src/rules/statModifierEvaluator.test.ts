@@ -1,0 +1,461 @@
+import { describe, expect, it } from "vitest";
+import { applyProgressionChoiceOption, applyStatModifier, evaluateCharacterStatModifiers } from "../../../src/rules/dnd5e_2024/statModifierEvaluator";
+import { CharacterData } from "../../../src/views/characterSheet/characterData";
+
+function createMockCharacter(): CharacterData {
+    return {
+        id: "test-char",
+        name: "Valeros",
+        subtitle: "Level 1 Fighter",
+        level: 1,
+        classes: [{ name: "Fighter", level: 1 }],
+        race: "Human",
+        background: "Soldier",
+        alignment: "Neutral Good",
+        avatarUrl: "",
+        dndBeyondUrl: "",
+        vitals: {
+            currentHp: 12,
+            maxHp: 12,
+            tempHp: 0,
+            armorClass: 16,
+            initiative: 2,
+            speed: "30 ft.",
+            proficiencyBonus: 2,
+            passivePerception: 11,
+            passiveInvestigation: 10,
+            passiveInsight: 11,
+            darkvision: "0 ft.",
+            hitDice: "1d10",
+            heroicInspiration: false,
+            spellSaveDc: 10,
+            spellAttackBonus: 2,
+            spellcastingAbility: "str"
+        },
+        abilities: [
+            { name: "Strength", abbr: "STR", score: 16, modifier: 3, save: 5, proficientSave: true },
+            { name: "Dexterity", abbr: "DEX", score: 14, modifier: 2, save: 2, proficientSave: false },
+            { name: "Constitution", abbr: "CON", score: 14, modifier: 2, save: 4, proficientSave: true },
+            { name: "Intelligence", abbr: "INT", score: 10, modifier: 0, save: 0, proficientSave: false },
+            { name: "Wisdom", abbr: "WIS", score: 12, modifier: 1, save: 1, proficientSave: false },
+            { name: "Charisma", abbr: "CHA", score: 8, modifier: -1, save: -1, proficientSave: false }
+        ],
+        skills: [
+            { name: "Athletics", stat: "STR", bonus: 5, proficiency: "proficient" },
+            { name: "Acrobatics", stat: "DEX", bonus: 2, proficiency: "none" },
+            { name: "Arcana", stat: "INT", bonus: 0, proficiency: "none" },
+            { name: "Religion", stat: "INT", bonus: 0, proficiency: "none" },
+            { name: "Perception", stat: "WIS", bonus: 1, proficiency: "none" },
+            { name: "Stealth", stat: "DEX", bonus: 2, proficiency: "none" }
+        ],
+        spellSlots: {},
+        actions: [],
+        features: [],
+        equipment: [],
+        weapons: [],
+        resources: [],
+        proficiencies: {
+            armor: ["Light Armor", "Medium Armor", "Shields"],
+            weapons: ["Simple Weapons"],
+            tools: [],
+            languages: ["Common"],
+            defenses: []
+        }
+    } as any;
+}
+
+describe("StatModifierEvaluator", () => {
+    describe("applyStatModifier", () => {
+        it("modifies AC with bonus and reverts it", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.armorClass).toBe(16);
+
+            // Apply Defense fighting style (+1 AC)
+            applyStatModifier(char, { target: "vitals.ac", type: "bonus", value: 1 }, 1);
+            expect(char.vitals.armorClass).toBe(17);
+
+            // Revert
+            applyStatModifier(char, { target: "vitals.ac", type: "bonus", value: 1 }, -1);
+            expect(char.vitals.armorClass).toBe(16);
+        });
+
+        it("modifies walking speed and reverts it", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.speed).toBe("30 ft.");
+
+            // Apply Fast Movement (+10 ft.)
+            applyStatModifier(char, { target: "vitals.speed", type: "bonus", value: 10 }, 1);
+            expect(char.vitals.speed).toBe("40 ft.");
+
+            // Revert
+            applyStatModifier(char, { target: "vitals.speed", type: "bonus", value: 10 }, -1);
+            expect(char.vitals.speed).toBe("30 ft.");
+        });
+
+        it("sets blindsight and resets to None on revert", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.blindsight).toBeUndefined();
+
+            // Apply Blind Fighting (10 ft.)
+            applyStatModifier(char, { target: "vitals.blindsight", type: "set", value: "10 ft." }, 1);
+            expect(char.vitals.blindsight).toBe("10 ft.");
+
+            // Revert
+            applyStatModifier(char, { target: "vitals.blindsight", type: "set", value: "10 ft." }, -1);
+            expect(char.vitals.blindsight).toBe("None");
+        });
+
+        it("modifies maxHp and currentHp proportionately", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.maxHp).toBe(12);
+            expect(char.vitals.currentHp).toBe(12);
+
+            // Apply Draconic Resilience (+1 HP)
+            applyStatModifier(char, { target: "vitals.maxHp", type: "bonus", value: 1 }, 1);
+            expect(char.vitals.maxHp).toBe(13);
+            expect(char.vitals.currentHp).toBe(13);
+
+            // Revert
+            applyStatModifier(char, { target: "vitals.maxHp", type: "bonus", value: 1 }, -1);
+            expect(char.vitals.maxHp).toBe(12);
+            expect(char.vitals.currentHp).toBe(12);
+        });
+
+        it("modifies ability scores and recalculates modifiers and saving throws", () => {
+            const char = createMockCharacter();
+            const strAbility = char.abilities.find(a => a.abbr === "STR")!;
+            expect(strAbility.score).toBe(16);
+            expect(strAbility.modifier).toBe(3);
+            expect(strAbility.save).toBe(5); // 3 mod + 2 PB
+
+            // Apply Primal Champion (+4 STR)
+            applyStatModifier(char, { target: "abilities.str", type: "bonus", value: 4 }, 1);
+            expect(strAbility.score).toBe(20);
+            expect(strAbility.modifier).toBe(5);
+            expect(strAbility.save).toBe(7); // 5 mod + 2 PB
+
+            // Revert
+            applyStatModifier(char, { target: "abilities.str", type: "bonus", value: 4 }, -1);
+            expect(strAbility.score).toBe(16);
+            expect(strAbility.modifier).toBe(3);
+            expect(strAbility.save).toBe(5);
+        });
+
+        it("adds ability modifier to skills (e.g. Thaumaturge adding WIS to Arcana)", () => {
+            const char = createMockCharacter();
+            const arcana = char.skills.find(s => s.name === "Arcana")!;
+            expect(arcana.bonus).toBe(0);
+
+            // Apply Thaumaturge (+WIS modifier to Arcana, WIS mod is 1)
+            applyStatModifier(char, { target: "skills.arcana", type: "ability_mod", abilitySource: "wis" }, 1);
+            expect(arcana.bonus).toBe(1);
+
+            // Revert
+            applyStatModifier(char, { target: "skills.arcana", type: "ability_mod", abilitySource: "wis" }, -1);
+            expect(arcana.bonus).toBe(0);
+        });
+
+        it("upgrades skill to expertise and recalculates bonus", () => {
+            const char = createMockCharacter();
+            const stealth = char.skills.find(s => s.name === "Stealth")!;
+            expect(stealth.proficiency).toBe("none");
+            expect(stealth.bonus).toBe(2); // DEX mod 2
+
+            // Apply Expertise
+            applyStatModifier(char, { target: "skills.stealth", type: "proficiency_tier", value: "expertise" }, 1);
+            expect(stealth.proficiency).toBe("expertise");
+            expect(stealth.bonus).toBe(6); // 2 DEX + 2*2 PB
+
+            // Revert
+            applyStatModifier(char, { target: "skills.stealth", type: "proficiency_tier", value: "expertise" }, -1);
+            expect(stealth.proficiency).toBe("none");
+            expect(stealth.bonus).toBe(2);
+        });
+
+        it("adds and removes damage resistance in defenses", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.damageResistances).toBeUndefined();
+
+            // Apply Draconic Ancestor (Fire Resistance)
+            applyStatModifier(char, { target: "defenses.resistance", type: "set", value: "fire" }, 1);
+            expect(char.vitals.damageResistances).toContain("Fire (Resistance)");
+
+            // Revert
+            applyStatModifier(char, { target: "defenses.resistance", type: "set", value: "fire" }, -1);
+            expect(char.vitals.damageResistances).not.toContain("Fire (Resistance)");
+        });
+
+        it("grants armor and weapon proficiencies (e.g. Protector Divine Order)", () => {
+            const char = createMockCharacter();
+            expect(char.proficiencies.armor).not.toContain("Heavy Armor");
+            expect(char.proficiencies.weapons).not.toContain("Martial Weapons");
+
+            // Protector gives Heavy Armor and Martial Weapons
+            applyStatModifier(char, { target: "proficiencies.armor.heavy", type: "bonus", value: 1 }, 1);
+            applyStatModifier(char, { target: "proficiencies.weapons.martial", type: "bonus", value: 1 }, 1);
+            expect(char.proficiencies.armor).toContain("Heavy Armor");
+            expect(char.proficiencies.weapons).toContain("Martial Weapons");
+
+            // Revert
+            applyStatModifier(char, { target: "proficiencies.armor.heavy", type: "bonus", value: 1 }, -1);
+            applyStatModifier(char, { target: "proficiencies.weapons.martial", type: "bonus", value: 1 }, -1);
+            expect(char.proficiencies.armor).not.toContain("Heavy Armor");
+            expect(char.proficiencies.weapons).not.toContain("Martial Weapons");
+        });
+    });
+
+    describe("applyProgressionChoiceOption", () => {
+        it("applies multiple modifiers defined on a choice option and reverts them cleanly", () => {
+            const char = createMockCharacter();
+            const protectorOption = {
+                id: "protector",
+                name: "Protector",
+                description: "Training with Heavy armor and Martial weapons",
+                modifiers: [
+                    { target: "proficiencies.armor.heavy", type: "bonus" as const, value: 1 },
+                    { target: "proficiencies.weapons.martial", type: "bonus" as const, value: 1 }
+                ]
+            };
+
+            applyProgressionChoiceOption(char, protectorOption, 1);
+            expect(char.proficiencies.armor).toContain("Heavy Armor");
+            expect(char.proficiencies.weapons).toContain("Martial Weapons");
+
+            applyProgressionChoiceOption(char, protectorOption, -1);
+            expect(char.proficiencies.armor).not.toContain("Heavy Armor");
+            expect(char.proficiencies.weapons).not.toContain("Martial Weapons");
+        });
+
+        it("grants spells from progression choice options and reverts them cleanly", () => {
+            const char = createMockCharacter();
+            char.spells = [];
+
+            const armorOfShadowsOption = {
+                id: "armor-of-shadows",
+                name: "Armor of Shadows",
+                description: "Cast Mage Armor at will without expending a spell slot.",
+                grantedSpells: [
+                    {
+                        name: "Mage Armor",
+                        level: 1,
+                        atWill: true,
+                        alwaysPrepared: true,
+                        notes: "Cast at will without expending a spell slot"
+                    }
+                ]
+            };
+
+            applyProgressionChoiceOption(char, armorOfShadowsOption, 1);
+            expect(char.spells.some(s => s.name === "Mage Armor")).toBe(true);
+
+            // Revert
+            applyProgressionChoiceOption(char, armorOfShadowsOption, -1);
+            expect(char.spells.some(s => s.name === "Mage Armor")).toBe(false);
+        });
+
+        it("grants features from progression choice options and reverts them cleanly", () => {
+            const char = createMockCharacter();
+            char.features = [];
+
+            const metamagicOption = {
+                id: "quickened-spell",
+                name: "Quickened Spell",
+                description: "Cast a spell with casting time of 1 action as a bonus action.",
+                grantedFeatures: [
+                    {
+                        id: "metamagic-quickened",
+                        name: "Metamagic: Quickened Spell",
+                        description: "Cast a 1-action spell as a bonus action.",
+                        type: "Class" as const
+                    }
+                ]
+            };
+
+            applyProgressionChoiceOption(char, metamagicOption, 1);
+            expect(char.features.some(f => f.name === "Metamagic: Quickened Spell")).toBe(true);
+
+            // Revert
+            applyProgressionChoiceOption(char, metamagicOption, -1);
+            expect(char.features.some(f => f.name === "Metamagic: Quickened Spell")).toBe(false);
+        });
+    });
+
+    describe("grant_spell and grant_feature modifiers", () => {
+        it("grants and reverts spells via grant_spell modifier", () => {
+            const char = createMockCharacter();
+            char.spells = [];
+
+            applyStatModifier(char, { target: "spells.grant", type: "grant_spell", value: "Sacred Flame" }, 1);
+            expect(char.spells.some(s => s.name === "Sacred Flame")).toBe(true);
+
+            applyStatModifier(char, { target: "spells.grant", type: "grant_spell", value: "Sacred Flame" }, -1);
+            expect(char.spells.some(s => s.name === "Sacred Flame")).toBe(false);
+        });
+
+        it("grants and reverts features via grant_feature modifier", () => {
+            const char = createMockCharacter();
+            char.features = [];
+
+            applyStatModifier(char, { target: "features.grant", type: "grant_feature", value: "Divine Spark" }, 1);
+            expect(char.features.some(f => f.name === "Divine Spark")).toBe(true);
+
+            applyStatModifier(char, { target: "features.grant", type: "grant_feature", value: "Divine Spark" }, -1);
+            expect(char.features.some(f => f.name === "Divine Spark")).toBe(false);
+        });
+    });
+
+    describe("Advantage, Disadvantage, and +N/-N Modifiers", () => {
+        it("applies advantage and disadvantage to saving throws and adds notes", () => {
+            const char = createMockCharacter();
+            expect(char.savingThrowNotes).toBeUndefined();
+
+            // Advantage on CON saves (Concentration)
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, 1);
+            expect(char.savingThrowNotes).toContain("Advantage on CON saving throws (to maintain Concentration)");
+            expect(char.vitals.savingThrowNotes).toContain("Advantage on CON saving throws (to maintain Concentration)");
+
+            // Disadvantage on all saves
+            applyStatModifier(char, { target: "saves.all", type: "disadvantage", condition: "while poisoned" }, 1);
+            expect(char.savingThrowNotes).toContain("Disadvantage on all saving throws (while poisoned)");
+
+            // Revert Advantage
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, -1);
+            expect(char.savingThrowNotes).not.toContain("Advantage on CON saving throws (to maintain Concentration)");
+            expect(char.savingThrowNotes).toContain("Disadvantage on all saving throws (while poisoned)");
+        });
+
+        it("applies advantage and disadvantage to skills and adjusts passive perception by +/-5", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.passivePerception).toBe(11);
+
+            // Advantage on Perception checks (e.g. Aspect of Owl)
+            applyStatModifier(char, { target: "skills.perception", type: "advantage" }, 1);
+            expect(char.savingThrowNotes).toContain("Advantage on Perception checks");
+            expect(char.vitals.passivePerception).toBe(16); // 11 + 5
+
+            // Revert
+            applyStatModifier(char, { target: "skills.perception", type: "advantage" }, -1);
+            expect(char.savingThrowNotes).not.toContain("Advantage on Perception checks");
+            expect(char.vitals.passivePerception).toBe(11);
+        });
+
+        it("applies positive and negative modifiers to spell save DC and spell attack bonus", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.spellSaveDc).toBe(10);
+            expect(char.vitals.spellAttackBonus).toBe(2);
+
+            // +2 bonus
+            applyStatModifier(char, { target: "vitals.spellSaveDc", type: "bonus", value: 2 }, 1);
+            applyStatModifier(char, { target: "vitals.spellAttackBonus", type: "bonus", value: 2 }, 1);
+            expect(char.vitals.spellSaveDc).toBe(12);
+            expect(char.vitals.spellAttackBonus).toBe(4);
+
+            // -1 penalty
+            applyStatModifier(char, { target: "vitals.spellSaveDc", type: "penalty", value: 1 }, 1);
+            applyStatModifier(char, { target: "vitals.spellAttackBonus", type: "penalty", value: 1 }, 1);
+            expect(char.vitals.spellSaveDc).toBe(11);
+            expect(char.vitals.spellAttackBonus).toBe(3);
+
+            // Revert penalty
+            applyStatModifier(char, { target: "vitals.spellSaveDc", type: "penalty", value: 1 }, -1);
+            expect(char.vitals.spellSaveDc).toBe(12);
+        });
+
+        it("applies weapon attack bonuses and advantage to attacks", () => {
+            const char = createMockCharacter();
+            char.weapons = [
+                { name: "Longbow", category: "Martial Ranged", toHitModifier: 5, attackBonus: "+5" } as any,
+                { name: "Longsword", category: "Martial Melee", toHitModifier: 5, attackBonus: "+5" } as any
+            ];
+
+            // Archery fighting style: +2 to ranged weapon attacks
+            applyStatModifier(char, { target: "attacks.ranged", type: "bonus", value: 2 }, 1);
+            expect(char.weapons[0].toHitModifier).toBe(7);
+            expect(char.weapons[0].attackBonus).toBe("+7");
+            expect(char.weapons[1].toHitModifier).toBe(5);
+
+            // Advantage on ranged weapon attacks
+            applyStatModifier(char, { target: "attacks.ranged", type: "advantage" }, 1);
+            expect(char.savingThrowNotes).toContain("Advantage on ranged weapon attacks");
+
+            // Revert bonus
+            applyStatModifier(char, { target: "attacks.ranged", type: "bonus", value: 2 }, -1);
+            expect(char.weapons[0].toHitModifier).toBe(5);
+            expect(char.weapons[0].attackBonus).toBe("+5");
+        });
+    });
+
+    describe("evaluateCharacterStatModifiers", () => {
+        it("evaluates choices from creatorState and applies stat modifiers, granted spells, and features", () => {
+            const char = createMockCharacter();
+            char.creatorState = {
+                fightingStyle: "defense",
+                subclassFeatureChoices: {
+                    "barbarian-6-wild-heart": "owl"
+                }
+            } as any;
+
+            expect(char.vitals.armorClass).toBe(16);
+            expect(char.vitals.darkvision).toBe("0 ft.");
+
+            evaluateCharacterStatModifiers(char);
+
+            // Defense gives +1 AC
+            expect(char.vitals.armorClass).toBe(17);
+            // Aspect of Owl gives Darkvision 60 ft and Advantage on Perception checks (+5 to passive perception)
+            expect(char.vitals.darkvision).toBe("60 ft.");
+            expect(char.savingThrowNotes).toContain("Advantage on Perception checks");
+            expect(char.vitals.passivePerception).toBe(16);
+        });
+
+        it("evaluates dynamic progression choices defined in custom class rules", () => {
+            const char = createMockCharacter();
+            char.subclassFeatureChoices = {
+                "custom-choice-1": "custom-opt-iron-hide"
+            };
+
+            const customRules = {
+                classes: [
+                    {
+                        name: "CustomClass",
+                        progression: [
+                            {
+                                level: 1,
+                                choices: [
+                                    {
+                                        choiceId: "custom-choice-1",
+                                        featureName: "Custom Boon",
+                                        prompt: "Choose your boon",
+                                        options: [
+                                            {
+                                                id: "custom-opt-iron-hide",
+                                                name: "Iron Hide",
+                                                description: "+2 AC and +10 ft speed",
+                                                modifiers: [
+                                                    { target: "vitals.ac", type: "bonus" as const, value: 2 },
+                                                    { target: "vitals.speed", type: "bonus" as const, value: 10 }
+                                                ],
+                                                grantedSpells: [
+                                                    { name: "Shield", level: 1 }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            expect(char.vitals.armorClass).toBe(16);
+            expect(char.vitals.speed).toBe("30 ft.");
+
+            evaluateCharacterStatModifiers(char, customRules);
+
+            expect(char.vitals.armorClass).toBe(18);
+            expect(char.vitals.speed).toBe("40 ft.");
+            expect(char.spells.some(s => s.name === "Shield")).toBe(true);
+        });
+    });
+});

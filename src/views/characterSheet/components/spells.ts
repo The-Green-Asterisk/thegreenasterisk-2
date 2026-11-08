@@ -75,7 +75,7 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
 
         const currentCount = currentByLevel[lvl]?.length || 0;
         if (lvl === 0) {
-            allowedByLevel[0] = Math.max(defaultCantripsAllowed, currentCount, 2);
+            allowedByLevel[0] = Math.max(defaultCantripsAllowed, 2);
         } else {
             const standardSlots = data.spellSlots?.[`level${lvl}`]?.total || 0;
             const pactSlots =
@@ -84,7 +84,7 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
                     : (data.spellSlots?.pact?.level || 0) > lvl
                       ? 2
                       : 0;
-            allowedByLevel[lvl] = Math.max(currentCount, standardSlots + pactSlots, 1);
+            allowedByLevel[lvl] = Math.max(standardSlots + pactSlots, 1);
         }
     });
 
@@ -186,6 +186,7 @@ export function renderSpellsByLevel(
         .sort((a, b) => a[0] - b[0])
         .map(([level, levelSpells]) => {
             const allowedCount = limits?.allowedByLevel[level] ?? levelSpells.length;
+            const isOverLimit = levelSpells.length > allowedCount;
             return `
             <section class="spells-level-section" data-spell-level="${level}">
                 <header class="spells-level-header">
@@ -193,7 +194,7 @@ export function renderSpellsByLevel(
                         <h4>${spellLevelLabel(level)}</h4>
                         ${renderLevelSlotMarkers(level, spellSlots)}
                     </div>
-                    <span class="spells-level-count" title="Spells for ${spellLevelLabel(level)}: ${levelSpells.length} current / ${allowedCount} allowed">${levelSpells.length}/${allowedCount}</span>
+                    <span class="spells-level-count ${isOverLimit ? 'over-limit' : ''}" title="Spells for ${spellLevelLabel(level)}: ${levelSpells.length} current / ${allowedCount} allowed">${levelSpells.length}/${allowedCount}</span>
                 </header>
                 <div class="spells-grid level-spells-grid">
                     ${levelSpells.map(renderSpellCard).join('')}

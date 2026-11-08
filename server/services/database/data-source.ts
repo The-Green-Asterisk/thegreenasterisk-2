@@ -18,7 +18,13 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize: false,
     logging: false,
-    entities: [path.join(__dirname, '..', '..', 'services', 'database', 'entity', '*.{js,ts}')],
-    migrations: [path.join(__dirname, '..', '..', 'services', 'database', 'migration', '*.{js,ts}')],
+    entities: [
+        path.join(__dirname, 'entity', '*.{js,ts}').replace(/\\/g, '/'),
+        path.join(__dirname, '..', '..', 'services', 'database', 'entity', '*.{js,ts}').replace(/\\/g, '/')
+    ],
+    migrations: [
+        path.join(__dirname, 'migration', '*.{js,ts}').replace(/\\/g, '/'),
+        path.join(__dirname, '..', '..', 'services', 'database', 'migration', '*.{js,ts}').replace(/\\/g, '/')
+    ],
     subscribers: [],
 })

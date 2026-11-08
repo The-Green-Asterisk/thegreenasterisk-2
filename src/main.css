@@ -27,9 +27,12 @@
        is the green for text, lightened in dark mode to stay readable. */
     color-scheme: light;
     --ui-text: #29701b;
+    --ui-accent: var(--ui-color);
+    --ui-accent-rgb: 41, 112, 27;
     --page-bg: rgb(200, 200, 200);
     --surface: white;
     --surface-alt: aliceblue;
+    --surface-raised: #f1f5f9;
     --avatar-border: black;
     --surface-hover: #e0f7fa;
     --surface-active: #b2ebf2;
@@ -64,9 +67,12 @@
 :root[data-theme="dark"] {
     color-scheme: dark;
     --ui-text: #6cc35a;
+    --ui-accent: var(--ui-text);
+    --ui-accent-rgb: 108, 195, 90;
     --page-bg: #121212;
     --surface: #1e1e1e;
     --surface-alt: #263238;
+    --surface-raised: #2a2a2a;
     --surface-hover: #2f4a52;
     --surface-active: #37606a;
     --surface-muted: #2c2c2c;

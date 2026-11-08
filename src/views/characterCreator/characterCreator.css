@@ -2,6 +2,18 @@
    5.5e D&D CHARACTER CREATOR STYLES
    ========================================================================== */
 
+:root {
+    --ui-accent: var(--ui-color, #29701b);
+    --ui-accent-rgb: 41, 112, 27;
+    --surface-raised: #f1f5f9;
+}
+
+:root[data-theme="dark"] {
+    --ui-accent: var(--ui-text, #6cc35a);
+    --ui-accent-rgb: 108, 195, 90;
+    --surface-raised: #2a2a2a;
+}
+
 el-character-creator,
 .character-creator-view {
     display: flex;
@@ -1332,6 +1344,19 @@ el-character-creator,
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
+.spell-count-badge.over-limit {
+    background: rgba(239, 68, 68, 0.18);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.25);
+}
+
+:root[data-theme="dark"] .spell-count-badge.over-limit {
+    background: rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.55);
+}
+
 .spell-count-badge.zero {
     background: rgba(107, 114, 128, 0.15);
     color: var(--text-muted);
@@ -1632,41 +1657,355 @@ el-character-creator,
 
 .level-progression-box.locked {
     border-left: 4px solid var(--border-soft);
-    opacity: 0.88;
+    opacity: 0.82;
 }
 
-.level-progression-box.locked.hidden {
+/* Selections inside locked levels are disabled */
+.level-progression-box.locked .level-choice-box {
+    opacity: 0.55;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px dashed var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    cursor: not-allowed;
+}
+
+:root[data-theme="dark"] .level-progression-box.locked .level-choice-box {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.level-progression-box.locked .select-card,
+.level-progression-box.locked .skill-checkbox-card,
+.level-progression-box.locked select,
+.level-progression-box.locked input,
+.level-progression-box.locked button:not(.progression-lvl-badge),
+.select-card.disabled,
+.skill-checkbox-card.disabled {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.55 !important;
+    filter: grayscale(0.6);
+    user-select: none;
+}
+
+.level-progression-box.locked .select-card:hover,
+.level-progression-box.locked .skill-checkbox-card:hover,
+.select-card.disabled:hover,
+.skill-checkbox-card.disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: var(--border-soft) !important;
+}
+
+.level-progression-box .progression-lvl-badge {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.choice-locked-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text-muted);
+    border: 1px solid var(--border-soft);
+    margin-left: auto;
+}
+
+:root[data-theme="dark"] .choice-locked-tag {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Multiclassing Layout & Sticky Navigation Bars */
+.multiclass-step-panel {
+    position: relative;
+    padding-bottom: 120px;
+}
+
+.multiclass-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+    position: relative;
+    scroll-margin-top: 130px;
+}
+
+.multiclass-section-header {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+}
+
+.multiclass-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.multiclass-lvl-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 9999px;
+    background: rgba(var(--ui-accent-rgb, 41, 112, 27), 0.12);
+    color: var(--ui-text);
+    border: 1px solid rgba(var(--ui-accent-rgb, 41, 112, 27), 0.35);
+    margin-left: 0.5rem;
+}
+
+/* General Creator Button Utilities */
+.creator-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.creator-btn.secondary-btn {
+    background: var(--surface-alt, #f0f4f8);
+    border: 1px solid var(--border);
+    color: var(--text, #111);
+    box-shadow: var(--sm-shadow);
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.creator-btn.secondary-btn:hover {
+    background: var(--surface-muted, #e2e8f0);
+    transform: translateY(-1px);
+}
+
+/* Sticky Top Bar for scrolling up to earlier classes */
+.multiclass-top-bar {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: calc(100% - 2rem);
+    max-width: 1100px;
+    z-index: 951;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    padding: 0.65rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    backdrop-filter: blur(10px);
+    box-sizing: border-box;
+    transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+:root[data-theme="dark"] .multiclass-top-bar {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+.multiclass-top-bar.hidden {
     display: none !important;
 }
 
-/* Level Progression Load More / Show Less Link */
-.progression-load-more-container {
+.multiclass-bar-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
     display: flex;
-    justify-content: center;
     align-items: center;
-    margin: 1.25rem 0;
-    padding: 0.5rem;
+    gap: 0.35rem;
 }
 
-.progression-toggle-link {
-    display: inline-flex;
+.multiclass-nav-buttons {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--primary, #0ea5e9);
-    text-decoration: underline;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius);
-    transition: all 0.15s ease;
 }
 
-.progression-toggle-link:hover {
-    color: var(--primary-hover, #0284c7);
-    background: rgba(14, 165, 233, 0.08);
+/* Sticky Bottom Bar for adding class and scrolling down to later classes */
+.multiclass-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: calc(100% - 2rem);
+    max-width: 1100px;
+    z-index: 950;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    backdrop-filter: blur(10px);
+    box-sizing: border-box;
+    transition: none !important;
+}
+
+:root[data-theme="dark"] .multiclass-bottom-bar {
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* When scrolled to bottom of multiclass panel, stick to the page */
+.multiclass-bottom-bar.docked {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    border-radius: var(--radius-md);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+    transition: none !important;
+}
+
+:root[data-theme="dark"] .multiclass-bottom-bar.docked {
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.multiclass-bottom-bar .add-class-btn {
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.65rem 1.25rem;
+    background: var(--ui-color, #29701b);
+    color: var(--text-on-accent, #fff);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius);
+    box-shadow: var(--sm-shadow);
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.multiclass-bottom-bar .add-class-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.multiclass-bottom-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+/* Floating Quick Scroll to Bottom Button */
+.floating-scroll-bottom-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    z-index: 940;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface-alt, #f0f4f8);
+    color: var(--text, #111);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: transform 0.15s ease, background 0.15s ease, opacity 0.2s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+:root[data-theme="dark"] .floating-scroll-bottom-btn {
+    background: var(--surface-raised, #242424);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.floating-scroll-bottom-btn:hover {
+    background: var(--ui-color, #29701b);
+    color: var(--text-on-accent, #fff);
+    border-color: var(--ui-color, #29701b);
+    transform: translateY(-2px);
+}
+
+.floating-scroll-bottom-btn.hidden {
+    display: none !important;
+}
+
+.nav-to-class-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    background: var(--surface-alt, #f0f4f8);
+    color: var(--text, #111);
+    border: 1px solid var(--border);
+    box-shadow: var(--sm-shadow);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-to-class-btn:hover {
+    background: var(--ui-color, #29701b);
+    color: var(--text-on-accent, #fff);
+    border-color: var(--ui-color, #29701b);
+    transform: translateY(-1px);
+}
+
+.remove-class-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: rgba(220, 38, 38, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.remove-class-btn:hover {
+    background: rgba(220, 38, 38, 0.25);
+}
+
+.progression-lvl-badge {
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.progression-lvl-badge:hover {
+    transform: scale(1.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    opacity: 0.95;
 }
 
 .level-card-header {
@@ -1935,6 +2274,62 @@ el-character-creator,
         width: 100%;
         justify-content: flex-start;
     }
+}
+
+/* Multiclass Prerequisite Badges */
+.class-prereq-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    line-height: 1.2;
+    width: fit-content;
+}
+
+.class-prereq-badge.locked {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+:root[data-theme="dark"] .class-prereq-badge.locked {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.class-prereq-badge.met {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+:root[data-theme="dark"] .class-prereq-badge.met {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.class-prereq-badge.info {
+    background: rgba(14, 165, 233, 0.1);
+    color: #0284c7;
+    border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+:root[data-theme="dark"] .class-prereq-badge.info {
+    background: rgba(14, 165, 233, 0.2);
+    color: #7dd3fc;
+    border-color: rgba(14, 165, 233, 0.35);
+}
+
+.add-class-btn.disabled,
+.add-class-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
 }
 
 
