@@ -988,6 +988,72 @@ describe('Frontend View Templates', () => {
             limitedUse: '4'
         });
         expect(resolved).toContain('Roll 1d8 up to 4 times (DC 16, bonus +4).');
+
+        // Wild Shape, Circle Forms, Primal Strike, Leave Druidic Message, and Monk arithmetic / bracketed permutations
+        const druidMonkCharacter: any = {
+            ...darvellData,
+            level: 11,
+            classes: [
+                { name: 'Fighter', level: 1 },
+                { name: 'Druid', subclass: 'Circle of the Moon', level: 11 },
+                { name: 'Monk', level: 10 }
+            ],
+            vitals: {
+                ...darvellData.vitals,
+                proficiencyBonus: 4
+            },
+            abilities: [
+                { name: 'Strength', abbr: 'STR', score: 10, modifier: 0, save: 0, proficientSave: false },
+                { name: 'Dexterity', abbr: 'DEX', score: 18, modifier: 4, save: 8, proficientSave: true },
+                { name: 'Constitution', abbr: 'CON', score: 14, modifier: 2, save: 2, proficientSave: false },
+                { name: 'Intelligence', abbr: 'INT', score: 12, modifier: 1, save: 1, proficientSave: false },
+                { name: 'Wisdom', abbr: 'WIS', score: 20, modifier: 5, save: 9, proficientSave: true },
+                { name: 'Charisma', abbr: 'CHA', score: 8, modifier: -1, save: -1, proficientSave: false }
+            ],
+            features: [
+                { name: 'Wild Shape', source: 'Druid', type: 'Class Feature', description: '' }
+            ]
+        };
+
+        // 1. Wild Shape (inferred Druid class level 11 even when sourceName is omitted on action cards)
+        const wildShapeEffect = linkifyConditionAndSpellTags(
+            'Stay in [rules]shape-shifting;shape-shift[/rules] form for {{(classlevel/2)@rounddown}} hours; Temp HP {{classlevel#unsigned}}.',
+            { character: druidMonkCharacter, entityName: 'Wild Shape' }
+        );
+        expect(wildShapeEffect).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#ShapeShifting"');
+        expect(wildShapeEffect).toContain('> shape-shift</a>');
+        expect(wildShapeEffect).toContain('for 5 hours; Temp HP 11.');
+
+        // 2. Wild Shape: Circle Forms
+        const circleFormsEffect = linkifyConditionAndSpellTags(
+            'Max CR {{(classlevel/3)@rounddown}} • AC {{(13+modifier:wis)#unsigned}} or {{13+modifier:wis#unsigned}} • Temp HP {{3*classlevel}}',
+            { character: druidMonkCharacter, entityName: 'Wild Shape: Circle Forms' }
+        );
+        expect(circleFormsEffect).toBe('Max CR 3 • AC 18 or 18 • Temp HP 33');
+
+        // 3. Primal Strike (nested parens + comma-separated min modifier)
+        const primalStrikeEffect = linkifyConditionAndSpellTags(
+            'Extra {{((classlevel-1)/7)@rounddown,min:1}}d8 damage (or at level 3: {{((3-1)/7)@rounddown,min:1}}d8)',
+            { character: druidMonkCharacter, entityName: 'Primal Strike' }
+        );
+        expect(primalStrikeEffect).toBe('Extra 1d8 damage (or at level 3: 1d8)');
+
+        // 4. Leave Druidic Message ([skill] tag) & [sense] tag
+        const druidicNotes = linkifyConditionAndSpellTags(
+            'DC 15 Intelligence ([skill]Investigation[/skill]) check with [sense]Darkvision[/sense].',
+            { character: druidMonkCharacter, entityName: 'Leave Druidic Message' }
+        );
+        expect(druidicNotes).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#Skills"');
+        expect(druidicNotes).toContain('> Investigation</a>');
+        expect(druidicNotes).toContain('href="https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#Darkvision"');
+        expect(druidicNotes).toContain('> Darkvision</a>');
+
+        // 5. Monk compound arithmetic & @min:1 clamping
+        const monkActionEffect = linkifyConditionAndSpellTags(
+            'Hit {{modifier:str+proficiency}} or {{modifier:dex+proficiency}}, Dmg {{1+modifier:str#unsigned}}, Reduce {{(modifier:dex+classlevel)#signed}}, Slow Fall {{5*classlevel#unsigned}}, Min CHA {{modifier:cha@min:1#unsigned}}',
+            { character: druidMonkCharacter, entityName: 'Deflect Attacks' }
+        );
+        expect(monkActionEffect).toBe('Hit +4 or +8, Dmg 1, Reduce +14, Slow Fall 50, Min CHA 1');
     });
 
     it('renders non-intrusive full-screen toggle buttons and handles fullscreen events', async () => {
