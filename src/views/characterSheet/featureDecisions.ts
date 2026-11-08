@@ -4,7 +4,8 @@ import {
     FeatureDecision,
     FeatureItem
 } from "./characterData";
-import { applyStatModifier } from "../../rules/dnd5e_2024/statModifierEvaluator";
+import { applyStatModifier, applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
+import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -2383,64 +2384,24 @@ export function applyFeatureDecisionOnCharacterData(
         if (!val || val === "none") return;
         const parts = val.split(":");
         const kind = parts[0];
+        const optId = parts[1];
 
         if (kind === "ability") {
             const statId = Number(parts[1]) || 6;
             const bonus = Number(parts[2]) || 1;
             adjustAbilityScore(statId, sign * bonus);
+            return;
         } else if (kind === "resilient") {
             const statId = Number(parts[1]) || 3;
             adjustAbilityScore(statId, sign * 1);
             adjustSaveProficiency(statId, sign === 1);
+            return;
         } else if (kind === "skill-prof") {
             adjustSkillTier(parts[1], "prof", sign === 1);
+            return;
         } else if (kind === "skill-exp") {
             adjustSkillTier(parts[1], "exp", sign === 1);
-        } else if (kind === "fighting-style") {
-            const style = parts[1];
-            if (style === "defense") {
-                character.vitals.armorClass += sign * 1;
-            } else if (style === "blind-fighting") {
-                character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
-            }
-        } else if (kind === "divine-order") {
-            const order = parts[1];
-            if (order === "protector") {
-                applyStatModifier(character, { target: "proficiencies.armor.heavy", type: "bonus", value: 1 }, sign);
-                applyStatModifier(character, { target: "proficiencies.weapons.martial", type: "bonus", value: 1 }, sign);
-            } else if (order === "thaumaturge") {
-                applyStatModifier(character, { target: "skills.arcana", type: "ability_mod", abilitySource: "wis" }, sign);
-                applyStatModifier(character, { target: "skills.religion", type: "ability_mod", abilitySource: "wis" }, sign);
-            }
-        } else if (kind === "primal-order") {
-            const order = parts[1];
-            if (order === "warden") {
-                applyStatModifier(character, { target: "proficiencies.armor.medium", type: "bonus", value: 1 }, sign);
-                applyStatModifier(character, { target: "proficiencies.weapons.martial", type: "bonus", value: 1 }, sign);
-            } else if (order === "magician") {
-                applyStatModifier(character, { target: "skills.arcana", type: "ability_mod", abilitySource: "wis" }, sign);
-                applyStatModifier(character, { target: "skills.nature", type: "ability_mod", abilitySource: "wis" }, sign);
-            }
-        } else if (kind === "draconic-ancestor") {
-            const element = parts[1];
-            const elemMap: Record<string, string> = {
-                black: "acid", copper: "acid", blue: "lightning", bronze: "lightning",
-                brass: "fire", gold: "fire", red: "fire", green: "poison", silver: "cold", white: "cold"
-            };
-            const dmg = elemMap[element] || element;
-            applyStatModifier(character, { target: "defenses.resistance", type: "set", value: dmg }, sign);
-        } else if (kind === "student-of-war" || kind === "fey-wanderer-glamour") {
-            const skillName = parts[1];
-            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "proficient" }, sign);
-        } else if (kind === "wizard-scholar") {
-            const skillName = parts[1];
-            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "expertise" }, sign);
-        } else if (kind === "land-biome") {
-            const biome = parts[1];
-            const biomeRes: Record<string, string> = { arid: "fire", polar: "cold", temperate: "lightning", tropical: "poison" };
-            if (biomeRes[biome]) {
-                applyStatModifier(character, { target: "defenses.resistance", type: "set", value: biomeRes[biome] }, sign);
-            }
+            return;
         } else if (kind === "resistance") {
             const dmgKey = parts[1];
             const dmgMeta = DAMAGE_RESISTANCE_TYPES.find(d => d.key === dmgKey);
@@ -2457,6 +2418,30 @@ export function applyFeatureDecisionOnCharacterData(
                 }
                 character.proficiencies.defenses = currentDefs;
             }
+            return;
+        }
+
+        // Progression-driven option lookup and application
+        const classOption = findClassOption(kind, optId);
+        if (classOption) {
+            applyProgressionChoiceOption(character, classOption, sign);
+            return;
+        }
+
+        // Fallbacks for any unregistered edge cases
+        if (kind === "fighting-style") {
+            const style = parts[1];
+            if (style === "defense") {
+                character.vitals.armorClass += sign * 1;
+            } else if (style === "blind-fighting") {
+                character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
+            }
+        } else if (kind === "student-of-war" || kind === "fey-wanderer-glamour") {
+            const skillName = parts[1];
+            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "proficient" }, sign);
+        } else if (kind === "wizard-scholar") {
+            const skillName = parts[1];
+            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "expertise" }, sign);
         }
     };
 
@@ -2480,12 +2465,18 @@ export function applyFeatureDecisionOnCharacterData(
         character.vitals.currentHp = Math.max(0, Math.min(character.vitals.maxHp, character.vitals.currentHp + hpDelta));
     }
 
-    // Recompute all skill bonuses and passive senses
-    character.skills.forEach(skill => {
-        const abMod = getMod(skill.stat);
-        const mult = skill.proficiency === "expertise" ? 2 : skill.proficiency === "proficient" ? 1 : 0;
-        skill.bonus = abMod + mult * profBonus;
-    });
+    // Recompute skill bonuses when ability modifiers change
+    for (const ability of character.abilities) {
+        const oldMod = oldAbilityMods[ability.abbr] ?? ability.modifier;
+        const delta = ability.modifier - oldMod;
+        if (delta !== 0) {
+            character.skills.forEach(skill => {
+                if (skill.stat.toUpperCase() === ability.abbr.toUpperCase()) {
+                    skill.bonus += delta;
+                }
+            });
+        }
+    }
 
     const getSkillBonus = (name: string) =>
         character.skills.find(s => s.name.toLowerCase() === name.toLowerCase())?.bonus ?? 0;

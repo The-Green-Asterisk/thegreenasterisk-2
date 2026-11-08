@@ -48,7 +48,8 @@ export type ModifierType =
     | "resource_pool"    // Adds/modifies a class resource pool
     | "grant_action"     // Injects an action/bonus action/reaction
     | "grant_spell"      // Grants a specific spell or cantrip
-    | "grant_feature";   // Grants a specific feature or trait
+    | "grant_feature"    // Grants a specific feature or trait
+    | "multiplier";      // Multiplies a value (e.g. 2x carrying capacity)
 
 export interface StatModifier {
     target: ModifierTarget;
@@ -65,6 +66,7 @@ export interface ProgressionGrantedSpell {
     level?: number;                    // 0 for cantrip, 1-9 for leveled spells
     alwaysPrepared?: boolean;          // Always prepared, does not count against prepared spell limits
     atWill?: boolean;                  // Cast at will without expending a spell slot
+    ritual?: boolean;                  // Can be cast as a ritual
     usage?: {
         count?: number;
         resetOn?: "short" | "long" | "at_will";
@@ -75,7 +77,7 @@ export interface ProgressionGrantedSpell {
 }
 
 export interface ProgressionGrantedFeature {
-    id: string;
+    id?: string;
     name: string;
     description: string;
     source?: string;

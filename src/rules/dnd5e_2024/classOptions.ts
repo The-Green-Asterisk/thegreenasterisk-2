@@ -1,8 +1,6 @@
-export interface FeatureOption {
-    id: string;
-    name: string;
-    description: string;
-    prerequisite?: string;
+import { ProgressionChoiceOption } from "./types";
+
+export interface FeatureOption extends ProgressionChoiceOption {
     minLevel?: number;
 }
 
@@ -10,17 +8,42 @@ export const FIGHTING_STYLES: FeatureOption[] = [
     {
         id: "archery",
         name: "Archery",
-        description: "You gain a +2 bonus to attack rolls you make with ranged weapons."
+        description: "You gain a +2 bonus to attack rolls you make with ranged weapons.",
+        modifiers: [
+            {
+                target: "attacks.ranged",
+                type: "bonus",
+                value: 2,
+                description: "+2 bonus to attack rolls with ranged weapons"
+            }
+        ]
     },
     {
         id: "defense",
         name: "Defense",
-        description: "While you are wearing armor, you gain a +1 bonus to Armor Class."
+        description: "While you are wearing armor, you gain a +1 bonus to Armor Class.",
+        modifiers: [
+            {
+                target: "vitals.ac",
+                type: "bonus",
+                value: 1,
+                condition: "wearing armor",
+                description: "+1 bonus to Armor Class"
+            }
+        ]
     },
     {
         id: "dueling",
         name: "Dueling",
-        description: "When you are wielding a melee weapon in one hand and no other weapons, you gain a +2 bonus to damage rolls with that weapon."
+        description: "When you are wielding a melee weapon in one hand and no other weapons, you gain a +2 bonus to damage rolls with that weapon.",
+        modifiers: [
+            {
+                target: "damage.melee_one_handed",
+                type: "bonus",
+                value: 2,
+                description: "+2 bonus to damage rolls with one-handed melee weapon"
+            }
+        ]
     },
     {
         id: "great-weapon-fighting",
@@ -30,7 +53,15 @@ export const FIGHTING_STYLES: FeatureOption[] = [
     {
         id: "protection",
         name: "Protection",
-        description: "When a creature you can see attacks a target other than you within 5 feet of you, you can use your reaction to impose Disadvantage on the attack roll if you are wielding a shield."
+        description: "When a creature you can see attacks a target other than you within 5 feet of you, you can use your reaction to impose Disadvantage on the attack roll if you are wielding a shield.",
+        modifiers: [
+            {
+                target: "actions.reaction",
+                type: "grant_action",
+                value: "Protection",
+                description: "Impose Disadvantage on attack against adjacent ally (requires shield)"
+            }
+        ]
     },
     {
         id: "two-weapon-fighting",
@@ -40,17 +71,37 @@ export const FIGHTING_STYLES: FeatureOption[] = [
     {
         id: "blessed-warrior",
         name: "Blessed Warrior",
-        description: "You learn two Cleric cantrips of your choice (such as Sacred Flame and Guidance). Wisdom/Charisma is your spellcasting ability for them."
+        description: "You learn two Cleric cantrips of your choice (such as Sacred Flame and Guidance). Wisdom/Charisma is your spellcasting ability for them.",
+        grantedSpells: [
+            { name: "Sacred Flame", level: 0, alwaysPrepared: true, notes: "Blessed Warrior" },
+            { name: "Guidance", level: 0, alwaysPrepared: true, notes: "Blessed Warrior" }
+        ]
     },
     {
         id: "blind-fighting",
         name: "Blind Fighting",
-        description: "You have blindsight with a range of 10 feet. Within that range, you can effectively see anything that isn't behind total cover."
+        description: "You have blindsight with a range of 10 feet. Within that range, you can effectively see anything that isn't behind total cover.",
+        modifiers: [
+            {
+                target: "vitals.blindsight",
+                type: "set",
+                value: "10 ft.",
+                description: "Blindsight 10 ft."
+            }
+        ]
     },
     {
         id: "interception",
         name: "Interception",
-        description: "When a creature within 5 feet of you takes damage from an attack, you can use your Reaction to reduce the damage by 1d10 + your Proficiency Bonus (requires a shield or simple/martial weapon)."
+        description: "When a creature within 5 feet of you takes damage from an attack, you can use your Reaction to reduce the damage by 1d10 + your Proficiency Bonus (requires a shield or simple/martial weapon).",
+        modifiers: [
+            {
+                target: "actions.reaction",
+                type: "grant_action",
+                value: "Interception",
+                description: "Reduce damage to adjacent ally by 1d10 + PB"
+            }
+        ]
     }
 ];
 
@@ -58,12 +109,55 @@ export const DIVINE_ORDERS: FeatureOption[] = [
     {
         id: "protector",
         name: "Protector",
-        description: "You gain proficiency with Martial weapons and training with Heavy armor."
+        description: "You gain proficiency with Martial weapons and training with Heavy armor.",
+        modifiers: [
+            {
+                target: "proficiencies.armor.heavy",
+                type: "bonus",
+                value: 1,
+                description: "Training with Heavy armor"
+            },
+            {
+                target: "proficiencies.weapons.martial",
+                type: "bonus",
+                value: 1,
+                description: "Proficiency with Martial weapons"
+            }
+        ]
     },
     {
         id: "thaumaturge",
         name: "Thaumaturge",
-        description: "You know one extra cantrip from the Cleric spell list, and you add your Wisdom modifier to your Intelligence (Arcana or Religion) checks."
+        description: "You know one extra cantrip from the Cleric spell list, and you add your Wisdom modifier to your Intelligence (Arcana or Religion) checks.",
+        grantedSpells: [
+            {
+                name: "Sacred Flame",
+                level: 0,
+                alwaysPrepared: true,
+                ability: "wis",
+                notes: "Extra Cleric cantrip"
+            }
+        ],
+        modifiers: [
+            {
+                target: "spells.cantrips_known",
+                type: "bonus",
+                value: 1,
+                description: "One extra Cleric cantrip"
+            },
+            {
+                target: "skills.arcana",
+                type: "ability_mod",
+                abilitySource: "wis",
+                description: "Add Wisdom modifier to Arcana checks"
+            },
+            {
+                target: "skills.religion",
+                type: "ability_mod",
+                abilitySource: "wis",
+                description: "Add Wisdom modifier to Religion checks"
+            }
+        ]
     }
 ];
 
@@ -71,12 +165,55 @@ export const PRIMAL_ORDERS: FeatureOption[] = [
     {
         id: "magician",
         name: "Magician",
-        description: "You know one extra cantrip from the Druid spell list, and you add your Wisdom modifier to your Intelligence (Arcana or Nature) checks."
+        description: "You know one extra cantrip from the Druid spell list, and you add your Wisdom modifier to your Intelligence (Arcana or Nature) checks.",
+        grantedSpells: [
+            {
+                name: "Druidcraft",
+                level: 0,
+                alwaysPrepared: true,
+                ability: "wis",
+                notes: "Extra Druid cantrip"
+            }
+        ],
+        modifiers: [
+            {
+                target: "spells.cantrips_known",
+                type: "bonus",
+                value: 1,
+                description: "One extra Druid cantrip"
+            },
+            {
+                target: "skills.arcana",
+                type: "ability_mod",
+                abilitySource: "wis",
+                description: "Add Wisdom modifier to Arcana checks"
+            },
+            {
+                target: "skills.nature",
+                type: "ability_mod",
+                abilitySource: "wis",
+                description: "Add Wisdom modifier to Nature checks"
+            }
+        ]
     },
     {
         id: "warden",
         name: "Warden",
-        description: "You gain proficiency with Martial weapons and training with Medium armor."
+        description: "You gain proficiency with Martial weapons and training with Medium armor.",
+        modifiers: [
+            {
+                target: "proficiencies.armor.medium",
+                type: "bonus",
+                value: 1,
+                description: "Training with Medium armor"
+            },
+            {
+                target: "proficiencies.weapons.martial",
+                type: "bonus",
+                value: 1,
+                description: "Proficiency with Martial weapons"
+            }
+        ]
     }
 ];
 
@@ -137,80 +274,221 @@ export const ELDRITCH_INVOCATIONS: FeatureOption[] = [
     {
         id: "pact-of-the-blade",
         name: "Pact of the Blade",
-        description: "Bonus action to conjure a pact melee weapon or bond with a weapon. You can use your Charisma modifier for attack and damage rolls."
+        description: "Bonus action to conjure a pact melee weapon or bond with a weapon. You can use your Charisma modifier for attack and damage rolls.",
+        modifiers: [
+            {
+                target: "attacks.melee_pact",
+                type: "set",
+                value: "cha",
+                description: "Use Charisma modifier for attack and damage rolls with pact weapon"
+            }
+        ],
+        grantedFeatures: [
+            {
+                name: "Pact of the Blade",
+                type: "Class",
+                source: "Eldritch Invocations",
+                description: "Bonus action to conjure a pact melee weapon or bond with a weapon. You can use your Charisma modifier for attack and damage rolls."
+            }
+        ]
     },
     {
         id: "pact-of-the-tome",
         name: "Pact of the Tome",
-        description: "Conjure a Book of Shadows granting three cantrips from any class list and two 1st-level ritual spells."
+        description: "Conjure a Book of Shadows granting three cantrips from any class list and two 1st-level ritual spells.",
+        modifiers: [
+            {
+                target: "spells.cantrips_known",
+                type: "bonus",
+                value: 3,
+                description: "Three cantrips from any class list"
+            }
+        ],
+        grantedFeatures: [
+            {
+                name: "Pact of the Tome",
+                type: "Class",
+                source: "Eldritch Invocations",
+                description: "Conjure a Book of Shadows granting three cantrips from any class list and two 1st-level ritual spells."
+            }
+        ]
     },
     {
         id: "pact-of-the-chain",
         name: "Pact of the Chain",
-        description: "Cast Find Familiar as a ritual to summon an enhanced familiar (Imp, Quasit, Sprite, Pseudodragon, or Skeleton)."
+        description: "Cast Find Familiar as a ritual to summon an enhanced familiar (Imp, Quasit, Sprite, Pseudodragon, or Skeleton).",
+        grantedSpells: [
+            {
+                name: "Find Familiar",
+                level: 1,
+                ritual: true,
+                alwaysPrepared: true,
+                notes: "Cast as ritual to summon enhanced familiar"
+            }
+        ]
     },
     {
         id: "agonizing-blast",
         name: "Agonizing Blast",
-        description: "Prerequisite: Eldritch Blast cantrip. Add your Charisma modifier to the damage dealt by Eldritch Blast."
+        description: "Prerequisite: Eldritch Blast cantrip. Add your Charisma modifier to the damage dealt by Eldritch Blast.",
+        modifiers: [
+            {
+                target: "damage.cantrip_eldritch_blast",
+                type: "ability_mod",
+                abilitySource: "cha",
+                description: "Add Charisma modifier to Eldritch Blast damage"
+            }
+        ]
     },
     {
         id: "armor-of-shadows",
         name: "Armor of Shadows",
-        description: "You can cast Mage Armor on yourself at will, without expending a spell slot or material components."
+        description: "You can cast Mage Armor on yourself at will, without expending a spell slot or material components.",
+        grantedSpells: [
+            {
+                name: "Mage Armor",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast on self at will without expending a spell slot"
+            }
+        ]
     },
     {
         id: "devils-sight",
         name: "Devil's Sight",
-        description: "You can see normally in darkness, both magical and nonmagical, to a distance of 120 feet."
+        description: "You can see normally in darkness, both magical and nonmagical, to a distance of 120 feet.",
+        modifiers: [
+            {
+                target: "vitals.darkvision",
+                type: "set",
+                value: 120,
+                description: "See normally in darkness, magical and nonmagical, to 120 feet"
+            }
+        ]
     },
     {
         id: "eldritch-mind",
         name: "Eldritch Mind",
-        description: "You have Advantage on Constitution saving throws that you make to maintain concentration on a spell."
+        description: "You have Advantage on Constitution saving throws that you make to maintain concentration on a spell.",
+        modifiers: [
+            {
+                target: "saves.concentration",
+                type: "advantage",
+                description: "Advantage on Constitution saving throws to maintain concentration"
+            }
+        ]
     },
     {
         id: "eldritch-spear",
         name: "Eldritch Spear",
-        description: "Prerequisite: Eldritch Blast. The range of your Eldritch Blast increases to 300 feet."
+        description: "Prerequisite: Eldritch Blast. The range of your Eldritch Blast increases to 300 feet.",
+        modifiers: [
+            {
+                target: "spells.eldritch_blast_range",
+                type: "set",
+                value: "300 ft.",
+                description: "Range of Eldritch Blast increases to 300 feet"
+            }
+        ]
     },
     {
         id: "fiendish-vigor",
         name: "Fiendish Vigor",
-        description: "You can cast False Life on yourself at will as a 1st-level spell without expending a spell slot."
+        description: "You can cast False Life on yourself at will as a 1st-level spell without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "False Life",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast False Life on yourself at will without a spell slot"
+            }
+        ]
     },
     {
         id: "mask-of-many-faces",
         name: "Mask of Many Faces",
-        description: "You can cast Disguise Self at will, without expending a spell slot."
+        description: "You can cast Disguise Self at will, without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "Disguise Self",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Disguise Self at will without a spell slot"
+            }
+        ]
     },
     {
         id: "misty-visions",
         name: "Misty Visions",
-        description: "You can cast Silent Image at will, without expending a spell slot or material components."
+        description: "You can cast Silent Image at will, without expending a spell slot or material components.",
+        grantedSpells: [
+            {
+                name: "Silent Image",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Silent Image at will without a spell slot"
+            }
+        ]
     },
     {
         id: "repelling-blast",
         name: "Repelling Blast",
-        description: "Prerequisite: Eldritch Blast. When you hit a creature with Eldritch Blast, you can push it up to 10 feet away from you in a straight line."
+        description: "Prerequisite: Eldritch Blast. When you hit a creature with Eldritch Blast, you can push it up to 10 feet away from you in a straight line.",
+        modifiers: [
+            {
+                target: "attacks.eldritch_blast_push",
+                type: "set",
+                value: "10 ft.",
+                description: "Push target up to 10 feet away on hit with Eldritch Blast"
+            }
+        ]
     },
     {
         id: "thirsting-blade",
         name: "Thirsting Blade",
         description: "Prerequisite: Level 5, Pact of the Blade. You can attack twice instead of once whenever you take the Attack action on your turn with your pact weapon.",
-        minLevel: 5
+        minLevel: 5,
+        modifiers: [
+            {
+                target: "attacks.extra_attack",
+                type: "bonus",
+                value: 1,
+                description: "Attack twice with pact weapon"
+            }
+        ]
     },
     {
         id: "lifedrinker",
         name: "Lifedrinker",
         description: "Prerequisite: Level 9, Pact of the Blade. Hit with pact weapon deals 1d6 extra Necrotic, Psychic, or Radiant damage, and you can expend a hit die to heal.",
-        minLevel: 9
+        minLevel: 9,
+        modifiers: [
+            {
+                target: "damage.pact_weapon",
+                type: "bonus",
+                value: "1d6",
+                description: "Pact weapon deals 1d6 extra damage"
+            }
+        ]
     },
     {
         id: "whispers-of-the-grave",
         name: "Whispers of the Grave",
         description: "Prerequisite: Level 9. You can cast Speak with Dead at will, without expending a spell slot.",
-        minLevel: 9
+        minLevel: 9,
+        grantedSpells: [
+            {
+                name: "Speak with Dead",
+                level: 3,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Speak with Dead at will without a spell slot"
+            }
+        ]
     }
 ];
 
@@ -261,22 +539,70 @@ export const DRUID_LAND_BIOMES: FeatureOption[] = [
     {
         id: "arid",
         name: "Arid (Desert / Plains)",
-        description: "Affinity with scorched sands and blistering heat. Gain Fire Resistance and Land's Aid spells Blur and Fireball."
+        description: "Affinity with scorched sands and blistering heat. Gain Fire Resistance and Land's Aid spells Blur and Fireball.",
+        modifiers: [
+            {
+                target: "defenses.resistance",
+                type: "set",
+                value: "fire",
+                description: "Fire Resistance"
+            }
+        ],
+        grantedSpells: [
+            { name: "Blur", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Arid)" },
+            { name: "Fireball", level: 3, alwaysPrepared: true, notes: "Circle of the Land (Arid)" }
+        ]
     },
     {
         id: "polar",
         name: "Polar (Tundra / Ice)",
-        description: "Affinity with biting frost and deep glaciers. Gain Cold Resistance and Land's Aid spells Hold Person and Ice Storm."
+        description: "Affinity with biting frost and deep glaciers. Gain Cold Resistance and Land's Aid spells Hold Person and Ice Storm.",
+        modifiers: [
+            {
+                target: "defenses.resistance",
+                type: "set",
+                value: "cold",
+                description: "Cold Resistance"
+            }
+        ],
+        grantedSpells: [
+            { name: "Hold Person", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Polar)" },
+            { name: "Ice Storm", level: 4, alwaysPrepared: true, notes: "Circle of the Land (Polar)" }
+        ]
     },
     {
         id: "temperate",
         name: "Temperate (Forest / Grassland)",
-        description: "Affinity with lush woodlands and rolling hills. Gain Lightning/Poison affinity and Land's Aid spells Misty Step and Lightning Bolt."
+        description: "Affinity with lush woodlands and rolling hills. Gain Lightning/Poison affinity and Land's Aid spells Misty Step and Lightning Bolt.",
+        modifiers: [
+            {
+                target: "defenses.resistance",
+                type: "set",
+                value: "lightning",
+                description: "Lightning Resistance"
+            }
+        ],
+        grantedSpells: [
+            { name: "Misty Step", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Temperate)" },
+            { name: "Lightning Bolt", level: 3, alwaysPrepared: true, notes: "Circle of the Land (Temperate)" }
+        ]
     },
     {
         id: "tropical",
         name: "Tropical (Rainforest / Swamp)",
-        description: "Affinity with humid jungles and toxic fens. Gain Poison Resistance and Land's Aid spells Web and Polymorph."
+        description: "Affinity with humid jungles and toxic fens. Gain Poison Resistance and Land's Aid spells Web and Polymorph.",
+        modifiers: [
+            {
+                target: "defenses.resistance",
+                type: "set",
+                value: "poison",
+                description: "Poison Resistance"
+            }
+        ],
+        grantedSpells: [
+            { name: "Web", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Tropical)" },
+            { name: "Polymorph", level: 4, alwaysPrepared: true, notes: "Circle of the Land (Tropical)" }
+        ]
     }
 ];
 
@@ -310,22 +636,63 @@ export const BARBARIAN_ASPECTS: FeatureOption[] = [
     {
         id: "elephant",
         name: "Aspect of the Elephant",
-        description: "You gain Advantage on Athletics checks and your carrying capacity is doubled."
+        description: "You gain Advantage on Athletics checks and your carrying capacity is doubled.",
+        modifiers: [
+            {
+                target: "skills.athletics",
+                type: "advantage",
+                description: "Advantage on Athletics checks"
+            },
+            {
+                target: "vitals.carrying_capacity",
+                type: "multiplier",
+                value: 2,
+                description: "Carrying capacity is doubled"
+            }
+        ]
     },
     {
         id: "owl",
         name: "Aspect of the Owl",
-        description: "You gain Darkvision with a range of 60 feet (or extend it by 60 feet) and gain Advantage on Perception checks."
+        description: "You gain Darkvision with a range of 60 feet (or extend it by 60 feet) and gain Advantage on Perception checks.",
+        modifiers: [
+            {
+                target: "vitals.darkvision",
+                type: "bonus",
+                value: 60,
+                description: "Darkvision +60 ft."
+            },
+            {
+                target: "skills.perception",
+                type: "advantage",
+                description: "Advantage on Perception checks"
+            }
+        ]
     },
     {
         id: "spider",
         name: "Aspect of the Spider",
-        description: "You gain a Climbing Speed equal to your Walking Speed, and can climb difficult surfaces without making an ability check."
+        description: "You gain a Climbing Speed equal to your Walking Speed, and can climb difficult surfaces without making an ability check.",
+        modifiers: [
+            {
+                target: "speeds.climb",
+                type: "set",
+                value: "equal_walk",
+                description: "Climbing speed equal to walking speed"
+            }
+        ]
     },
     {
         id: "wolf",
         name: "Aspect of the Wolf",
-        description: "You can track other creatures while traveling at a fast pace, and you can move stealthily at a normal pace."
+        description: "You can track other creatures while traveling at a fast pace, and you can move stealthily at a normal pace.",
+        grantedFeatures: [
+            {
+                name: "Aspect of the Wolf",
+                type: "Class",
+                description: "Track at fast pace and move stealthily at normal pace"
+            }
+        ]
     }
 ];
 
@@ -333,12 +700,26 @@ export const HUNTER_DEFENSIVE_TACTICS: FeatureOption[] = [
     {
         id: "escape-the-horde",
         name: "Escape the Horde",
-        description: "Opportunity attacks made against you have Disadvantage."
+        description: "Opportunity attacks made against you have Disadvantage.",
+        modifiers: [
+            {
+                target: "attacks.incoming_opportunity",
+                type: "disadvantage",
+                description: "Opportunity attacks against you have Disadvantage"
+            }
+        ]
     },
     {
         id: "multiattack-defense",
         name: "Multiattack Defense",
-        description: "When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you for the rest of the turn."
+        description: "When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you for the rest of the turn.",
+        modifiers: [
+            {
+                target: "attacks.incoming_consecutive",
+                type: "disadvantage",
+                description: "Disadvantage on consecutive attack rolls against you this turn"
+            }
+        ]
     }
 ];
 
@@ -346,17 +727,43 @@ export const WILD_HEART_RAGES: FeatureOption[] = [
     {
         id: "bear",
         name: "Bear Heart",
-        description: "While raging, you have resistance to all damage types except Psychic damage."
+        description: "While raging, you have resistance to all damage types except Psychic damage.",
+        modifiers: [
+            {
+                target: "defenses.resistance",
+                type: "set",
+                value: "all-except-psychic",
+                condition: "while raging",
+                description: "Resistance to all damage types except psychic while raging"
+            }
+        ]
     },
     {
         id: "eagle",
         name: "Eagle Heart",
-        description: "While raging, you can take the Dash and Disengage actions as a Bonus Action on your turn, and opportunity attacks against you have Disadvantage."
+        description: "While raging, you can take the Dash and Disengage actions as a Bonus Action on your turn, and opportunity attacks against you have Disadvantage.",
+        modifiers: [
+            {
+                target: "actions.bonus",
+                type: "grant_action",
+                value: "Dash / Disengage",
+                condition: "while raging",
+                description: "Dash and Disengage as Bonus Action while raging"
+            }
+        ]
     },
     {
         id: "wolf",
         name: "Wolf Heart",
-        description: "While raging, your allies have Advantage on melee attack rolls against any enemy within 5 feet of you."
+        description: "While raging, your allies have Advantage on melee attack rolls against any enemy within 5 feet of you.",
+        modifiers: [
+            {
+                target: "attacks.allies_melee",
+                type: "advantage",
+                condition: "while raging",
+                description: "Allies have Advantage on melee attack rolls against adjacent enemies while raging"
+            }
+        ]
     }
 ];
 
@@ -518,40 +925,40 @@ export const ROGUE_DEVIOUS_STRIKES: FeatureOption[] = [
 ];
 
 export const DRACONIC_ANCESTOR_ELEMENTS: FeatureOption[] = [
-    { id: "black", name: "Black (Acid)", description: "Dragon ancestor attuned to Acid. Resistance to Acid at level 6 and bonus damage with acid spells." },
-    { id: "blue", name: "Blue (Lightning)", description: "Dragon ancestor attuned to Lightning. Resistance to Lightning at level 6 and bonus damage with lightning spells." },
-    { id: "brass", name: "Brass (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells." },
-    { id: "bronze", name: "Bronze (Lightning)", description: "Dragon ancestor attuned to Lightning. Resistance to Lightning at level 6 and bonus damage with lightning spells." },
-    { id: "copper", name: "Copper (Acid)", description: "Dragon ancestor attuned to Acid. Resistance to Acid at level 6 and bonus damage with acid spells." },
-    { id: "gold", name: "Gold (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells." },
-    { id: "green", name: "Green (Poison)", description: "Dragon ancestor attuned to Poison. Resistance to Poison at level 6 and bonus damage with poison spells." },
-    { id: "red", name: "Red (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells." },
-    { id: "silver", name: "Silver (Cold)", description: "Dragon ancestor attuned to Cold. Resistance to Cold at level 6 and bonus damage with cold spells." },
-    { id: "white", name: "White (Cold)", description: "Dragon ancestor attuned to Cold. Resistance to Cold at level 6 and bonus damage with cold spells." }
+    { id: "black", name: "Black (Acid)", description: "Dragon ancestor attuned to Acid. Resistance to Acid at level 6 and bonus damage with acid spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "acid", description: "Acid Resistance" }] },
+    { id: "blue", name: "Blue (Lightning)", description: "Dragon ancestor attuned to Lightning. Resistance to Lightning at level 6 and bonus damage with lightning spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning", description: "Lightning Resistance" }] },
+    { id: "brass", name: "Brass (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Fire Resistance" }] },
+    { id: "bronze", name: "Bronze (Lightning)", description: "Dragon ancestor attuned to Lightning. Resistance to Lightning at level 6 and bonus damage with lightning spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning", description: "Lightning Resistance" }] },
+    { id: "copper", name: "Copper (Acid)", description: "Dragon ancestor attuned to Acid. Resistance to Acid at level 6 and bonus damage with acid spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "acid", description: "Acid Resistance" }] },
+    { id: "gold", name: "Gold (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Fire Resistance" }] },
+    { id: "green", name: "Green (Poison)", description: "Dragon ancestor attuned to Poison. Resistance to Poison at level 6 and bonus damage with poison spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison", description: "Poison Resistance" }] },
+    { id: "red", name: "Red (Fire)", description: "Dragon ancestor attuned to Fire. Resistance to Fire at level 6 and bonus damage with fire spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Fire Resistance" }] },
+    { id: "silver", name: "Silver (Cold)", description: "Dragon ancestor attuned to Cold. Resistance to Cold at level 6 and bonus damage with cold spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold", description: "Cold Resistance" }] },
+    { id: "white", name: "White (Cold)", description: "Dragon ancestor attuned to Cold. Resistance to Cold at level 6 and bonus damage with cold spells.", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold", description: "Cold Resistance" }] }
 ];
 
 export const FIENDISH_RESILIENCE_DAMAGE_TYPES: FeatureOption[] = [
-    { id: "acid", name: "Acid", description: "Gain resistance to Acid damage until you finish a Short or Long Rest." },
-    { id: "bludgeoning", name: "Bludgeoning", description: "Gain resistance to Bludgeoning damage until you finish a Short or Long Rest." },
-    { id: "cold", name: "Cold", description: "Gain resistance to Cold damage until you finish a Short or Long Rest." },
-    { id: "fire", name: "Fire", description: "Gain resistance to Fire damage until you finish a Short or Long Rest." },
-    { id: "force", name: "Force", description: "Gain resistance to Force damage until you finish a Short or Long Rest." },
-    { id: "lightning", name: "Lightning", description: "Gain resistance to Lightning damage until you finish a Short or Long Rest." },
-    { id: "necrotic", name: "Necrotic", description: "Gain resistance to Necrotic damage until you finish a Short or Long Rest." },
-    { id: "piercing", name: "Piercing", description: "Gain resistance to Piercing damage until you finish a Short or Long Rest." },
-    { id: "poison", name: "Poison", description: "Gain resistance to Poison damage until you finish a Short or Long Rest." },
-    { id: "psychic", name: "Psychic", description: "Gain resistance to Psychic damage until you finish a Short or Long Rest." },
-    { id: "radiant", name: "Radiant", description: "Gain resistance to Radiant damage until you finish a Short or Long Rest." },
-    { id: "slashing", name: "Slashing", description: "Gain resistance to Slashing damage until you finish a Short or Long Rest." },
-    { id: "thunder", name: "Thunder", description: "Gain resistance to Thunder damage until you finish a Short or Long Rest." }
+    { id: "acid", name: "Acid", description: "Gain resistance to Acid damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "acid", description: "Acid Resistance" }] },
+    { id: "bludgeoning", name: "Bludgeoning", description: "Gain resistance to Bludgeoning damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "bludgeoning", description: "Bludgeoning Resistance" }] },
+    { id: "cold", name: "Cold", description: "Gain resistance to Cold damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold", description: "Cold Resistance" }] },
+    { id: "fire", name: "Fire", description: "Gain resistance to Fire damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Fire Resistance" }] },
+    { id: "force", name: "Force", description: "Gain resistance to Force damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "force", description: "Force Resistance" }] },
+    { id: "lightning", name: "Lightning", description: "Gain resistance to Lightning damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning", description: "Lightning Resistance" }] },
+    { id: "necrotic", name: "Necrotic", description: "Gain resistance to Necrotic damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic", description: "Necrotic Resistance" }] },
+    { id: "piercing", name: "Piercing", description: "Gain resistance to Piercing damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "piercing", description: "Piercing Resistance" }] },
+    { id: "poison", name: "Poison", description: "Gain resistance to Poison damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison", description: "Poison Resistance" }] },
+    { id: "psychic", name: "Psychic", description: "Gain resistance to Psychic damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "psychic", description: "Psychic Resistance" }] },
+    { id: "radiant", name: "Radiant", description: "Gain resistance to Radiant damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "radiant", description: "Radiant Resistance" }] },
+    { id: "slashing", name: "Slashing", description: "Gain resistance to Slashing damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "slashing", description: "Slashing Resistance" }] },
+    { id: "thunder", name: "Thunder", description: "Gain resistance to Thunder damage until you finish a Short or Long Rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "thunder", description: "Thunder Resistance" }] }
 ];
 
 export const WIZARD_SCHOLAR_SKILLS: FeatureOption[] = [
-    { id: "arcana", name: "Arcana (Expertise)", description: "Double proficiency bonus on Intelligence (Arcana) checks." },
-    { id: "history", name: "History (Expertise)", description: "Double proficiency bonus on Intelligence (History) checks." },
-    { id: "investigation", name: "Investigation (Expertise)", description: "Double proficiency bonus on Intelligence (Investigation) checks." },
-    { id: "nature", name: "Nature (Expertise)", description: "Double proficiency bonus on Intelligence (Nature) checks." },
-    { id: "religion", name: "Religion (Expertise)", description: "Double proficiency bonus on Intelligence (Religion) checks." }
+    { id: "arcana", name: "Arcana (Expertise)", description: "Double proficiency bonus on Intelligence (Arcana) checks.", modifiers: [{ target: "skills.arcana", type: "proficiency_tier", value: "expertise", description: "Expertise in Arcana" }] },
+    { id: "history", name: "History (Expertise)", description: "Double proficiency bonus on Intelligence (History) checks.", modifiers: [{ target: "skills.history", type: "proficiency_tier", value: "expertise", description: "Expertise in History" }] },
+    { id: "investigation", name: "Investigation (Expertise)", description: "Double proficiency bonus on Intelligence (Investigation) checks.", modifiers: [{ target: "skills.investigation", type: "proficiency_tier", value: "expertise", description: "Expertise in Investigation" }] },
+    { id: "nature", name: "Nature (Expertise)", description: "Double proficiency bonus on Intelligence (Nature) checks.", modifiers: [{ target: "skills.nature", type: "proficiency_tier", value: "expertise", description: "Expertise in Nature" }] },
+    { id: "religion", name: "Religion (Expertise)", description: "Double proficiency bonus on Intelligence (Religion) checks.", modifiers: [{ target: "skills.religion", type: "proficiency_tier", value: "expertise", description: "Expertise in Religion" }] }
 ];
 
 export const STARRY_FORM_CONSTELLATIONS: FeatureOption[] = [
@@ -622,20 +1029,77 @@ export const DIVINER_THIRD_EYE_OPTIONS: FeatureOption[] = [
 ];
 
 export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: FeatureOption[] = [
-    { id: "archery", name: "Archery", description: "+2 bonus to attack rolls made with ranged weapons." },
-    { id: "defense", name: "Defense", description: "While wearing armor, gain a +1 bonus to Armor Class." },
-    { id: "dueling", name: "Dueling", description: "+2 bonus to damage rolls when wielding a melee weapon in one hand." },
-    { id: "great-weapon", name: "Great Weapon Fighting", description: "Treat rolls of 1 or 2 on damage dice for two-handed weapons as 3." },
-    { id: "protection", name: "Protection", description: "Reaction with shield to impose disadvantage on an attack against an adjacent ally." },
-    { id: "two-weapon", name: "Two-Weapon Fighting", description: "Add ability modifier to the damage of off-hand attacks." }
+    {
+        id: "archery",
+        name: "Archery",
+        description: "+2 bonus to attack rolls made with ranged weapons.",
+        modifiers: [
+            {
+                target: "attacks.ranged",
+                type: "bonus",
+                value: 2,
+                description: "+2 bonus to attack rolls with ranged weapons"
+            }
+        ]
+    },
+    {
+        id: "defense",
+        name: "Defense",
+        description: "While wearing armor, gain a +1 bonus to Armor Class.",
+        modifiers: [
+            {
+                target: "vitals.ac",
+                type: "bonus",
+                value: 1,
+                condition: "wearing armor",
+                description: "+1 bonus to Armor Class"
+            }
+        ]
+    },
+    {
+        id: "dueling",
+        name: "Dueling",
+        description: "+2 bonus to damage rolls when wielding a melee weapon in one hand.",
+        modifiers: [
+            {
+                target: "damage.melee_one_handed",
+                type: "bonus",
+                value: 2,
+                description: "+2 bonus to damage rolls with one-handed melee weapon"
+            }
+        ]
+    },
+    {
+        id: "great-weapon",
+        name: "Great Weapon Fighting",
+        description: "Treat rolls of 1 or 2 on damage dice for two-handed weapons as 3."
+    },
+    {
+        id: "protection",
+        name: "Protection",
+        description: "Reaction with shield to impose disadvantage on an attack against an adjacent ally.",
+        modifiers: [
+            {
+                target: "actions.reaction",
+                type: "grant_action",
+                value: "Protection",
+                description: "Impose Disadvantage on attack against adjacent ally (requires shield)"
+            }
+        ]
+    },
+    {
+        id: "two-weapon",
+        name: "Two-Weapon Fighting",
+        description: "Add ability modifier to the damage of off-hand attacks."
+    }
 ];
 
 export const STUDENT_OF_WAR_SKILLS: FeatureOption[] = [
-    { id: "History", name: "History", description: "Gain proficiency in the Intelligence (History) skill." },
-    { id: "Insight", name: "Insight", description: "Gain proficiency in the Wisdom (Insight) skill." },
-    { id: "Medicine", name: "Medicine", description: "Gain proficiency in the Wisdom (Medicine) skill." },
-    { id: "Performance", name: "Performance", description: "Gain proficiency in the Charisma (Performance) skill." },
-    { id: "Persuasion", name: "Persuasion", description: "Gain proficiency in the Charisma (Persuasion) skill." }
+    { id: "History", name: "History", description: "Gain proficiency in the Intelligence (History) skill.", modifiers: [{ target: "skills.history", type: "proficiency_tier", value: "proficient", description: "Proficiency in History" }] },
+    { id: "Insight", name: "Insight", description: "Gain proficiency in the Wisdom (Insight) skill.", modifiers: [{ target: "skills.insight", type: "proficiency_tier", value: "proficient", description: "Proficiency in Insight" }] },
+    { id: "Medicine", name: "Medicine", description: "Gain proficiency in the Wisdom (Medicine) skill.", modifiers: [{ target: "skills.medicine", type: "proficiency_tier", value: "proficient", description: "Proficiency in Medicine" }] },
+    { id: "Performance", name: "Performance", description: "Gain proficiency in the Charisma (Performance) skill.", modifiers: [{ target: "skills.performance", type: "proficiency_tier", value: "proficient", description: "Proficiency in Performance" }] },
+    { id: "Persuasion", name: "Persuasion", description: "Gain proficiency in the Charisma (Persuasion) skill.", modifiers: [{ target: "skills.persuasion", type: "proficiency_tier", value: "proficient", description: "Proficiency in Persuasion" }] }
 ];
 
 export const PSI_WARRIOR_THRUST_OPTIONS: FeatureOption[] = [
@@ -722,9 +1186,9 @@ export const STEPS_OF_THE_FEY_OPTIONS: FeatureOption[] = [
 ];
 
 export const FEY_WANDERER_GLAMOUR_SKILLS: FeatureOption[] = [
-    { id: "Deception", name: "Deception", description: "Gain proficiency in the Charisma (Deception) skill." },
-    { id: "Performance", name: "Performance", description: "Gain proficiency in the Charisma (Performance) skill." },
-    { id: "Persuasion", name: "Persuasion", description: "Gain proficiency in the Charisma (Persuasion) skill." }
+    { id: "Deception", name: "Deception", description: "Gain proficiency in the Charisma (Deception) skill.", modifiers: [{ target: "skills.deception", type: "proficiency_tier", value: "proficient", description: "Proficiency in Deception" }] },
+    { id: "Performance", name: "Performance", description: "Gain proficiency in the Charisma (Performance) skill.", modifiers: [{ target: "skills.performance", type: "proficiency_tier", value: "proficient", description: "Proficiency in Performance" }] },
+    { id: "Persuasion", name: "Persuasion", description: "Gain proficiency in the Charisma (Persuasion) skill.", modifiers: [{ target: "skills.persuasion", type: "proficiency_tier", value: "proficient", description: "Proficiency in Persuasion" }] }
 ];
 
 export const HUNTER_SUPERIOR_DEFENSE_OPTIONS: FeatureOption[] = [
@@ -757,3 +1221,65 @@ export const ABERRANT_REVELATION_OPTIONS: FeatureOption[] = [
         description: "Escape grapples easily and squeeze through spaces as narrow as 1 inch without squeezing penalties."
     }
 ];
+
+const OPTION_REGISTRY: Record<string, FeatureOption[]> = {
+    "fighting-style": FIGHTING_STYLES,
+    "divine-order": DIVINE_ORDERS,
+    "primal-order": PRIMAL_ORDERS,
+    "invocation": ELDRITCH_INVOCATIONS,
+    "eldritch-invocation": ELDRITCH_INVOCATIONS,
+    "pact-boon": ELDRITCH_INVOCATIONS,
+    "metamagic": METAMAGIC_OPTIONS,
+    "maneuver": BATTLE_MASTER_MANEUVERS,
+    "battle-master-maneuver": BATTLE_MASTER_MANEUVERS,
+    "land-biome": DRUID_LAND_BIOMES,
+    "elemental-fury": ELEMENTAL_FURY_OPTIONS,
+    "blessed-strikes": BLESSED_STRIKES_OPTIONS,
+    "aspect": BARBARIAN_ASPECTS,
+    "barbarian-aspect": BARBARIAN_ASPECTS,
+    "defensive-tactic": HUNTER_DEFENSIVE_TACTICS,
+    "wild-heart-rage": WILD_HEART_RAGES,
+    "totemic-attunement": WILD_HEART_TOTEMIC_ATTUNEMENTS,
+    "divine-fury": ZEALOT_DIVINE_FURIES,
+    "brutal-strike": BRUTAL_STRIKE_OPTIONS,
+    "tactical-master": TACTICAL_MASTER_PROPERTIES,
+    "elemental-attunement": ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
+    "hunter-prey": HUNTER_PREY_OPTIONS,
+    "primal-companion": PRIMAL_COMPANION_TYPES,
+    "draconic-ancestor": DRACONIC_ANCESTOR_ELEMENTS,
+    "fiendish-resilience": FIENDISH_RESILIENCE_DAMAGE_TYPES,
+    "wizard-scholar": WIZARD_SCHOLAR_SKILLS,
+    "student-of-war": STUDENT_OF_WAR_SKILLS,
+    "fey-wanderer-glamour": FEY_WANDERER_GLAMOUR_SKILLS,
+    "starry-form": STARRY_FORM_CONSTELLATIONS,
+    "open-hand-technique": OPEN_HAND_TECHNIQUES,
+    "war-god-blessing": WAR_GOD_BLESSING_OPTIONS,
+    "steps-of-the-fey": STEPS_OF_THE_FEY_OPTIONS,
+    "hunter-superior-defense": HUNTER_SUPERIOR_DEFENSE_OPTIONS,
+    "aberrant-revelation": ABERRANT_REVELATION_OPTIONS
+};
+
+export function findClassOption(kind: string, optId: string): FeatureOption | undefined {
+    if (!optId) return undefined;
+    const normKind = (kind || "").toLowerCase().trim();
+    const normId = optId.toLowerCase().trim();
+    const list = OPTION_REGISTRY[normKind];
+    if (list) {
+        const found = list.find(o =>
+            o.id.toLowerCase() === normId ||
+            o.id.toLowerCase().endsWith(`-${normId}`) ||
+            o.id.toLowerCase() === `pact-of-the-${normId}`
+        );
+        if (found) return found;
+    }
+    // Fallback: search all registries
+    for (const options of Object.values(OPTION_REGISTRY)) {
+        const match = options.find(o =>
+            o.id.toLowerCase() === normId ||
+            o.id.toLowerCase().endsWith(`-${normId}`) ||
+            o.id.toLowerCase() === `pact-of-the-${normId}`
+        );
+        if (match) return match;
+    }
+    return undefined;
+}

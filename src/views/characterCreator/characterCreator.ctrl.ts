@@ -23,6 +23,7 @@ import {
     ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
     FIENDISH_RESILIENCE_DAMAGE_TYPES,
     FIGHTING_STYLES,
+    findClassOption,
     GENERAL_FEATS_2024,
     GeneralFeatDefinition,
     HUNTER_DEFENSIVE_TACTICS,
@@ -5059,6 +5060,60 @@ export class CharacterCreatorController {
                 }
             }
 
+            // Progression-granted spells from selected class and subclass options
+            const selectedProgressionOptions: any[] = [];
+            if (this.state.fightingStyle) {
+                const opt = findClassOption("fighting-style", this.state.fightingStyle);
+                if (opt) selectedProgressionOptions.push(opt);
+            }
+            if (this.state.divineOrder) {
+                const opt = findClassOption("divine-order", this.state.divineOrder);
+                if (opt) selectedProgressionOptions.push(opt);
+            }
+            if (this.state.primalOrder) {
+                const opt = findClassOption("primal-order", this.state.primalOrder);
+                if (opt) selectedProgressionOptions.push(opt);
+            }
+            if (Array.isArray(this.state.invocations)) {
+                for (const invId of this.state.invocations) {
+                    const opt = findClassOption("invocation", invId);
+                    if (opt) selectedProgressionOptions.push(opt);
+                }
+            }
+            if (this.state.subclassFeatureChoices) {
+                for (const [featKey, optVal] of Object.entries(this.state.subclassFeatureChoices)) {
+                    const opt = findClassOption(featKey, optVal);
+                    if (opt) selectedProgressionOptions.push(opt);
+                }
+            }
+
+            for (const opt of selectedProgressionOptions) {
+                if (Array.isArray(opt.grantedSpells)) {
+                    for (const sp of opt.grantedSpells) {
+                        const spName = typeof sp === "string" ? sp : sp.name;
+                        const spLevel = typeof sp === "string" ? 0 : (sp.level ?? 0);
+                        if (!spName) continue;
+                        if (!spellsPayload.some((s) => s.name.toLowerCase() === spName.toLowerCase())) {
+                            const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase());
+                            spellsPayload.push({
+                                name: spName,
+                                level: spDef ? spDef.level : spLevel,
+                                school: spDef?.school || "Evocation",
+                                source: (typeof sp === "object" && sp.source) || opt.name || "Class",
+                                prepared: true,
+                                castingTime: spDef?.castingTime || "1 Action",
+                                range: spDef?.range || "Self",
+                                duration: spDef?.duration || "Instantaneous",
+                                components: spDef?.components || "V, S",
+                                concentration: spDef?.concentration || false,
+                                ritual: (typeof sp === "object" && sp.ritual) || spDef?.ritual || false,
+                                description: (typeof sp === "object" && (sp.notes || sp.description)) || spDef?.description || `Granted by ${opt.name}.`
+                            });
+                        }
+                    }
+                }
+            }
+
             const wrapHtmlParagraph = (text: string): string => {
                 const trimmed = (text || "").trim();
                 if (!trimmed) return "";
@@ -5578,14 +5633,9 @@ export class CharacterCreatorController {
             }
 
             // Fighting Style
-            if (
-                this.state.fightingStyle &&
-                (this.state.classId === "fighter" ||
-                    (this.state.classId === "paladin" && this.state.level >= 2) ||
-                    (this.state.classId === "ranger" && this.state.level >= 2))
-            ) {
-                const fs = FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle);
-                if (fs) {
+            if (this.state.fightingStyle) {
+                const fs = findClassOption("fighting-style", this.state.fightingStyle) || FIGHTING_STYLES.find((f) => f.id === this.state.fightingStyle);
+                if (fs && !featuresPayload.some(f => f.name === `Fighting Style: ${fs.name}`)) {
                     featuresPayload.push({
                         name: `Fighting Style: ${fs.name}`,
                         source: "Class Option / Fighting Style",
@@ -5596,9 +5646,9 @@ export class CharacterCreatorController {
             }
 
             // Divine Order / Primal Order
-            if (this.state.divineOrder && this.state.classId === "cleric") {
-                const ord = DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder);
-                if (ord) {
+            if (this.state.divineOrder) {
+                const ord = findClassOption("divine-order", this.state.divineOrder) || DIVINE_ORDERS.find((o) => o.id === this.state.divineOrder);
+                if (ord && !featuresPayload.some(f => f.name === `Divine Order: ${ord.name}`)) {
                     featuresPayload.push({
                         name: `Divine Order: ${ord.name}`,
                         source: "Class Option / Divine Order",
@@ -5607,9 +5657,9 @@ export class CharacterCreatorController {
                     });
                 }
             }
-            if (this.state.primalOrder && this.state.classId === "druid") {
-                const ord = PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder);
-                if (ord) {
+            if (this.state.primalOrder) {
+                const ord = findClassOption("primal-order", this.state.primalOrder) || PRIMAL_ORDERS.find((o) => o.id === this.state.primalOrder);
+                if (ord && !featuresPayload.some(f => f.name === `Primal Order: ${ord.name}`)) {
                     featuresPayload.push({
                         name: `Primal Order: ${ord.name}`,
                         source: "Class Option / Primal Order",
@@ -5620,10 +5670,10 @@ export class CharacterCreatorController {
             }
 
             // Metamagic
-            if (this.state.metamagic.length > 0 && this.state.classId === "sorcerer" && this.state.level >= 2) {
+            if (Array.isArray(this.state.metamagic) && this.state.metamagic.length > 0) {
                 this.state.metamagic.forEach((mId) => {
-                    const meta = METAMAGIC_OPTIONS.find((m) => m.id === mId);
-                    if (meta) {
+                    const meta = findClassOption("metamagic", mId) || METAMAGIC_OPTIONS.find((m) => m.id === mId);
+                    if (meta && !featuresPayload.some(f => f.name === `Metamagic: ${meta.name}`)) {
                         featuresPayload.push({
                             name: `Metamagic: ${meta.name}`,
                             source: "Class Option / Metamagic",
@@ -5635,10 +5685,10 @@ export class CharacterCreatorController {
             }
 
             // Invocations
-            if (this.state.invocations.length > 0 && this.state.classId === "warlock") {
+            if (Array.isArray(this.state.invocations) && this.state.invocations.length > 0) {
                 this.state.invocations.forEach((invId) => {
-                    const inv = ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
-                    if (inv) {
+                    const inv = findClassOption("invocation", invId) || ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
+                    if (inv && !featuresPayload.some(f => f.name === `Eldritch Invocation: ${inv.name}`)) {
                         featuresPayload.push({
                             name: `Eldritch Invocation: ${inv.name}`,
                             source: "Class Option / Invocation",
