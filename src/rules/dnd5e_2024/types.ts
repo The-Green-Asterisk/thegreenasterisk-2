@@ -46,6 +46,17 @@ export interface OriginFeatDefinition {
     spellcastingAbilityOptions?: AbilityName[];
 }
 
+export interface GeneralFeatDefinition {
+    id: string;
+    name: string;
+    description: string;
+    allowedStats: AbilityName[];
+    isEpicBoon?: boolean;
+    category?: 'general' | 'fighting-style' | 'epic-boon';
+    prerequisite?: string;
+    benefits: string[];
+}
+
 export interface BackgroundDefinition {
     id: string;
     name: string;

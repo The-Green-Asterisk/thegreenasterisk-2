@@ -385,6 +385,17 @@ export function resolveDndBeyondRuleUrl(ruleTextRaw: string): string {
     return `${DND_BEYOND_BR_2024_BASE}/rules-glossary#${pascalAnchor || "RulesGlossary"}`;
 }
 
+export function resolveDndBeyondFeatUrl(featTextRaw: string): string {
+    const cleaned = (featTextRaw || "").replace(/<[^>]*>/g, "").trim();
+    const pascalAnchor = cleaned
+        .split(/[^a-zA-Z0-9]+/)
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join("");
+
+    return `${DND_BEYOND_BR_2024_BASE}/feats#${pascalAnchor || "Feats"}`;
+}
+
 function escapeHtml(text: string): string {
     return text
         .replace(/&/g, "&amp;")
@@ -934,6 +945,13 @@ function renderActionLinkHtml(actionName: string, labelText?: string): string {
     return `<a href="${url}" class="inline-action-link" data-action-link="${encodedName}" target="_blank" rel="noopener noreferrer" title="Click to view ${escapedLabel} action details"><i class="fa-solid fa-bolt"></i> ${escapedLabel}</a>`;
 }
 
+function renderFeatLinkHtml(featName: string, labelText?: string): string {
+    const encodedName = encodeURIComponent(featName);
+    const escapedLabel = escapeHtml(labelText || featName);
+    const url = resolveDndBeyondFeatUrl(featName);
+    return `<a href="${url}" class="inline-feat-link" data-feat-link="${encodedName}" target="_blank" rel="noopener noreferrer" title="Click to view ${escapedLabel} feat details on D&amp;D Beyond"><i class="fa-solid fa-medal"></i> ${escapedLabel}</a>`;
+}
+
 export function renderItemButtonHtml(itemName: string, labelText?: string): string {
     const encodedName = encodeURIComponent(itemName);
     const escapedLabel = escapeHtml(labelText || itemName);
@@ -982,6 +1000,12 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
             if (!target) return "";
             return storeBlock(renderActionLinkHtml(target, label));
         })
+        .replace(/\[(?:feats?|boons?)\]([\s\S]*?)\[\/(?:feats?|boons?)\]/gi, (_match, rawFeatName: string) => {
+            const { target, label } = parseTagTargetAndLabel(rawFeatName);
+            if (!target) return "";
+            const cleanTarget = target.replace(/^\d+-/, "").replace(/-/g, " ").trim();
+            return storeBlock(renderFeatLinkHtml(cleanTarget, label));
+        })
         .replace(/\[([a-z][a-z0-9_-]*)\]([\s\S]*?)\[\/\1\]/gi, (_match, _tagName: string, rawInner: string) => {
             const { label } = parseTagTargetAndLabel(rawInner);
             return label || "";
@@ -1001,6 +1025,12 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
             const cleanSlug = decodeURIComponent(slug).replace(/^\d+-/, "").replace(/-/g, " ").trim();
             const spellName = rawLabel || cleanSlug;
             return storeBlock(renderSpellButtonHtml(spellName, rawLabel || spellName));
+        })
+        .replace(/<a\b[^>]*\bhref=["'](?:https?:\/\/(?:[a-z0-9_-]+\.)*dndbeyond\.com)?\/feats\/([^"'#?]+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_match, slug, linkText) => {
+            const rawLabel = linkText.replace(/<[^>]*>/g, "").trim();
+            const cleanSlug = decodeURIComponent(slug).replace(/^\d+-/, "").replace(/-/g, " ").trim();
+            const featName = rawLabel || cleanSlug;
+            return storeBlock(renderFeatLinkHtml(featName, rawLabel || featName));
         });
 
     // 1.6. Intercept plain-text weapon grant mentions e.g. "can be wielded as a magic quarterstaff"

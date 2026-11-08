@@ -961,6 +961,16 @@ export function parseDndBeyondCharacter(
 
     walkSpeed += speedBonus + unarmoredMoveBonus;
 
+    // Feat-based speed bonuses fallback (Speedy/Mobile +10 ft, Boon of Speed +30 ft) if not already included in modifiers
+    const hasBoonOfSpeed = hasFeat("Boon of Speed") || (features || []).some((f: any) => /boon of speed/i.test(f.name || ""));
+    if (hasBoonOfSpeed && !allMods.some(m => /boon of speed/i.test(m.friendlySubtypeName || ""))) {
+        walkSpeed += 30;
+    }
+    const hasSpeedy = hasFeat("Speedy") || hasFeat("Mobile") || (features || []).some((f: any) => /^(speedy|mobile)$/i.test(f.name || ""));
+    if (hasSpeedy && !allMods.some(m => /(speedy|mobile)/i.test(m.friendlySubtypeName || ""))) {
+        walkSpeed += 10;
+    }
+
     // Custom walking speed override from customSpeeds (movementId 1 = Walk)
     if (Array.isArray(raw.customSpeeds)) {
         const customWalk = raw.customSpeeds.find((s: any) => Number(s.movementId) === 1 && Number(s.distance) > 0);
@@ -1033,6 +1043,16 @@ export function parseDndBeyondCharacter(
                 if (text.includes("120")) return "120 ft.";
                 return "60 ft.";
             }
+        }
+
+        // 4. Feat fallbacks (e.g. Boon of Truesight -> 60 ft., Blind Fighting -> 10 ft., Skulker -> 10 ft.)
+        if (senseName === "truesight") {
+            const hasTruesightFeat = hasFeat("Boon of Truesight") || (features || []).some((f: any) => /boon of truesight/i.test(f.name || ""));
+            if (hasTruesightFeat) return "60 ft.";
+        }
+        if (senseName === "blindsight") {
+            const hasBlindsightFeat = hasFeat("Blind Fighting") || hasFeat("Skulker") || (features || []).some((f: any) => /blind fighting|skulker/i.test(f.name || ""));
+            if (hasBlindsightFeat) return "10 ft.";
         }
 
         return fallback;

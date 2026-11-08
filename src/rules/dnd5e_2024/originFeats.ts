@@ -46,9 +46,9 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
         benefits: [
             "Two Cantrips: You learn two cantrips of your choice from the Cleric spell list (e.g. Guidance, Sacred Flame, Thaumaturgy).",
             "One 1st-Level Spell: You choose one 1st-level spell from the Cleric spell list (e.g. Bless, Cure Wounds, Healing Word). You always have it prepared and can cast it once per Long Rest without a spell slot, or with spell slots you have.",
-            "Spellcasting Ability: Wisdom is your spellcasting ability for these spells."
+            "Spellcasting Ability: Intelligence, Wisdom, or Charisma is your spellcasting ability for this feat's spells (choose when you select this feat)."
         ],
-        spellcastingAbilityOptions: ["wis"]
+        spellcastingAbilityOptions: ["int", "wis", "cha"]
     },
     {
         id: "magic-initiate-druid",
@@ -57,9 +57,9 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
         benefits: [
             "Two Cantrips: You learn two cantrips of your choice from the Druid spell list (e.g. Druidcraft, Produce Flame, Shillelagh).",
             "One 1st-Level Spell: You choose one 1st-level spell from the Druid spell list (e.g. Goodberry, Healing Word, Entangle). You always have it prepared and can cast it once per Long Rest without a spell slot, or with spell slots you have.",
-            "Spellcasting Ability: Wisdom is your spellcasting ability for these spells."
+            "Spellcasting Ability: Intelligence, Wisdom, or Charisma is your spellcasting ability for this feat's spells (choose when you select this feat)."
         ],
-        spellcastingAbilityOptions: ["wis"]
+        spellcastingAbilityOptions: ["int", "wis", "cha"]
     },
     {
         id: "magic-initiate-wizard",
@@ -68,9 +68,9 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
         benefits: [
             "Two Cantrips: You learn two cantrips of your choice from the Wizard spell list (e.g. Fire Bolt, Mage Hand, Prestidigitation).",
             "One 1st-Level Spell: You choose one 1st-level spell from the Wizard spell list (e.g. Shield, Find Familiar, Magic Missile). You always have it prepared and can cast it once per Long Rest without a spell slot, or with spell slots you have.",
-            "Spellcasting Ability: Intelligence is your spellcasting ability for these spells."
+            "Spellcasting Ability: Intelligence, Wisdom, or Charisma is your spellcasting ability for this feat's spells (choose when you select this feat)."
         ],
-        spellcastingAbilityOptions: ["int"]
+        spellcastingAbilityOptions: ["int", "wis", "cha"]
     },
     {
         id: "musician",
