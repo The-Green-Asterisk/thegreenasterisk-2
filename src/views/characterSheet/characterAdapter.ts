@@ -134,21 +134,43 @@ export function parseDndBeyondCharacter(
     }));
     const totalLevel = classes.reduce((sum: number, c: any) => sum + c.level, 0) || 1;
 
-    // Build map of componentId -> class level for class-specific scaling modifiers (e.g. Draconic Resilience)
+    // Build map of componentId -> class level and class source label for class-specific scaling and feature isolation
     const componentClassLevelMap = new Map<number, number>();
+    const componentClassSourceMap = new Map<number, string>();
     (raw.classes || []).forEach((c: any) => {
         const cLvl = Number(c.level) || 1;
-        if (c.definition?.id) componentClassLevelMap.set(Number(c.definition.id), cLvl);
-        if (c.subclassDefinition?.id) componentClassLevelMap.set(Number(c.subclassDefinition.id), cLvl);
+        const cName = c.definition?.name || "Class";
+        const subName = c.subclassDefinition?.name ? c.subclassDefinition.name.replace(/\s*\([^)]+\)\s*$/, "").trim() : undefined;
+        const subLabel = subName || cName;
+
+        if (c.definition?.id) {
+            componentClassLevelMap.set(Number(c.definition.id), cLvl);
+            componentClassSourceMap.set(Number(c.definition.id), cName);
+        }
+        if (c.subclassDefinition?.id) {
+            componentClassLevelMap.set(Number(c.subclassDefinition.id), cLvl);
+            componentClassSourceMap.set(Number(c.subclassDefinition.id), subLabel);
+        }
         (c.definition?.classFeatures || []).forEach((cf: any) => {
-            if (cf?.id) componentClassLevelMap.set(Number(cf.id), cLvl);
+            if (cf?.id) {
+                componentClassLevelMap.set(Number(cf.id), cLvl);
+                componentClassSourceMap.set(Number(cf.id), cName);
+            }
         });
         (c.subclassDefinition?.classFeatures || []).forEach((cf: any) => {
-            if (cf?.id) componentClassLevelMap.set(Number(cf.id), cLvl);
+            if (cf?.id) {
+                componentClassLevelMap.set(Number(cf.id), cLvl);
+                componentClassSourceMap.set(Number(cf.id), subLabel);
+            }
         });
         (c.classFeatures || []).forEach((cf: any) => {
             const id = cf?.definition?.id ?? cf?.id;
-            if (id) componentClassLevelMap.set(Number(id), cLvl);
+            if (id) {
+                componentClassLevelMap.set(Number(id), cLvl);
+                const isSub = (cf?.definition?.classId && cf.definition.classId === c.subclassDefinition?.id) ||
+                    (cf?.subclassId && cf.subclassId === c.subclassDefinition?.id);
+                componentClassSourceMap.set(Number(id), isSub ? subLabel : cName);
+            }
         });
     });
 
@@ -1367,7 +1389,10 @@ export function parseDndBeyondCharacter(
 
     ["race", "class", "background", "item", "feat"].forEach(key => {
         (raw.spells?.[key] || []).forEach((s: any) => {
-            const source = key.charAt(0).toUpperCase() + key.slice(1);
+            let source = key.charAt(0).toUpperCase() + key.slice(1);
+            if (key === "class" && s.componentId && componentClassSourceMap.has(Number(s.componentId))) {
+                source = componentClassSourceMap.get(Number(s.componentId))!;
+            }
             addSpell(s, source);
         });
     });
@@ -1689,12 +1714,16 @@ export function parseDndBeyondCharacter(
                       : a.activation?.activationType === 1 || a.activation?.activationType === 8
                         ? "Action"
                         : "Action";
+            const actionSource = (defaultSource === "Class Feature" && a.componentId && componentClassSourceMap.has(Number(a.componentId)))
+                ? componentClassSourceMap.get(Number(a.componentId))!
+                : defaultSource;
+
             actions.push({
                 name: a.name,
                 type,
                 rangeOrReach: a.range?.rangeValue ? `${a.range.rangeValue} ft.` : "Special",
                 hitOrDc: a.saveDcAbilityId ? `DC ${spellSaveDc}` : "Special",
-                damageOrEffect: a.snippet || defaultSource,
+                damageOrEffect: a.snippet || actionSource,
                 notes: a.description || a.snippet || ""
             });
         });

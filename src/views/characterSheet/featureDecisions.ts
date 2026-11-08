@@ -6,6 +6,7 @@ import {
 } from "./characterData";
 import { applyStatModifier, applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
 import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
+import { getCanonicalClassForFeature, getCanonicalSubclassForFeature } from "../../rules/dnd5e_2024/classes";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -2122,14 +2123,24 @@ export function extractFeaturesAndApplyDecisions(
                 const cfClassId = def.classId || def.subclassId || cf.classId || cf.subclassId;
                 const cfSourceLower = String(def.source || cf.source || "").toLowerCase().trim();
 
+                const canonCls = getCanonicalClassForFeature(def.name);
+                const canonSub = getCanonicalSubclassForFeature(def.name);
+                const classSlug = slugifyKey(cName);
+                const subSlug = slugifyKey(subName);
+
+                // Reject features canonically belonging to other classes or other subclasses
+                if (canonCls && canonCls !== classSlug) return;
+                if (canonSub && (canonSub.classSlug !== classSlug || (canonSub.subSlug !== subSlug && canonSub.subName.toLowerCase() !== subName.toLowerCase()))) return;
+
                 // Reject features explicitly belonging to other classes or subclasses on this character
                 if (cfClassId && (otherClassIds.has(cfClassId) || otherSubclassIds.has(cfClassId))) return;
                 if (cfSourceLower && (otherClassNames.has(cfSourceLower) || otherSubclassNames.has(cfSourceLower))) return;
 
-                const isBase = baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
+                const isBase = (canonCls === classSlug) || baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
                 const subFeaturesList = Array.isArray(cl.subclassDefinition?.classFeatures) ? cl.subclassDefinition.classFeatures : [];
                 const isSubFeatureByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === cfNameLower);
                 const isSub = !isBase && (
+                    (canonSub && canonSub.classSlug === classSlug) ||
                     (subId && (cfClassId === subId)) ||
                     (subName && cfSourceLower === subName.toLowerCase()) ||
                     isSubFeatureByName
@@ -2137,6 +2148,9 @@ export function extractFeaturesAndApplyDecisions(
 
                 if (!isBase && !isSub) {
                     if (cfClassId && cfClassId !== cl.definition?.id && cfClassId !== subId) {
+                        return;
+                    }
+                    if (raw.classes && raw.classes.length > 1 && !canonCls) {
                         return;
                     }
                 }

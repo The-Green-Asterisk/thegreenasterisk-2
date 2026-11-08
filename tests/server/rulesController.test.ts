@@ -752,5 +752,100 @@ describe("RulesController", () => {
             expect(actionsByClassAndFeature.has("warlock::clairvoyant combat")).toBe(true);
             expect(actionsByClassAndFeature.has("bard::clairvoyant combat")).toBe(false);
         });
+
+        it("isolates features even when D&D Beyond classId metadata is omitted on raw character features", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
+
+            const savedClasses: any[] = [];
+            const savedSubclasses: any[] = [];
+            const mockClassRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedClasses.find((c) => c.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    const idx = savedClasses.findIndex((c) => c.slug === e.slug);
+                    if (idx >= 0) savedClasses[idx] = e;
+                    else savedClasses.push(e);
+                    return e;
+                })
+            };
+
+            const mockSubclassRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedSubclasses.find((s) => s.slug === where.slug && s.classSlug === where.classSlug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    const idx = savedSubclasses.findIndex((s) => s.slug === e.slug && s.classSlug === e.classSlug);
+                    if (idx >= 0) savedSubclasses[idx] = e;
+                    else savedSubclasses.push(e);
+                    return e;
+                })
+            };
+
+            vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
+                if (entity === RuleClass) return mockClassRepo as any;
+                if (entity === RuleSubclass) return mockSubclassRepo as any;
+                return {
+                    findOne: vi.fn().mockResolvedValue(null),
+                    create: vi.fn().mockImplementation((e) => e),
+                    save: vi.fn().mockResolvedValue({})
+                } as any;
+            });
+
+            // Character where classFeatures list does NOT have classId metadata
+            const rawCharacterWithoutClassIds = {
+                classes: [
+                    {
+                        definition: { id: 1, name: "Bard" },
+                        subclassDefinition: { id: 757, name: "College of Glamour" },
+                        classFeatures: [
+                            { definition: { name: "Bardic Inspiration", requiredLevel: 1 } },
+                            { definition: { name: "Song of Rest", requiredLevel: 2 } },
+                            { definition: { name: "Mantle of Inspiration", requiredLevel: 3, isSubclassFeature: true } },
+                            { definition: { name: "Awakened Mind", requiredLevel: 3, isSubclassFeature: true } } // Warlock Great Old One leak
+                        ]
+                    },
+                    {
+                        definition: { id: 7, name: "Warlock" },
+                        subclassDefinition: { id: 800, name: "Great Old One Patron" },
+                        classFeatures: [
+                            { definition: { name: "Pact Magic", requiredLevel: 1 } },
+                            { definition: { name: "Awakened Mind", requiredLevel: 3, isSubclassFeature: true } },
+                            { definition: { name: "Mantle of Inspiration", requiredLevel: 3, isSubclassFeature: true } } // Bard Glamour leak
+                        ]
+                    }
+                ]
+            };
+
+            await RulesController.upsertRulesFromDndBeyond(rawCharacterWithoutClassIds);
+
+            const bard = savedClasses.find((c) => c.slug === "bard");
+            const warlock = savedClasses.find((c) => c.slug === "warlock");
+
+            expect(bard).toBeDefined();
+            expect(warlock).toBeDefined();
+
+            const bardSubs = JSON.parse(bard.subclassesJson);
+            const glamour = bardSubs.find((s: any) => s.id === "college-of-glamour" || s.name === "College of Glamour");
+            expect(glamour).toBeDefined();
+            const glamourFeatures = glamour.features.map((f: any) => f.name);
+            expect(glamourFeatures).toContain("Mantle of Inspiration");
+            expect(glamourFeatures).not.toContain("Awakened Mind");
+
+            const warlockSubs = JSON.parse(warlock.subclassesJson);
+            const goo = warlockSubs.find((s: any) => s.id === "great-old-one-patron" || s.name === "Great Old One Patron");
+            expect(goo).toBeDefined();
+            const gooFeatures = goo.features.map((f: any) => f.name);
+            expect(gooFeatures).toContain("Awakened Mind");
+            expect(gooFeatures).not.toContain("Mantle of Inspiration");
+
+            // Also check that RuleSubclass entities were saved cleanly
+            expect(savedSubclasses.length).toBeGreaterThanOrEqual(2);
+            const gooEntity = savedSubclasses.find((s) => s.slug === "great-old-one-patron");
+            expect(gooEntity).toBeDefined();
+            expect(gooEntity.classSlug).toBe("warlock");
+        });
     });
 });
