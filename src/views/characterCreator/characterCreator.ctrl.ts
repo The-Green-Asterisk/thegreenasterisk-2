@@ -45,7 +45,6 @@ import {
     WIZARD_SCHOLAR_SKILLS,
     ZEALOT_DIVINE_FURIES,
     STARRY_FORM_CONSTELLATIONS,
-    COSMIC_OMEN_OPTIONS,
     SEA_WRATH_DAMAGE_TYPES,
     MOON_CIRCLE_FORMS_STRIKES,
     DIVINER_THIRD_EYE_OPTIONS,
@@ -2085,27 +2084,6 @@ export class CharacterCreatorController {
                 `);
             }
 
-            // Druid Circle of the Stars: Cosmic Omen
-            if (cls.id === "druid" && this.state.subclassId === "stars") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-6-stars"] || "weal";
-                choices.push(`
-                    <div class="level-choice-box">
-                        <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Cosmic Omen Starting Focus</h5>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-                            ${COSMIC_OMEN_OPTIONS.map((o) => `
-                                <div class="select-card subclass-feature-card ${currentChoice === o.id ? "selected" : ""}" data-feature-key="druid-6-stars" data-feature-choice="${o.id}">
-                                    <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${o.name}</h5>
-                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                    </div>
-                                    <p class="card-body">${o.description}</p>
-                                </div>
-                            `).join("")}
-                        </div>
-                    </div>
-                `);
-            }
-
             // Cleric War Domain: War God's Blessing
             if (cls.id === "cleric" && this.state.subclassId === "war") {
                 const currentChoice = this.state.subclassFeatureChoices?.["cleric-6-war"] || "shield-of-faith";
@@ -3356,7 +3334,6 @@ export class CharacterCreatorController {
                         ${this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] && this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && this.state.level >= 3 ? `<div class="review-row"><span class="label">Draconic Ancestor:</span><strong>${DRACONIC_ANCESTOR_ELEMENTS.find((d) => d.id === this.state.subclassFeatureChoices["sorcerer-3-draconic"])?.name || this.state.subclassFeatureChoices["sorcerer-3-draconic"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] && this.state.classId === "rogue" && this.state.level >= 5 ? `<div class="review-row"><span class="label">Cunning Strike:</span><strong>${ROGUE_CUNNING_STRIKES.find((c) => c.id === this.state.subclassFeatureChoices["rogue-5-cunning-strike"])?.name || this.state.subclassFeatureChoices["rogue-5-cunning-strike"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["druid-6-land"] && this.state.classId === "druid" && this.state.subclassId === "land" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Land Biome:</span><strong>${DRUID_LAND_BIOMES.find((b) => b.id === this.state.subclassFeatureChoices["druid-6-land"])?.name || this.state.subclassFeatureChoices["druid-6-land"]}</strong></div>` : ""}
-                        ${this.state.subclassFeatureChoices?.["druid-6-stars"] && this.state.classId === "druid" && this.state.subclassId === "stars" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Cosmic Omen:</span><strong>${COSMIC_OMEN_OPTIONS.find((o) => o.id === this.state.subclassFeatureChoices["druid-6-stars"])?.name || this.state.subclassFeatureChoices["druid-6-stars"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["cleric-6-war"] && this.state.classId === "cleric" && this.state.subclassId === "war" && this.state.level >= 6 ? `<div class="review-row"><span class="label">War God's Blessing:</span><strong>${WAR_GOD_BLESSING_OPTIONS.find((w) => w.id === this.state.subclassFeatureChoices["cleric-6-war"])?.name || this.state.subclassFeatureChoices["cleric-6-war"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] && this.state.classId === "barbarian" && this.state.subclassId === "wild-heart" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Aspect of the Beast:</span><strong>${BARBARIAN_ASPECTS.find((a) => a.id === this.state.subclassFeatureChoices["barbarian-6-wild-heart"])?.name || this.state.subclassFeatureChoices["barbarian-6-wild-heart"]}</strong></div>` : ""}
                         ${this.state.subclassFeatureChoices?.["ranger-6-hunter"] && this.state.classId === "ranger" && this.state.subclassId === "hunter" && this.state.level >= 6 ? `<div class="review-row"><span class="label">Defensive Tactics:</span><strong>${HUNTER_DEFENSIVE_TACTICS.find((t) => t.id === this.state.subclassFeatureChoices["ranger-6-hunter"])?.name || this.state.subclassFeatureChoices["ranger-6-hunter"]}</strong></div>` : ""}
@@ -4600,17 +4577,6 @@ export class CharacterCreatorController {
                                 source: "Circle of the Moon",
                                 type: "Subclass",
                                 level: 3,
-                                description: opt.description
-                            });
-                        }
-                    } else if (key === "druid-6-stars" && this.state.classId === "druid" && this.state.subclassId === "stars" && this.state.level >= 6) {
-                        const opt = COSMIC_OMEN_OPTIONS.find((o) => o.id === val);
-                        if (opt) {
-                            featuresPayload.push({
-                                name: `Cosmic Omen: ${opt.name}`,
-                                source: "Circle of the Stars",
-                                type: "Subclass",
-                                level: 6,
                                 description: opt.description
                             });
                         }

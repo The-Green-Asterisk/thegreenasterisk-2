@@ -1654,18 +1654,6 @@ export function extractFeaturesAndApplyDecisions(
             );
         }
 
-        // Cosmic Omen (Druid Stars 6)
-        if (nameLower.includes("cosmic omen")) {
-            const defaultOmen = nameLower.includes("woe") ? "cosmic-omen:woe" : "cosmic-omen:weal";
-            registerDecision(
-                "cosmic-omen:0",
-                "Cosmic Omen Starting Focus",
-                defaultOmen,
-                COSMIC_OMEN_OPTIONS,
-                []
-            );
-        }
-
         // Wrath of the Sea (Druid Sea 3)
         if (nameLower.includes("wrath of the sea")) {
             const defaultDamage = nameLower.includes("thunder") ? "sea-wrath:thunder" : "sea-wrath:cold";

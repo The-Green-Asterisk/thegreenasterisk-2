@@ -432,7 +432,11 @@ export const CLASSES_2024: ClassDefinition[] = [
                 features: [
                     { level: 3, name: "Star Map", description: "You create a celestial map that serves as your spellcasting focus and grants you the Guidance cantrip and free castings of Guiding Bolt." },
                     { level: 3, name: "Starry Form", description: "As a Bonus Action, expend a use of Wild Shape to assume a constellation form: Archer (Bonus Action radiant ranged attack), Chalice (bonus healing to another target), or Dragon (minimum 10 on Int/Wis checks and Con saves)." },
-                    { level: 6, name: "Cosmic Omen", description: "Whenever you finish a Long Rest, consult the stars to gain Weal (add 1d6 to an ally's d20 roll) or Woe (subtract 1d6 from an enemy's d20 roll) as a Reaction a number of times equal to your Wisdom modifier." },
+                    {
+                        level: 6,
+                        name: "Cosmic Omen",
+                        description: "Whenever you finish a Long Rest, you can consult your Star Map for omens and roll a die. Until you finish your next Long Rest, you gain access to a special Reaction based on whether you rolled an even or an odd number on the die:\n\nWeal (Even). Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll 1d6 and add the number rolled to the total.\n\nWoe (Odd). Whenever a creature you can see within 30 feet of you is about to make a D20 Test, you can take a Reaction to roll 1d6 and subtract the number rolled from the total.\n\nYou can use this Reaction a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest."
+                    },
                     { level: 10, name: "Twinkling Constellations", description: "The Archer and Chalice dice increase to 2d8. At the start of each of your turns in Starry Form, you can switch which constellation form is active." },
                     { level: 14, name: "Full of Stars", description: "While in Starry Form, your body becomes partially incorporeal, granting you resistance to Bludgeoning, Piercing, and Slashing damage." }
                 ]

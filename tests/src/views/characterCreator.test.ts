@@ -1121,7 +1121,7 @@ describe("CharacterCreatorController", () => {
         deviousCard.click();
         expect(ctrl.state.subclassFeatureChoices["rogue-14-devious-strike"]).toBe("daze");
 
-        // 14. Druid Circle of the Stars (Level 3 Starry Form & Level 6 Cosmic Omen)
+        // 14. Druid Circle of the Stars (Level 3 Starry Form, Cosmic Omen has no level-up choice)
         ctrl.state.classId = "druid";
         ctrl.state.subclassId = "stars";
         ctrl.state.level = 6;
@@ -1131,10 +1131,8 @@ describe("CharacterCreatorController", () => {
         starryCard.click();
         expect(ctrl.state.subclassFeatureChoices["druid-3-stars"]).toBe("dragon");
 
-        let omenCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-6-stars"][data-feature-choice="woe"]') as HTMLElement;
-        expect(omenCard).toBeTruthy();
-        omenCard.click();
-        expect(ctrl.state.subclassFeatureChoices["druid-6-stars"]).toBe("woe");
+        let omenCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-6-stars"]');
+        expect(omenCard).toBeNull();
 
         // 15. Druid Circle of the Sea (Level 3 Wrath of the Sea)
         ctrl.state.subclassId = "sea";
