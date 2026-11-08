@@ -128,7 +128,9 @@ export function parseDndBeyondCharacter(
     const classes = (raw.classes || []).map((c: any) => ({
         name: c.definition?.name || "Adventurer",
         level: Number(c.level) || 1,
-        subclass: c.subclassDefinition?.name || undefined
+        subclass: c.subclassDefinition?.name
+            ? c.subclassDefinition.name.replace(/\s*\([^)]+\)\s*$/, "").trim()
+            : undefined
     }));
     const totalLevel = classes.reduce((sum: number, c: any) => sum + c.level, 0) || 1;
 
@@ -1698,6 +1700,23 @@ export function parseDndBeyondCharacter(
         });
     });
 
+    // Check Druid Circle of the Stars: Cosmic Omen Reaction
+    const druidClassDef = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "druid");
+    const druidSubName = String(druidClassDef?.subclassDefinition?.name || raw.subclass || "").toLowerCase();
+    if (druidClassDef && (druidClassDef.level || 0) >= 6 && druidSubName.includes("stars")) {
+        if (!seenActionNames.has("cosmic omen")) {
+            seenActionNames.add("cosmic omen");
+            actions.push({
+                name: "Cosmic Omen",
+                type: "Reaction",
+                rangeOrReach: "30 ft.",
+                hitOrDc: "Special",
+                damageOrEffect: "Roll 1d6: Add (Weal) or Subtract (Woe) from d20 Test",
+                notes: "Whenever you finish a Long Rest, consult your Star Map for omens and roll a die. Until your next Long Rest, you gain a special Reaction: Weal (Even) - roll 1d6 and add to creature's D20 Test; Woe (Odd) - roll 1d6 and subtract from creature's D20 Test. Uses: Wisdom modifier (min 1), regained on Long Rest."
+            });
+        }
+    }
+
     // 11. Features & Invocations & Feats (already extracted with interactive decisions above)
     // 12. Equipment & Weapons
     const equipment: EquipmentItem[] = inventory.map((i: any) => {
@@ -2039,6 +2058,18 @@ export function parseDndBeyondCharacter(
             total: totalUses,
             resetOn: "short"
         });
+
+        // Circle of the Stars: Cosmic Omen (Wisdom modifier uses, min 1, resets on Long Rest)
+        const subName = String(druid.subclassDefinition?.name || raw.subclass || "").toLowerCase();
+        if (druid.level >= 6 && subName.includes("stars")) {
+            const cosmicUses = getActionMaxUses("Cosmic Omen") ?? Math.max(1, wisMod);
+            classResources.push({
+                name: "Cosmic Omen",
+                total: cosmicUses,
+                resetOn: "long",
+                dieOrType: "1d6"
+            });
+        }
     }
 
     // Check Fighter Action Surge & Second Wind
@@ -2624,6 +2655,25 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
                 total: expectedUses,
                 resetOn: "short"
             });
+        }
+
+        const druidSub = String((druidClass as any).subclassDefinition?.name || (druidClass as any).subclass || "").toLowerCase();
+        if (druidClass.level >= 6 && druidSub.includes("stars")) {
+            const wisMod = character.abilities?.find(a => a.abbr === "WIS")?.modifier ?? 0;
+            const expectedCosmic = Math.max(1, wisMod);
+            const existingCosmic = character.classResources.find(r => r?.name?.toLowerCase() === "cosmic omen");
+            if (existingCosmic) {
+                if (existingCosmic.total < expectedCosmic) {
+                    existingCosmic.total = expectedCosmic;
+                }
+            } else {
+                character.classResources.push({
+                    name: "Cosmic Omen",
+                    total: expectedCosmic,
+                    resetOn: "long",
+                    dieOrType: "1d6"
+                });
+            }
         }
     }
 

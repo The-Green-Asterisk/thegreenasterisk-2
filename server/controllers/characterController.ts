@@ -41,8 +41,22 @@ export default class CharacterController extends BaseController {
 
         const characterId = matchedId[1];
         const cacheKey = `dndbeyond_char_${characterId}`;
+        const isFresh = query.fresh === "true" || query.refresh === "true" || query.force === "true";
+        if (isFresh) {
+            cache.del(cacheKey);
+        }
+
         const cached = cache.get<string>(cacheKey);
         if (cached) {
+            // Even if cached, ensure any new rules (classes, subclasses, species, backgrounds, feats) are saved to DB
+            try {
+                const parsed = JSON.parse(cached);
+                const charData = (parsed as any)?.data || parsed;
+                void RulesController.upsertRulesFromDndBeyond(charData).catch(err => {
+                    console.warn("Could not upsert rules from cached D&D Beyond character load:", err);
+                });
+            } catch {}
+
             return {
                 response: cached,
                 header: "application/json",
@@ -427,6 +441,13 @@ export default class CharacterController extends BaseController {
                 if (ddbApplied) {
                     autoHealedPayload = true;
                 }
+            }
+
+            // Ingest/sync any new rules (classes, subclasses, species, backgrounds, feats) from the saved character
+            if (character) {
+                void RulesController.upsertRulesFromCharacter(character, character).catch(err => {
+                    console.warn("Could not upsert rules from loaded saved character:", err);
+                });
             }
 
             if (autoHealedPayload) {
@@ -1189,6 +1210,9 @@ export default class CharacterController extends BaseController {
         ) {
             return null;
         }
+        if (n.includes("cosmic omen")) {
+            return "Reaction";
+        }
         if (/\bas a bonus action\b|\btake a bonus action\b|\bbonus action to\b|\bbonus action when\b/i.test(d)) {
             return "Bonus Action";
         }
@@ -1202,7 +1226,6 @@ export default class CharacterController extends BaseController {
             n.includes("wild resurgence") ||
             n.includes("starry form") ||
             n.includes("star map") ||
-            n.includes("cosmic omen") ||
             n.includes("twinkling constellations") ||
             n.includes("channel divinity") ||
             n.includes("bardic inspiration") ||

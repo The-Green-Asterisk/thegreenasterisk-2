@@ -2596,6 +2596,38 @@ export const SEED_CLASSES = [
                         "description": "While Elemental Attunement is active, you gain resistance to Acid, Cold, Fire, Lightning, or Thunder damage, and your Elemental Burst deals extra damage."
                     }
                 ]
+            },
+            {
+                "id": "way-of-the-drunken-master",
+                "name": "Way of the Drunken Master",
+                "description": "The Way of the Drunken Master teaches its students to move with the jerky, unpredictable movements of a drunkard.",
+                "features": [
+                    {
+                        "level": 3,
+                        "name": "Bonus Proficiencies",
+                        "description": "You gain proficiency in the Performance skill if you don't already have it. You also gain proficiency with brewer's supplies."
+                    },
+                    {
+                        "level": 3,
+                        "name": "Drunken Technique",
+                        "description": "Whenever you use Flurry of Blows, you gain the benefit of the Disengage action, and your walking speed increases by 10 feet until the end of the current turn."
+                    },
+                    {
+                        "level": 6,
+                        "name": "Tipsy Sway",
+                        "description": "You can redirect attacks against you to other creatures, and you can stand up from prone with only 5 feet of movement."
+                    },
+                    {
+                        "level": 11,
+                        "name": "Drunkard’s Luck",
+                        "description": "When you make an ability check, an attack roll, or a saving throw and have disadvantage, you can spend 1 focus point to cancel the disadvantage for that roll."
+                    },
+                    {
+                        "level": 17,
+                        "name": "Intoxicated Frenzy",
+                        "description": "When you use Flurry of Blows, you can make up to three additional attacks with Flurry of Blows (up to a total of five attacks), provided that each target is a different creature."
+                    }
+                ]
             }
         ],
         "startingEquipmentOptions": [

@@ -660,6 +660,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (activeCharacter.weapons?.length || activeCharacter.equipment?.length) {
                 void postData("/sync-character-items", { weapons: activeCharacter.weapons, equipment: activeCharacter.equipment }).catch(() => { });
             }
+            void postData("/sync-character-rules", { character: activeCharacter }).catch(() => { });
 
             if (activeCharacter.source === "dndbeyond") {
                 const externalId =
@@ -1201,7 +1202,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         );
 
         try {
-            const rawData = await getData<any>(`/get-dndbeyond-character?id=${extractedId}`);
+            const freshParam = options?.refreshed ? "&fresh=true" : "";
+            const rawData = await getData<any>(`/get-dndbeyond-character?id=${extractedId}${freshParam}`);
             activeRawDndBeyondPayload = rawData;
             currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
@@ -1218,6 +1220,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (parsed.weapons?.length || parsed.equipment?.length) {
                 void postData("/sync-character-items", { weapons: parsed.weapons, equipment: parsed.equipment }).catch(() => { });
             }
+            void postData("/sync-character-rules", {
+                character: parsed,
+                rawCharacter: (rawData as any)?.data || rawData
+            }).catch(() => { });
             activeCharacterId = extractedId;
             activeCharacter = parsed;
             activeCharacter.source = "dndbeyond";

@@ -470,6 +470,32 @@ el-character-creator,
     gap: 0.5rem;
     position: relative;
     user-select: none;
+    aspect-ratio: 1 / 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-mid) transparent;
+}
+
+.select-card::-webkit-scrollbar {
+    width: 6px;
+}
+
+.select-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.select-card::-webkit-scrollbar-thumb {
+    background: var(--border-mid);
+    border-radius: 3px;
+}
+
+.select-card::-webkit-scrollbar-thumb:hover {
+    background: var(--ui-color);
+}
+
+.select-card > * {
+    flex-shrink: 0;
 }
 
 .select-card:hover {

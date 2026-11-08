@@ -346,6 +346,11 @@ export default class Routes {
     }
 
     @Method('POST')
+    private ['/sync-character-rules'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return RulesController.syncCharacterRules(req, res);
+    }
+
+    @Method('POST')
     private ['/create-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ItemController.createCustomItem(req, res);
     }

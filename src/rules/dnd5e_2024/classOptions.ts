@@ -572,19 +572,6 @@ export const STARRY_FORM_CONSTELLATIONS: FeatureOption[] = [
     }
 ];
 
-export const COSMIC_OMEN_OPTIONS: FeatureOption[] = [
-    {
-        id: "weal",
-        name: "Weal (Good Omen)",
-        description: "Reaction when a creature within 30 ft. makes an attack roll, saving throw, or ability check to add 1d6 to the roll."
-    },
-    {
-        id: "woe",
-        name: "Woe (Bad Omen)",
-        description: "Reaction when a creature within 30 ft. makes an attack roll, saving throw, or ability check to subtract 1d6 from the roll."
-    }
-];
-
 export const SEA_WRATH_DAMAGE_TYPES: FeatureOption[] = [
     {
         id: "cold",

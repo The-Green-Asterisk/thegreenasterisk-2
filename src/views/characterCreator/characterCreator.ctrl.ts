@@ -190,7 +190,6 @@ export class CharacterCreatorController {
             "fighter-3-battle-master-student": "History",
             "rogue-5-cunning-strike": "trip",
             "druid-6-land": "arid",
-            "druid-6-stars": "weal",
             "cleric-6-war": "shield-of-faith",
             "barbarian-6-wild-heart": "elephant",
             "ranger-6-hunter": "multiattack-defense",
@@ -255,6 +254,13 @@ export class CharacterCreatorController {
                                         : (fallbackSub?.features || [])
                             };
                         });
+                        if (fallbackCls?.subclasses) {
+                            for (const fs of fallbackCls.subclasses) {
+                                if (!enrichedSubs.some((s: any) => s.id === fs.id || s.name.toLowerCase() === fs.name.toLowerCase())) {
+                                    enrichedSubs.push(fs);
+                                }
+                            }
+                        }
                         return {
                             ...rc,
                             features:

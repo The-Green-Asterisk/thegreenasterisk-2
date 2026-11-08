@@ -63,6 +63,7 @@ export interface FeatureItem {
     scaleValue?: string;
     limitedUse?: string;
     decisions?: FeatureDecision[];
+    level?: number;
 }
 
 export interface EquipmentItem {

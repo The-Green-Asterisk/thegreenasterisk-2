@@ -225,11 +225,6 @@ export const STARRY_FORM_OPTIONS: FeatureChoiceOption[] = [
     { value: "starry-form:dragon", label: "Dragon (Minimum 10 on Int/Wis & Con Concentration Checks)" }
 ];
 
-export const COSMIC_OMEN_OPTIONS: FeatureChoiceOption[] = [
-    { value: "cosmic-omen:weal", label: "Weal (Reaction: Add 1d6 to d20 Roll)" },
-    { value: "cosmic-omen:woe", label: "Woe (Reaction: Subtract 1d6 from d20 Roll)" }
-];
-
 export const SEA_WRATH_OPTIONS: FeatureChoiceOption[] = [
     { value: "sea-wrath:cold", label: "Cold (Ocean Spray Freezing Cold Damage)" },
     { value: "sea-wrath:thunder", label: "Thunder (Crashing Wave Deafening Thunder Damage)" }
@@ -2042,15 +2037,34 @@ export function extractFeaturesAndApplyDecisions(
                     description: cf.description || cf.snippet || "",
                     decisions: decisions.length > 0 ? decisions : undefined,
                     scaleValue: meta.scaleValue,
-                    limitedUse: meta.limitedUse
+                    limitedUse: meta.limitedUse,
+                    level: Number(cf.requiredLevel || cf.level || 1)
                 });
             });
         }
 
         if (Array.isArray(cl.subclassDefinition?.classFeatures)) {
             const subName = cl.subclassDefinition.name || "Subclass";
+            const baseFeatureNames = new Set<string>();
+            const baseFeatureIds = new Set<any>();
+            if (Array.isArray(cl.definition?.classFeatures)) {
+                cl.definition.classFeatures.forEach((cf: any) => {
+                    const name = (cf.definition?.name || cf.name || "").trim().toLowerCase();
+                    if (name) baseFeatureNames.add(name);
+                    const id = cf.definition?.id || cf.id;
+                    if (id) baseFeatureIds.add(id);
+                });
+            }
+
             cl.subclassDefinition.classFeatures.forEach((cf: any) => {
                 if ((cf.requiredLevel ?? 1) > cLevel || !cf.name) return;
+                const cfNameLower = String(cf.name).trim().toLowerCase();
+                const cfId = cf.id || cf.definition?.id;
+                // Exclude base class features that D&D Beyond bundles into subclassDefinition.classFeatures
+                if (baseFeatureNames.has(cfNameLower) || (cfId && baseFeatureIds.has(cfId)) || BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) {
+                    return;
+                }
+
                 const compIds = getComponentIdsForFeature([cf.id, cf.definition?.id], "class");
                 const prefix = `subclass:${slugifyKey(subName)}:${slugifyKey(cf.name)}:${cf.requiredLevel || 1}`;
                 const decisions = buildDecisionsForFeature(
@@ -2068,7 +2082,8 @@ export function extractFeaturesAndApplyDecisions(
                     description: cf.description || cf.snippet || "",
                     decisions: decisions.length > 0 ? decisions : undefined,
                     scaleValue: meta.scaleValue,
-                    limitedUse: meta.limitedUse
+                    limitedUse: meta.limitedUse,
+                    level: Number(cf.requiredLevel || cf.level || 3)
                 });
             });
         }
@@ -2077,6 +2092,17 @@ export function extractFeaturesAndApplyDecisions(
         if (Array.isArray(cl.classFeatures)) {
             const subId = cl.subclassDefinition?.id;
             const subName = cl.subclassDefinition?.name || "Subclass";
+            const baseFeatureNames = new Set<string>();
+            const baseFeatureIds = new Set<any>();
+            if (Array.isArray(cl.definition?.classFeatures)) {
+                cl.definition.classFeatures.forEach((cf: any) => {
+                    const name = (cf.definition?.name || cf.name || "").trim().toLowerCase();
+                    if (name) baseFeatureNames.add(name);
+                    const id = cf.definition?.id || cf.id;
+                    if (id) baseFeatureIds.add(id);
+                });
+            }
+
             cl.classFeatures.forEach((cf: any) => {
                 const def = cf.definition || cf;
                 if (!def?.name) return;
@@ -2085,9 +2111,10 @@ export function extractFeaturesAndApplyDecisions(
                 const cfNameLower = String(def.name).toLowerCase();
                 if (BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) return;
 
-                const isSub = (subId && (def.classId === subId || def.subclassId === subId)) ||
+                const isBase = baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
+                const isSub = !isBase && ((subId && (def.classId === subId || def.subclassId === subId)) ||
                     def.isSubclassFeature === true ||
-                    (def.source && String(def.source).toLowerCase() === subName.toLowerCase());
+                    (def.source && String(def.source).toLowerCase() === subName.toLowerCase()));
                 const targetName = isSub ? subName : cName;
                 const targetType = isSub ? "Subclass" : "Class";
 
@@ -2112,7 +2139,8 @@ export function extractFeaturesAndApplyDecisions(
                     description: def.description || def.snippet || "",
                     decisions: decisions.length > 0 ? decisions : undefined,
                     scaleValue: meta.scaleValue,
-                    limitedUse: meta.limitedUse
+                    limitedUse: meta.limitedUse,
+                    level: reqLevel
                 });
             });
         }
