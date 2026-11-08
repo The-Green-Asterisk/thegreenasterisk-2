@@ -77,12 +77,124 @@ export interface ClassSubclassDefinition {
         level: number;
         description: string;
     }>;
+    classSlug?: string;
+    progression?: ProgressionLevel[];
+    spellcastingOverride?: {
+        ability: AbilityName;
+        type: 'full' | 'half' | 'third' | 'pact';
+        cantripsKnownByLevel: number[];
+        preparedSpellsByLevel?: number[];
+        spellSlotsByLevel: number[][];
+    };
 }
 
 export interface ClassLevelFeature {
     name: string;
     level: number;
     description: string;
+}
+
+export type ModifierTarget =
+    | "vitals.ac"
+    | "vitals.maxHp"
+    | "vitals.initiative"
+    | "vitals.speed"
+    | "vitals.blindsight"
+    | "vitals.darkvision"
+    | "abilities.str"
+    | "abilities.dex"
+    | "abilities.con"
+    | "abilities.int"
+    | "abilities.wis"
+    | "abilities.cha"
+    | "saves.all"
+    | `saves.${AbilityName}`
+    | `skills.${string}`
+    | `defenses.resistance`
+    | `defenses.immunity`
+    | "attacks.melee"
+    | "attacks.ranged"
+    | "attacks.spell"
+    | "damage.melee"
+    | "damage.ranged"
+    | "spells.saveDc"
+    | "spells.attackBonus"
+    | "proficiencies.armor"
+    | "proficiencies.weapons"
+    | "proficiencies.tools"
+    | "proficiencies.languages"
+    | "weaponMasteryCount"
+    | "resources.pool";
+
+export type ModifierType =
+    | "bonus"            // +[number] (e.g. +1 AC, +2 attack)
+    | "penalty"          // -[number]
+    | "advantage"        // Grants Advantage
+    | "disadvantage"     // Grants/imposes Disadvantage
+    | "set"              // Sets an absolute value (e.g. blindsight = "10 ft.")
+    | "proficiency_tier" // "proficient" | "expertise"
+    | "ability_mod"      // Adds another ability modifier (e.g. add WIS to Arcana)
+    | "resource_pool"    // Adds/modifies a class resource pool
+    | "grant_action";    // Injects an action/bonus action/reaction
+
+export interface StatModifier {
+    target: ModifierTarget | string;
+    type: ModifierType;
+    value?: number | string;
+    abilitySource?: AbilityName;
+    condition?: string;
+    description?: string;
+}
+
+export interface ProgressionFeature {
+    id: string;
+    name: string;
+    description: string;
+    modifiers?: StatModifier[];
+    actionGrant?: {
+        name: string;
+        type: "Action" | "Bonus Action" | "Reaction";
+        range?: string;
+        cost?: string;
+        notes?: string;
+    };
+}
+
+export interface ProgressionChoiceOption {
+    id: string;
+    name: string;
+    description: string;
+    prerequisite?: string;
+    modifiers?: StatModifier[];
+    actionGrant?: {
+        name: string;
+        type: "Action" | "Bonus Action" | "Reaction";
+        range?: string;
+        cost?: string;
+        notes?: string;
+    };
+}
+
+export interface ProgressionChoice {
+    id: string;
+    name: string;
+    prompt: string;
+    chooseCount: number;
+    options: ProgressionChoiceOption[];
+}
+
+export interface ProgressionResourceUpdate {
+    name: string;
+    total: number | string; // e.g. 2, or "{{level}}", or "{{pb}}"
+    die?: string;           // e.g. "d6", "d8", "d10"
+    resetOn: "short" | "long";
+}
+
+export interface ProgressionLevel {
+    level: number;
+    features: ProgressionFeature[];
+    choices?: ProgressionChoice[];
+    resourceUpdates?: ProgressionResourceUpdate[];
 }
 
 export interface ClassDefinition {
@@ -101,13 +213,14 @@ export interface ClassDefinition {
     };
     spellcasting?: {
         ability: AbilityName;
-        type: 'full' | 'half' | 'pact';
+        type: 'full' | 'half' | 'third' | 'pact';
         cantripsKnownByLevel: number[];
         preparedSpellsByLevel?: number[];
         spellSlotsByLevel: number[][]; // 20 rows, 9 cols
     };
     subclasses: ClassSubclassDefinition[];
     features: ClassLevelFeature[];
+    progression?: ProgressionLevel[];
     startingEquipmentOptions: Array<{
         name: string;
         items: string[];

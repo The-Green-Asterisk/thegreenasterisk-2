@@ -4,6 +4,7 @@ import {
     FeatureDecision,
     FeatureItem
 } from "./characterData";
+import { applyStatModifier } from "../../rules/dnd5e_2024/statModifierEvaluator";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -2377,6 +2378,44 @@ export function applyFeatureDecisionOnCharacterData(
                 character.vitals.armorClass += sign * 1;
             } else if (style === "blind-fighting") {
                 character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
+            }
+        } else if (kind === "divine-order") {
+            const order = parts[1];
+            if (order === "protector") {
+                applyStatModifier(character, { target: "proficiencies.armor.heavy", type: "bonus", value: 1 }, sign);
+                applyStatModifier(character, { target: "proficiencies.weapons.martial", type: "bonus", value: 1 }, sign);
+            } else if (order === "thaumaturge") {
+                applyStatModifier(character, { target: "skills.arcana", type: "ability_mod", abilitySource: "wis" }, sign);
+                applyStatModifier(character, { target: "skills.religion", type: "ability_mod", abilitySource: "wis" }, sign);
+            }
+        } else if (kind === "primal-order") {
+            const order = parts[1];
+            if (order === "warden") {
+                applyStatModifier(character, { target: "proficiencies.armor.medium", type: "bonus", value: 1 }, sign);
+                applyStatModifier(character, { target: "proficiencies.weapons.martial", type: "bonus", value: 1 }, sign);
+            } else if (order === "magician") {
+                applyStatModifier(character, { target: "skills.arcana", type: "ability_mod", abilitySource: "wis" }, sign);
+                applyStatModifier(character, { target: "skills.nature", type: "ability_mod", abilitySource: "wis" }, sign);
+            }
+        } else if (kind === "draconic-ancestor") {
+            const element = parts[1];
+            const elemMap: Record<string, string> = {
+                black: "acid", copper: "acid", blue: "lightning", bronze: "lightning",
+                brass: "fire", gold: "fire", red: "fire", green: "poison", silver: "cold", white: "cold"
+            };
+            const dmg = elemMap[element] || element;
+            applyStatModifier(character, { target: "defenses.resistance", type: "set", value: dmg }, sign);
+        } else if (kind === "student-of-war" || kind === "fey-wanderer-glamour") {
+            const skillName = parts[1];
+            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "proficient" }, sign);
+        } else if (kind === "wizard-scholar") {
+            const skillName = parts[1];
+            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "expertise" }, sign);
+        } else if (kind === "land-biome") {
+            const biome = parts[1];
+            const biomeRes: Record<string, string> = { arid: "fire", polar: "cold", temperate: "lightning", tropical: "poison" };
+            if (biomeRes[biome]) {
+                applyStatModifier(character, { target: "defenses.resistance", type: "set", value: biomeRes[biome] }, sign);
             }
         } else if (kind === "resistance") {
             const dmgKey = parts[1];

@@ -520,7 +520,8 @@ export class CharacterCreatorController {
                                 features:
                                     Array.isArray(sub.features) && sub.features.length > 0
                                         ? sub.features
-                                        : (fallbackSub?.features || [])
+                                        : (fallbackSub?.features || []),
+                                progression: sub.progression || fallbackSub?.progression
                             };
                         });
                         if (fallbackCls?.subclasses) {
@@ -536,7 +537,8 @@ export class CharacterCreatorController {
                                 fallbackCls?.features && fallbackCls.features.length > 0
                                     ? fallbackCls.features
                                     : (rc.features || []),
-                            subclasses: enrichedSubs
+                            subclasses: enrichedSubs,
+                            progression: rc.progression || fallbackCls?.progression
                         };
                     });
                 }

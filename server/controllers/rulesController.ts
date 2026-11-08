@@ -5,6 +5,11 @@ import RuleBackground from "../services/database/entity/RuleBackground";
 import RuleClass from "../services/database/entity/RuleClass";
 import RuleFeat from "../services/database/entity/RuleFeat";
 import RuleSpecies from "../services/database/entity/RuleSpecies";
+import RuleSubclass from "../services/database/entity/RuleSubclass";
+import {
+    buildClassProgression,
+    buildSubclassProgression
+} from "../services/database/rulesProgressionBuilder";
 import {
     SEED_BACKGROUNDS,
     SEED_CLASSES,
@@ -58,6 +63,7 @@ export default class RulesController extends BaseController {
             const speciesRepo = AppDataSource.getRepository(RuleSpecies);
             const bgRepo = AppDataSource.getRepository(RuleBackground);
             const featRepo = AppDataSource.getRepository(RuleFeat);
+            const subclassRepo = AppDataSource.getRepository(RuleSubclass);
 
             const classCount = await classRepo.count();
             if (classCount === 0) {
@@ -74,6 +80,7 @@ export default class RulesController extends BaseController {
                     skillChoicesJson: JSON.stringify(cls.skillChoices),
                     spellcastingJson: cls.spellcasting ? JSON.stringify(cls.spellcasting) : undefined,
                     featuresJson: JSON.stringify(cls.features || []),
+                    progressionJson: JSON.stringify(buildClassProgression(cls.id, cls.features || [])),
                     subclassesJson: JSON.stringify(cls.subclasses || []),
                     startingEquipmentJson: cls.startingEquipmentOptions ? JSON.stringify(cls.startingEquipmentOptions) : undefined,
                     source: "2024 Core Rules"
@@ -143,14 +150,45 @@ export default class RulesController extends BaseController {
 
                     const desiredSubclassesJson = JSON.stringify(mergedSubs);
                     const desiredFeaturesJson = JSON.stringify(mergedFeatures);
-                    if (rc.subclassesJson !== desiredSubclassesJson || rc.featuresJson !== desiredFeaturesJson) {
+                    const desiredProgressionJson = JSON.stringify(buildClassProgression(rc.slug, mergedFeatures));
+                    if (rc.subclassesJson !== desiredSubclassesJson || rc.featuresJson !== desiredFeaturesJson || !rc.progressionJson) {
                         rc.subclassesJson = desiredSubclassesJson;
                         rc.featuresJson = desiredFeaturesJson;
+                        rc.progressionJson = desiredProgressionJson;
                         toUpdate.push(rc);
                     }
                 }
                 if (toUpdate.length > 0) {
                     await classRepo.save(toUpdate);
+                }
+            }
+
+            if (typeof subclassRepo.count === "function") {
+                const subCount = await subclassRepo.count();
+                if (subCount === 0 && typeof classRepo.find === "function") {
+                    const dbClasses = await classRepo.find();
+                    const subEntities: RuleSubclass[] = [];
+                    for (const cls of dbClasses) {
+                        const seedCls = SEED_CLASSES.find((sc) => sc.id === cls.slug);
+                        const rawSubs = this.safeParse(cls.subclassesJson, seedCls?.subclasses || []);
+                        for (const sub of rawSubs) {
+                            const subProgression = buildSubclassProgression(cls.slug, sub);
+                            subEntities.push(subclassRepo.create({
+                                classId: cls.id,
+                                classSlug: cls.slug,
+                                slug: sub.id || slugify(sub.name),
+                                name: sub.name,
+                                description: sub.description || "",
+                                progressionJson: JSON.stringify(subProgression),
+                                spellcastingOverrideJson: sub.spellcastingOverride ? JSON.stringify(sub.spellcastingOverride) : undefined,
+                                source: "2024 Core Rules",
+                                isCustom: false
+                            }));
+                        }
+                    }
+                    if (subEntities.length > 0) {
+                        await subclassRepo.save(subEntities);
+                    }
                 }
             }
 
@@ -234,8 +272,28 @@ export default class RulesController extends BaseController {
         }
 
         if (!AppDataSource.isInitialized) {
+            const fallbackSubclasses: any[] = [];
+            const fallbackClasses = SEED_CLASSES.map((cls) => {
+                const clsProg = (cls as any).progression || buildClassProgression(cls.id, cls.features || []);
+                const subs = (cls.subclasses || []).map((s) => {
+                    const subProg = (s as any).progression || buildSubclassProgression(cls.id, s);
+                    const subObj = {
+                        ...s,
+                        classSlug: cls.id,
+                        progression: subProg
+                    };
+                    fallbackSubclasses.push(subObj);
+                    return subObj;
+                });
+                return {
+                    ...cls,
+                    progression: clsProg,
+                    subclasses: subs
+                };
+            });
             const fallback = JSON.stringify({
-                classes: SEED_CLASSES,
+                classes: fallbackClasses,
+                subclasses: fallbackSubclasses,
                 species: SEED_SPECIES,
                 backgrounds: SEED_BACKGROUNDS,
                 originFeats: SEED_ORIGIN_FEATS,
@@ -252,16 +310,36 @@ export default class RulesController extends BaseController {
             await this.seedDefaultRulesIfEmpty();
 
             const classRepo = AppDataSource.getRepository(RuleClass);
+            const subclassRepo = AppDataSource.getRepository(RuleSubclass);
             const speciesRepo = AppDataSource.getRepository(RuleSpecies);
             const bgRepo = AppDataSource.getRepository(RuleBackground);
             const featRepo = AppDataSource.getRepository(RuleFeat);
 
-            const [dbClasses, dbSpecies, dbBackgrounds, dbFeats] = await Promise.all([
+            const [dbClasses, dbSubclasses, dbSpecies, dbBackgrounds, dbFeats] = await Promise.all([
                 classRepo.find({ order: { name: "ASC" } }),
+                typeof subclassRepo?.find === "function" ? subclassRepo.find({ order: { name: "ASC" } }) : Promise.resolve([]),
                 speciesRepo.find({ order: { name: "ASC" } }),
                 bgRepo.find({ order: { name: "ASC" } }),
                 featRepo.find({ order: { name: "ASC" } })
             ]);
+
+            const loadedSubclasses = (Array.isArray(dbSubclasses) ? dbSubclasses : []).map((rs) => {
+                const progression = this.safeParse(rs.progressionJson, []);
+                const feats = progression.flatMap((lvl: any) => lvl.features || []);
+                return {
+                    id: rs.slug,
+                    slug: rs.slug,
+                    name: rs.name,
+                    description: rs.description,
+                    classId: rs.classId,
+                    classSlug: rs.classSlug,
+                    features: feats,
+                    progression,
+                    spellcastingOverride: rs.spellcastingOverrideJson ? this.safeParse(rs.spellcastingOverrideJson, undefined) : undefined,
+                    source: rs.source,
+                    isCustom: rs.isCustom
+                };
+            });
 
             const classes = dbClasses.map((rc) => {
                 const seedCls = SEED_CLASSES.find((sc) => sc.id === rc.slug);
@@ -282,8 +360,11 @@ export default class RulesController extends BaseController {
                                     })
                               : (seedSub?.features || []);
                           feats.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
+                          const subProg = buildSubclassProgression(rc.slug, { ...sub, features: feats });
                           return {
                               ...sub,
+                              classSlug: rc.slug,
+                              progression: subProg,
                               features: feats
                           };
                       })
@@ -292,10 +373,27 @@ export default class RulesController extends BaseController {
                 if (seedCls?.subclasses) {
                     for (const ss of seedCls.subclasses) {
                         if (!subclasses.some((s: any) => s.id === ss.id || s.name.toLowerCase() === ss.name.toLowerCase())) {
-                            subclasses.push(ss);
+                            subclasses.push({
+                                ...ss,
+                                classSlug: rc.slug,
+                                progression: buildSubclassProgression(rc.slug, ss)
+                            });
                         }
                     }
                 }
+
+                // If loadedSubclasses has entries for this class, merge in any custom/new subclasses
+                for (const lsub of loadedSubclasses.filter((ls) => ls.classSlug === rc.slug || ls.classId === rc.id)) {
+                    if (!subclasses.some((s: any) => s.id === lsub.slug || s.slug === lsub.slug)) {
+                        subclasses.push(lsub);
+                    }
+                }
+
+                const rawFeatures = this.safeParse(rc.featuresJson, []);
+                const progression = rc.progressionJson
+                    ? this.safeParse(rc.progressionJson, buildClassProgression(rc.slug, rawFeatures))
+                    : buildClassProgression(rc.slug, rawFeatures);
+
                 return {
                     id: rc.slug,
                     name: rc.name,
@@ -308,7 +406,8 @@ export default class RulesController extends BaseController {
                     weaponMasteryCount: rc.weaponMasteryCount,
                     skillChoices: this.safeParse(rc.skillChoicesJson, { count: 2, from: [] }),
                     spellcasting: rc.spellcastingJson ? this.safeParse(rc.spellcastingJson, undefined) : undefined,
-                    features: this.safeParse(rc.featuresJson, []),
+                    features: rawFeatures,
+                    progression,
                     subclasses,
                     startingEquipmentOptions: rc.startingEquipmentJson ? this.safeParse(rc.startingEquipmentJson, []) : []
                 };
@@ -360,8 +459,13 @@ export default class RulesController extends BaseController {
                     isEpicBoon: rf.isEpicBoon
                 }));
 
+            const allSubclasses = loadedSubclasses.length > 0
+                ? loadedSubclasses
+                : classes.flatMap((c) => (c.subclasses || []).map((s: any) => ({ ...s, classSlug: c.id })));
+
             const payload = JSON.stringify({
                 classes: classes.length > 0 ? classes : SEED_CLASSES,
+                subclasses: allSubclasses,
                 species: species.length > 0 ? species : SEED_SPECIES,
                 backgrounds: backgrounds.length > 0 ? backgrounds : SEED_BACKGROUNDS,
                 originFeats: originFeats.length > 0 ? originFeats : SEED_ORIGIN_FEATS,
@@ -378,8 +482,20 @@ export default class RulesController extends BaseController {
             };
         } catch (error) {
             console.warn("Error fetching rules from database, using seed fallback:", error);
+            const fallbackSubclasses: any[] = [];
+            const fallbackClasses = SEED_CLASSES.map((cls) => {
+                const clsProg = (cls as any).progression || buildClassProgression(cls.id, cls.features || []);
+                const subs = (cls.subclasses || []).map((s) => {
+                    const subProg = (s as any).progression || buildSubclassProgression(cls.id, s);
+                    const subObj = { ...s, classSlug: cls.id, progression: subProg };
+                    fallbackSubclasses.push(subObj);
+                    return subObj;
+                });
+                return { ...cls, progression: clsProg, subclasses: subs };
+            });
             const fallback = JSON.stringify({
-                classes: SEED_CLASSES,
+                classes: fallbackClasses,
+                subclasses: fallbackSubclasses,
                 species: SEED_SPECIES,
                 backgrounds: SEED_BACKGROUNDS,
                 originFeats: SEED_ORIGIN_FEATS,
@@ -1354,6 +1470,32 @@ export default class RulesController extends BaseController {
         }
 
         return updatedCount;
+    }
+
+    /**
+     * GET /api/rules/classes
+     */
+    public static async getClasses(req: http.IncomingMessage, res: http.ServerResponse) {
+        const rulesRes = await this.getRules(req, res);
+        const parsed = this.safeParse(rulesRes.response as string, { classes: [] });
+        return {
+            response: JSON.stringify(parsed.classes || []),
+            header: "application/json",
+            status: 200
+        };
+    }
+
+    /**
+     * GET /api/rules/subclasses
+     */
+    public static async getSubclasses(req: http.IncomingMessage, res: http.ServerResponse) {
+        const rulesRes = await this.getRules(req, res);
+        const parsed = this.safeParse(rulesRes.response as string, { subclasses: [] });
+        return {
+            response: JSON.stringify(parsed.subclasses || []),
+            header: "application/json",
+            status: 200
+        };
     }
 
     private static safeParse(json: string | null | undefined, fallback: any): any {

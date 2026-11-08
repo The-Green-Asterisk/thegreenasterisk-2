@@ -7,6 +7,7 @@ import RuleBackground from "../../server/services/database/entity/RuleBackground
 import RuleClass from "../../server/services/database/entity/RuleClass";
 import RuleFeat from "../../server/services/database/entity/RuleFeat";
 import RuleSpecies from "../../server/services/database/entity/RuleSpecies";
+import RuleSubclass from "../../server/services/database/entity/RuleSubclass";
 
 describe("RulesController", () => {
     let mockReq: Partial<http.IncomingMessage>;
@@ -35,6 +36,11 @@ describe("RulesController", () => {
             const data = JSON.parse(result.response);
             expect(data.classes).toBeDefined();
             expect(data.classes.length).toBeGreaterThan(0);
+            expect(data.subclasses).toBeDefined();
+            expect(data.subclasses.length).toBeGreaterThan(0);
+            expect(data.classes[0].progression).toBeDefined();
+            expect(data.classes[0].progression.length).toBe(20);
+            expect(data.subclasses[0].progression).toBeDefined();
             expect(data.species).toBeDefined();
             expect(data.backgrounds).toBeDefined();
             expect(data.originFeats).toBeDefined();
@@ -490,6 +496,28 @@ describe("RulesController", () => {
 
             const wildShapeAction = siteCharacter.actions.find((a: any) => a.name === "Wild Shape");
             expect(wildShapeAction.notes).toBe("You assume the form of a Beast that you have seen before");
+        });
+    });
+
+    describe("getClasses and getSubclasses endpoints", () => {
+        it("returns class and subclass arrays with progression", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: false, configurable: true });
+
+            const classesRes = await RulesController.getClasses(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(classesRes.status).toBe(200);
+            const classes = JSON.parse(classesRes.response);
+            expect(Array.isArray(classes)).toBe(true);
+            expect(classes.length).toBe(12);
+            expect(classes[0].progression).toBeDefined();
+            expect(classes[0].progression.length).toBe(20);
+
+            const subsRes = await RulesController.getSubclasses(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(subsRes.status).toBe(200);
+            const subclasses = JSON.parse(subsRes.response);
+            expect(Array.isArray(subclasses)).toBe(true);
+            expect(subclasses.length).toBeGreaterThanOrEqual(48);
+            expect(subclasses[0].progression).toBeDefined();
+            expect(subclasses[0].classSlug).toBeDefined();
         });
     });
 });

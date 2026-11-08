@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import type { RuleSubclass } from "./RuleSubclass";
 
 @Entity({ name: "rule_classes" })
 export class RuleClass {
@@ -41,8 +42,14 @@ export class RuleClass {
     @Column({ type: "longtext" })
     featuresJson!: string; // JSON array of { level, name, description }
 
+    @Column({ type: "longtext", nullable: true })
+    progressionJson?: string; // JSON array of ProgressionLevel
+
     @Column({ type: "longtext" })
     subclassesJson!: string; // JSON array of { id, name, description, features }
+
+    @OneToMany("RuleSubclass", "classEntity")
+    subclassEntities?: RuleSubclass[];
 
     @Column({ type: "text", nullable: true })
     startingEquipmentJson?: string; // JSON array of equipment options
