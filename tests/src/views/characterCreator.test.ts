@@ -1500,4 +1500,70 @@ describe("CharacterCreatorController", () => {
 
         postSpy.mockRestore();
     });
+
+    it("allows selecting weapon masteries when barbarian is chosen as a secondary multiclass", () => {
+        document.body.innerHTML = `<div id="creator-step-panels"></div>`;
+
+        // Start with Bard level 3 as primary class (0 weapon masteries)
+        ctrl.state.classId = "bard";
+        ctrl.state.classes = [
+            { classId: "bard", level: 3, subclassId: "lore" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.state.weaponMasteries = [];
+        ctrl.syncStateClassProperties();
+
+        // Total weapon masteries count should be 2 (from Barbarian)
+        expect(ctrl.getMaxWeaponMasteriesCount()).toBe(2);
+
+        // Render step 3
+        ctrl.renderStep(3);
+
+        const greataxeCard = document.querySelector('.mastery-card[data-weapon-name="Greataxe"]') as HTMLElement;
+        const handaxeCard = document.querySelector('.mastery-card[data-weapon-name="Handaxe"]') as HTMLElement;
+        const daggerCard = document.querySelector('.mastery-card[data-weapon-name="Dagger"]') as HTMLElement;
+
+        expect(greataxeCard).not.toBeNull();
+        expect(handaxeCard).not.toBeNull();
+
+        // Click Greataxe
+        greataxeCard.click();
+        expect(ctrl.state.weaponMasteries).toContain("Greataxe");
+        expect(ctrl.state.weaponMasteries.length).toBe(1);
+
+        // Click Handaxe
+        const updatedHandaxe = document.querySelector('.mastery-card[data-weapon-name="Handaxe"]') as HTMLElement;
+        updatedHandaxe.click();
+        expect(ctrl.state.weaponMasteries).toContain("Handaxe");
+        expect(ctrl.state.weaponMasteries.length).toBe(2);
+
+        // Click Dagger - should not add because limit is 2
+        const updatedDagger = document.querySelector('.mastery-card[data-weapon-name="Dagger"]') as HTMLElement;
+        updatedDagger.click();
+        expect(ctrl.state.weaponMasteries.length).toBe(2);
+        expect(ctrl.state.weaponMasteries).not.toContain("Dagger");
+
+        // Now test multiclass Fighter (3) + Barbarian (2) = 5
+        ctrl.state.classes = [
+            { classId: "fighter", level: 1, subclassId: "champion" },
+            { classId: "barbarian", level: 1, subclassId: "berserker" }
+        ];
+        ctrl.syncStateClassProperties();
+        expect(ctrl.getMaxWeaponMasteriesCount()).toBe(5);
+    });
+
+    it("calculates multiclass capacities correctly for metamagic, invocations, and maneuvers", () => {
+        // Bard 5 / Sorcerer 3 / Warlock 2 / Fighter (Battle Master) 3
+        ctrl.state.classes = [
+            { classId: "bard", level: 5, subclassId: "lore" },
+            { classId: "sorcerer", level: 3, subclassId: "draconic" },
+            { classId: "warlock", level: 2, subclassId: "fiend" },
+            { classId: "fighter", level: 3, subclassId: "battle-master" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        expect(ctrl.getMaxMetamagicCount()).toBe(2);
+        expect(ctrl.getMaxInvocationsCount()).toBe(3);
+        expect(ctrl.getMaxManeuversCount()).toBe(3);
+    });
 });
