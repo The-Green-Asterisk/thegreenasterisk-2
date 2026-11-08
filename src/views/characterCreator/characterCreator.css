@@ -2,6 +2,18 @@
    5.5e D&D CHARACTER CREATOR STYLES
    ========================================================================== */
 
+:root {
+    --ui-accent: var(--ui-color, #29701b);
+    --ui-accent-rgb: 41, 112, 27;
+    --surface-raised: #f1f5f9;
+}
+
+:root[data-theme="dark"] {
+    --ui-accent: var(--ui-text, #6cc35a);
+    --ui-accent-rgb: 108, 195, 90;
+    --surface-raised: #2a2a2a;
+}
+
 el-character-creator,
 .character-creator-view {
     display: flex;
@@ -1651,7 +1663,7 @@ el-character-creator,
 }
 
 .multiclass-section-header {
-    background: var(--surface-raised, rgba(255, 255, 255, 0.03));
+    background: var(--surface-alt);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: 1rem 1.25rem;
@@ -1672,10 +1684,36 @@ el-character-creator,
     font-size: 0.85rem;
     font-weight: 700;
     border-radius: 9999px;
-    background: rgba(var(--ui-accent-rgb, 41, 112, 27), 0.15);
-    color: var(--ui-accent);
-    border: 1px solid rgba(var(--ui-accent-rgb, 41, 112, 27), 0.3);
+    background: rgba(var(--ui-accent-rgb, 41, 112, 27), 0.12);
+    color: var(--ui-text);
+    border: 1px solid rgba(var(--ui-accent-rgb, 41, 112, 27), 0.35);
     margin-left: 0.5rem;
+}
+
+/* General Creator Button Utilities */
+.creator-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.creator-btn.secondary-btn {
+    background: var(--surface-alt, #f0f4f8);
+    border: 1px solid var(--border);
+    color: var(--text, #111);
+    box-shadow: var(--sm-shadow);
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.creator-btn.secondary-btn:hover {
+    background: var(--surface-muted, #e2e8f0);
+    transform: translateY(-1px);
 }
 
 /* Sticky Top Bar for scrolling up to earlier classes */
@@ -1689,10 +1727,11 @@ el-character-creator,
     max-width: 1100px;
     z-index: 951;
     background: var(--surface);
+    color: var(--text);
     border: 1px solid var(--border);
     border-top: none;
     border-radius: 0 0 var(--radius-md) var(--radius-md);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     padding: 0.65rem 1.25rem;
     display: flex;
     align-items: center;
@@ -1702,13 +1741,17 @@ el-character-creator,
     transition: opacity 0.2s ease, transform 0.2s ease !important;
 }
 
+:root[data-theme="dark"] .multiclass-top-bar {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
 .multiclass-top-bar.hidden {
     display: none !important;
 }
 
 .multiclass-bar-label {
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-muted);
     display: flex;
     align-items: center;
@@ -1733,9 +1776,10 @@ el-character-creator,
     max-width: 1100px;
     z-index: 950;
     background: var(--surface);
+    color: var(--text);
     border: 1px solid var(--border);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
     padding: 0.75rem 1.25rem;
     display: flex;
     flex-direction: column;
@@ -1744,6 +1788,10 @@ el-character-creator,
     backdrop-filter: blur(10px);
     box-sizing: border-box;
     transition: none !important;
+}
+
+:root[data-theme="dark"] .multiclass-bottom-bar {
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
 }
 
 /* When scrolled to bottom of multiclass panel, stick to the page */
@@ -1755,8 +1803,12 @@ el-character-creator,
     margin: 0 auto;
     width: 100%;
     border-radius: var(--radius-md);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
     transition: none !important;
+}
+
+:root[data-theme="dark"] .multiclass-bottom-bar.docked {
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
 }
 
 .multiclass-bottom-bar .add-class-btn {
@@ -1766,19 +1818,20 @@ el-character-creator,
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.95rem;
     padding: 0.65rem 1.25rem;
-    background: var(--ui-accent);
-    color: #fff;
-    border: none;
+    background: var(--ui-color, #29701b);
+    color: var(--text-on-accent, #fff);
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: var(--radius);
+    box-shadow: var(--sm-shadow);
     cursor: pointer;
-    transition: opacity 0.15s ease, transform 0.15s ease;
+    transition: filter 0.15s ease, transform 0.15s ease;
 }
 
 .multiclass-bottom-bar .add-class-btn:hover {
-    opacity: 0.92;
+    filter: brightness(1.1);
     transform: translateY(-1px);
 }
 
@@ -1800,22 +1853,27 @@ el-character-creator,
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: var(--surface-raised, #242424);
-    color: var(--text);
+    background: var(--surface-alt, #f0f4f8);
+    color: var(--text, #111);
     border: 1px solid var(--border);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1.1rem;
-    transition: transform 0.15s ease, background 0.15s ease, opacity 0.2s ease, border-color 0.15s ease !important;
+    transition: transform 0.15s ease, background 0.15s ease, opacity 0.2s ease, border-color 0.15s ease, color 0.15s ease !important;
+}
+
+:root[data-theme="dark"] .floating-scroll-bottom-btn {
+    background: var(--surface-raised, #242424);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .floating-scroll-bottom-btn:hover {
-    background: var(--ui-accent, #29701b);
-    color: #fff;
-    border-color: var(--ui-accent, #29701b);
+    background: var(--ui-color, #29701b);
+    color: var(--text-on-accent, #fff);
+    border-color: var(--ui-color, #29701b);
     transform: translateY(-2px);
 }
 
@@ -1831,16 +1889,18 @@ el-character-creator,
     font-size: 0.88rem;
     font-weight: 600;
     border-radius: var(--radius-sm);
-    background: var(--surface-raised, #2d333b);
-    color: var(--text);
+    background: var(--surface-alt, #f0f4f8);
+    color: var(--text, #111);
     border: 1px solid var(--border);
+    box-shadow: var(--sm-shadow);
     cursor: pointer;
-    transition: background 0.15s ease, transform 0.15s ease;
+    transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .nav-to-class-btn:hover {
-    background: var(--ui-accent);
-    color: #fff;
+    background: var(--ui-color, #29701b);
+    color: var(--text-on-accent, #fff);
+    border-color: var(--ui-color, #29701b);
     transform: translateY(-1px);
 }
 
