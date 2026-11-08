@@ -92,7 +92,41 @@ const RULE_LINK_MAP: Record<string, string> = {
     "study": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#StudyAction`,
     "study action": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#StudyAction`,
     "utilize": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#UtilizeAction`,
-    "utilize action": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#UtilizeAction`
+    "utilize action": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#UtilizeAction`,
+    // Additional Glossary Rules, Rests, Senses & Skills
+    "shape-shifting": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#ShapeShifting`,
+    "shape-shift": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#ShapeShifting`,
+    "shapeshifting": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#ShapeShifting`,
+    "short rest": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#ShortRest`,
+    "long rest": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#LongRest`,
+    "concentration": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Concentration`,
+    "unarmed strike": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#UnarmedStrike`,
+    "bonus action": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#BonusAction`,
+    "reaction": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Reaction`,
+    "ritual": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Ritual`,
+    "darkvision": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Darkvision`,
+    "blindsight": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Blindsight`,
+    "tremorsense": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Tremorsense`,
+    "truesight": `${DND_BEYOND_BR_2024_BASE}/rules-glossary#Truesight`,
+    // Skills
+    "acrobatics": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "animal handling": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "arcana": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "athletics": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "deception": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "history": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "insight": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "intimidation": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "investigation": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "medicine": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "nature": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "perception": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "performance": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "persuasion": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "religion": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "sleight of hand": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "stealth": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`,
+    "survival": `${DND_BEYOND_BR_2024_BASE}/playing-the-game#Skills`
 };
 
 export interface StandardActionDefinition {
@@ -360,26 +394,108 @@ function escapeHtml(text: string): string {
         .replace(/'/g, "&#39;");
 }
 
+const ABILITY_TOKEN_TO_ABBR: Record<string, string> = {
+    str: "STR",
+    strength: "STR",
+    dex: "DEX",
+    dexterity: "DEX",
+    con: "CON",
+    constitution: "CON",
+    int: "INT",
+    intelligence: "INT",
+    wis: "WIS",
+    wisdom: "WIS",
+    cha: "CHA",
+    charisma: "CHA"
+};
+
+function normalizeAbilityAbbr(token: string): string {
+    const clean = String(token || "").trim().toLowerCase();
+    return ABILITY_TOKEN_TO_ABBR[clean] || clean.toUpperCase();
+}
+
 function getAbilityMod(character: CharacterData | null | undefined, abbr: string): number {
     if (!character || !Array.isArray(character.abilities)) return 0;
-    const found = character.abilities.find(a => a.abbr.toUpperCase() === abbr.toUpperCase());
+    const targetAbbr = normalizeAbilityAbbr(abbr);
+    const found = character.abilities.find(
+        a => a.abbr.toUpperCase() === targetAbbr || a.name.toLowerCase() === String(abbr || "").trim().toLowerCase()
+    );
     return found ? Number(found.modifier) || 0 : 0;
 }
 
-function getClassLevel(character: CharacterData | null | undefined, className?: string): number {
+function getAbilityScore(character: CharacterData | null | undefined, abbr: string): number {
+    if (!character || !Array.isArray(character.abilities)) return 10;
+    const targetAbbr = normalizeAbilityAbbr(abbr);
+    const found = character.abilities.find(
+        a => a.abbr.toUpperCase() === targetAbbr || a.name.toLowerCase() === String(abbr || "").trim().toLowerCase()
+    );
+    return found ? Number(found.score) || 10 : 10;
+}
+
+function getClassLevel(character: CharacterData | null | undefined, className?: string, entityName?: string): number {
     if (!character || !Array.isArray(character.classes) || character.classes.length === 0) {
         return Number(character?.level) || 1;
     }
-    if (className) {
-        const lower = className.toLowerCase();
-        const found = character.classes.find(
+
+    const matchClassByString = (candidate: string) => {
+        const lower = candidate.toLowerCase();
+        return character.classes.find(
             c =>
                 c.name.toLowerCase() === lower ||
                 lower.includes(c.name.toLowerCase()) ||
                 (c.subclass && lower.includes(c.subclass.toLowerCase()))
         );
+    };
+
+    if (className) {
+        const found = matchClassByString(className);
         if (found) return Number(found.level) || 1;
     }
+
+    if (entityName) {
+        const entityLower = entityName.toLowerCase().trim();
+        const entityPrefix = entityLower.split(":")[0].trim();
+
+        // 1. Check if character has a matching feature with a known source class/subclass
+        if (Array.isArray(character.features)) {
+            const matchingFeature = character.features.find(f => {
+                const fLower = String(f.name || "").toLowerCase().trim();
+                return (
+                    fLower === entityLower ||
+                    fLower === entityPrefix ||
+                    entityLower.startsWith(`${fLower}:`) ||
+                    fLower.startsWith(`${entityPrefix}:`)
+                );
+            });
+            if (matchingFeature?.source) {
+                const foundFromFeature = matchClassByString(matchingFeature.source);
+                if (foundFromFeature) return Number(foundFromFeature.level) || 1;
+            }
+        }
+
+        // 2. Infer class from well-known class feature/action names
+        const classKeywordMap: Array<[RegExp, string]> = [
+            [/\b(?:wild shape|circle forms|primal strike|starry form|natural recovery|druidic|moonbeam|elemental fury)\b/i, "Druid"],
+            [/\b(?:bardic inspiration|mantle of inspiration|mantle of majesty|unbreakable majesty|beguiling magic|cutting words|countercharm|font of inspiration)\b/i, "Bard"],
+            [/\b(?:flurry of blows|patient defense|step of the wind|deflect attack|deflect attacks|deflect energy|slow fall|uncanny metabolism|martial arts|stunning strike|focus point|monk)\b/i, "Monk"],
+            [/\b(?:rage|reckless attack|brutal strike|frenzy|mindless rage)\b/i, "Barbarian"],
+            [/\b(?:second wind|action surge|indomitable|tactical mind|tactical shift|combat superiority)\b/i, "Fighter"],
+            [/\b(?:lay on hands|divine sense|divine smite|aura of protection|sacred weapon)\b/i, "Paladin"],
+            [/\b(?:sneak attack|cunning action|cunning strike|uncanny dodge|steady aim)\b/i, "Rogue"],
+            [/\b(?:font of magic|metamagic|innate sorcery|sorcery point)\b/i, "Sorcerer"],
+            [/\b(?:pact|eldritch|awakened mind|clairvoyant combatant|create thrall|dark one's blessing|magical cunning)\b/i, "Warlock"],
+            [/\b(?:arcane recovery|portent|bladesong|sculpt spells)\b/i, "Wizard"],
+            [/\b(?:channel divinity|divine intervention|turn undead|sear undead|war priest)\b/i, "Cleric"],
+            [/\b(?:favored enemy|deft explorer|tireless|nature's veil|dread ambusher)\b/i, "Ranger"]
+        ];
+        for (const [pattern, inferredClass] of classKeywordMap) {
+            if (pattern.test(entityLower)) {
+                const found = matchClassByString(inferredClass);
+                if (found) return Number(found.level) || 1;
+            }
+        }
+    }
+
     return Number(character.classes[0]?.level) || Number(character.level) || 1;
 }
 
@@ -388,7 +504,7 @@ function inferScaleValueFromContext(ctx?: TemplatePlaceholderContext): string | 
     const char = ctx?.character;
     const nameLower = String(ctx?.entityName || "").toLowerCase();
     const sourceLower = String(ctx?.sourceName || "").toLowerCase();
-    const cLvl = getClassLevel(char, ctx?.sourceName);
+    const cLvl = getClassLevel(char, ctx?.sourceName, ctx?.entityName);
     const totalLvl = Number(char?.level) || cLvl || 1;
     const profBonus = Number(char?.vitals?.proficiencyBonus) || Math.floor((totalLvl - 1) / 4) + 2;
 
@@ -538,9 +654,84 @@ function inferLimitedUseFromContext(ctx?: TemplatePlaceholderContext): string {
 }
 
 /**
+ * Safe recursive-descent arithmetic evaluator for numeric expressions containing
+ * `+`, `-`, `*`, `/`, unary `+`/`-`, and parentheses `(...)`.
+ */
+function evaluateArithmeticExpression(expr: string): number | null {
+    const src = expr.replace(/\s+/g, "");
+    if (!src || !/^[\d.+\-*/()]+$/.test(src)) return null;
+
+    let pos = 0;
+
+    function parseExpression(): number | null {
+        let left = parseTerm();
+        if (left === null) return null;
+        while (pos < src.length && (src[pos] === "+" || src[pos] === "-")) {
+            const op = src[pos++];
+            const right = parseTerm();
+            if (right === null) return null;
+            left = op === "+" ? left + right : left - right;
+        }
+        return left;
+    }
+
+    function parseTerm(): number | null {
+        let left = parseFactor();
+        if (left === null) return null;
+        while (pos < src.length && (src[pos] === "*" || src[pos] === "/")) {
+            const op = src[pos++];
+            const right = parseFactor();
+            if (right === null) return null;
+            if (op === "/") {
+                if (right === 0) return null;
+                left = left / right;
+            } else {
+                left = left * right;
+            }
+        }
+        return left;
+    }
+
+    function parseFactor(): number | null {
+        if (pos >= src.length) return null;
+        if (src[pos] === "+") {
+            pos++;
+            return parseFactor();
+        }
+        if (src[pos] === "-") {
+            pos++;
+            const val = parseFactor();
+            return val === null ? null : -val;
+        }
+        if (src[pos] === "(") {
+            pos++;
+            const val = parseExpression();
+            if (val === null || src[pos] !== ")") return null;
+            pos++;
+            return val;
+        }
+        const start = pos;
+        while (pos < src.length && (/[\d.]/.test(src[pos]))) {
+            pos++;
+        }
+        if (start === pos) return null;
+        const num = Number(src.slice(start, pos));
+        return Number.isFinite(num) ? num : null;
+    }
+
+    const result = parseExpression();
+    if (result === null || pos !== src.length || !Number.isFinite(result)) {
+        return null;
+    }
+    return result;
+}
+
+/**
  * Resolves D&D Beyond snippet/description Mustache-style placeholders such as:
  * `{{scalevalue}}`, `{{limiteduse}}`, `{{proficiency}}`, `{{savedc:cha}}`,
- * `{{modifier:cha}}`, `{{classlevel}}`, `{{characterlevel}}`, `{{spellattack:cha}}`.
+ * `{{modifier:cha}}`, `{{classlevel}}`, `{{characterlevel}}`, `{{spellattack:cha}}`,
+ * `{{(classlevel/2)@rounddown}}`, `{{((classlevel-1)/7)@rounddown,min:1}}`,
+ * `{{(13+modifier:wis)#unsigned}}`, `{{modifier:str+proficiency}}`, etc.
  */
 export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePlaceholderContext): string {
     if (!rawText || !rawText.includes("{{")) return rawText;
@@ -548,103 +739,154 @@ export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePl
     const char = ctx?.character;
     const totalLvl = Number(char?.level) || 1;
     const profBonus = Number(char?.vitals?.proficiencyBonus) || Math.floor((totalLvl - 1) / 4) + 2;
-    const cLvl = getClassLevel(char, ctx?.sourceName);
+    const cLvl = getClassLevel(char, ctx?.sourceName, ctx?.entityName);
+
+    const ABILITY_KEY_PATTERN =
+        "(?:strength|dexterity|constitution|intelligence|wisdom|charisma|str|dex|con|int|wis|cha)";
 
     return rawText.replace(/\{\{([^{}]+)\}\}/gi, (_fullMatch, innerRaw: string) => {
         const rawExpr = String(innerRaw || "").trim();
         if (!rawExpr) return "";
 
-        // Strip trailing display modifiers like #signed, #unsigned, @min:1, etc., but keep note of #signed
+        // 1. Parse display & math flags (#signed, #unsigned, @rounddown, @roundup, @round, @min:N, ,min:N, @max:N, ,max:N)
         const wantsSigned = /#signed\b/i.test(rawExpr);
         const wantsUnsigned = /#unsigned\b/i.test(rawExpr);
-        const minMatch = rawExpr.match(/@min:(-?\d+)/i);
-        const minVal = minMatch ? Number(minMatch[1]) : undefined;
 
+        let roundMode: "down" | "up" | "nearest" | undefined;
+        if (/(?:[@#,])rounddown\b/i.test(rawExpr)) {
+            roundMode = "down";
+        } else if (/(?:[@#,])roundup\b/i.test(rawExpr)) {
+            roundMode = "up";
+        } else if (/(?:[@#,])round\b/i.test(rawExpr)) {
+            roundMode = "nearest";
+        }
+
+        const minMatch = rawExpr.match(/(?:@|,)min:(-?\d+(?:\.\d+)?)/i);
+        const minVal = minMatch ? Number(minMatch[1]) : undefined;
+        const maxMatch = rawExpr.match(/(?:@|,)max:(-?\d+(?:\.\d+)?)/i);
+        const maxVal = maxMatch ? Number(maxMatch[1]) : undefined;
+
+        // Strip flags while preserving commas used in multi-ability expressions (e.g. savedc:dex,str)
         const cleanExpr = rawExpr
-            .replace(/#[a-z0-9_-]+/gi, "")
+            .replace(/#[a-z0-9_:-]+/gi, "")
             .replace(/@[a-z0-9_:-]+/gi, "")
+            .replace(/,(?:min|max):-?\d+(?:\.\d+)?/gi, "")
+            .replace(/,round(?:down|up)?\b/gi, "")
             .trim()
             .toLowerCase();
 
         const formatNumber = (n: number, defaultSigned = false): string => {
-            const clamped = minVal !== undefined ? Math.max(minVal, n) : n;
-            if (wantsUnsigned) return String(Math.abs(clamped));
-            if (wantsSigned || defaultSigned) return clamped >= 0 ? `+${clamped}` : `${clamped}`;
-            return String(clamped);
+            let val = n;
+            if (roundMode === "down") val = Math.floor(val);
+            else if (roundMode === "up") val = Math.ceil(val);
+            else if (roundMode === "nearest") val = Math.round(val);
+            else if (!Number.isInteger(val)) val = Math.floor(val);
+
+            if (minVal !== undefined) val = Math.max(minVal, val);
+            if (maxVal !== undefined) val = Math.min(maxVal, val);
+            if (Object.is(val, -0)) val = 0;
+
+            if (wantsUnsigned) return String(Math.abs(val));
+            if (wantsSigned || defaultSigned) return val >= 0 ? `+${val}` : `${val}`;
+            return String(val);
         };
 
-        // 1. {{scalevalue}}
-        if (cleanExpr.startsWith("scalevalue")) {
-            return inferScaleValueFromContext(ctx) || `+${profBonus}`;
-        }
-
-        // 2. {{limiteduse}}
-        if (cleanExpr.startsWith("limiteduse")) {
-            return inferLimitedUseFromContext(ctx);
-        }
-
-        // 3. {{proficiency}}
-        if (cleanExpr === "proficiency" || cleanExpr.startsWith("proficiency")) {
-            if (cleanExpr.includes("*2") || cleanExpr.includes("* 2")) {
-                return formatNumber(profBonus * 2, wantsSigned);
+        // 2. Standalone {{scalevalue}} and {{limiteduse}}
+        if (cleanExpr === "scalevalue" || cleanExpr.startsWith("scalevalue")) {
+            const sv = inferScaleValueFromContext(ctx) || `+${profBonus}`;
+            const numericSv = Number(sv);
+            if (Number.isFinite(numericSv) && (wantsUnsigned || wantsSigned || minVal !== undefined || maxVal !== undefined)) {
+                return formatNumber(numericSv, sv.startsWith("+"));
             }
-            if (cleanExpr.includes("/2") || cleanExpr.includes("/ 2")) {
-                const half = rawExpr.toLowerCase().includes("roundup")
-                    ? Math.ceil(profBonus / 2)
-                    : Math.floor(profBonus / 2);
-                return formatNumber(half, wantsSigned);
+            return sv;
+        }
+
+        if (cleanExpr === "limiteduse" || cleanExpr.startsWith("limiteduse")) {
+            const lu = inferLimitedUseFromContext(ctx);
+            const numericLu = Number(lu);
+            if (Number.isFinite(numericLu) && (wantsUnsigned || wantsSigned || minVal !== undefined || maxVal !== undefined)) {
+                return formatNumber(numericLu, false);
             }
-            return formatNumber(profBonus, wantsSigned);
+            return lu;
         }
 
-        // 4. {{classlevel}} / {{characterlevel}}
-        if (cleanExpr.startsWith("classlevel")) {
-            if (cleanExpr.includes("*5") || cleanExpr.includes("* 5")) return String(cLvl * 5);
-            if (cleanExpr.includes("*2") || cleanExpr.includes("* 2")) return String(cLvl * 2);
-            if (cleanExpr.includes("/2") || cleanExpr.includes("/ 2")) return String(Math.floor(cLvl / 2));
-            return String(cLvl);
-        }
-        if (cleanExpr.startsWith("characterlevel")) {
-            return String(totalLvl);
+        // 3. Substitute D&D Beyond variables into cleanExpr and evaluate arithmetic
+        let defaultSigned = false;
+
+        // Detect attack roll / spell attack expressions (e.g. spellattack:cha or modifier:str+proficiency)
+        const bareNoParens = cleanExpr.replace(/[()\s]+/g, "");
+        if (
+            cleanExpr.includes("spellattack") ||
+            new RegExp(`^modifier:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*\\+proficiency$`, "i").test(bareNoParens) ||
+            new RegExp(`^proficiency\\+modifier:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*$`, "i").test(bareNoParens)
+        ) {
+            defaultSigned = true;
         }
 
-        // 5. {{savedc:...}} (e.g. {{savedc:cha}}, {{savedc:con}}, {{savedc:dex,str}})
-        if (cleanExpr.startsWith("savedc")) {
-            const afterColon = cleanExpr.split(":")[1] || "";
-            const statTokens = afterColon.split(",").map(s => s.trim()).filter(Boolean);
-            if (statTokens.length > 0) {
-                const bestMod = Math.max(...statTokens.map(st => getAbilityMod(char, st)));
-                return String(8 + profBonus + bestMod);
+        let mathExpr = cleanExpr;
+
+        // 3a. savedc:stat1,stat2 or standalone savedc
+        mathExpr = mathExpr.replace(
+            new RegExp(`savedc:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*`, "gi"),
+            match => {
+                const afterColon = match.slice("savedc:".length);
+                const stats = afterColon.split(",").map(s => s.trim()).filter(Boolean);
+                const bestMod = Math.max(...stats.map(st => getAbilityMod(char, st)));
+                return `(${8 + profBonus + bestMod})`;
             }
-            return String(char?.vitals?.spellSaveDc || 8 + profBonus);
-        }
+        );
+        mathExpr = mathExpr.replace(/\bsavedc\b/gi, () => {
+            return `(${Number(char?.vitals?.spellSaveDc) || 8 + profBonus})`;
+        });
 
-        // 6. {{spellattack:...}}
-        if (cleanExpr.startsWith("spellattack")) {
-            const afterColon = cleanExpr.split(":")[1] || "";
-            const statTokens = afterColon.split(",").map(s => s.trim()).filter(Boolean);
-            if (statTokens.length > 0) {
-                const bestMod = Math.max(...statTokens.map(st => getAbilityMod(char, st)));
-                return formatNumber(profBonus + bestMod, true);
+        // 3b. spellattack:stat1,stat2 or standalone spellattack
+        mathExpr = mathExpr.replace(
+            new RegExp(`spellattack:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*`, "gi"),
+            match => {
+                const afterColon = match.slice("spellattack:".length);
+                const stats = afterColon.split(",").map(s => s.trim()).filter(Boolean);
+                const bestMod = Math.max(...stats.map(st => getAbilityMod(char, st)));
+                return `(${profBonus + bestMod})`;
             }
-            return formatNumber(Number(char?.vitals?.spellAttackBonus) || profBonus, true);
-        }
+        );
+        mathExpr = mathExpr.replace(/\bspellattack\b/gi, () => {
+            return `(${Number(char?.vitals?.spellAttackBonus) || profBonus})`;
+        });
 
-        // 7. {{modifier:...}} (e.g. {{modifier:cha}}, {{modifier:dex,str}}, {{modifier:con}})
-        if (cleanExpr.startsWith("modifier:")) {
-            const afterColon = cleanExpr.slice("modifier:".length);
-            const statTokens = afterColon.split(/[^a-z]+/).filter(Boolean);
-            if (statTokens.length > 0) {
-                const bestMod = Math.max(...statTokens.map(st => getAbilityMod(char, st)));
-                return formatNumber(bestMod, wantsSigned);
+        // 3c. modifier:stat1,stat2
+        mathExpr = mathExpr.replace(
+            new RegExp(`modifier:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*`, "gi"),
+            match => {
+                const afterColon = match.slice("modifier:".length);
+                const stats = afterColon.split(",").map(s => s.trim()).filter(Boolean);
+                const bestMod = Math.max(...stats.map(st => getAbilityMod(char, st)));
+                return `(${bestMod})`;
             }
-        }
+        );
 
-        // 8. {{score:...}} (e.g. {{score:str}})
-        if (cleanExpr.startsWith("score:")) {
-            const statToken = cleanExpr.slice("score:".length).trim().toUpperCase();
-            const found = char?.abilities?.find(a => a.abbr.toUpperCase() === statToken);
-            if (found) return String(found.score);
+        // 3d. score:stat1,stat2
+        mathExpr = mathExpr.replace(
+            new RegExp(`score:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*`, "gi"),
+            match => {
+                const afterColon = match.slice("score:".length);
+                const stats = afterColon.split(",").map(s => s.trim()).filter(Boolean);
+                const bestScore = Math.max(...stats.map(st => getAbilityScore(char, st)));
+                return `(${bestScore})`;
+            }
+        );
+
+        // 3e. Scalar character tokens: classlevel, characterlevel, proficiency, maxhp, speed, passiveperception
+        mathExpr = mathExpr
+            .replace(/\bclasslevel\b/gi, `(${cLvl})`)
+            .replace(/\bcharacterlevel\b/gi, `(${totalLvl})`)
+            .replace(/\bproficiency\b/gi, `(${profBonus})`)
+            .replace(/\bmaxhp\b/gi, `(${Number(char?.vitals?.maxHp) || 1})`)
+            .replace(/\b(?:walk)?speed\b/gi, `(${parseInt(String(char?.vitals?.speed || "30"), 10) || 30})`)
+            .replace(/\bpassiveperception\b/gi, `(${Number(char?.vitals?.passivePerception) || 10 + getAbilityMod(char, "WIS")})`);
+
+        const evaluated = evaluateArithmeticExpression(mathExpr);
+        if (evaluated !== null) {
+            return formatNumber(evaluated, defaultSigned);
         }
 
         return _fullMatch;
@@ -711,7 +953,7 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
     // 0. Resolve any D&D Beyond {{scalevalue}}, {{limiteduse}}, {{savedc:...}}, {{modifier:...}} placeholders first
     let working = resolveDescriptionPlaceholders(value, ctx);
 
-    // 1. Replace explicit [condition], [spell], [item], [rules], and [action] tags
+    // 1. Replace explicit [condition], [spell], [item], [rules], [action], [skill], [sense], [weaponprop] tags
     //    Support D&D Beyond's [tag]target;display_label[/tag] semicolon syntax
     working = working
         .replace(/\[conditions?\]([\s\S]*?)\[\/conditions?\]/gi, (_match, rawConditionName: string) => {
@@ -724,13 +966,13 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
             if (!target) return "";
             return storeBlock(renderSpellButtonHtml(target, label));
         })
-        .replace(/\[(?:items?|magicitems?|equipments?|weapons?)\]([\s\S]*?)\[\/(?:items?|magicitems?|equipments?|weapons?)\]/gi, (_match, rawItemName: string) => {
+        .replace(/\[(?:items?|magicitems?|equipments?|weapons?|armors?|wondrousitems?)\]([\s\S]*?)\[\/(?:items?|magicitems?|equipments?|weapons?|armors?|wondrousitems?)\]/gi, (_match, rawItemName: string) => {
             const { target, label } = parseTagTargetAndLabel(rawItemName);
             if (!target) return "";
             const cleanTarget = target.replace(/^\d+-/, "").replace(/-/g, " ").trim();
             return storeBlock(renderItemButtonHtml(cleanTarget, label));
         })
-        .replace(/\[rules?\]([\s\S]*?)\[\/rules?\]/gi, (_match, rawRuleName: string) => {
+        .replace(/\[(?:rules?|skills?|senses?|weaponprops?|weaponproperties|mastery|masteries)\]([\s\S]*?)\[\/(?:rules?|skills?|senses?|weaponprops?|weaponproperties|mastery|masteries)\]/gi, (_match, rawRuleName: string) => {
             const { target, label } = parseTagTargetAndLabel(rawRuleName);
             if (!target) return "";
             return storeBlock(renderRuleLinkHtml(target, label));
@@ -739,6 +981,10 @@ export function linkifyConditionAndSpellTags(value?: string, ctx?: TemplatePlace
             const { target, label } = parseTagTargetAndLabel(rawActionName);
             if (!target) return "";
             return storeBlock(renderActionLinkHtml(target, label));
+        })
+        .replace(/\[([a-z][a-z0-9_-]*)\]([\s\S]*?)\[\/\1\]/gi, (_match, _tagName: string, rawInner: string) => {
+            const { label } = parseTagTargetAndLabel(rawInner);
+            return label || "";
         });
 
     // 1.5. Intercept D&D Beyond HTML anchor tags pointing to /equipment/, /magic-items/, /weapons/, /items/, or /spells/
