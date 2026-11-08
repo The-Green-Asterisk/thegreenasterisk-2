@@ -29,17 +29,17 @@ export class CharacterSpell {
     @Column({ type: "boolean", default: false })
     alwaysPrepared!: boolean;
 
-    @Column({ type: "varchar", length: 50, default: "1 Action" })
+    @Column({ type: "varchar", length: 255, default: "1 Action" })
     castingTime!: string;
 
-    @Column({ type: "varchar", length: 50, default: "Touch" })
+    @Column({ type: "varchar", length: 255, default: "Touch" })
     range!: string;
 
-    @Column({ type: "varchar", length: 100, default: "Instantaneous" })
+    @Column({ type: "varchar", length: 255, default: "Instantaneous" })
     duration!: string;
 
-    @Column({ type: "varchar", length: 50, default: "V, S" })
-    components!: string;
+    @Column({ type: "text", nullable: true })
+    components?: string;
 
     @Column({ type: "boolean", default: false })
     concentration!: boolean;
