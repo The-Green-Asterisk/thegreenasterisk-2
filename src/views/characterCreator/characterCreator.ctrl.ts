@@ -673,6 +673,20 @@ export class CharacterCreatorController {
                     const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
                     const className = cls?.name || "Spellcaster";
 
+                    if ((maxCantrips > 0 && cantripCount > maxCantrips) || (maxPrepared > 0 && spellCount > maxPrepared)) {
+                        let warnMsg = "";
+                        if (cantripCount > maxCantrips && spellCount > maxPrepared) {
+                            warnMsg = `Warning: You have selected more spells than your allotment (${cantripCount}/${maxCantrips} cantrips, ${spellCount}/${maxPrepared} prepared spells). Click Next again to proceed anyway, or adjust your selections below.`;
+                        } else if (cantripCount > maxCantrips) {
+                            warnMsg = `Warning: You have selected more cantrips (${cantripCount}) than your allotment (${maxCantrips}). Click Next again to proceed anyway, or adjust your selections below.`;
+                        } else {
+                            warnMsg = `Warning: You have selected more prepared spells (${spellCount}) than your allotment (${maxPrepared}). Click Next again to proceed anyway, or adjust your selections below.`;
+                        }
+                        this.showAlert(warnMsg, "warning");
+                        this.spellsWarningDismissed = true;
+                        return false;
+                    }
+
                     if (cantripCount === 0 && spellCount === 0) {
                         this.showAlert(
                             `Warning: As a ${className}, your class uses spells, but you haven't selected any spells. Click Next again to proceed without spells, or choose your spells below.`,
@@ -1632,16 +1646,6 @@ export class CharacterCreatorController {
 
         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => validCantripNames.has(s));
         this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => validLeveledNames.has(s));
-
-        const maxCantrips = this.getMaxCantrips();
-        if (this.state.selectedCantrips.length > maxCantrips) {
-            this.state.selectedCantrips = this.state.selectedCantrips.slice(0, maxCantrips);
-        }
-
-        const maxPrepared = this.getMaxPreparedSpells();
-        if (this.state.selectedSpellsLevel1.length > maxPrepared) {
-            this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.slice(0, maxPrepared);
-        }
     }
 
     public getSmartAutoFillSpells(): { cantrips: string[]; prepared: string[] } {
@@ -3760,6 +3764,8 @@ export class CharacterCreatorController {
 
         const cantripsChosen = this.state.selectedCantrips.length;
         const spellsChosen = this.state.selectedSpellsLevel1.length;
+        const isCantripsOver = maxCantrips > 0 && cantripsChosen > maxCantrips;
+        const isSpellsOver = maxPrepared > 0 && spellsChosen > maxPrepared;
 
         return `
             <div class="step-panel active">
@@ -3809,8 +3815,8 @@ export class CharacterCreatorController {
                     <div class="box-header-with-badge">
                         <h4>Cantrips (Level 0)</h4>
                         ${maxCantrips > 0 ? `
-                            <span class="spell-count-badge ${cantripsChosen === maxCantrips ? "maxed" : "info"}">
-                                <i class="fa-solid ${cantripsChosen === maxCantrips ? "fa-check" : "fa-sparkles"}"></i>
+                            <span class="spell-count-badge ${isCantripsOver ? "over-limit" : cantripsChosen === maxCantrips ? "maxed" : "info"}">
+                                <i class="fa-solid ${isCantripsOver ? "fa-triangle-exclamation" : cantripsChosen === maxCantrips ? "fa-check" : "fa-sparkles"}"></i>
                                 ${cantripsChosen} / ${maxCantrips} Chosen
                             </span>
                         ` : `
@@ -3829,15 +3835,12 @@ export class CharacterCreatorController {
                         <div class="item-select-list">
                             ${available.cantrips.map((sp) => {
                                 const isSelected = this.state.selectedCantrips.includes(sp.name);
-                                const isLimitReached = !isSelected && cantripsChosen >= maxCantrips;
                                 return `
-                                    <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
-                                         data-spell-name="${sp.name}"
-                                         ${isLimitReached ? 'title="Cantrip limit reached. Deselect one to choose this cantrip."' : ""}>
+                                    <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""}" 
+                                         data-spell-name="${sp.name}">
                                         <div class="item-row-left">
                                             <div class="item-row-title">
                                                 ${sp.name} (${sp.school})
-                                                ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
                                             </div>
                                             <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
                                             <div class="item-row-desc">${sp.description}</div>
@@ -3854,8 +3857,8 @@ export class CharacterCreatorController {
                     <div class="box-header-with-badge">
                         <h4>Prepared Spells ${maxSpellLevel > 1 ? `(Levels 1–${maxSpellLevel})` : "(Level 1)"}</h4>
                         ${maxPrepared > 0 ? `
-                            <span class="spell-count-badge ${spellsChosen === maxPrepared ? "maxed" : "info"}">
-                                <i class="fa-solid ${spellsChosen === maxPrepared ? "fa-check" : "fa-book"}"></i>
+                            <span class="spell-count-badge ${isSpellsOver ? "over-limit" : spellsChosen === maxPrepared ? "maxed" : "info"}">
+                                <i class="fa-solid ${isSpellsOver ? "fa-triangle-exclamation" : spellsChosen === maxPrepared ? "fa-check" : "fa-book"}"></i>
                                 ${spellsChosen} / ${maxPrepared} Prepared
                             </span>
                         ` : `
@@ -3901,13 +3904,11 @@ export class CharacterCreatorController {
                         <div class="item-select-list">
                             ${(this.activeSpellLevelFilter === "all" ? available.leveledSpells : available.leveledSpells.filter((s) => s.level === this.activeSpellLevelFilter)).map((sp) => {
                                 const isSelected = this.state.selectedSpellsLevel1.includes(sp.name);
-                                const isLimitReached = !isSelected && spellsChosen >= maxPrepared;
                                 return `
-                                    <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isLimitReached ? "limit-reached" : ""}" 
+                                    <div class="item-check-row spell1-row ${isSelected ? "selected" : ""}" 
                                          data-spell-name="${sp.name}"
                                          data-spell-school="${sp.school}"
-                                         data-spell-level="${sp.level}"
-                                         ${isLimitReached ? 'title="Prepared spell limit reached. Deselect one to prepare this spell."' : ""}>
+                                         data-spell-level="${sp.level}">
                                         <div class="item-row-left">
                                             <div class="item-row-title">
                                                 <span>${sp.name}</span>
@@ -3915,7 +3916,6 @@ export class CharacterCreatorController {
                                                 <span class="stat-req-pill">${sp.school}</span>
                                                 ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
                                                 ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain"></i> Conc.</span>' : ""}
-                                                ${isLimitReached ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-lock"></i> Allotment Full</span>' : ""}
                                             </div>
                                             <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
                                             <div class="item-row-desc">${sp.description}</div>
@@ -4719,46 +4719,32 @@ export class CharacterCreatorController {
                 this.renderStep(8);
             });
 
-            // Cantrip toggles with strict limit enforcement
+            // Cantrip toggles
             document.querySelectorAll(".cantrip-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
-                    const maxCantrips = this.getMaxCantrips();
                     if (this.state.selectedCantrips.includes(spName)) {
                         this.state.selectedCantrips = this.state.selectedCantrips.filter((s) => s !== spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     } else {
-                        if (this.state.selectedCantrips.length >= maxCantrips) {
-                            this.showAlert(`You can only choose ${maxCantrips} cantrip${maxCantrips === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
-                            return;
-                        }
                         this.state.selectedCantrips.push(spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     }
+                    this.spellsWarningDismissed = false;
+                    this.hideAlert();
                     this.renderStep(8);
                 });
             });
 
-            // Prepared spell toggles with strict limit enforcement
+            // Prepared spell toggles
             document.querySelectorAll(".spell1-row").forEach((row) => {
                 row.addEventListener("click", () => {
                     const spName = row.getAttribute("data-spell-name") || "";
-                    const maxPrepared = this.getMaxPreparedSpells();
                     if (this.state.selectedSpellsLevel1.includes(spName)) {
                         this.state.selectedSpellsLevel1 = this.state.selectedSpellsLevel1.filter((s) => s !== spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     } else {
-                        if (this.state.selectedSpellsLevel1.length >= maxPrepared) {
-                            this.showAlert(`You can only prepare ${maxPrepared} spell${maxPrepared === 1 ? "" : "s"} at Level ${this.state.level}. Deselect one first to switch.`);
-                            return;
-                        }
                         this.state.selectedSpellsLevel1.push(spName);
-                        this.spellsWarningDismissed = false;
-                        this.hideAlert();
                     }
+                    this.spellsWarningDismissed = false;
+                    this.hideAlert();
                     this.renderStep(8);
                 });
             });

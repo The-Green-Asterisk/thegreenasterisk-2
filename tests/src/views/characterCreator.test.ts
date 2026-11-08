@@ -381,7 +381,7 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getMaxPreparedSpells()).toBe(1);
     });
 
-    it("sanitizes and truncates excess or invalid spell selections when class or level changes", () => {
+    it("sanitizes invalid spell selections when class changes while preserving extra selections for allotment warnings", () => {
         // As a Level 1 Sorcerer, select 4 cantrips
         ctrl.state.classId = "sorcerer";
         ctrl.state.level = 1;
@@ -393,8 +393,9 @@ describe("CharacterCreatorController", () => {
         ctrl.state.classId = "bard";
         ctrl.sanitizeSpellSelections();
 
-        expect(ctrl.state.selectedCantrips.length).toBeLessThanOrEqual(ctrl.getMaxCantrips());
         expect(ctrl.state.selectedCantrips.includes("Fire Bolt")).toBe(false); // Not on Bard list
+        // Valid bard cantrips are preserved even if exceeding allotment (3 > 2), so wizard can warn on advance
+        expect(ctrl.state.selectedCantrips).toEqual(["Light", "Minor Illusion", "Prestidigitation"]);
 
         // Switch to non-caster Fighter without feat -> spells cleared to empty
         ctrl.state.classId = "fighter";
@@ -1942,5 +1943,81 @@ describe("CharacterCreatorController", () => {
         // Clicking disabled button does not add a class
         addBtnDisabled.click();
         expect(ctrl.state.classes.length).toBe(1);
+    });
+
+    it("warns player when attempting to advance beyond Step 8 (Spells) with more spells than allotment", () => {
+        document.body.innerHTML = `
+            <div id="creator-validation-alert" class="hidden"></div>
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Level 1 Wizard: max 3 cantrips, max 4 prepared spells
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        ctrl.state.classes = [{ classId: "wizard", level: 1, subclassId: "" }];
+        ctrl.syncStateClassProperties();
+        ctrl.state.currentStep = 8;
+
+        const maxCantrips = ctrl.getMaxCantrips();
+        const maxPrepared = ctrl.getMaxPreparedSpells();
+        expect(maxCantrips).toBe(3);
+        expect(maxPrepared).toBe(4);
+
+        // Select 4 cantrips (1 more than allotment)
+        ctrl.state.selectedCantrips = ["Light", "Mage Hand", "Prestidigitation", "Minor Illusion"];
+        ctrl.state.selectedSpellsLevel1 = ["Shield", "Magic Missile"];
+
+        // Attempting to advance beyond step 8 without dismissing warning should block and show warning
+        const canAdvance = ctrl.validateCurrentStep();
+        expect(canAdvance).toBe(false);
+        const alertBox = document.getElementById("creator-validation-alert")!;
+        expect(alertBox.classList.contains("hidden")).toBe(false);
+        expect(alertBox.classList.contains("warning")).toBe(true);
+        expect(alertBox.textContent).toContain("Warning: You have selected more cantrips (4) than your allotment (3)");
+        expect(alertBox.textContent).toContain("Click Next again to proceed anyway");
+
+        // Clicking Next a second time acknowledges warning and allows advancing
+        const canAdvanceSecondAttempt = ctrl.validateCurrentStep();
+        expect(canAdvanceSecondAttempt).toBe(true);
+
+        // If player deselects back to allotment (3 cantrips), advance succeeds immediately
+        ctrl.state.selectedCantrips = ["Light", "Mage Hand", "Prestidigitation"];
+        ctrl.spellsWarningDismissed = false;
+        expect(ctrl.validateCurrentStep()).toBe(true);
+    });
+
+    it("does not allow the Allowed number of spells to change when chosen spells exceed allotment in Character Sheet", async () => {
+        const { getCharacterSpellLevelLimits } = await import("../../../src/views/characterSheet/components/spells");
+
+        // Character with 3 default cantrips and 2 level 1 slots
+        const charData: any = {
+            level: 1,
+            classes: [{ name: "Wizard", level: 1 }],
+            spellSlots: {
+                level1: { total: 2, used: 0 }
+            },
+            spells: [
+                // 5 cantrips chosen (allotment is 3)
+                { name: "Light", level: 0 },
+                { name: "Mage Hand", level: 0 },
+                { name: "Minor Illusion", level: 0 },
+                { name: "Prestidigitation", level: 0 },
+                { name: "Ray of Frost", level: 0 },
+                // 4 level 1 spells chosen (allotment is 2)
+                { name: "Shield", level: 1 },
+                { name: "Magic Missile", level: 1 },
+                { name: "Find Familiar", level: 1 },
+                { name: "Detect Magic", level: 1 }
+            ]
+        };
+
+        const limits = getCharacterSpellLevelLimits(charData);
+
+        // The allowed numbers must NOT change to 5 and 4! They must remain at their actual allotment (3 and 2)
+        expect(limits.currentByLevel[0].length).toBe(5);
+        expect(limits.allowedByLevel[0]).toBe(3); // strictly allotment, not 5
+
+        expect(limits.currentByLevel[1].length).toBe(4);
+        expect(limits.allowedByLevel[1]).toBe(2); // strictly allotment, not 4
     });
 });
