@@ -247,16 +247,25 @@ export class CharacterCreatorController {
                 level: this.state.level || 1,
                 subclassId: this.state.subclassId || ""
             }];
-        } else if (this.state.classes.length === 1) {
-            if (this.state.classId) this.state.classes[0].classId = this.state.classId;
-            if (this.state.subclassId !== undefined) this.state.classes[0].subclassId = this.state.subclassId;
-            if (this.state.level && this.state.classes[0].level !== this.state.level) {
-                this.state.classes[0].level = this.state.level;
-            }
         }
         const primary = this.state.classes[0];
-        this.state.classId = primary.classId;
-        this.state.subclassId = primary.subclassId || "";
+        // If state properties were directly modified outside of classes (e.g. in unit tests), sync into primary:
+        if (this.state.classId && this.state.classId !== primary.classId) {
+            primary.classId = this.state.classId;
+        } else {
+            this.state.classId = primary.classId;
+        }
+
+        if (this.state.subclassId !== undefined && this.state.subclassId !== primary.subclassId) {
+            primary.subclassId = this.state.subclassId;
+        } else {
+            this.state.subclassId = primary.subclassId || "";
+        }
+
+        if (this.state.classes.length === 1 && this.state.level && this.state.level !== primary.level) {
+            primary.level = this.state.level;
+        }
+
         this.state.level = this.getTotalLevel();
     }
 
@@ -265,6 +274,30 @@ export class CharacterCreatorController {
             return this.state.level || 1;
         }
         return this.state.classes.reduce((sum, c) => sum + (c.level || 1), 0);
+    }
+
+    public updateMulticlassBarPositions() {
+        const bottomBar = document.getElementById("multiclass-bottom-bar");
+        const topBar = document.getElementById("multiclass-top-bar");
+        const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
+        if (!panel) return;
+
+        const panelRect = panel.getBoundingClientRect();
+        const viewportHeight = typeof window !== "undefined" ? (window.innerHeight || document.documentElement.clientHeight || 800) : 800;
+
+        if (bottomBar) {
+            // Locked to bottom of character-step-panel, or bottom of viewport, whichever is higher and in view
+            const bottomOffset = panelRect.bottom < viewportHeight ? (viewportHeight - panelRect.bottom) : 0;
+            bottomBar.style.bottom = `${bottomOffset}px`;
+        }
+
+        if (topBar) {
+            const siteNav = document.querySelector("nav") as HTMLElement;
+            const navHeight = siteNav ? siteNav.offsetHeight : 0;
+            const minTop = navHeight > 0 ? (navHeight + 6) : 10;
+            const topOffset = Math.max(minTop, panelRect.top);
+            topBar.style.top = `${topOffset}px`;
+        }
     }
 
     public updateMulticlassNavBars() {
@@ -425,9 +458,17 @@ export class CharacterCreatorController {
             });
         });
 
-        // Multiclass scroll observer
+        // Multiclass scroll and resize observer
         window.addEventListener("scroll", () => {
             if (this.state.currentStep === 3) {
+                this.updateMulticlassBarPositions();
+                this.updateMulticlassNavBars();
+            }
+        }, { passive: true });
+
+        window.addEventListener("resize", () => {
+            if (this.state.currentStep === 3) {
+                this.updateMulticlassBarPositions();
                 this.updateMulticlassNavBars();
             }
         }, { passive: true });
@@ -1453,6 +1494,11 @@ export class CharacterCreatorController {
 
         panelsContainer.innerHTML = panelHtml;
         this.attachStepEvents(step);
+
+        if (step === 3) {
+            this.updateMulticlassBarPositions();
+            this.updateMulticlassNavBars();
+        }
 
         if (preserveScroll && typeof window !== "undefined" && window.scrollY !== prevScrollY) {
             window.scrollTo({ top: prevScrollY, behavior: "instant" as any });
@@ -3695,8 +3741,11 @@ export class CharacterCreatorController {
                     if (this.state.classes[cIdx]) {
                         this.state.classes[cIdx].classId = cId;
                         const cls = this.classes.find((c) => c.id === cId);
-                        this.state.classes[cIdx].subclassId = cls?.subclasses?.[0]?.id || "";
+                        const newSubId = cls?.subclasses?.[0]?.id || "";
+                        this.state.classes[cIdx].subclassId = newSubId;
                         if (cIdx === 0) {
+                            this.state.classId = cId;
+                            this.state.subclassId = newSubId;
                             this.state.weaponMasteries = [];
                             if (cls) {
                                 this.initClassDefaultEquipment(cls);
@@ -3716,6 +3765,9 @@ export class CharacterCreatorController {
                     const subId = card.getAttribute("data-subclass-id") || "";
                     if (this.state.classes[cIdx]) {
                         this.state.classes[cIdx].subclassId = subId;
+                        if (cIdx === 0) {
+                            this.state.subclassId = subId;
+                        }
                         this.syncStateClassProperties();
                         this.sanitizeSpellSelections();
                         this.renderStep(3);
@@ -3730,6 +3782,9 @@ export class CharacterCreatorController {
                     const targetLvl = parseInt(badge.getAttribute("data-level") || "1", 10);
                     if (this.state.classes[cIdx]) {
                         this.state.classes[cIdx].level = targetLvl;
+                        if (cIdx === 0) {
+                            this.state.level = targetLvl;
+                        }
                         this.state.level = this.getTotalLevel();
                         this.syncStateClassProperties();
                         this.sanitizeSpellSelections();
@@ -3752,12 +3807,7 @@ export class CharacterCreatorController {
                 this.syncStateClassProperties();
                 this.updateLiveSummary();
                 this.renderStep(3);
-
-                const newIdx = this.state.classes.length - 1;
-                const newEl = document.getElementById(`class-section-${newIdx}`);
-                if (newEl && typeof newEl.scrollIntoView === "function") {
-                    newEl.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
+                this.updateMulticlassBarPositions();
                 this.updateMulticlassNavBars();
             });
 
@@ -3770,6 +3820,7 @@ export class CharacterCreatorController {
                         this.sanitizeSpellSelections();
                         this.updateLiveSummary();
                         this.renderStep(3);
+                        this.updateMulticlassBarPositions();
                         this.updateMulticlassNavBars();
                     }
                 });
@@ -3872,6 +3923,7 @@ export class CharacterCreatorController {
                 });
             });
 
+            this.updateMulticlassBarPositions();
             this.updateMulticlassNavBars();
         } else if (step === 4) {
             document.querySelectorAll(".background-card").forEach((card) => {

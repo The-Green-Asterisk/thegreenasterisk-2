@@ -771,6 +771,41 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getTotalLevel()).toBe(10);
     });
 
+    it("allows selecting class, subclass, and feature choices on the primary class", () => {
+        const ctrl = new CharacterCreatorController();
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+
+        ctrl.renderStep(3);
+        const container = document.getElementById("creator-step-panels")!;
+
+        // Primary class is initially Fighter
+        expect(ctrl.state.classId).toBe("fighter");
+
+        // Click Rogue class card on primary class
+        const rogueCard = container.querySelector('.class-card[data-class-id="rogue"][data-class-index="0"]') as HTMLElement;
+        expect(rogueCard).not.toBeNull();
+        rogueCard.click();
+
+        expect(ctrl.state.classes[0].classId).toBe("rogue");
+        expect(ctrl.state.classId).toBe("rogue");
+
+        // Unlock Level 3 for Rogue so subclasses are shown
+        const lvl3Badge = container.querySelector('.progression-lvl-badge[data-level="3"][data-class-index="0"]') as HTMLElement;
+        expect(lvl3Badge).not.toBeNull();
+        lvl3Badge.click();
+
+        expect(ctrl.state.classes[0].level).toBe(3);
+        expect(ctrl.state.level).toBe(3);
+
+        // Select Thief subclass
+        const thiefCard = container.querySelector('.subclass-card[data-subclass-id="thief"][data-class-index="0"]') as HTMLElement;
+        expect(thiefCard).not.toBeNull();
+        thiefCard.click();
+
+        expect(ctrl.state.classes[0].subclassId).toBe("thief");
+        expect(ctrl.state.subclassId).toBe("thief");
+    });
+
     it("clearly indicates when a starting equipment kit is equipped", () => {
         const ctrl = new CharacterCreatorController();
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
