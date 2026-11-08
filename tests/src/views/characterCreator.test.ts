@@ -1674,9 +1674,8 @@ describe("CharacterCreatorController", () => {
         `;
 
         // Fighter at level 1 (levels 2-20 are locked)
-        ctrl.state.subclassId = "champion";
         ctrl.state.classes = [
-            { classId: "fighter", level: 1, subclassId: "champion" }
+            { classId: "fighter", level: 1, subclassId: "" }
         ];
         ctrl.syncStateClassProperties();
         ctrl.renderStep(3);
@@ -1690,7 +1689,7 @@ describe("CharacterCreatorController", () => {
 
         // Clicking battle master card in locked level 3 should do nothing
         battleMasterCard.click();
-        expect(ctrl.state.classes[0].subclassId).toBe("champion");
+        expect(ctrl.state.classes[0].subclassId).toBe("");
 
         // Now unlock level 3 by clicking the level 3 badge
         const lvl3Badge = lvl3Box.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
@@ -1705,5 +1704,85 @@ describe("CharacterCreatorController", () => {
         const unlockedBattleMasterCard = updatedLvl3Box.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
         unlockedBattleMasterCard.click();
         expect(ctrl.state.classes[0].subclassId).toBe("battle-master");
+    });
+
+    it("unselects selections within a level when that level is re-locked", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter unlocked to level 3 with Battle Master and maneuvers selected
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 3;
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        // Select Battle Master subclass
+        const bmCard = document.querySelector('.subclass-card[data-subclass-id="battle-master"]') as HTMLElement;
+        expect(bmCard).not.toBeNull();
+        bmCard.click();
+        expect(ctrl.state.classes[0].subclassId).toBe("battle-master");
+
+        // Select a maneuver
+        const manCard = document.querySelector('.maneuver-card[data-maneuver-id="trip-attack"]') as HTMLElement;
+        if (manCard) manCard.click();
+        expect(ctrl.state.maneuvers).toContain("trip-attack");
+
+        // Select Student of War skill choice (fighter-3-battle-master-student)
+        const studentCard = document.querySelector('.subclass-feature-card[data-feature-key="fighter-3-battle-master-student"][data-feature-choice="History"]') as HTMLElement;
+        if (studentCard) studentCard.click();
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBe("History");
+
+        // Now re-lock level 3 by clicking the level 3 badge
+        const lvl3Badge = document.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
+        expect(lvl3Badge).not.toBeNull();
+        lvl3Badge.click();
+
+        // Level should drop to 2 (level 3 re-locked)
+        expect(ctrl.state.classes[0].level).toBe(2);
+        // Level 3 selections are unselected as though they had never been made
+        expect(ctrl.state.classes[0].subclassId).toBe("");
+        expect(ctrl.state.subclassId).toBe("");
+        expect(ctrl.state.maneuvers).toEqual([]);
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBeUndefined();
+
+        // Re-unlock level 3: selections remain unselected
+        const reUnlockBadge = document.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
+        reUnlockBadge.click();
+        expect(ctrl.state.classes[0].level).toBe(3);
+        expect(ctrl.state.classes[0].subclassId).toBe("");
+        expect(ctrl.state.maneuvers).toEqual([]);
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBeUndefined();
+    });
+
+    it("unselects feature choices when jumping down multiple levels or re-locking higher levels", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Rogue at level 5 with Cunning Strike selected
+        ctrl.state.classId = "rogue";
+        ctrl.state.level = 5;
+        ctrl.state.classes = [
+            { classId: "rogue", level: 5, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const tripCard = document.querySelector('.subclass-feature-card[data-feature-key="rogue-5-cunning-strike"][data-feature-choice="trip"]') as HTMLElement;
+        expect(tripCard).not.toBeNull();
+        tripCard.click();
+        expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBe("trip");
+
+        // Click level 4 badge to set level to 4 (locking level 5)
+        const lvl4Badge = document.querySelector('.progression-lvl-badge[data-level="4"]') as HTMLElement;
+        expect(lvl4Badge).not.toBeNull();
+        lvl4Badge.click();
+
+        expect(ctrl.state.classes[0].level).toBe(4);
+        expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBeUndefined();
     });
 });

@@ -183,41 +183,7 @@ export class CharacterCreatorController {
         metamagic: [],
         invocations: [],
         maneuvers: [],
-        subclassFeatureChoices: {
-            "wizard-2-scholar": "arcana",
-            "barbarian-3-wild-heart": "bear",
-            "barbarian-3-zealot": "radiant",
-            "monk-3-elements": "fire",
-            "monk-3-open-hand": "addle",
-            "ranger-3-hunter": "colossus-slayer",
-            "ranger-3-beast-master": "land",
-            "ranger-3-fey-wanderer": "Deception",
-            "sorcerer-3-draconic": "gold",
-            "warlock-3-archfey": "taunting-step",
-            "druid-3-stars": "archer",
-            "druid-3-sea": "cold",
-            "druid-3-moon": "radiant",
-            "fighter-3-battle-master-student": "History",
-            "rogue-5-cunning-strike": "trip",
-            "druid-6-land": "arid",
-            "cleric-6-war": "shield-of-faith",
-            "barbarian-6-wild-heart": "elephant",
-            "ranger-6-hunter": "multiattack-defense",
-            "druid-7": "potent-spellcasting",
-            "cleric-7": "potent-spellcasting",
-            "fighter-7-champion": "defense",
-            "fighter-7-psi-warrior": "push",
-            "barbarian-9-brutal-strike": "forceful-blow",
-            "fighter-9-tactical-master": "push",
-            "barbarian-10-world-tree": "push",
-            "warlock-10-fiend": "fire",
-            "wizard-10-diviner": "darkvision",
-            "barbarian-13-brutal-strike": "staggering-blow",
-            "barbarian-14-wild-heart": "falcon",
-            "rogue-14-devious-strike": "knock-out",
-            "sorcerer-14-aberrant": "flight",
-            "ranger-15-hunter": "evasion"
-        },
+        subclassFeatureChoices: {},
         classSkills: ["Athletics", "Perception"],
         expertiseSkills: [],
         selectedWeapons: ["Longsword", "Light Crossbow"],
@@ -273,9 +239,119 @@ export class CharacterCreatorController {
         }
 
         this.state.level = this.getTotalLevel();
+        this.sanitizeClassProgressionSelections();
+    }
+
+    public sanitizeClassProgressionSelections(): void {
+        if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) return;
+
+        // 1. Subclasses: Subclass unlocks at Level 3 in D&D 2024
+        for (let i = 0; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            if ((cc.level || 1) < 3) {
+                cc.subclassId = "";
+                if (i === 0) {
+                    this.state.subclassId = "";
+                }
+            }
+        }
+
+        // 2. Fighting Style:
+        // Requires Fighter (lvl >= 1), Paladin (lvl >= 2), or Ranger (lvl >= 2).
+        const hasFightingStyle = this.state.classes.some((c) => {
+            if (c.classId === "fighter" && (c.level || 1) >= 1) return true;
+            if (c.classId === "paladin" && (c.level || 1) >= 2) return true;
+            if (c.classId === "ranger" && (c.level || 1) >= 2) return true;
+            return false;
+        });
+        if (!hasFightingStyle) {
+            this.state.fightingStyle = "";
+        }
+
+        // 3. Divine Order: Requires Cleric (lvl >= 1)
+        const hasCleric = this.state.classes.some((c) => c.classId === "cleric" && (c.level || 1) >= 1);
+        if (!hasCleric) {
+            this.state.divineOrder = "";
+        }
+
+        // 4. Primal Order: Requires Druid (lvl >= 1)
+        const hasDruid = this.state.classes.some((c) => c.classId === "druid" && (c.level || 1) >= 1);
+        if (!hasDruid) {
+            this.state.primalOrder = "";
+        }
+
+        // 5. Metamagic: Requires Sorcerer (lvl >= 2)
+        const maxMetamagic = this.getMaxMetamagicCount();
+        if (maxMetamagic <= 0) {
+            this.state.metamagic = [];
+        } else if (this.state.metamagic && this.state.metamagic.length > maxMetamagic) {
+            this.state.metamagic = this.state.metamagic.slice(0, maxMetamagic);
+        }
+
+        // 6. Invocations: Requires Warlock (lvl >= 1)
+        const warlock = this.state.classes.find((c) => c.classId === "warlock");
+        const warlockLvl = warlock ? (warlock.level || 1) : 0;
+        const maxInvocations = this.getMaxInvocationsCount();
+        if (warlockLvl <= 0 || maxInvocations <= 0) {
+            this.state.invocations = [];
+        } else if (this.state.invocations) {
+            this.state.invocations = this.state.invocations.filter((id) => {
+                const invDef = ELDRITCH_INVOCATIONS.find((inv) => inv.id === id);
+                return !invDef?.minLevel || warlockLvl >= invDef.minLevel;
+            });
+            if (this.state.invocations.length > maxInvocations) {
+                this.state.invocations = this.state.invocations.slice(0, maxInvocations);
+            }
+        }
+
+        // 7. Battle Master Maneuvers: Requires Fighter Battle Master (lvl >= 3)
+        const maxManeuvers = this.getMaxManeuversCount();
+        if (maxManeuvers <= 0) {
+            this.state.maneuvers = [];
+        } else if (this.state.maneuvers && this.state.maneuvers.length > maxManeuvers) {
+            this.state.maneuvers = this.state.maneuvers.slice(0, maxManeuvers);
+        }
+
+        // 8. Weapon Masteries:
         const maxWM = this.getMaxWeaponMasteriesCount();
         if (this.state.weaponMasteries && this.state.weaponMasteries.length > maxWM) {
             this.state.weaponMasteries = this.state.weaponMasteries.slice(0, maxWM);
+        }
+
+        // 9. Subclass Feature Choices (subclassFeatureChoices)
+        if (this.state.subclassFeatureChoices) {
+            for (const key of Object.keys(this.state.subclassFeatureChoices)) {
+                const parts = key.split("-");
+                const classId = parts[0];
+                const choiceLvl = parseInt(parts[1], 10);
+                const classChoice = this.state.classes.find((c) => c.classId === classId);
+
+                // If class does not exist or class level is below this feature's unlock level:
+                if (!classChoice || (classChoice.level || 1) < choiceLvl) {
+                    delete this.state.subclassFeatureChoices[key];
+                    continue;
+                }
+
+                // If feature is tied to a specific subclass:
+                const clsDef = this.classes.find((x) => x.id === classId);
+                const subDef = clsDef?.subclasses?.find((s) => key.includes(`-${s.id}`));
+                if (subDef) {
+                    if (classChoice.subclassId !== subDef.id) {
+                        delete this.state.subclassFeatureChoices[key];
+                    }
+                }
+            }
+        }
+
+        // 10. ASI Choices:
+        if (this.state.asiChoices) {
+            const asiLevels = this.getAsiLevels();
+            for (const lvlStr of Object.keys(this.state.asiChoices)) {
+                const lvlNum = parseInt(lvlStr, 10);
+                if (!asiLevels.includes(lvlNum) || lvlNum > this.state.level) {
+                    delete this.state.asiChoices[lvlNum];
+                }
+            }
         }
     }
 
@@ -2101,7 +2177,7 @@ export class CharacterCreatorController {
 
             // Wizard Scholar (Level 2)
             if (cls.id === "wizard") {
-                const currentChoice = this.state.subclassFeatureChoices?.["wizard-2-scholar"] || "arcana";
+                const currentChoice = this.state.subclassFeatureChoices?.["wizard-2-scholar"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-graduation-cap"></i> Scholar Academic Skill</h5>
@@ -2168,7 +2244,7 @@ export class CharacterCreatorController {
 
             // Barbarian Wild Heart: Rage of the Wilds
             if (cls.id === "barbarian" && currentSubId === "wild-heart") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-wild-heart"] || "bear";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-wild-heart"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Rage of the Wilds</h5>
@@ -2189,7 +2265,7 @@ export class CharacterCreatorController {
 
             // Barbarian Zealot: Divine Fury
             if (cls.id === "barbarian" && currentSubId === "zealot") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-zealot"] || "radiant";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-3-zealot"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Divine Fury Energy</h5>
@@ -2210,7 +2286,7 @@ export class CharacterCreatorController {
 
             // Monk Warrior of Elements: Elemental Attunement
             if (cls.id === "monk" && currentSubId === "elements") {
-                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-elements"] || "fire";
+                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-elements"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-fire"></i> Elemental Attunement</h5>
@@ -2231,7 +2307,7 @@ export class CharacterCreatorController {
 
             // Ranger Beast Master: Primal Companion
             if (cls.id === "ranger" && currentSubId === "beast-master") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-beast-master"] || "land";
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-beast-master"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Primal Companion</h5>
@@ -2252,7 +2328,7 @@ export class CharacterCreatorController {
 
             // Ranger Hunter: Hunter's Prey
             if (cls.id === "ranger" && currentSubId === "hunter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-hunter"] || "colossus-slayer";
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-hunter"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Hunter's Prey</h5>
@@ -2273,7 +2349,7 @@ export class CharacterCreatorController {
 
             // Sorcerer Draconic: Draconic Ancestor
             if (cls.id === "sorcerer" && currentSubId === "draconic") {
-                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] || "gold";
+                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-3-draconic"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-dragon"></i> Draconic Ancestor</h5>
@@ -2294,7 +2370,7 @@ export class CharacterCreatorController {
 
             // Fighter Battle Master: Student of War
             if (cls.id === "fighter" && currentSubId === "battle-master") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-3-battle-master-student"] || "History";
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-3-battle-master-student"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-graduation-cap"></i> Student of War Bonus Skill</h5>
@@ -2315,7 +2391,7 @@ export class CharacterCreatorController {
 
             // Monk Open Hand: Open Hand Technique
             if (cls.id === "monk" && currentSubId === "open-hand") {
-                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-open-hand"] || "addle";
+                const currentChoice = this.state.subclassFeatureChoices?.["monk-3-open-hand"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-hand-fist"></i> Open Hand Technique Primary Tactic</h5>
@@ -2336,7 +2412,7 @@ export class CharacterCreatorController {
 
             // Ranger Fey Wanderer: Otherworldly Glamour
             if (cls.id === "ranger" && currentSubId === "fey-wanderer") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-fey-wanderer"] || "Deception";
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-3-fey-wanderer"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Otherworldly Glamour Skill</h5>
@@ -2357,7 +2433,7 @@ export class CharacterCreatorController {
 
             // Warlock Archfey: Steps of the Fey
             if (cls.id === "warlock" && currentSubId === "archfey") {
-                const currentChoice = this.state.subclassFeatureChoices?.["warlock-3-archfey"] || "taunting-step";
+                const currentChoice = this.state.subclassFeatureChoices?.["warlock-3-archfey"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shoe-prints"></i> Steps of the Fey Teleport Effect</h5>
@@ -2378,7 +2454,7 @@ export class CharacterCreatorController {
 
             // Druid Circle of the Stars: Starry Form
             if (cls.id === "druid" && currentSubId === "stars") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-stars"] || "archer";
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-stars"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-star"></i> Starry Form Primary Constellation</h5>
@@ -2399,7 +2475,7 @@ export class CharacterCreatorController {
 
             // Druid Circle of the Sea: Wrath of the Sea
             if (cls.id === "druid" && currentSubId === "sea") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-sea"] || "cold";
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-sea"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-water"></i> Wrath of the Sea Damage Manifestation</h5>
@@ -2420,7 +2496,7 @@ export class CharacterCreatorController {
 
             // Druid Circle of the Moon: Circle Forms Strike
             if (cls.id === "druid" && currentSubId === "moon") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-moon"] || "radiant";
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-3-moon"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-moon"></i> Circle Forms Natural Attack Damage</h5>
@@ -2444,7 +2520,7 @@ export class CharacterCreatorController {
         if (lvl === 5) {
             // Rogue Cunning Strike
             if (cls.id === "rogue") {
-                const currentChoice = this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] || "trip";
+                const currentChoice = this.state.subclassFeatureChoices?.["rogue-5-cunning-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-bolt"></i> Cunning Strike Primary Focus</h5>
@@ -2468,7 +2544,7 @@ export class CharacterCreatorController {
         if (lvl === 6) {
             // Druid Circle of the Land: Biome Affinity
             if (cls.id === "druid" && currentSubId === "land") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-6-land"] || "arid";
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-6-land"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-tree"></i> Circle of the Land Biome Affinity</h5>
@@ -2489,7 +2565,7 @@ export class CharacterCreatorController {
 
             // Barbarian Path of the Wild Heart: Aspect of the Beast
             if (cls.id === "barbarian" && currentSubId === "wild-heart") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] || "elephant";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-paw"></i> Aspect of the Beast</h5>
@@ -2510,7 +2586,7 @@ export class CharacterCreatorController {
 
             // Ranger Hunter: Defensive Tactics
             if (cls.id === "ranger" && currentSubId === "hunter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-6-hunter"] || "multiattack-defense";
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-6-hunter"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Defensive Tactics</h5>
@@ -2531,7 +2607,7 @@ export class CharacterCreatorController {
 
             // Cleric War Domain: War God's Blessing
             if (cls.id === "cleric" && currentSubId === "war") {
-                const currentChoice = this.state.subclassFeatureChoices?.["cleric-6-war"] || "shield-of-faith";
+                const currentChoice = this.state.subclassFeatureChoices?.["cleric-6-war"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> War God's Blessing Preferred Spell</h5>
@@ -2555,7 +2631,7 @@ export class CharacterCreatorController {
         if (lvl === 7) {
             // Druid Elemental Fury
             if (cls.id === "druid") {
-                const currentChoice = this.state.subclassFeatureChoices?.["druid-7"] || "potent-spellcasting";
+                const currentChoice = this.state.subclassFeatureChoices?.["druid-7"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-bolt"></i> Elemental Fury</h5>
@@ -2576,7 +2652,7 @@ export class CharacterCreatorController {
 
             // Cleric Blessed Strikes
             if (cls.id === "cleric") {
-                const currentChoice = this.state.subclassFeatureChoices?.["cleric-7"] || "potent-spellcasting";
+                const currentChoice = this.state.subclassFeatureChoices?.["cleric-7"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Blessed Strikes</h5>
@@ -2597,7 +2673,7 @@ export class CharacterCreatorController {
 
             // Fighter Champion: Additional Fighting Style
             if (cls.id === "fighter" && currentSubId === "champion") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-champion"] || "defense";
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-champion"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-heart"></i> Additional Fighting Style</h5>
@@ -2618,7 +2694,7 @@ export class CharacterCreatorController {
 
             // Fighter Psi Warrior: Telekinetic Thrust
             if (cls.id === "fighter" && currentSubId === "psi-warrior") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-psi-warrior"] || "push";
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-7-psi-warrior"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-hand"></i> Telekinetic Thrust Preferred Maneuver</h5>
@@ -2642,7 +2718,7 @@ export class CharacterCreatorController {
         if (lvl === 9) {
             // Barbarian Brutal Strike
             if (cls.id === "barbarian") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-9-brutal-strike"] || "forceful-blow";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-9-brutal-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-gavel"></i> Brutal Strike Primary Tactic</h5>
@@ -2663,7 +2739,7 @@ export class CharacterCreatorController {
 
             // Fighter Tactical Master
             if (cls.id === "fighter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["fighter-9-tactical-master"] || "push";
+                const currentChoice = this.state.subclassFeatureChoices?.["fighter-9-tactical-master"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-crosshairs"></i> Tactical Master Primary Swap</h5>
@@ -2687,7 +2763,7 @@ export class CharacterCreatorController {
         if (lvl === 10) {
             // Warlock Fiend Patron: Fiendish Resilience
             if (cls.id === "warlock" && currentSubId === "fiend") {
-                const currentChoice = this.state.subclassFeatureChoices?.["warlock-10-fiend"] || "fire";
+                const currentChoice = this.state.subclassFeatureChoices?.["warlock-10-fiend"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-virus"></i> Fiendish Resilience Damage Resistance</h5>
@@ -2708,7 +2784,7 @@ export class CharacterCreatorController {
 
             // Barbarian Path of the World Tree: Battering Roots
             if (cls.id === "barbarian" && currentSubId === "world-tree") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-10-world-tree"] || "push";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-10-world-tree"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-tree"></i> Battering Roots Mastery Option</h5>
@@ -2729,7 +2805,7 @@ export class CharacterCreatorController {
 
             // Wizard Diviner: The Third Eye
             if (cls.id === "wizard" && currentSubId === "diviner") {
-                const currentChoice = this.state.subclassFeatureChoices?.["wizard-10-diviner"] || "darkvision";
+                const currentChoice = this.state.subclassFeatureChoices?.["wizard-10-diviner"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> The Third Eye Primary Benefit</h5>
@@ -2753,7 +2829,7 @@ export class CharacterCreatorController {
         if (lvl === 13) {
             // Barbarian Improved Brutal Strike
             if (cls.id === "barbarian") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-13-brutal-strike"] || "staggering-blow";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-13-brutal-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-hammer"></i> Improved Brutal Strike Mastery</h5>
@@ -2777,7 +2853,7 @@ export class CharacterCreatorController {
         if (lvl === 14) {
             // Barbarian Wild Heart: Totemic Attunement
             if (cls.id === "barbarian" && currentSubId === "wild-heart") {
-                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-14-wild-heart"] || "falcon";
+                const currentChoice = this.state.subclassFeatureChoices?.["barbarian-14-wild-heart"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-feather"></i> Totemic Attunement</h5>
@@ -2798,7 +2874,7 @@ export class CharacterCreatorController {
 
             // Rogue Devious Strikes
             if (cls.id === "rogue") {
-                const currentChoice = this.state.subclassFeatureChoices?.["rogue-14-devious-strike"] || "knock-out";
+                const currentChoice = this.state.subclassFeatureChoices?.["rogue-14-devious-strike"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-skull"></i> Devious Strike Primary Focus</h5>
@@ -2819,7 +2895,7 @@ export class CharacterCreatorController {
 
             // Sorcerer Aberrant: Revelation in Flesh
             if (cls.id === "sorcerer" && currentSubId === "aberrant") {
-                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-14-aberrant"] || "flight";
+                const currentChoice = this.state.subclassFeatureChoices?.["sorcerer-14-aberrant"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-dna"></i> Revelation in Flesh Primary Adaptation</h5>
@@ -2843,7 +2919,7 @@ export class CharacterCreatorController {
         if (lvl === 15) {
             // Ranger Hunter: Superior Hunter's Defense
             if (cls.id === "ranger" && currentSubId === "hunter") {
-                const currentChoice = this.state.subclassFeatureChoices?.["ranger-15-hunter"] || "evasion";
+                const currentChoice = this.state.subclassFeatureChoices?.["ranger-15-hunter"] || "";
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Superior Hunter's Defense</h5>
@@ -2950,7 +3026,7 @@ export class CharacterCreatorController {
                 <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-class-index="${classIdx}" data-level="${lvl}">
                     <div class="level-card-header">
                         <div class="level-header-title">
-                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" role="button" tabindex="0" title="Click to unlock ${cls.name} Level ${lvl}" data-class-index="${classIdx}" data-level="${lvl}">
+                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" role="button" tabindex="0" title="${isUnlocked ? (lvl === charLevel ? `Click to lock ${cls.name} Level ${lvl}` : `Click to set ${cls.name} to Level ${lvl}`) : `Click to unlock ${cls.name} Level ${lvl}`}" data-class-index="${classIdx}" data-level="${lvl}">
                                 ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Level ${lvl}
                             </span>
                             <h4 class="level-title-text">${cls.name} Level ${lvl} Abilities</h4>
@@ -3958,8 +4034,12 @@ export class CharacterCreatorController {
                 badge.addEventListener("click", (e) => {
                     e.stopPropagation();
                     const cIdx = parseInt(badge.getAttribute("data-class-index") || "0", 10);
-                    const targetLvl = parseInt(badge.getAttribute("data-level") || "1", 10);
+                    let targetLvl = parseInt(badge.getAttribute("data-level") || "1", 10);
                     if (this.state.classes[cIdx]) {
+                        const currentLvl = this.state.classes[cIdx].level || 1;
+                        if (targetLvl === currentLvl) {
+                            targetLvl = Math.max(1, currentLvl - 1);
+                        }
                         this.state.classes[cIdx].level = targetLvl;
                         if (cIdx === 0) {
                             this.state.level = targetLvl;
@@ -3980,7 +4060,7 @@ export class CharacterCreatorController {
                 const newClassChoice: CharacterClassChoice = {
                     classId: availableCls.id,
                     level: 1,
-                    subclassId: availableCls.subclasses?.[0]?.id || ""
+                    subclassId: ""
                 };
                 this.state.classes.push(newClassChoice);
                 this.syncStateClassProperties();
