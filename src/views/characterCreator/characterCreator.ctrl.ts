@@ -68,6 +68,12 @@ export interface AsiChoice {
     featId?: string;
 }
 
+export interface CharacterClassChoice {
+    classId: string;
+    level: number;
+    subclassId?: string;
+}
+
 export interface CreatorState {
     currentStep: number;
     savedId?: number;
@@ -84,6 +90,7 @@ export interface CreatorState {
     elfKeenSkill: string;
     classId: string;
     subclassId: string;
+    classes: CharacterClassChoice[];
     weaponMasteries: string[];
     // Class-specific progression choices:
     fightingStyle?: string;
@@ -149,6 +156,9 @@ export class CharacterCreatorController {
         elfKeenSkill: "Perception",
         classId: "fighter",
         subclassId: "",
+        classes: [
+            { classId: "fighter", level: 1, subclassId: "" }
+        ],
         weaponMasteries: ["Longsword", "Greatsword", "Shortbow"],
         backgroundId: "soldier",
         backgroundOption: "two-and-one",
@@ -230,6 +240,110 @@ export class CharacterCreatorController {
     public progressionFilter: "all" | "unlocked" = "all";
     public spellsWarningDismissed: boolean = false;
 
+    public syncStateClassProperties() {
+        if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
+            this.state.classes = [{
+                classId: this.state.classId || "fighter",
+                level: this.state.level || 1,
+                subclassId: this.state.subclassId || ""
+            }];
+        } else if (this.state.classes.length === 1) {
+            if (this.state.classId) this.state.classes[0].classId = this.state.classId;
+            if (this.state.subclassId !== undefined) this.state.classes[0].subclassId = this.state.subclassId;
+            if (this.state.level && this.state.classes[0].level !== this.state.level) {
+                this.state.classes[0].level = this.state.level;
+            }
+        }
+        const primary = this.state.classes[0];
+        this.state.classId = primary.classId;
+        this.state.subclassId = primary.subclassId || "";
+        this.state.level = this.getTotalLevel();
+    }
+
+    public getTotalLevel(): number {
+        if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
+            return this.state.level || 1;
+        }
+        return this.state.classes.reduce((sum, c) => sum + (c.level || 1), 0);
+    }
+
+    public updateMulticlassNavBars() {
+        const topNavContainer = document.getElementById("multiclass-top-nav-buttons");
+        const topBar = document.getElementById("multiclass-top-bar");
+        const bottomNavContainer = document.getElementById("multiclass-bottom-nav");
+        if (!bottomNavContainer || !Array.isArray(this.state.classes)) return;
+
+        const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+        const topBarHeight = topBar?.offsetHeight || 60;
+
+        const aboveButtons: Array<{ idx: number; name: string }> = [];
+        const belowButtons: Array<{ idx: number; name: string }> = [];
+
+        const allZero = this.state.classes.every((_, i) => {
+            const el = document.getElementById(`class-section-${i}`);
+            if (!el) return true;
+            const r = el.getBoundingClientRect();
+            return r.top === 0 && r.bottom === 0;
+        });
+
+        this.state.classes.forEach((c, idx) => {
+            const el = document.getElementById(`class-section-${idx}`);
+            if (!el) return;
+            const clsDef = this.classes.find((x) => x.id === c.classId);
+            const name = clsDef?.name || c.classId;
+
+            if (allZero) {
+                // In headless / jsdom environments without layout engine, classes after primary are below view
+                if (idx > 0) {
+                    belowButtons.push({ idx, name });
+                }
+                return;
+            }
+
+            const rect = el.getBoundingClientRect();
+            // If section's bottom has scrolled above the top threshold
+            if (rect.bottom < topBarHeight + 60) {
+                aboveButtons.push({ idx, name });
+            }
+            // If section's top is below the viewport bottom
+            else if (rect.top > viewportHeight - 100) {
+                belowButtons.push({ idx, name });
+            }
+        });
+
+        if (topNavContainer && topBar) {
+            if (aboveButtons.length > 0) {
+                topBar.classList.remove("hidden");
+                topNavContainer.innerHTML = aboveButtons.map((b) => `
+                    <button type="button" class="creator-btn nav-to-class-btn top-nav-btn" data-target-class="${b.idx}">
+                        <i class="fa-solid fa-arrow-up"></i> ${b.name}
+                    </button>
+                `).join("");
+            } else {
+                topBar.classList.add("hidden");
+                topNavContainer.innerHTML = "";
+            }
+        }
+
+        bottomNavContainer.innerHTML = belowButtons.map((b) => `
+            <button type="button" class="creator-btn nav-to-class-btn bottom-nav-btn" data-target-class="${b.idx}">
+                <i class="fa-solid fa-arrow-down"></i> ${b.name}
+            </button>
+        `).join("");
+
+        // Attach click handlers to newly rendered navigation buttons
+        const navButtons = document.querySelectorAll(".nav-to-class-btn");
+        navButtons.forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                const targetIdx = Number((e.currentTarget as HTMLElement).getAttribute("data-target-class"));
+                const targetEl = document.getElementById(`class-section-${targetIdx}`);
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            });
+        });
+    }
+
     public async init(query?: any) {
         this.bindEvents();
         try {
@@ -310,6 +424,13 @@ export class CharacterCreatorController {
                 }
             });
         });
+
+        // Multiclass scroll observer
+        window.addEventListener("scroll", () => {
+            if (this.state.currentStep === 3) {
+                this.updateMulticlassNavBars();
+            }
+        }, { passive: true });
     }
 
     public showAlert(msg: string, type: "error" | "warning" = "error") {
@@ -612,6 +733,27 @@ export class CharacterCreatorController {
                 Object.assign(this.state, char.creatorState);
                 if (savedId) this.state.savedId = Number(savedId);
                 if (siteCharacterId) this.state.siteCharacterId = String(siteCharacterId);
+                if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
+                    if (Array.isArray(char.classes) && char.classes.length > 0) {
+                        this.state.classes = char.classes.map((c: any) => {
+                            const clsName = (c.name || "").toLowerCase();
+                            const matchedCls = this.classes.find((x) => x.name.toLowerCase() === clsName || x.id === clsName);
+                            const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
+                            let subclassId = "";
+                            if (c.subclass && matchedCls) {
+                                const subName = String(c.subclass).toLowerCase();
+                                const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
+                                if (matchedSub) subclassId = matchedSub.id;
+                            }
+                            return {
+                                classId,
+                                level: Number(c.level) || 1,
+                                subclassId
+                            };
+                        });
+                    }
+                }
+                this.syncStateClassProperties();
             } else {
                 if (char.name) this.state.name = char.name;
                 if (char.level) this.state.level = Number(char.level);
@@ -624,17 +766,26 @@ export class CharacterCreatorController {
                 if (matchedSp) this.state.speciesId = matchedSp.id;
 
                 if (Array.isArray(char.classes) && char.classes.length > 0) {
-                    const primaryClass = char.classes[0];
-                    const clsName = (primaryClass.name || "").toLowerCase();
-                    const matchedCls = this.classes.find((c) => c.name.toLowerCase() === clsName || c.id === clsName);
-                    if (matchedCls) {
-                        this.state.classId = matchedCls.id;
-                        if (primaryClass.subclass) {
-                            const subName = primaryClass.subclass.toLowerCase();
+                    this.state.classes = char.classes.map((c: any) => {
+                        const clsName = (c.name || "").toLowerCase();
+                        const matchedCls = this.classes.find((x) => x.name.toLowerCase() === clsName || x.id === clsName);
+                        const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
+                        let subclassId = "";
+                        if (c.subclass && matchedCls) {
+                            const subName = String(c.subclass).toLowerCase();
                             const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
-                            if (matchedSub) this.state.subclassId = matchedSub.id;
+                            if (matchedSub) subclassId = matchedSub.id;
                         }
-                    }
+                        return {
+                            classId,
+                            level: Number(c.level) || 1,
+                            subclassId
+                        };
+                    });
+                    this.syncStateClassProperties();
+                } else {
+                    this.state.classes = [{ classId: "fighter", level: Number(char.level) || 1, subclassId: "" }];
+                    this.syncStateClassProperties();
                 }
 
                 if (char.background) {
@@ -723,32 +874,46 @@ export class CharacterCreatorController {
     }
 
     public getMaxHp(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+        this.syncStateClassProperties();
         const conMod = this.getAbilityModifier("con");
-        const hitDie = cls.hitDie;
-        const level = this.state.level;
+        const classChoices = (this.state.classes && this.state.classes.length > 0)
+            ? this.state.classes
+            : [{ classId: this.state.classId || "fighter", level: this.state.level || 1 }];
 
-        // Level 1: max hit die + Con mod
-        let hp = hitDie + conMod;
-        // Higher levels: average die + Con mod per level
-        if (level > 1) {
+        let hp = 0;
+        classChoices.forEach((choice, idx) => {
+            const cls = this.classes.find((c) => c.id === choice.classId) || this.classes[0];
+            const hitDie = cls.hitDie;
+            const level = choice.level || 1;
             const avgDie = Math.floor(hitDie / 2) + 1;
-            hp += (level - 1) * (avgDie + conMod);
-        }
 
+            if (idx === 0) {
+                // First class Level 1: full hit die + Con mod
+                hp += hitDie + conMod;
+                if (level > 1) {
+                    hp += (level - 1) * (avgDie + conMod);
+                }
+            } else {
+                // Additional classes: average hit die + Con mod for each level
+                hp += level * (avgDie + conMod);
+            }
+        });
+
+        const totalLevel = this.getTotalLevel();
         // Tough feat bonus (+2 HP per level)
         if (this.state.originFeatId === "tough" || (this.state.speciesId === "human" && this.state.humanExtraFeatId === "tough")) {
-            hp += 2 * level;
+            hp += 2 * totalLevel;
         }
 
         // Dwarven Toughness (+1 HP per level)
         if (this.state.speciesId === "dwarf") {
-            hp += level;
+            hp += totalLevel;
         }
 
         // Draconic Sorcerer (+1 HP per level starting at level 3)
-        if (this.state.classId === "sorcerer" && this.state.subclassId === "draconic" && level >= 3) {
-            hp += level;
+        const sorcererChoice = classChoices.find((c) => c.classId === "sorcerer");
+        if (sorcererChoice && (sorcererChoice.subclassId === "draconic" || this.state.subclassId === "draconic") && sorcererChoice.level >= 3) {
+            hp += sorcererChoice.level;
         }
 
         return Math.max(1, hp);
@@ -1299,16 +1464,12 @@ export class CharacterCreatorController {
             <div class="step-panel active">
                 <div class="panel-header">
                     <h3 class="panel-title">Character Identity & Basics</h3>
-                    <p class="panel-desc">Give your hero a name, starting level, alignment, and appearance.</p>
+                    <p class="panel-desc">Give your hero a name, alignment, and appearance.</p>
                 </div>
                 <div class="creator-form-grid">
                     <div class="creator-form-group">
                         <label class="creator-label" for="char-name-input">Character Name *</label>
                         <input type="text" id="char-name-input" class="creator-input" placeholder="e.g. San Te, Lyra Silverleaf" value="${this.escape(this.state.name)}" required />
-                    </div>
-                    <div class="creator-form-group">
-                        <label class="creator-label" for="char-level-input">Starting Level (1 - 20)</label>
-                        <input type="number" id="char-level-input" class="creator-input" min="1" max="20" value="${this.state.level}" />
                     </div>
                     <div class="creator-form-group">
                         <label class="creator-label" for="char-alignment-select">Alignment</label>
@@ -1428,27 +1589,71 @@ export class CharacterCreatorController {
     }
 
     private renderStep3Class(): string {
-        const currentClass = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
-        return `
-            <div class="step-panel active">
-                <div class="panel-header">
-                    <h3 class="panel-title">Choose Class</h3>
-                    <p class="panel-desc">Select your character's class. Classes grant Hit Dice, proficiencies, weapon masteries, and starting features.</p>
-                </div>
-                <div class="card-select-grid">
-                    ${this.classes.map((cls) => `
-                        <div class="select-card class-card ${this.state.classId === cls.id ? "selected" : ""}" data-class-id="${cls.id}">
-                            <div class="card-title-row">
-                                <h4 class="card-title">${cls.name}</h4>
-                                <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                            </div>
-                            <span class="card-tag">Hit Die: d${cls.hitDie} • Saves: ${cls.savingThrows.map((s) => s.toUpperCase()).join(", ")}</span>
-                            <p class="card-body">${cls.description}</p>
+        this.syncStateClassProperties();
+
+        const classSectionsHtml = this.state.classes.map((classChoice, classIdx) => {
+            const cls = this.classes.find((c) => c.id === classChoice.classId) || this.classes[0];
+            const isPrimary = classIdx === 0;
+
+            return `
+                <div class="multiclass-section" id="class-section-${classIdx}" data-class-index="${classIdx}">
+                    <div class="panel-header multiclass-section-header">
+                        <div class="multiclass-title-row">
+                            <h3 class="panel-title">
+                                ${isPrimary ? `Primary Class: ${cls.name}` : `Multiclass ${classIdx + 1}: ${cls.name}`}
+                                <span class="multiclass-lvl-pill">Level ${classChoice.level}</span>
+                            </h3>
+                            ${!isPrimary ? `
+                                <button type="button" class="creator-btn danger-btn remove-class-btn" data-class-index="${classIdx}" title="Remove this class">
+                                    <i class="fa-solid fa-trash-can"></i> Remove Class
+                                </button>
+                            ` : ""}
                         </div>
-                    `).join("")}
+                        <p class="panel-desc">
+                            ${isPrimary
+                                ? "Select your character's primary class. Primary classes grant starting Hit Dice, saving throws, weapon masteries, proficiencies, and starting features."
+                                : `Select your additional class. Progression and abilities for ${cls.name} are tracked below.`}
+                        </p>
+                    </div>
+
+                    <div class="card-select-grid">
+                        ${this.classes.map((c) => {
+                            const isSelected = classChoice.classId === c.id;
+                            return `
+                                <div class="select-card class-card ${isSelected ? "selected" : ""}" data-class-index="${classIdx}" data-class-id="${c.id}">
+                                    <div class="card-title-row">
+                                        <h4 class="card-title">${c.name}</h4>
+                                        <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                    </div>
+                                    <span class="card-tag">Hit Die: d${c.hitDie} • Saves: ${c.savingThrows.map((s) => s.toUpperCase()).join(", ")}</span>
+                                    <p class="card-body">${c.description}</p>
+                                </div>
+                            `;
+                        }).join("")}
+                    </div>
+
+                    ${this.renderClassProgression(cls, classChoice.level, classIdx, classChoice.subclassId)}
+                </div>
+            `;
+        }).join("");
+
+        return `
+            <div class="step-panel active multiclass-step-panel">
+                <!-- Sticky Top Bar for scrolling up to earlier classes -->
+                <div class="multiclass-top-bar hidden" id="multiclass-top-bar">
+                    <span class="multiclass-bar-label"><i class="fa-solid fa-arrow-up"></i> Jump to:</span>
+                    <div class="multiclass-nav-buttons" id="multiclass-top-nav-buttons"></div>
                 </div>
 
-                ${this.renderClassProgression(currentClass)}
+                ${classSectionsHtml}
+
+                <!-- Sticky Bottom Bar for adding class and scrolling down to later classes -->
+                <div class="multiclass-bottom-bar" id="multiclass-bottom-bar">
+                    <button type="button" class="creator-btn primary-btn add-class-btn" id="add-class-btn">
+                        <i class="fa-solid fa-plus"></i> Add Class
+                    </button>
+                    <div class="multiclass-bottom-nav" id="multiclass-bottom-nav"></div>
+                </div>
             </div>
         `;
     }
@@ -1519,8 +1724,9 @@ export class CharacterCreatorController {
         return "";
     }
 
-    private renderLevelChoices(cls: ClassDefinition, lvl: number): string {
+    private renderLevelChoices(cls: ClassDefinition, lvl: number, classIdx: number = 0, activeSubId?: string): string {
         const choices: string[] = [];
+        const currentSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || "";
 
         // Level 1 choices
         if (lvl === 1) {
@@ -1709,7 +1915,7 @@ export class CharacterCreatorController {
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> Subclass Selection (Level 3)</h5>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                             ${cls.subclasses.map((sub) => `
-                                <div class="select-card subclass-card ${this.state.subclassId === sub.id ? "selected" : ""}" data-subclass-id="${sub.id}">
+                                <div class="select-card subclass-card ${currentSubId === sub.id ? "selected" : ""}" data-class-index="${classIdx}" data-subclass-id="${sub.id}">
                                     <div class="card-title-row">
                                         <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
@@ -1723,7 +1929,7 @@ export class CharacterCreatorController {
             }
 
             // Battle Master Maneuvers
-            if (cls.id === "fighter" && this.state.subclassId === "battle-master") {
+            if (cls.id === "fighter" && currentSubId === "battle-master") {
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-dice-d20"></i> Battle Master Maneuvers (Choose up to ${this.getMaxManeuversCount()})</h5>
@@ -2457,17 +2663,16 @@ export class CharacterCreatorController {
         return choices.join("");
     }
 
-    private renderClassProgression(cls: ClassDefinition): string {
-        const charLevel = this.state.level;
-        const unlockedBoxes: string[] = [];
-        const lockedBoxes: string[] = [];
+    private renderClassProgression(cls: ClassDefinition, classLevel: number = 1, classIdx: number = 0, activeSubId?: string): string {
+        const charLevel = classLevel;
+        const boxes: string[] = [];
 
         const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
-        const activeSubId = this.state.subclassId || cls.subclasses?.[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
-        const sub = activeSubId
-            ? (cls.subclasses?.find((s: any) => s.id === activeSubId) || fallbackCls?.subclasses?.find((s) => s.id === activeSubId))
+        const resolvedSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || cls.subclasses?.[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
+        const sub = resolvedSubId
+            ? (cls.subclasses?.find((s: any) => s.id === resolvedSubId) || fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId))
             : undefined;
-        const fallbackSub = activeSubId ? fallbackCls?.subclasses?.find((s) => s.id === activeSubId) : undefined;
+        const fallbackSub = resolvedSubId ? fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId) : undefined;
         const resolvedSubFeatures = (sub?.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
         const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
 
@@ -2490,7 +2695,6 @@ export class CharacterCreatorController {
             }
 
             const isUnlocked = lvl <= charLevel;
-            const isHidden = !isUnlocked && !this.progressionExpanded;
             let featuresAtLvl: Array<ClassLevelFeature & { isSubclassFeature?: boolean }> = resolvedClsFeatures
                 .filter((f: ClassLevelFeature) => f.level === lvl)
                 .map((f: ClassLevelFeature) => ({ ...f }));
@@ -2516,13 +2720,13 @@ export class CharacterCreatorController {
                 ];
             }
 
-            const choicesHtml = this.renderLevelChoices(cls, lvl);
+            const choicesHtml = this.renderLevelChoices(cls, lvl, classIdx, resolvedSubId);
 
             const boxHtml = `
-                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}${isHidden ? " hidden" : ""}" data-level="${lvl}">
+                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-class-index="${classIdx}" data-level="${lvl}">
                     <div class="level-card-header">
                         <div class="level-header-title">
-                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}">
+                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" role="button" tabindex="0" title="Click to unlock ${cls.name} Level ${lvl}" data-class-index="${classIdx}" data-level="${lvl}">
                                 ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Level ${lvl}
                             </span>
                             <h4 class="level-title-text">${cls.name} Level ${lvl} Abilities</h4>
@@ -2531,7 +2735,7 @@ export class CharacterCreatorController {
                             <span class="progression-pb-tag">PB +${pb}</span>
                             ${statBadge ? `<span class="progression-stat-badge"><i class="fa-solid fa-bolt"></i> ${statBadge}</span>` : ""}
                             <span class="progression-status-pill ${isUnlocked ? "status-unlocked" : "status-locked"}">
-                                ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Unlocks at Level ${lvl}`}
+                                ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Click badge to unlock`}
                             </span>
                         </div>
                     </div>
@@ -2554,42 +2758,7 @@ export class CharacterCreatorController {
                 </div>
             `;
 
-            if (isUnlocked) {
-                unlockedBoxes.push(boxHtml);
-            } else {
-                lockedBoxes.push(boxHtml);
-            }
-        }
-
-        const hasLocked = lockedBoxes.length > 0;
-        let toggleLinkTop = "";
-        let toggleLinkBottom = "";
-
-        if (hasLocked) {
-            if (!this.progressionExpanded) {
-                toggleLinkTop = `
-                    <div class="progression-load-more-container">
-                        <a href="javascript:void(0)" class="progression-toggle-link load-more" id="progression-load-more-link" role="button">
-                            <i class="fa-solid fa-chevron-down"></i> Load more
-                        </a>
-                    </div>
-                `;
-            } else {
-                toggleLinkTop = `
-                    <div class="progression-load-more-container">
-                        <a href="javascript:void(0)" class="progression-toggle-link show-less" id="progression-load-more-link" role="button">
-                            <i class="fa-solid fa-chevron-up"></i> Show less
-                        </a>
-                    </div>
-                `;
-                toggleLinkBottom = `
-                    <div class="progression-load-more-container progression-load-more-bottom">
-                        <a href="javascript:void(0)" class="progression-toggle-link show-less" id="progression-show-less-bottom-link" role="button">
-                            <i class="fa-solid fa-chevron-up"></i> Show less
-                        </a>
-                    </div>
-                `;
-            }
+            boxes.push(boxHtml);
         }
 
         return `
@@ -2600,16 +2769,13 @@ export class CharacterCreatorController {
                             <i class="fa-solid fa-layer-group"></i> ${cls.name} Level Progression (Levels 1–20)
                         </h4>
                         <p class="card-body" style="margin: 0.25rem 0 0;">
-                            New abilities, features, and choices gained at each level for the ${cls.name} class. Features active at your current level (Level ${charLevel}) are marked Active.
+                            New abilities, features, and choices gained at each level for the ${cls.name} class. Click a level badge to unlock or set your level in this class. Currently Level ${charLevel}.
                         </p>
                     </div>
                 </div>
             </div>
 
-            ${unlockedBoxes.join("")}
-            ${toggleLinkTop}
-            ${lockedBoxes.join("")}
-            ${toggleLinkBottom}
+            ${boxes.join("")}
         `;
     }
 
@@ -3420,14 +3586,6 @@ export class CharacterCreatorController {
                 this.updateLiveSummary();
             });
 
-            const levelInput = document.getElementById("char-level-input") as HTMLInputElement;
-            levelInput?.addEventListener("input", (e) => {
-                const val = Math.max(1, Math.min(20, Number((e.target as HTMLInputElement).value) || 1));
-                this.state.level = val;
-                this.sanitizeSpellSelections();
-                this.updateLiveSummary();
-            });
-
             const alignSelect = document.getElementById("char-alignment-select") as HTMLSelectElement;
             alignSelect?.addEventListener("change", (e) => {
                 this.state.alignment = (e.target as HTMLSelectElement).value;
@@ -3532,25 +3690,88 @@ export class CharacterCreatorController {
         } else if (step === 3) {
             document.querySelectorAll(".class-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
                     const cId = card.getAttribute("data-class-id") || "";
-                    this.state.classId = cId;
-                    const cls = this.classes.find((c) => c.id === cId);
-                    this.state.subclassId = cls?.subclasses?.[0]?.id || "";
-                    this.state.weaponMasteries = [];
-                    if (cls) {
-                        this.initClassDefaultEquipment(cls);
+                    if (this.state.classes[cIdx]) {
+                        this.state.classes[cIdx].classId = cId;
+                        const cls = this.classes.find((c) => c.id === cId);
+                        this.state.classes[cIdx].subclassId = cls?.subclasses?.[0]?.id || "";
+                        if (cIdx === 0) {
+                            this.state.weaponMasteries = [];
+                            if (cls) {
+                                this.initClassDefaultEquipment(cls);
+                            }
+                        }
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.renderStep(3);
+                        this.updateLiveSummary();
                     }
-                    this.sanitizeSpellSelections();
-                    this.renderStep(3);
-                    this.updateLiveSummary();
                 });
             });
 
             document.querySelectorAll(".subclass-card").forEach((card) => {
                 card.addEventListener("click", () => {
-                    this.state.subclassId = card.getAttribute("data-subclass-id") || "";
-                    this.sanitizeSpellSelections();
-                    this.renderStep(3);
+                    const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
+                    const subId = card.getAttribute("data-subclass-id") || "";
+                    if (this.state.classes[cIdx]) {
+                        this.state.classes[cIdx].subclassId = subId;
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.renderStep(3);
+                    }
+                });
+            });
+
+            document.querySelectorAll(".progression-lvl-badge").forEach((badge) => {
+                badge.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const cIdx = parseInt(badge.getAttribute("data-class-index") || "0", 10);
+                    const targetLvl = parseInt(badge.getAttribute("data-level") || "1", 10);
+                    if (this.state.classes[cIdx]) {
+                        this.state.classes[cIdx].level = targetLvl;
+                        this.state.level = this.getTotalLevel();
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.updateLiveSummary();
+                        this.renderStep(3);
+                    }
+                });
+            });
+
+            const addClassBtn = document.getElementById("add-class-btn");
+            addClassBtn?.addEventListener("click", () => {
+                const existingIds = new Set(this.state.classes.map((c) => c.classId));
+                const availableCls = this.classes.find((c) => !existingIds.has(c.id)) || this.classes[0];
+                const newClassChoice: CharacterClassChoice = {
+                    classId: availableCls.id,
+                    level: 1,
+                    subclassId: availableCls.subclasses?.[0]?.id || ""
+                };
+                this.state.classes.push(newClassChoice);
+                this.syncStateClassProperties();
+                this.updateLiveSummary();
+                this.renderStep(3);
+
+                const newIdx = this.state.classes.length - 1;
+                const newEl = document.getElementById(`class-section-${newIdx}`);
+                if (newEl && typeof newEl.scrollIntoView === "function") {
+                    newEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+                this.updateMulticlassNavBars();
+            });
+
+            document.querySelectorAll(".remove-class-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const cIdx = parseInt(btn.getAttribute("data-class-index") || "0", 10);
+                    if (cIdx > 0 && this.state.classes.length > 1) {
+                        this.state.classes.splice(cIdx, 1);
+                        this.syncStateClassProperties();
+                        this.sanitizeSpellSelections();
+                        this.updateLiveSummary();
+                        this.renderStep(3);
+                        this.updateMulticlassNavBars();
+                    }
                 });
             });
 
@@ -3636,27 +3857,6 @@ export class CharacterCreatorController {
                 });
             });
 
-            document.querySelectorAll(".progression-toggle-link").forEach((link) => {
-                link.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    const wasExpanded = this.progressionExpanded;
-                    this.progressionExpanded = !this.progressionExpanded;
-                    this.renderStep(3);
-                    if (wasExpanded) {
-                        const toggleLink = document.getElementById("progression-load-more-link");
-                        if (toggleLink && typeof toggleLink.scrollIntoView === "function") {
-                            toggleLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                        }
-                    }
-                });
-            });
-
-            const expandBtn = document.getElementById("progression-toggle-expand-btn");
-            expandBtn?.addEventListener("click", () => {
-                this.progressionExpanded = !this.progressionExpanded;
-                this.renderStep(3);
-            });
-
             document.querySelectorAll(".subclass-feature-card").forEach((card) => {
                 card.addEventListener("click", () => {
                     const key = card.getAttribute("data-feature-key");
@@ -3671,6 +3871,8 @@ export class CharacterCreatorController {
                     }
                 });
             });
+
+            this.updateMulticlassNavBars();
         } else if (step === 4) {
             document.querySelectorAll(".background-card").forEach((card) => {
                 card.addEventListener("click", () => {
@@ -4342,56 +4544,59 @@ export class CharacterCreatorController {
                 }
             }
 
-            const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
-            const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
-            resolvedClsFeatures.filter((f) => {
-                if (f.level > this.state.level) return false;
-                const lowerName = f.name.toLowerCase().trim();
-                if (/\b\d+(?:st|nd|rd|th)-level spells\b/i.test(lowerName)) return false;
-                if (lowerName === "ability score improvement" || lowerName === "epic boon") return false;
-                if (this.state.subclassId && this.state.level >= 3) {
-                    if (lowerName === "subclass feature" || lowerName === "subclass capstone" || lowerName.endsWith(" subclass")) {
-                        return false;
+            this.state.classes.forEach((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId) || this.classes[0];
+                const fbCls = CLASSES_2024.find((c) => c.id === cDef.id);
+                const resolvedFeatures = (cDef.features && cDef.features.length > 0) ? cDef.features : (fbCls?.features || []);
+                resolvedFeatures.filter((f) => {
+                    if (f.level > cc.level) return false;
+                    const lowerName = f.name.toLowerCase().trim();
+                    if (/\b\d+(?:st|nd|rd|th)-level spells\b/i.test(lowerName)) return false;
+                    if (lowerName === "ability score improvement" || lowerName === "epic boon") return false;
+                    if (cc.subclassId && cc.level >= 3) {
+                        if (lowerName === "subclass feature" || lowerName === "subclass capstone" || lowerName.endsWith(" subclass")) {
+                            return false;
+                        }
                     }
-                }
-                return true;
-            }).forEach((f) => {
-                classFeaturesList.push({
-                    name: f.name,
-                    source: cls.name,
-                    type: "Class",
-                    description: wrapHtmlParagraph(f.description)
+                    return true;
+                }).forEach((f) => {
+                    classFeaturesList.push({
+                        name: f.name,
+                        source: cDef.name,
+                        type: "Class",
+                        description: wrapHtmlParagraph(f.description)
+                    });
                 });
-            });
 
-            // Subclass features
-            if (this.state.subclassId) {
-                const sub = cls.subclasses.find((s) => s.id === this.state.subclassId) || fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
-                const fallbackSub = fallbackCls?.subclasses.find((s) => s.id === this.state.subclassId);
-                if (sub) {
-                    const subFeatures = (sub.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
-                    if (subFeatures.length > 0) {
-                        subFeatures
-                            .filter((sf) => sf.level <= this.state.level)
-                            .forEach((sf) => {
-                                subclassFeaturesList.push({
-                                    name: sf.name,
-                                    source: sub.name,
-                                    type: "Subclass",
-                                    level: sf.level,
-                                    description: wrapHtmlParagraph(sf.description)
+                // Subclass features
+                if (cc.subclassId) {
+                    const sub = cDef.subclasses?.find((s) => s.id === cc.subclassId) || fbCls?.subclasses?.find((s) => s.id === cc.subclassId);
+                    const fallbackSub = fbCls?.subclasses?.find((s) => s.id === cc.subclassId);
+                    if (sub) {
+                        const subFeatures = (sub.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);
+                        if (subFeatures.length > 0) {
+                            subFeatures
+                                .filter((sf: any) => sf.level <= cc.level)
+                                .forEach((sf: any) => {
+                                    subclassFeaturesList.push({
+                                        name: sf.name,
+                                        source: sub.name,
+                                        type: "Subclass",
+                                        level: sf.level,
+                                        description: wrapHtmlParagraph(sf.description)
+                                    });
                                 });
+                        } else {
+                            subclassFeaturesList.push({
+                                name: sub.name,
+                                source: sub.name,
+                                type: "Subclass",
+                                description: wrapHtmlParagraph(sub.description)
                             });
-                    } else {
-                        subclassFeaturesList.push({
-                            name: sub.name,
-                            source: sub.name,
-                            type: "Subclass",
-                            description: wrapHtmlParagraph(sub.description)
-                        });
+                        }
                     }
                 }
-            }
+            });
 
             const featuresPayload: any[] = [];
 
@@ -5167,9 +5372,29 @@ export class CharacterCreatorController {
             }
 
             const maxHp = this.getMaxHp();
+            const classSummaries = this.state.classes.map((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId);
+                return `${cDef?.name || cc.classId} ${cc.level}`;
+            }).join(" / ");
+
+            const classesPayload = this.state.classes.map((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId);
+                const subDef = cc.subclassId ? cDef?.subclasses?.find((s) => s.id === cc.subclassId) : undefined;
+                return {
+                    name: cDef?.name || cc.classId,
+                    level: cc.level,
+                    subclass: subDef?.name
+                };
+            });
+
+            const hitDiceStr = this.state.classes.map((cc) => {
+                const cDef = this.classes.find((c) => c.id === cc.classId);
+                return `${cc.level}d${cDef?.hitDie || 8}`;
+            }).join(" + ");
+
             const characterPayload: any = {
                 name: this.state.name,
-                subtitle: `Level ${this.state.level} ${raceLabel} ${cls.name}`,
+                subtitle: `Level ${this.state.level} ${raceLabel} ${classSummaries}`,
                 level: this.state.level,
                 race: raceLabel,
                 species: species.name,
@@ -5178,11 +5403,7 @@ export class CharacterCreatorController {
                 alignment: this.state.alignment,
                 avatarUrl: this.state.avatarUrl,
                 source: "site",
-                classes: [{
-                    name: cls.name,
-                    level: this.state.level,
-                    subclass: this.state.subclassId ? cls.subclasses.find((s) => s.id === this.state.subclassId)?.name : undefined
-                }],
+                classes: classesPayload,
                 damageResistances,
                 vitals: {
                     currentHp: maxHp,
@@ -5196,7 +5417,7 @@ export class CharacterCreatorController {
                     passiveInvestigation: 10 + (invSkill?.bonus || 0),
                     passiveInsight: 10 + (insSkill?.bonus || 0),
                     darkvision: chosenLineage?.darkvision || species.darkvision || "None",
-                    hitDice: `${this.state.level}d${cls.hitDie}`,
+                    hitDice: hitDiceStr,
                     heroicInspiration: false,
                     spellSaveDc: this.getSpellSaveDc() ?? 10,
                     spellAttackBonus: this.getSpellAttackModifier() ?? 0,

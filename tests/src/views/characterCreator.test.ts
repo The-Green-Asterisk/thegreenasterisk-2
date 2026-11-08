@@ -704,70 +704,71 @@ describe("CharacterCreatorController", () => {
         expect(container.querySelector(".progression-timeline")).toBeNull();
     });
 
-    it("hides locked higher levels under a load more link and reveals them with show less link", () => {
+    it("unlocks levels by clicking the progression-lvl-badge and supports adding multiclass with navigation buttons", () => {
         const ctrl = new CharacterCreatorController();
         document.body.innerHTML = '<div id="creator-step-panels"></div>';
 
         // Fighter at level 3
         ctrl.state.classId = "fighter";
         ctrl.state.level = 3;
-        ctrl.progressionExpanded = false;
+        ctrl.syncStateClassProperties();
         ctrl.renderStep(3);
 
         const container = document.getElementById("creator-step-panels")!;
 
+        // Load more / show less link should NOT exist
+        expect(container.querySelector("#progression-load-more-link")).toBeNull();
+        expect(container.querySelector(".progression-load-more-container")).toBeNull();
+
         // Unlocked rows: Levels 1, 2, 3
         const unlockedRows = container.querySelectorAll(".progression-row.unlocked");
         expect(unlockedRows.length).toBe(3);
-        unlockedRows.forEach((row) => {
-            expect(row.classList.contains("hidden")).toBe(false);
-        });
 
-        // Locked rows: Levels 4 to 20 should be hidden by default
+        // Locked rows: Levels 4 to 20
         const lockedRows = container.querySelectorAll(".progression-row.locked");
         expect(lockedRows.length).toBe(17);
-        const hiddenLockedRows = container.querySelectorAll(".progression-row.locked.hidden");
-        expect(hiddenLockedRows.length).toBe(17);
 
-        // Load more link should be present with "Load more"
-        const loadMoreLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
-        expect(loadMoreLink).not.toBeNull();
-        expect(loadMoreLink.textContent).toContain("Load more");
+        // Level is determined by clicking progression-lvl-badge to unlock that level
+        const lvl6Badge = container.querySelector('.progression-lvl-badge[data-level="6"]') as HTMLElement;
+        expect(lvl6Badge).not.toBeNull();
+        lvl6Badge.click();
 
-        // Click the load more link
-        loadMoreLink.click();
+        expect(ctrl.state.classes[0].level).toBe(6);
+        expect(ctrl.state.level).toBe(6);
+        expect(container.querySelectorAll(".progression-row.unlocked").length).toBe(6);
+        expect(container.querySelectorAll(".progression-row.locked").length).toBe(14);
 
-        // Now progression should be expanded
-        expect(ctrl.progressionExpanded).toBe(true);
-        const visibleLockedRows = container.querySelectorAll(".progression-row.locked:not(.hidden)");
-        expect(visibleLockedRows.length).toBe(17);
+        // Bottom bar contains "+ Add Class" button
+        const addClassBtn = container.querySelector("#add-class-btn") as HTMLButtonElement;
+        expect(addClassBtn).not.toBeNull();
+        expect(addClassBtn.textContent).toContain("Add Class");
 
-        // Link should now display "Show less"
-        const showLessLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
-        expect(showLessLink).not.toBeNull();
-        expect(showLessLink.textContent).toContain("Show less");
+        // Mock scrollIntoView
+        const scrollIntoViewMock = vi.fn();
+        window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
 
-        // Bottom show less link should also be present when expanded
-        const bottomShowLess = container.querySelector("#progression-show-less-bottom-link") as HTMLAnchorElement;
-        expect(bottomShowLess).not.toBeNull();
-        expect(bottomShowLess.textContent).toContain("Show less");
+        // Click "+ Add Class" button
+        addClassBtn.click();
 
-        // Click show less
-        showLessLink.click();
+        // Now has 2 classes
+        expect(ctrl.state.classes.length).toBe(2);
+        expect(document.getElementById("class-section-0")).not.toBeNull();
+        expect(document.getElementById("class-section-1")).not.toBeNull();
 
-        // Locked rows should be re-hidden and link returns to "Load more"
-        expect(ctrl.progressionExpanded).toBe(false);
-        const rehiddenLockedRows = container.querySelectorAll(".progression-row.locked.hidden");
-        expect(rehiddenLockedRows.length).toBe(17);
-        const reloadedLink = container.querySelector("#progression-load-more-link") as HTMLAnchorElement;
-        expect(reloadedLink.textContent).toContain("Load more");
+        // A navigation button showing the name of that class appears in the bottom nav
+        const bottomNav = document.getElementById("multiclass-bottom-nav")!;
+        const navBtn = bottomNav.querySelector(".nav-to-class-btn") as HTMLButtonElement;
+        expect(navBtn).not.toBeNull();
+        const secondClass = ctrl.classes.find((c) => c.id === ctrl.state.classes[1].classId);
+        expect(navBtn.textContent).toContain(secondClass?.name);
 
-        // If character level is 20, all levels unlocked, no load more link rendered
-        ctrl.state.level = 20;
-        ctrl.renderStep(3);
-        expect(container.querySelector("#progression-load-more-link")).toBeNull();
-        expect(container.querySelectorAll(".progression-row.unlocked").length).toBe(20);
-        expect(container.querySelectorAll(".progression-row.locked").length).toBe(0);
+        // Clicking the class button scrolls to the new class
+        navBtn.click();
+        expect(scrollIntoViewMock).toHaveBeenCalled();
+
+        // Verify total level sums both classes
+        ctrl.state.classes[1].level = 4;
+        expect(ctrl.getTotalLevel()).toBe(10);
     });
 
     it("clearly indicates when a starting equipment kit is equipped", () => {
