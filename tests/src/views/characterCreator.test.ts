@@ -1785,4 +1785,162 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.classes[0].level).toBe(4);
         expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBeUndefined();
     });
+
+    it("evaluates D&D 2024 multiclass prerequisites accurately for both current and target classes", () => {
+        // Standard setup: Fighter with Str 17, Dex 14, Con 14, Int 12, Wis 10, Cha 8
+        expect(ctrl.state.classes[0].classId).toBe("fighter");
+        expect(ctrl.getEffectiveAbilityScore("str")).toBe(17);
+        expect(ctrl.getEffectiveAbilityScore("dex")).toBe(14);
+        expect(ctrl.getEffectiveAbilityScore("int")).toBe(12);
+        expect(ctrl.getEffectiveAbilityScore("wis")).toBe(10);
+        expect(ctrl.getEffectiveAbilityScore("cha")).toBe(8);
+
+        // Can multiclass into Barbarian (requires Str 13+)
+        const barbCheck = ctrl.canMulticlassInto("barbarian", 1);
+        expect(barbCheck.allowed).toBe(true);
+
+        // Can multiclass into Rogue (requires Dex 13+)
+        const rogueCheck = ctrl.canMulticlassInto("rogue", 1);
+        expect(rogueCheck.allowed).toBe(true);
+
+        // Cannot multiclass into Wizard (requires Int 13+, current is 12)
+        const wizCheck = ctrl.canMulticlassInto("wizard", 1);
+        expect(wizCheck.allowed).toBe(false);
+        expect(wizCheck.reason).toContain("Requires Int 13+");
+
+        // Cannot multiclass into Monk (requires Dex 13+ & Wis 13+, Dex is 14 but Wis is 10)
+        const monkCheck = ctrl.canMulticlassInto("monk", 1);
+        expect(monkCheck.allowed).toBe(false);
+        expect(monkCheck.reason).toContain("Requires Dex 13+ & Wis 13+");
+
+        // Cannot multiclass into Fighter (already chosen as primary)
+        const fighterCheck = ctrl.canMulticlassInto("fighter", 1);
+        expect(fighterCheck.allowed).toBe(false);
+        expect(fighterCheck.reason).toBe("Already chosen");
+
+        // If primary class does not meet prerequisites (e.g. Str 10, Dex 10)
+        ctrl.state.baseAbilities.str = 8;
+        ctrl.state.bgStatA = "int"; // move background bonus away from str
+        ctrl.state.baseAbilities.dex = 10;
+        expect(ctrl.getEffectiveAbilityScore("str")).toBe(8);
+        expect(ctrl.getEffectiveAbilityScore("dex")).toBe(10);
+
+        // Even though Barbarian requires Str 13+, multiclassing into ANY class is blocked because primary class fails
+        const barbBlocked = ctrl.canMulticlassInto("barbarian", 1);
+        expect(barbBlocked.allowed).toBe(false);
+        expect(barbBlocked.reason).toContain("Primary class (Fighter) requires Str 13+ or Dex 13+");
+        expect(barbBlocked.reason).toContain("to multiclass");
+    });
+
+    it("disables secondary class cards in UI when prerequisites are not met and prevents selecting them", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter primary (Str 17, Dex 14, Int 12) + Barbarian secondary (Level 1)
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "battle-master" },
+            { classId: "barbarian", level: 1, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const secSection = document.getElementById("class-section-1")!;
+        expect(secSection).not.toBeNull();
+
+        // Wizard card in secondary section should be disabled because Int < 13
+        const wizCard = secSection.querySelector('.class-card[data-class-id="wizard"]') as HTMLElement;
+        expect(wizCard).not.toBeNull();
+        expect(wizCard.classList.contains("disabled")).toBe(true);
+        expect(wizCard.getAttribute("aria-disabled")).toBe("true");
+        expect(wizCard.innerHTML).toContain("class-prereq-badge locked");
+        expect(wizCard.innerHTML).toContain("Requires Int 13+");
+
+        // Clicking the disabled wizard card should NOT change the secondary class
+        wizCard.click();
+        expect(ctrl.state.classes[1].classId).toBe("barbarian");
+
+        // Rogue card in secondary section should be enabled (Dex 14 >= 13)
+        const rogueCard = secSection.querySelector('.class-card[data-class-id="rogue"]') as HTMLElement;
+        expect(rogueCard).not.toBeNull();
+        expect(rogueCard.classList.contains("disabled")).toBe(false);
+        expect(rogueCard.innerHTML).toContain("class-prereq-badge met");
+
+        // Clicking the eligible rogue card successfully changes the secondary class
+        rogueCard.click();
+        expect(ctrl.state.classes[1].classId).toBe("rogue");
+    });
+
+    it("correctly grants multiclass proficiencies and skills per D&D 2024 rules", () => {
+        // Rogue primary (Light armor, simple weapons, hand crossbows, rapiers, shortswords)
+        ctrl.state.classId = "rogue";
+        ctrl.state.classes = [
+            { classId: "rogue", level: 3, subclassId: "thief" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Single class Rogue lacks medium armor and martial weapons (e.g. Greatsword)
+        expect(ctrl.isProficientWithArmor("Chain Shirt")).toBe(false);
+        expect(ctrl.isProficientWithShield()).toBe(false);
+        expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(false);
+        expect(ctrl.getMaxClassSkillCount()).toBe(4); // Rogue base is 4 skills
+
+        // Multiclass into Fighter (grants Light, Medium, Shields, Martial Weapons)
+        ctrl.state.classes.push({ classId: "fighter", level: 1, subclassId: "" });
+        ctrl.syncStateClassProperties();
+
+        expect(ctrl.getAllArmorProficiencies()).toContain("Medium Armor");
+        expect(ctrl.getAllArmorProficiencies()).toContain("Shields");
+        expect(ctrl.getAllWeaponProficiencies()).toContain("Martial Weapons");
+        expect(ctrl.isProficientWithArmor("Chain Shirt")).toBe(true);
+        expect(ctrl.isProficientWithShield()).toBe(true);
+        expect(ctrl.isProficientWithWeapon("Greatsword")).toBe(true);
+
+        // Multiclass into Bard (grants 1 additional skill of choice, musical instrument)
+        ctrl.state.classes.push({ classId: "bard", level: 1, subclassId: "" });
+        ctrl.syncStateClassProperties();
+
+        expect(ctrl.getMaxClassSkillCount()).toBe(5); // 4 + 1
+        expect(ctrl.getAllToolProficiencies()).toContain("Musical Instrument");
+    });
+
+    it("+ Add Class button picks an eligible class and disables when no class can be added", () => {
+        document.body.innerHTML = `
+            <div id="creator-step-panels"></div>
+        `;
+
+        // Fighter with Str 17, Dex 14
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const addBtn = document.getElementById("add-class-btn") as HTMLButtonElement;
+        expect(addBtn).not.toBeNull();
+        expect(addBtn.disabled).toBe(false);
+
+        // Clicking Add Class should add Barbarian (Str 17 >= 13, first eligible class)
+        addBtn.click();
+        expect(ctrl.state.classes.length).toBe(2);
+        expect(ctrl.state.classes[1].classId).toBe("barbarian");
+
+        // When primary class does not meet multiclass prerequisites:
+        ctrl.state.baseAbilities = { str: 8, dex: 8, con: 10, int: 8, wis: 8, cha: 8 };
+        ctrl.state.bgStatA = "con";
+        ctrl.state.bgStatB = "con";
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const addBtnDisabled = document.getElementById("add-class-btn") as HTMLButtonElement;
+        expect(addBtnDisabled.disabled).toBe(true);
+        expect(addBtnDisabled.classList.contains("disabled")).toBe(true);
+
+        // Clicking disabled button does not add a class
+        addBtnDisabled.click();
+        expect(ctrl.state.classes.length).toBe(1);
+    });
 });

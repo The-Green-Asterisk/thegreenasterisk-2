@@ -2263,6 +2263,62 @@ el-character-creator,
     }
 }
 
+/* Multiclass Prerequisite Badges */
+.class-prereq-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    line-height: 1.2;
+    width: fit-content;
+}
+
+.class-prereq-badge.locked {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+:root[data-theme="dark"] .class-prereq-badge.locked {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.class-prereq-badge.met {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+:root[data-theme="dark"] .class-prereq-badge.met {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.class-prereq-badge.info {
+    background: rgba(14, 165, 233, 0.1);
+    color: #0284c7;
+    border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+:root[data-theme="dark"] .class-prereq-badge.info {
+    background: rgba(14, 165, 233, 0.2);
+    color: #7dd3fc;
+    border-color: rgba(14, 165, 233, 0.35);
+}
+
+.add-class-btn.disabled,
+.add-class-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
 
 
 

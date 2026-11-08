@@ -58,7 +58,10 @@ import {
     STEPS_OF_THE_FEY_OPTIONS,
     FEY_WANDERER_GLAMOUR_SKILLS,
     HUNTER_SUPERIOR_DEFENSE_OPTIONS,
-    ABERRANT_REVELATION_OPTIONS
+    ABERRANT_REVELATION_OPTIONS,
+    MULTICLASS_PREREQUISITES_2024,
+    MULTICLASS_PROFICIENCIES_2024,
+    checkClassPrerequisite
 } from "../../rules/dnd5e_2024";
 
 export interface AsiChoice {
@@ -1292,33 +1295,157 @@ export class CharacterCreatorController {
         return base;
     }
 
+    public canMulticlassInto(candidateClassId: string, classIndex: number): { allowed: boolean; reason?: string; prereqLabel?: string; currentScoreText?: string } {
+        // If candidate class is already taken by another class slot:
+        const isDuplicate = this.state.classes.some((c, idx) => idx !== classIndex && c.classId === candidateClassId);
+        if (isDuplicate) {
+            return {
+                allowed: false,
+                reason: "Already chosen"
+            };
+        }
+
+        // D&D 2024 Rule: Must meet prerequisites for BOTH existing class(es) and the new class.
+        // 1. Check all other existing classes:
+        for (let idx = 0; idx < this.state.classes.length; idx++) {
+            if (idx === classIndex) continue;
+            const existing = this.state.classes[idx];
+            const check = checkClassPrerequisite(existing.classId, (stat) => this.getEffectiveAbilityScore(stat));
+            if (!check.met) {
+                const existingCls = this.classes.find((c) => c.id === existing.classId);
+                const roleName = idx === 0 ? "Primary class" : "Current class";
+                return {
+                    allowed: false,
+                    reason: `${roleName} (${existingCls?.name || existing.classId}) requires ${check.label} (Current: ${check.currentScoreText}) to multiclass`,
+                    prereqLabel: check.label,
+                    currentScoreText: check.currentScoreText
+                };
+            }
+        }
+
+        // 2. Check candidate class prerequisite:
+        const candidateCheck = checkClassPrerequisite(candidateClassId, (stat) => this.getEffectiveAbilityScore(stat));
+        if (!candidateCheck.met) {
+            return {
+                allowed: false,
+                reason: `Requires ${candidateCheck.label} (Current: ${candidateCheck.currentScoreText})`,
+                prereqLabel: candidateCheck.label,
+                currentScoreText: candidateCheck.currentScoreText
+            };
+        }
+
+        return {
+            allowed: true,
+            prereqLabel: candidateCheck.label,
+            currentScoreText: candidateCheck.currentScoreText
+        };
+    }
+
+    public getAllArmorProficiencies(): string[] {
+        this.syncStateClassProperties();
+        const profs = new Set<string>();
+        const primary = this.state.classes[0];
+        const primaryId = primary?.classId || this.state.classId;
+        if (primaryId) {
+            const cls = this.classes.find((c) => c.id === primaryId);
+            cls?.armorProficiencies.forEach((p) => profs.add(p));
+        }
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            multi?.armor.forEach((p) => profs.add(p));
+        }
+        return Array.from(profs);
+    }
+
+    public getAllWeaponProficiencies(): string[] {
+        this.syncStateClassProperties();
+        const profs = new Set<string>();
+        const primary = this.state.classes[0];
+        const primaryId = primary?.classId || this.state.classId;
+        if (primaryId) {
+            const cls = this.classes.find((c) => c.id === primaryId);
+            cls?.weaponProficiencies.forEach((p) => profs.add(p));
+        }
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            multi?.weapons.forEach((p) => profs.add(p));
+        }
+        return Array.from(profs);
+    }
+
+    public getAllToolProficiencies(): string[] {
+        this.syncStateClassProperties();
+        const tools = new Set<string>();
+        if (this.state.bgTool) tools.add(this.state.bgTool);
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            multi?.tools.forEach((t) => tools.add(t));
+        }
+        return Array.from(tools);
+    }
+
+    public getMaxClassSkillCount(): number {
+        this.syncStateClassProperties();
+        const primary = this.state.classes[0];
+        const primaryCls = this.classes.find((c) => c.id === (primary?.classId || this.state.classId));
+        let count = primaryCls?.skillChoices.count || 2;
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            if (multi?.skills?.count) {
+                count += multi.skills.count;
+            }
+        }
+        return count;
+    }
+
+    public getAllowedClassSkills(): string[] {
+        this.syncStateClassProperties();
+        const primary = this.state.classes[0];
+        const primaryCls = this.classes.find((c) => c.id === (primary?.classId || this.state.classId));
+        const allowed = new Set<string>(primaryCls?.skillChoices.from || []);
+
+        for (let i = 1; i < this.state.classes.length; i++) {
+            const cc = this.state.classes[i];
+            const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+            if (multi?.skills) {
+                if (multi.skills.from) {
+                    multi.skills.from.forEach((s) => allowed.add(s));
+                } else {
+                    ALL_SKILLS.forEach((s) => allowed.add(s.name));
+                }
+            }
+        }
+        return Array.from(allowed);
+    }
+
     public isProficientWithArmor(armorName: string): boolean {
         if (!armorName || armorName === "None") return true;
         const armor = BASE_ARMOR_2024.find((a) => a.name === armorName);
         if (!armor) return true;
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return true;
-        const profs = cls.armorProficiencies;
+        const profs = this.getAllArmorProficiencies();
         if (profs.includes("All Armor")) return true;
         return profs.some((p) => p.toLowerCase().includes(armor.category.toLowerCase()));
     }
 
     public isProficientWithShield(): boolean {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return true;
-        return cls.armorProficiencies.includes("Shields") || cls.armorProficiencies.includes("All Armor");
+        const profs = this.getAllArmorProficiencies();
+        return profs.includes("Shields") || profs.includes("All Armor");
     }
 
     public isProficientWithWeapon(weaponName: string): boolean {
         const weapon = BASE_WEAPONS_2024.find((w) => w.name === weaponName);
         if (!weapon) return true;
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return true;
-        const profs = cls.weaponProficiencies;
+        const profs = this.getAllWeaponProficiencies();
         if (profs.includes("Martial Weapons") || profs.includes("Simple Weapons, Martial Weapons")) return true;
         if (weapon.category.startsWith("Simple") && profs.some((p) => p.includes("Simple"))) return true;
-        if (cls.id === "rogue" && (weapon.properties.includes("Finesse") || weapon.properties.includes("Light"))) return true;
-        if (cls.id === "monk" && weapon.properties.includes("Light")) return true;
+        const hasRogue = this.state.classes.some((c) => c.classId === "rogue");
+        if (hasRogue && (weapon.properties.includes("Finesse") || weapon.properties.includes("Light"))) return true;
+        const hasMonk = this.state.classes.some((c) => c.classId === "monk");
+        if (hasMonk && weapon.properties.includes("Light")) return true;
         return false;
     }
 
@@ -1901,23 +2028,60 @@ export class CharacterCreatorController {
                     <div class="card-select-grid">
                         ${this.classes.map((c) => {
                             const isSelected = classChoice.classId === c.id;
+                            let isDisabled = false;
+                            let badgeHtml = "";
+                            let reasonTitle = "";
+
+                            if (!isPrimary) {
+                                const check = this.canMulticlassInto(c.id, classIdx);
+                                if (!check.allowed) {
+                                    isDisabled = true;
+                                    reasonTitle = check.reason || "Prerequisites not met";
+                                    badgeHtml = `<div class="class-prereq-badge locked" title="${reasonTitle}"><i class="fa-solid fa-lock"></i> ${check.reason}</div>`;
+                                } else {
+                                    badgeHtml = `<div class="class-prereq-badge met"><i class="fa-solid fa-circle-check"></i> Prereq Met: ${check.prereqLabel}</div>`;
+                                }
+                            } else {
+                                const prereq = MULTICLASS_PREREQUISITES_2024[c.id.toLowerCase()];
+                                if (prereq) {
+                                    badgeHtml = `<div class="class-prereq-badge info"><i class="fa-solid fa-circle-info"></i> Multiclass: ${prereq.label}</div>`;
+                                }
+                            }
+
                             return `
-                                <div class="select-card class-card ${isSelected ? "selected" : ""}" data-class-index="${classIdx}" data-class-id="${c.id}">
+                                <div class="select-card class-card ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}" 
+                                     data-class-index="${classIdx}" 
+                                     data-class-id="${c.id}"
+                                     ${isDisabled ? `aria-disabled="true" title="${reasonTitle}"` : ""}>
                                     <div class="card-title-row">
                                         <h4 class="card-title">${c.name}</h4>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                     </div>
                                     <span class="card-tag">Hit Die: d${c.hitDie} • Saves: ${c.savingThrows.map((s) => s.toUpperCase()).join(", ")}</span>
                                     <p class="card-body">${c.description}</p>
+                                    ${badgeHtml}
                                 </div>
                             `;
                         }).join("")}
                     </div>
 
+                    ${!isPrimary && !this.canMulticlassInto(classChoice.classId, classIdx).allowed ? `
+                        <div class="equipment-stat-alert danger" style="margin-top: 1rem;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <div>
+                                <strong>Multiclass Prerequisite Not Met:</strong>
+                                ${this.canMulticlassInto(classChoice.classId, classIdx).reason}. Increase ability score or choose an eligible class.
+                            </div>
+                        </div>
+                    ` : ""}
+
                     ${this.renderClassProgression(cls, classChoice.level, classIdx, classChoice.subclassId)}
                 </div>
             `;
         }).join("");
+
+        const nextIdx = this.state.classes.length;
+        const canAddAnyClass = this.classes.some((c) => this.canMulticlassInto(c.id, nextIdx).allowed);
 
         return `
             <div class="step-panel active multiclass-step-panel">
@@ -1934,7 +2098,7 @@ export class CharacterCreatorController {
 
                 <!-- Sticky Bottom Bar for adding class and scrolling down to later classes -->
                 <div class="multiclass-bottom-bar" id="multiclass-bottom-bar">
-                    <button type="button" class="creator-btn primary-btn add-class-btn" id="add-class-btn">
+                    <button type="button" class="creator-btn primary-btn add-class-btn ${!canAddAnyClass ? "disabled" : ""}" id="add-class-btn" ${!canAddAnyClass ? "disabled title='Prerequisites not met to add another class'" : ""}>
                         <i class="fa-solid fa-plus"></i> Add Class
                     </button>
                     <div class="multiclass-bottom-nav" id="multiclass-bottom-nav"></div>
@@ -3348,14 +3512,14 @@ export class CharacterCreatorController {
         const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
         const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
         const bgSkills = bg.skills;
-        const classAllowed = cls.skillChoices.from;
-        const maxClassCount = cls.skillChoices.count;
+        const classAllowed = this.getAllowedClassSkills();
+        const maxClassCount = this.getMaxClassSkillCount();
 
         return `
             <div class="step-panel active">
                 <div class="panel-header">
                     <h3 class="panel-title">Skills & Proficiencies</h3>
-                    <p class="panel-desc">Choose ${maxClassCount} skills from your class list. Background skills are granted automatically.</p>
+                    <p class="panel-desc">Choose ${maxClassCount} skills from your class list(s). Background skills are granted automatically.</p>
                 </div>
 
                 <div class="skills-select-grid">
@@ -3990,8 +4154,13 @@ export class CharacterCreatorController {
         } else if (step === 3) {
             document.querySelectorAll(".class-card").forEach((card) => {
                 card.addEventListener("click", () => {
+                    if (card.classList.contains("disabled") || card.getAttribute("aria-disabled") === "true") return;
                     const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
                     const cId = card.getAttribute("data-class-id") || "";
+                    if (cIdx > 0) {
+                        const check = this.canMulticlassInto(cId, cIdx);
+                        if (!check.allowed) return;
+                    }
                     if (this.state.classes[cIdx]) {
                         this.state.classes[cIdx].classId = cId;
                         const cls = this.classes.find((c) => c.id === cId);
@@ -4053,10 +4222,12 @@ export class CharacterCreatorController {
                 });
             });
 
-            const addClassBtn = document.getElementById("add-class-btn");
+            const addClassBtn = document.getElementById("add-class-btn") as HTMLButtonElement | null;
             addClassBtn?.addEventListener("click", () => {
-                const existingIds = new Set(this.state.classes.map((c) => c.classId));
-                const availableCls = this.classes.find((c) => !existingIds.has(c.id)) || this.classes[0];
+                if (addClassBtn.disabled || addClassBtn.classList.contains("disabled")) return;
+                const nextIdx = this.state.classes.length;
+                const availableCls = this.classes.find((c) => this.canMulticlassInto(c.id, nextIdx).allowed);
+                if (!availableCls) return;
                 const newClassChoice: CharacterClassChoice = {
                     classId: availableCls.id,
                     level: 1,
@@ -4408,8 +4579,7 @@ export class CharacterCreatorController {
             document.querySelectorAll(".skill-checkbox-card:not(.locked)").forEach((card) => {
                 card.addEventListener("click", () => {
                     const skName = card.getAttribute("data-skill-name") || "";
-                    const cls = this.classes.find((c) => c.id === this.state.classId);
-                    const maxCount = cls?.skillChoices.count || 2;
+                    const maxCount = this.getMaxClassSkillCount();
                     if (this.state.classSkills.includes(skName)) {
                         this.state.classSkills = this.state.classSkills.filter((s) => s !== skName);
                     } else if (this.state.classSkills.length < maxCount) {
@@ -5762,9 +5932,9 @@ export class CharacterCreatorController {
                 features: featuresPayload,
                 actions: actionsPayload,
                 proficiencies: {
-                    armor: cls.armorProficiencies || [],
-                    weapons: cls.weaponProficiencies || [],
-                    tools: this.state.bgTool ? [this.state.bgTool] : [],
+                    armor: this.getAllArmorProficiencies(),
+                    weapons: this.getAllWeaponProficiencies(),
+                    tools: this.getAllToolProficiencies(),
                     languages: ["Common"]
                 },
                 classResources: resourcesPayload,
