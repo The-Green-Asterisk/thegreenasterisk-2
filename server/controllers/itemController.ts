@@ -2,6 +2,7 @@ import http from "http";
 import cache from "../cache";
 import AppDataSource from "../services/database";
 import { Item } from "../services/database/entity/Item";
+import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import BaseController from "./baseController";
 
 function slugify(text: string): string {
@@ -144,6 +145,7 @@ export default class ItemController extends BaseController {
             if (Array.isArray(sanitizedWeapons)) {
                 for (const rawWep of sanitizedWeapons) {
                     try {
+                        if (isLegacyDndBeyondEntity(rawWep)) continue;
                         const name = String(rawWep?.name || "").trim().slice(0, 255);
                         if (!name) continue;
                         const slug = slugify(name).slice(0, 255);
@@ -236,6 +238,7 @@ export default class ItemController extends BaseController {
             if (Array.isArray(equipment)) {
                 for (const rawEq of equipment) {
                     try {
+                        if (isLegacyDndBeyondEntity(rawEq)) continue;
                         const name = String(rawEq?.name || "").trim().slice(0, 255);
                         if (!name) continue;
                         const slug = slugify(name).slice(0, 255);

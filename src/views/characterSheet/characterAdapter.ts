@@ -1360,12 +1360,19 @@ export function parseDndBeyondCharacter(
         }
         const componentsStr = compList.join(", ") || "None";
 
+        const isLegacy = def.isLegacy === true ||
+            (def.sourceId && def.sourceId !== 145 && !def.sources?.some((src: any) => src?.sourceId === 145)) ||
+            /\b(?:2014|legacy)\b/i.test(def.name || "");
+        const finalSource = isLegacy && !sourceName.includes("[Legacy]")
+            ? `${sourceName} [Legacy]`
+            : sourceName;
+
         const spellDef: SpellDefinition = {
             id: def.id,
             name: def.name,
             level: Number(def.level) || 0,
             school,
-            source: sourceName,
+            source: finalSource,
             castingTime,
             range: rangeStr,
             duration: durationStr,
@@ -1373,7 +1380,8 @@ export function parseDndBeyondCharacter(
             concentration: !!def.concentration,
             ritual: !!def.ritual,
             description: def.description || def.snippet || "<p>No description provided.</p>",
-            imageUrl: def.avatarUrl || def.largeAvatarUrl || undefined
+            imageUrl: def.avatarUrl || def.largeAvatarUrl || undefined,
+            isLegacy: isLegacy || undefined
         };
 
         spellsMap.set(def.name.toLowerCase(), spellDef);

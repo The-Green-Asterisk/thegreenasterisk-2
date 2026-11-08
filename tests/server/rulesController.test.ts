@@ -847,5 +847,160 @@ describe("RulesController", () => {
             expect(gooEntity).toBeDefined();
             expect(gooEntity.classSlug).toBe("warlock");
         });
+
+        it("filters out legacy pre-2024 classes, subclasses, species, backgrounds, and feats during upsertRulesFromDndBeyond", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
+
+            const savedClasses: any[] = [];
+            const savedSubclasses: any[] = [];
+            const savedSpecies: any[] = [];
+            const savedBackgrounds: any[] = [];
+            const savedFeats: any[] = [];
+
+            const mockClassRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedClasses.find((c) => c.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    const idx = savedClasses.findIndex((c) => c.slug === e.slug);
+                    if (idx >= 0) savedClasses[idx] = e;
+                    else savedClasses.push(e);
+                    return e;
+                })
+            };
+
+            const mockSubclassRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedSubclasses.find((s) => s.slug === where.slug && s.classSlug === where.classSlug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    const idx = savedSubclasses.findIndex((s) => s.slug === e.slug && s.classSlug === e.classSlug);
+                    if (idx >= 0) savedSubclasses[idx] = e;
+                    else savedSubclasses.push(e);
+                    return e;
+                })
+            };
+
+            const mockSpeciesRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedSpecies.find((s) => s.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    savedSpecies.push(e);
+                    return e;
+                })
+            };
+
+            const mockBgRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedBackgrounds.find((b) => b.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    savedBackgrounds.push(e);
+                    return e;
+                })
+            };
+
+            const mockFeatRepo = {
+                findOne: vi.fn().mockImplementation(async ({ where }: any) => {
+                    return savedFeats.find((f) => f.slug === where.slug) || null;
+                }),
+                create: vi.fn().mockImplementation((e) => e),
+                save: vi.fn().mockImplementation(async (e) => {
+                    savedFeats.push(e);
+                    return e;
+                })
+            };
+
+            vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
+                if (entity === RuleClass) return mockClassRepo as any;
+                if (entity === RuleSubclass) return mockSubclassRepo as any;
+                if (entity === RuleSpecies) return mockSpeciesRepo as any;
+                if (entity === RuleBackground) return mockBgRepo as any;
+                if (entity === RuleFeat) return mockFeatRepo as any;
+                return {
+                    findOne: vi.fn().mockResolvedValue(null),
+                    create: vi.fn().mockImplementation((e) => e),
+                    save: vi.fn().mockResolvedValue({})
+                } as any;
+            });
+
+            const rawCharacter = {
+                classes: [
+                    // Legacy class (2014)
+                    {
+                        definition: { id: 99, name: "Legacy Monk (2014)", isLegacy: true },
+                        subclassDefinition: { id: 991, name: "Way of the Open Hand (2014)", isLegacy: true }
+                    },
+                    // Modern 2024 class with legacy subclass
+                    {
+                        definition: { id: 1, name: "Fighter", sourceId: 145 },
+                        subclassDefinition: { id: 2, name: "Champion (2014)", isLegacy: true }
+                    },
+                    // Modern 2024 class with modern 2024 subclass
+                    {
+                        definition: { id: 2, name: "Wizard", sourceId: 145 },
+                        subclassDefinition: { id: 3, name: "Evoker", sourceId: 145 }
+                    }
+                ],
+                race: {
+                    fullName: "Elf (Legacy)",
+                    isLegacy: true,
+                    sourceId: 1
+                },
+                background: {
+                    definition: {
+                        name: "Acolyte (2014)",
+                        isLegacy: true,
+                        sourceId: 1
+                    }
+                },
+                feats: [
+                    {
+                        definition: {
+                            name: "Alert (2014)",
+                            isLegacy: true,
+                            sourceId: 1
+                        }
+                    },
+                    {
+                        definition: {
+                            name: "Alert",
+                            sourceId: 145,
+                            isLegacy: false
+                        }
+                    }
+                ]
+            };
+
+            await RulesController.upsertRulesFromDndBeyond(rawCharacter);
+
+            // Legacy Monk should NOT be saved
+            expect(savedClasses.some((c) => c.slug.includes("monk"))).toBe(false);
+
+            // Fighter should be saved, but legacy Champion subclass should NOT be in subclassesJson or RuleSubclass
+            const fighter = savedClasses.find((c) => c.slug === "fighter");
+            expect(fighter).toBeDefined();
+            const fighterSubs = JSON.parse(fighter.subclassesJson);
+            expect(fighterSubs.some((s: any) => s.name.includes("Champion"))).toBe(false);
+            expect(savedSubclasses.some((s) => s.slug.includes("champion"))).toBe(false);
+
+            // Wizard and Evoker should be saved
+            const wizard = savedClasses.find((c) => c.slug === "wizard");
+            expect(wizard).toBeDefined();
+            const wizardSubs = JSON.parse(wizard.subclassesJson);
+            expect(wizardSubs.some((s: any) => s.name === "Evoker")).toBe(true);
+            expect(savedSubclasses.some((s) => s.slug === "evoker")).toBe(true);
+
+            // Legacy race/background/feat should NOT be saved
+            expect(savedSpecies.some((s) => s.name.includes("Elf"))).toBe(false);
+            expect(savedBackgrounds.some((b) => b.name.includes("Acolyte"))).toBe(false);
+            expect(savedFeats.some((f) => f.name.includes("(2014)"))).toBe(false);
+            expect(savedFeats.some((f) => f.name === "Alert")).toBe(true);
+        });
     });
 });

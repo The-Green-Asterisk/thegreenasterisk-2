@@ -261,4 +261,60 @@ describe('ItemController', () => {
         expect(misclassifiedPotion.isMagic).toBe(true);
         expect(misclassifiedPotion.rarity).toBe('Uncommon');
     });
+
+    it('filters out legacy pre-2024 weapons and equipment during upsertItemsFromCharacter', async () => {
+        Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+        const savedItems: any[] = [];
+        const mockSave = vi.fn().mockImplementation(async (item) => {
+            savedItems.push(item);
+            return { id: savedItems.length, ...item };
+        });
+        const mockCreate = vi.fn().mockImplementation((item) => ({ ...item }));
+        const mockFindOne = vi.fn().mockResolvedValue(null);
+
+        vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+            findOne: mockFindOne,
+            create: mockCreate,
+            save: mockSave,
+        } as any);
+
+        const weapons = [
+            {
+                name: 'Longsword (2014)',
+                isLegacy: true,
+                sourceId: 1,
+                damage: '1d8 Slashing'
+            },
+            {
+                name: 'Greatsword',
+                sourceId: 145,
+                isLegacy: false,
+                damage: '2d6 Slashing'
+            }
+        ];
+
+        const equipment = [
+            {
+                name: 'Healing Potion (Legacy)',
+                isLegacy: true,
+                sourceId: 1,
+                type: 'Potion'
+            },
+            {
+                name: 'Plate Armor',
+                sourceId: 145,
+                isLegacy: false,
+                type: 'Armor'
+            }
+        ];
+
+        const savedCount = await ItemController.upsertItemsFromCharacter(weapons, equipment);
+
+        expect(savedCount).toBe(2);
+        expect(savedItems.some((i) => i.name.includes('(2014)'))).toBe(false);
+        expect(savedItems.some((i) => i.name.includes('(Legacy)'))).toBe(false);
+        expect(savedItems.some((i) => i.name === 'Greatsword')).toBe(true);
+        expect(savedItems.some((i) => i.name === 'Plate Armor')).toBe(true);
+    });
 });

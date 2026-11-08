@@ -2,6 +2,7 @@ import http from "http";
 import cache from "../cache";
 import AppDataSource from "../services/database";
 import { Spell } from "../services/database/entity/Spell";
+import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import BaseController from "./baseController";
 
 function slugify(text: string): string {
@@ -68,11 +69,20 @@ export default class SpellController extends BaseController {
                         existing = await spellRepo.findOne({ where: { dndBeyondId } });
                     }
 
-                    const sourceLabel = (rawSpell.source
+                    const isLegacy = isLegacyDndBeyondEntity(rawSpell);
+                    let sourceLabel = (rawSpell.source
                         ? (String(rawSpell.source).toLowerCase().includes("d&d beyond") || String(rawSpell.source).toLowerCase().includes("custom")
                             ? String(rawSpell.source)
                             : `D&D Beyond (${rawSpell.source})`)
                         : "D&D Beyond").slice(0, 100);
+
+                    if (isLegacy && !sourceLabel.includes("[Legacy]")) {
+                        sourceLabel = `${sourceLabel} [Legacy]`.slice(0, 100);
+                    }
+
+                    const finalDescription = isLegacy && !description.includes("[Legacy]")
+                        ? `<p><strong class="legacy-badge">[Legacy]</strong> <em>This spell uses pre-2024 rules.</em></p>\n${description}`
+                        : description;
 
                     const school = String(rawSpell.school || "Universal").slice(0, 100);
                     const castingTime = normalizeCastingTime(rawSpell.castingTime);
@@ -94,7 +104,7 @@ export default class SpellController extends BaseController {
                             components,
                             concentration: !!rawSpell.concentration,
                             ritual: !!rawSpell.ritual,
-                            description,
+                            description: finalDescription,
                             imageUrl,
                             dndBeyondId,
                             isCustom: false
@@ -103,26 +113,34 @@ export default class SpellController extends BaseController {
                         cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                         cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                         savedCount++;
-                    } else if (isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>") {
-                        // Prefer the definition from the character pull over free online sources
-                        existing.name = name;
-                        existing.level = Number(rawSpell.level) ?? existing.level;
-                        existing.school = school || existing.school || "Universal";
-                        existing.source = sourceLabel;
-                        existing.castingTime = normalizeCastingTime(rawSpell.castingTime || existing.castingTime);
-                        existing.range = range || existing.range || "Self";
-                        existing.duration = duration || existing.duration || "Instantaneous";
-                        existing.components = components || existing.components || "V, S";
-                        existing.concentration = !!rawSpell.concentration;
-                        existing.ritual = !!rawSpell.ritual;
-                        existing.description = description;
-                        if (imageUrl) existing.imageUrl = imageUrl;
-                        if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+                    } else {
+                        const existingIsLegacy = existing.source.includes("[Legacy]") || isLegacySrdSource(existing.source);
+                        // Do not downgrade an existing 2024 spell with a legacy version
+                        if (!existingIsLegacy && isLegacy) {
+                            continue;
+                        }
 
-                        const saved = await spellRepo.save(existing);
-                        cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
-                        cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
-                        savedCount++;
+                        if (existingIsLegacy || !existing.description || existing.description === "<p>No description provided.</p>") {
+                            // Prefer the definition from the character pull over free online sources, or upgrade legacy to 2024
+                            existing.name = name;
+                            existing.level = Number(rawSpell.level) ?? existing.level;
+                            existing.school = school || existing.school || "Universal";
+                            existing.source = sourceLabel;
+                            existing.castingTime = normalizeCastingTime(rawSpell.castingTime || existing.castingTime);
+                            existing.range = range || existing.range || "Self";
+                            existing.duration = duration || existing.duration || "Instantaneous";
+                            existing.components = components || existing.components || "V, S";
+                            existing.concentration = !!rawSpell.concentration;
+                            existing.ritual = !!rawSpell.ritual;
+                            existing.description = finalDescription;
+                            if (imageUrl) existing.imageUrl = imageUrl;
+                            if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+
+                            const saved = await spellRepo.save(existing);
+                            cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
+                            cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
+                            savedCount++;
+                        }
                     }
                 } catch (spellErr) {
                     console.warn(`Could not upsert spell "${rawSpell?.name || "unknown"}":`, spellErr);

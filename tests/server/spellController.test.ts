@@ -111,4 +111,121 @@ describe('SpellController', () => {
         expect(result.status).toBe(400);
         expect(result.response).toContain('Name and description are required');
     });
+
+    describe('upsertSpellsFromCharacter', () => {
+        it('saves legacy spells with [Legacy] tag and badge', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+            const savedSpells: any[] = [];
+            const mockSave = vi.fn().mockImplementation(async (spell) => {
+                savedSpells.push(spell);
+                return { id: savedSpells.length, ...spell };
+            });
+            const mockCreate = vi.fn().mockImplementation((spell) => ({ ...spell }));
+            const mockFindOne = vi.fn().mockResolvedValue(null);
+
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                findOne: mockFindOne,
+                create: mockCreate,
+                save: mockSave,
+            } as any);
+
+            const spells = [
+                {
+                    name: 'Eldritch Blast',
+                    level: 0,
+                    school: 'Evocation',
+                    description: '<p>A beam of crackling energy streaks toward a creature within range.</p>',
+                    isLegacy: true,
+                    sourceId: 1
+                }
+            ];
+
+            const count = await SpellController.upsertSpellsFromCharacter(spells);
+            expect(count).toBe(1);
+            expect(savedSpells.length).toBe(1);
+            expect(savedSpells[0].source).toContain('[Legacy]');
+            expect(savedSpells[0].description).toContain('<strong class="legacy-badge">[Legacy]</strong>');
+        });
+
+        it('does not downgrade an existing 2024 spell with a legacy version', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+            const existing2024Spell = {
+                id: 1,
+                slug: 'cure-wounds',
+                name: 'Cure Wounds',
+                level: 1,
+                school: 'Abjuration',
+                source: "Player's Handbook (2024)",
+                description: '<p>A creature you touch regains a number of hit points equal to 2d8 + your spellcasting ability modifier.</p>'
+            };
+
+            const mockSave = vi.fn().mockImplementation(async (s) => s);
+            const mockFindOne = vi.fn().mockResolvedValue(existing2024Spell);
+
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                findOne: mockFindOne,
+                save: mockSave,
+            } as any);
+
+            const legacyImport = [
+                {
+                    name: 'Cure Wounds',
+                    level: 1,
+                    school: 'Evocation',
+                    description: '<p>A creature you touch regains 1d8 + modifier.</p>',
+                    isLegacy: true,
+                    sourceId: 1
+                }
+            ];
+
+            const count = await SpellController.upsertSpellsFromCharacter(legacyImport);
+            expect(count).toBe(0);
+            expect(mockSave).not.toHaveBeenCalled();
+            expect(existing2024Spell.source).toBe("Player's Handbook (2024)");
+            expect(existing2024Spell.description).toContain('2d8');
+        });
+
+        it('upgrades an existing legacy spell when a 2024 version is imported', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+            const existingLegacySpell = {
+                id: 2,
+                slug: 'healing-word',
+                name: 'Healing Word',
+                level: 1,
+                school: 'Evocation',
+                source: 'D&D Beyond [Legacy]',
+                description: '<p><strong class="legacy-badge">[Legacy]</strong> <em>This spell uses pre-2024 rules.</em></p>\n<p>1d4 healing.</p>'
+            };
+
+            const mockSave = vi.fn().mockImplementation(async (s) => s);
+            const mockFindOne = vi.fn().mockResolvedValue(existingLegacySpell);
+
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                findOne: mockFindOne,
+                save: mockSave,
+            } as any);
+
+            const modernImport = [
+                {
+                    name: 'Healing Word',
+                    level: 1,
+                    school: 'Abjuration',
+                    description: '<p>A creature of your choice that you can see within range regains hit points equal to 2d4 + spellcasting ability modifier.</p>',
+                    source: "Player's Handbook (2024)",
+                    sourceId: 145,
+                    isLegacy: false
+                }
+            ];
+
+            const count = await SpellController.upsertSpellsFromCharacter(modernImport);
+            expect(count).toBe(1);
+            expect(mockSave).toHaveBeenCalled();
+            expect(existingLegacySpell.source).not.toContain('[Legacy]');
+            expect(existingLegacySpell.description).toContain('2d4');
+            expect(existingLegacySpell.description).not.toContain('<strong class="legacy-badge">[Legacy]</strong>');
+        });
+    });
 });

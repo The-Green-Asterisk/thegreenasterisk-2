@@ -12,6 +12,7 @@ export interface SpellDefinition {
     ritual: boolean;
     description: string;
     imageUrl?: string;
+    isLegacy?: boolean;
 }
 
 export interface AbilityScore {

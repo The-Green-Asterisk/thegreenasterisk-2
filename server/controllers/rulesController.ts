@@ -17,6 +17,7 @@ import {
     SEED_ORIGIN_FEATS,
     SEED_SPECIES
 } from "../services/database/rulesSeed";
+import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import BaseController from "./baseController";
 
 function slugify(text: string): string {
@@ -696,11 +697,13 @@ export default class RulesController extends BaseController {
                 for (const c of rawCharacter.classes) {
                     const def = c.definition;
                     if (!def || !def.name) continue;
+                    if (isLegacyDndBeyondEntity(c) || isLegacyDndBeyondEntity(def)) continue;
                     const className = String(def.name).trim();
                     const slug = slugify(className);
                     if (!slug) continue;
 
                     const subDef = c.subclassDefinition;
+                    const isLegacySub = subDef && (isLegacyDndBeyondEntity(subDef) || isLegacyDndBeyondEntity(c.subclassDefinition));
                     const classFeatures: any[] = Array.isArray(c.classFeatures) ? c.classFeatures : [];
 
                     const otherClasses = (rawCharacter.classes || []).filter((otherC: any) => otherC !== c);
@@ -766,7 +769,7 @@ export default class RulesController extends BaseController {
 
                     // Extract subclass features from subDef.classFeatures and c.classFeatures
                     const extractedSubclassFeatures: Array<{ level: number; name: string; description: string; htmlDescription: string; fromDndBeyond: boolean }> = [];
-                    if (subDef && subDef.name) {
+                    if (subDef && subDef.name && !isLegacySub) {
                         const rawSubName = String(subDef.name).trim();
                         const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
                         const rawSubLower = rawSubName.toLowerCase();
@@ -844,7 +847,7 @@ export default class RulesController extends BaseController {
                     if (ruleClass) {
                         let subclasses: any[] = this.safeParse(ruleClass.subclassesJson, []);
                         let targetSub: any = null;
-                        if (subDef && subDef.name) {
+                        if (subDef && subDef.name && !isLegacySub) {
                             const rawSubName = String(subDef.name).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
                             const subSlug = slugify(cleanSubName);
@@ -941,7 +944,7 @@ export default class RulesController extends BaseController {
                         await classRepo.save(ruleClass);
 
                         // Also upsert RuleSubclass entity in database
-                        if (targetSub) {
+                        if (targetSub && !isLegacySub) {
                             try {
                                 const subclassRepo = AppDataSource.getRepository(RuleSubclass);
                                 if (subclassRepo && typeof subclassRepo.findOne === "function" && typeof subclassRepo.save === "function") {
@@ -972,7 +975,7 @@ export default class RulesController extends BaseController {
                         }
                     } else {
                         const subclasses: any[] = [];
-                        if (subDef && subDef.name) {
+                        if (subDef && subDef.name && !isLegacySub) {
                             const rawSubName = String(subDef.name).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
                             subclasses.push({
@@ -1004,7 +1007,7 @@ export default class RulesController extends BaseController {
                         await classRepo.save(newClass);
                         count++;
 
-                        if (subDef && subDef.name && subclasses.length > 0) {
+                        if (subDef && subDef.name && subclasses.length > 0 && !isLegacySub) {
                             try {
                                 const subclassRepo = AppDataSource.getRepository(RuleSubclass);
                                 if (subclassRepo && typeof subclassRepo.findOne === "function" && typeof subclassRepo.save === "function") {
@@ -1032,7 +1035,7 @@ export default class RulesController extends BaseController {
             }
 
             // 2. Species / Race & Traits
-            if (rawCharacter.race) {
+            if (rawCharacter.race && !isLegacyDndBeyondEntity(rawCharacter.race)) {
                 const race = rawCharacter.race;
                 const raceName = String(race.baseRaceName || race.fullName || "").trim();
                 if (raceName) {
@@ -1042,7 +1045,7 @@ export default class RulesController extends BaseController {
                         const extractedTraits: Array<{ name: string; description: string; htmlDescription: string; fromDndBeyond: boolean }> = [];
                         for (const rt of racialTraits) {
                             const tDef = rt.definition;
-                            if (tDef && tDef.name) {
+                            if (tDef && tDef.name && !isLegacyDndBeyondEntity(tDef)) {
                                 const rawHtml = String(tDef.description || tDef.snippet || "").trim();
                                 extractedTraits.push({
                                     name: String(tDef.name).trim(),
@@ -1098,7 +1101,7 @@ export default class RulesController extends BaseController {
             }
 
             // 3. Background
-            if (rawCharacter.background && rawCharacter.background.definition) {
+            if (rawCharacter.background && rawCharacter.background.definition && !isLegacyDndBeyondEntity(rawCharacter.background) && !isLegacyDndBeyondEntity(rawCharacter.background.definition)) {
                 const bgDef = rawCharacter.background.definition;
                 const bgName = String(bgDef.name || "").trim();
                 if (bgName) {
@@ -1130,7 +1133,7 @@ export default class RulesController extends BaseController {
             if (Array.isArray(rawCharacter.feats)) {
                 for (const f of rawCharacter.feats) {
                     const fDef = f.definition;
-                    if (!fDef || !fDef.name) continue;
+                    if (!fDef || !fDef.name || isLegacyDndBeyondEntity(f) || isLegacyDndBeyondEntity(fDef)) continue;
                     const featName = String(fDef.name).trim();
                     const slug = slugify(featName);
                     if (!slug) continue;
@@ -1193,6 +1196,7 @@ export default class RulesController extends BaseController {
             // Classes from saved payload
             if (Array.isArray(payloadToSave.classes)) {
                 for (const cls of payloadToSave.classes) {
+                    if (isLegacyDndBeyondEntity(cls)) continue;
                     const name = String(cls.name || "").trim();
                     const slug = slugify(name);
                     if (!slug) continue;
@@ -1211,7 +1215,7 @@ export default class RulesController extends BaseController {
                             weaponMasteryCount: 0,
                             skillChoicesJson: JSON.stringify({ count: 2, from: ["Athletics", "Perception"] }),
                             featuresJson: JSON.stringify([]),
-                            subclassesJson: JSON.stringify(cls.subclass ? [{ id: slugify(cls.subclass), name: cls.subclass, description: "", features: [] }] : []),
+                            subclassesJson: JSON.stringify(cls.subclass && !isLegacyDndBeyondEntity({ name: cls.subclass }) ? [{ id: slugify(cls.subclass), name: cls.subclass, description: "", features: [] }] : []),
                             progressionJson: JSON.stringify(buildClassProgression(slug, [])),
                             source: "Imported Character"
                         });
@@ -1229,7 +1233,7 @@ export default class RulesController extends BaseController {
                         let featsChanged = false;
 
                         let targetSub: any = null;
-                        if (cls.subclass) {
+                        if (cls.subclass && !isLegacyDndBeyondEntity({ name: cls.subclass })) {
                             const rawSubName = String(cls.subclass).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
                             const subSlug = slugify(cleanSubName);
@@ -1451,7 +1455,7 @@ export default class RulesController extends BaseController {
                         if ((subsChanged || featsChanged) && typeof classRepo.save === "function") {
                             await classRepo.save(ruleClass);
                         }
-                    } else if (cls.subclass) {
+                    } else if (cls.subclass && !isLegacyDndBeyondEntity({ name: cls.subclass })) {
                         let subs: any[] = this.safeParse(ruleClass.subclassesJson, []);
                         const rawSubName = String(cls.subclass).trim();
                         const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
@@ -1476,7 +1480,7 @@ export default class RulesController extends BaseController {
             }
 
             // Species from saved payload
-            if (payloadToSave.race) {
+            if (payloadToSave.race && !isLegacyDndBeyondEntity({ name: payloadToSave.race })) {
                 const raceName = String(payloadToSave.race).trim();
                 const slug = slugify(raceName);
                 if (slug) {
@@ -1498,7 +1502,7 @@ export default class RulesController extends BaseController {
             }
 
             // Background from saved payload
-            if (payloadToSave.background) {
+            if (payloadToSave.background && !isLegacyDndBeyondEntity({ name: payloadToSave.background })) {
                 const bgName = String(payloadToSave.background).trim();
                 const slug = slugify(bgName);
                 if (slug) {
