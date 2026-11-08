@@ -5000,9 +5000,9 @@ export class CharacterCreatorController {
                     name: "Unarmed Strike",
                     type: "Action",
                     rangeOrReach: "Reach 5 ft.",
-                    hitOrDc: `+${this.getAbilityModifier("str") + pb} to hit`,
-                    damageOrEffect: `${Math.max(1, 1 + this.getAbilityModifier("str"))} Bludgeoning`,
-                    notes: `Damage, Grapple, or Shove (DC ${8 + this.getAbilityModifier("str") + pb})`
+                    hitOrDc: "Special",
+                    damageOrEffect: "You make a melee attack to damage, grapple, or shove a target within 5 ft. of you.\r\n\r\n<strong><em>Damage.</em></strong> You make an attack roll against the target. <em>To Hit:</em> {{modifier:str+proficiency}}. <em>On a Hit:</em> {{1+modifier:str#unsigned}} Bludgeoning damage.\r\n\r\n<strong><em>Grapple.</em></strong> The target must succeed on a <strong>DC {{savedc:str}}</strong> Str. or Dex. save (it chooses which), or it has the Grappled condition. This grapple is possible only if the target is no more than one size larger than you and if you have a hand free to grab it.\r\n\r\n<strong><em>Shove.</em></strong> The target must succeed on a <strong>DC {{savedc:str}}</strong> Str. or Dex. save (it chooses which), or you either push it 5 ft. away or cause it to have the Prone condition. This shove is possible only if the target is no more than one size larger than you.",
+                    notes: "<p>Instead of using a weapon to make a melee attack, you can use a punch, kick, head-butt, or similar forceful blow. In game terms, this is an [rules]Unarmed Strike[/rules]—a melee attack that involves you using your body to damage, grapple, or shove a target within 5 feet of you.</p>"
                 },
                 ...featureActions
             ];

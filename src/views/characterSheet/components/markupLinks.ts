@@ -278,10 +278,10 @@ export const DEFAULT_DND55_ACTIONS: StandardActionDefinition[] = [
     {
         name: "Unarmed Strike",
         type: "Melee Attack • D&D 5.5 (2024 Rules)",
-        rangeOrReach: "5 ft.",
+        rangeOrReach: "Reach 5 ft.",
         hitOrDc: "Attack Roll or STR/DEX Save",
         damageOrEffect: "Damage (1 + STR), Grapple, or Shove",
-        description: `<p>Instead of using a weapon to make a melee attack, you can use a punch, kick, head-butt, or similar forceful blow. In game terms, this is an <strong>Unarmed Strike</strong>—a melee attack that involves you using your body to damage, grapple, or shove a target within 5 feet of you.</p>`,
+        description: `<p>Instead of using a weapon to make a melee attack, you can use a punch, kick, head-butt, or similar forceful blow. In game terms, this is an <strong>Unarmed Strike</strong>—a melee attack that involves you using your body to damage, grapple, or shove a target within 5 feet of you.</p><p>Whenever you use your Unarmed Strike, choose one of the following options:</p><p><strong><em>Damage.</em></strong> You make an attack roll against the target. On a hit, the target takes Bludgeoning damage equal to 1 plus your Strength modifier.</p><p><strong><em>Grapple.</em></strong> The target must succeed on a Strength or Dexterity saving throw (it chooses which), or it has the Grappled condition. The DC for the saving throw and any escape attempts equals 8 plus your Strength modifier and Proficiency Bonus. This grapple is possible only if the target is no more than one size larger than you and if you have a hand free to grab it.</p><p><strong><em>Shove.</em></strong> The target must succeed on a Strength or Dexterity saving throw (it chooses which), or you either push it 5 feet away or cause it to have the Prone condition. This shove is possible only if the target is no more than one size larger than you.</p>`,
         url: `${DND_BEYOND_BR_2024_BASE}/rules-glossary#UnarmedStrike`
     }
 ];

@@ -1065,6 +1065,22 @@ export default class RulesController extends BaseController {
             }
         }
 
+        // 1.5. Upgrade Unarmed Strike with the robust D&D Beyond 2024 definition (Damage, Grapple, and Shove)
+        if (Array.isArray(character.actions)) {
+            for (const act of character.actions) {
+                if (String(act?.name || "").toLowerCase().trim() === "unarmed strike") {
+                    const needsUpgrade = !act.damageOrEffect || !act.damageOrEffect.includes("Grapple") || !act.damageOrEffect.includes("{{savedc:str}}");
+                    if (needsUpgrade) {
+                        act.rangeOrReach = "Reach 5 ft.";
+                        act.hitOrDc = "Special";
+                        act.damageOrEffect = "You make a melee attack to damage, grapple, or shove a target within 5 ft. of you.\r\n\r\n<strong><em>Damage.</em></strong> You make an attack roll against the target. <em>To Hit:</em> {{modifier:str+proficiency}}. <em>On a Hit:</em> {{1+modifier:str#unsigned}} Bludgeoning damage.\r\n\r\n<strong><em>Grapple.</em></strong> The target must succeed on a <strong>DC {{savedc:str}}</strong> Str. or Dex. save (it chooses which), or it has the Grappled condition. This grapple is possible only if the target is no more than one size larger than you and if you have a hand free to grab it.\r\n\r\n<strong><em>Shove.</em></strong> The target must succeed on a <strong>DC {{savedc:str}}</strong> Str. or Dex. save (it chooses which), or you either push it 5 ft. away or cause it to have the Prone condition. This shove is possible only if the target is no more than one size larger than you.";
+                        act.notes = "<p>Instead of using a weapon to make a melee attack, you can use a punch, kick, head-butt, or similar forceful blow. In game terms, this is an [rules]Unarmed Strike[/rules]—a melee attack that involves you using your body to damage, grapple, or shove a target within 5 feet of you.</p>";
+                        changed = true;
+                    }
+                }
+            }
+        }
+
         // 2. Replace synthesized class/subclass feature actions with canonical D&D Beyond actions where available
         if (Array.isArray(character.actions) && Array.isArray(character.classes) && Array.isArray(character.features)) {
             const charClasses = character.classes.map((c: any) => String(c?.name || "").toLowerCase().trim());
