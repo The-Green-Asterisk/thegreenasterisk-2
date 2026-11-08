@@ -511,7 +511,13 @@ export default class RulesController extends BaseController {
                                     })
                                 : (seedSub?.features || []);
                             feats.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
-                            const subProg = buildSubclassProgression(rc.slug, { ...sub, features: feats });
+                            const matchedLSub = loadedSubclasses.find(
+                                (ls) => (ls.classSlug === rc.slug || ls.classId === rc.id) &&
+                                        (ls.slug === sub.id || ls.id === sub.id || ls.name.toLowerCase() === sub.name?.toLowerCase())
+                            );
+                            const subProg = (matchedLSub && matchedLSub.progression && matchedLSub.progression.length > 0)
+                                ? matchedLSub.progression
+                                : buildSubclassProgression(rc.slug, { ...sub, features: feats });
                             return {
                                 ...sub,
                                 classSlug: rc.slug,
@@ -524,10 +530,17 @@ export default class RulesController extends BaseController {
                 if (seedCls?.subclasses) {
                     for (const ss of seedCls.subclasses) {
                         if (!subclasses.some((s: any) => s.id === ss.id || s.name.toLowerCase() === ss.name.toLowerCase())) {
+                            const matchedLSub = loadedSubclasses.find(
+                                (ls) => (ls.classSlug === rc.slug || ls.classId === rc.id) &&
+                                        (ls.slug === ss.id || ls.id === ss.id || ls.name.toLowerCase() === ss.name?.toLowerCase())
+                            );
+                            const subProg = (matchedLSub && matchedLSub.progression && matchedLSub.progression.length > 0)
+                                ? matchedLSub.progression
+                                : buildSubclassProgression(rc.slug, ss);
                             subclasses.push({
                                 ...ss,
                                 classSlug: rc.slug,
-                                progression: buildSubclassProgression(rc.slug, ss)
+                                progression: subProg
                             });
                         }
                     }

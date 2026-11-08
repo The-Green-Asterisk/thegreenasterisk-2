@@ -2123,4 +2123,91 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getMaxPreparedSpells()).toBe(6);
         expect(ctrl.getSpellSlotsSummary()).toBe("2 × Lvl 1; 2 × Lvl 1 (Pact Magic)");
     });
+
+    describe("dynamic progression & granted spells integration", () => {
+        it("displays progression-granted spells in level progression and includes them in buildPayload", () => {
+            const cleric = ctrl.classes.find((c) => c.id === "cleric");
+            expect(cleric).toBeDefined();
+
+            const lifeSub = cleric!.subclasses.find((s) => s.id === "life");
+            expect(lifeSub).toBeDefined();
+
+            lifeSub!.progression = [
+                {
+                    level: 3,
+                    features: [{ name: "Disciple of Life", description: "Healing spells are more effective." }],
+                    grantedSpells: [
+                        { spellId: "bless", name: "Bless", alwaysPrepared: true },
+                        { spellId: "cure-wounds", name: "Cure Wounds", alwaysPrepared: true }
+                    ]
+                }
+            ];
+
+            ctrl.state.classId = "cleric";
+            ctrl.state.subclassId = "life";
+            ctrl.state.level = 3;
+            ctrl.state.classes = [{ classId: "cleric", level: 3, subclassId: "life" }];
+            ctrl.syncStateClassProperties();
+
+            const html = ctrl["renderClassProgression"](cleric!, 3, 0, "life");
+            expect(html).toContain("Bless (Granted Spell)");
+            expect(html).toContain("Cure Wounds (Granted Spell)");
+            expect(html).toContain("Always Prepared");
+
+            const payload = ctrl["buildPayload"]();
+            const payloadSpells = payload.spells.map((s: any) => s.name);
+            expect(payloadSpells).toContain("Bless");
+            expect(payloadSpells).toContain("Cure Wounds");
+
+            const bless = payload.spells.find((s: any) => s.name === "Bless");
+            expect(bless.alwaysPrepared).toBe(true);
+            expect(bless.prepared).toBe(true);
+        });
+
+        it("dynamically renders custom progression choices and includes selected choices in buildPayload", () => {
+            const cleric = ctrl.classes.find((c) => c.id === "cleric");
+            expect(cleric).toBeDefined();
+
+            const lifeSub = cleric!.subclasses.find((s) => s.id === "life");
+            expect(lifeSub).toBeDefined();
+
+            lifeSub!.progression = [
+                {
+                    level: 3,
+                    features: [],
+                    choices: [
+                        {
+                            id: "custom-divine-rite",
+                            choiceId: "custom-divine-rite",
+                            name: "Rite of Devotion",
+                            prompt: "Select your sacred rite.",
+                            chooseCount: 1,
+                            options: [
+                                { id: "rite-of-dawn", name: "Dawn Radiance", description: "Infuses spells with solar radiance." },
+                                { id: "rite-of-dusk", name: "Dusk Shroud", description: "Infuses spells with twilight warding." }
+                            ]
+                        }
+                    ]
+                }
+            ];
+
+            ctrl.state.classId = "cleric";
+            ctrl.state.subclassId = "life";
+            ctrl.state.level = 3;
+            ctrl.state.classes = [{ classId: "cleric", level: 3, subclassId: "life" }];
+            ctrl.syncStateClassProperties();
+
+            const html = ctrl["renderClassProgression"](cleric!, 3, 0, "life");
+            expect(html).toContain("Rite of Devotion");
+            expect(html).toContain("Dawn Radiance");
+            expect(html).toContain("Dusk Shroud");
+
+            ctrl.state.subclassFeatureChoices["custom-divine-rite"] = "rite-of-dawn";
+
+            const payload = ctrl["buildPayload"]();
+            const choiceFeature = payload.features.find((f: any) => f.name.includes("Dawn Radiance"));
+            expect(choiceFeature).toBeDefined();
+            expect(choiceFeature.description).toContain("solar radiance");
+        });
+    });
 });

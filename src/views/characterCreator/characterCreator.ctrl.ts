@@ -525,6 +525,21 @@ export class CharacterCreatorController {
                                 progression: sub.progression || fallbackSub?.progression
                             };
                         });
+                        const classSlug = rc.id || rc.slug;
+                        if (Array.isArray(rules.subclasses)) {
+                            for (const gs of rules.subclasses) {
+                                if (gs.classSlug === classSlug || gs.classId === rc.id) {
+                                    const existingIdx = enrichedSubs.findIndex(
+                                        (s: any) => s.id === gs.id || s.slug === gs.slug || s.name.toLowerCase() === gs.name.toLowerCase()
+                                    );
+                                    if (existingIdx === -1) {
+                                        enrichedSubs.push(gs);
+                                    } else if (!enrichedSubs[existingIdx].progression || enrichedSubs[existingIdx].progression.length === 0) {
+                                        enrichedSubs[existingIdx].progression = gs.progression;
+                                    }
+                                }
+                            }
+                        }
                         if (fallbackCls?.subclasses) {
                             for (const fs of fallbackCls.subclasses) {
                                 if (!enrichedSubs.some((s: any) => s.id === fs.id || s.name.toLowerCase() === fs.name.toLowerCase())) {
@@ -535,9 +550,9 @@ export class CharacterCreatorController {
                         return {
                             ...rc,
                             features:
-                                fallbackCls?.features && fallbackCls.features.length > 0
-                                    ? fallbackCls.features
-                                    : (rc.features || []),
+                                Array.isArray(rc.features) && rc.features.length > 0
+                                    ? rc.features
+                                    : (fallbackCls?.features || []),
                             subclasses: enrichedSubs,
                             progression: rc.progression || fallbackCls?.progression
                         };
@@ -2252,7 +2267,10 @@ export class CharacterCreatorController {
         return s[(v - 20) % 10] || s[v] || s[0];
     }
 
-    private getFeatureTagHtml(featureName: string, level: number, isSubclassFeature = false): string {
+    private getFeatureTagHtml(featureName: string, level: number, isSubclassFeature = false, isGrantedSpell = false): string {
+        if (isGrantedSpell) {
+            return `<span class="progression-feature-tag magic"><i class="fa-solid fa-wand-magic-sparkles"></i> Always Prepared</span>`;
+        }
         const lower = featureName.toLowerCase();
         if (lower.includes("ability score improvement")) {
             return `<span class="progression-feature-tag asi"><i class="fa-solid fa-arrow-up-right-dots"></i> ASI / Feat</span>`;
@@ -3209,6 +3227,114 @@ export class CharacterCreatorController {
             `);
         }
 
+        // Dynamic choices from class or subclass progression JSON
+        const subForChoices = currentSubId
+            ? (cls.subclasses?.find((s: any) => s.id === currentSubId) || CLASSES_2024.find((c) => c.id === cls.id)?.subclasses?.find((s) => s.id === currentSubId))
+            : undefined;
+        const clsProgLvl = cls.progression?.find((p) => p.level === lvl);
+        const subProgLvl = subForChoices?.progression?.find((p: any) => p.level === lvl);
+        const dynamicChoices = [
+            ...(clsProgLvl?.choices || []),
+            ...(subProgLvl?.choices || [])
+        ];
+
+        const handledChoiceKeys = new Set<string>([
+            "fighting-style",
+            "divine-order",
+            "primal-order",
+            "metamagic",
+            "invocation",
+            "wizard-2-scholar",
+            "battle-master-maneuvers",
+            "barbarian-3-wild-heart",
+            "wild-heart-rage",
+            "barbarian-3-zealot",
+            "divine-fury",
+            "monk-3-elements",
+            "elements-attunement",
+            "ranger-3-beast-master",
+            "beast-master-companion",
+            "ranger-3-hunter",
+            "hunter-prey",
+            "sorcerer-3-draconic",
+            "draconic-ancestor",
+            "fighter-3-battle-master-student",
+            "battle-master-student",
+            "monk-3-open-hand",
+            "open-hand-technique",
+            "ranger-3-fey-wanderer",
+            "fey-wanderer-glamour",
+            "warlock-3-archfey",
+            "archfey-steps",
+            "druid-3-stars",
+            "starry-form",
+            "druid-3-sea",
+            "sea-wrath",
+            "druid-3-moon",
+            "moon-forms",
+            "rogue-5-cunning-strike",
+            "cunning-strike",
+            "druid-6-land",
+            "land-biome",
+            "barbarian-6-wild-heart",
+            "wild-heart-aspect",
+            "ranger-6-hunter",
+            "hunter-defense",
+            "cleric-6-war",
+            "war-god-blessing",
+            "druid-7",
+            "elemental-fury",
+            "cleric-7",
+            "blessed-strikes",
+            "fighter-7-champion",
+            "champion-fighting-style",
+            "fighter-7-psi-warrior",
+            "psi-warrior-thrust",
+            "barbarian-9-brutal-strike",
+            "brutal-strike",
+            "fighter-9-tactical-master",
+            "tactical-master",
+            "warlock-10-fiend",
+            "fiend-resilience",
+            "barbarian-10-world-tree",
+            "world-tree-roots",
+            "wizard-10-diviner",
+            "diviner-third-eye",
+            "barbarian-13-brutal-strike",
+            "improved-brutal-strike",
+            "barbarian-14-wild-heart",
+            "wild-heart-totem",
+            "rogue-14-devious-strike",
+            "devious-strike",
+            "sorcerer-14-aberrant",
+            "aberrant-revelation",
+            "ranger-15-hunter",
+            "hunter-superior-defense"
+        ]);
+
+        for (const ch of dynamicChoices) {
+            const chId = ch.choiceId || ch.id;
+            if (handledChoiceKeys.has(chId) || (ch.id && handledChoiceKeys.has(ch.id))) continue;
+            const currentChoice = this.state.subclassFeatureChoices?.[chId] || "";
+            choices.push(`
+                <div class="level-choice-box">
+                    <h5 class="level-choice-title"><i class="fa-solid fa-code-branch"></i> ${ch.name} (Choose ${ch.chooseCount || 1})</h5>
+                    ${(ch.description || ch.prompt) ? `<p class="card-body">${ch.description || ch.prompt}</p>` : ""}
+                    <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                        ${(ch.options || []).map((opt) => `
+                            <div class="select-card subclass-feature-card ${currentChoice === opt.id ? "selected" : ""}" data-feature-key="${chId}" data-feature-choice="${opt.id}">
+                                <div class="card-title-row">
+                                    <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
+                                    <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                </div>
+                                <p class="card-body">${opt.description}</p>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `);
+        }
+
         if (!isUnlocked) {
             return choices.map((c) =>
                 c.replace(
@@ -3278,6 +3404,31 @@ export class CharacterCreatorController {
                 ];
             }
 
+            // Progression-granted spells for this level (from cls.progression and sub.progression)
+            const clsProgLvl = cls.progression?.find((p) => p.level === lvl);
+            const subProgLvl = sub?.progression?.find((p: any) => p.level === lvl);
+            const grantedSpellsAtLvl = [
+                ...((clsProgLvl?.grantedSpells || []).map((sp: any) => ({
+                    name: typeof sp === "string" ? sp : (sp.name || sp.spellId),
+                    source: cls.name
+                }))),
+                ...((subProgLvl?.grantedSpells || []).map((sp: any) => ({
+                    name: typeof sp === "string" ? sp : (sp.name || sp.spellId),
+                    source: sub ? sub.name : "Subclass"
+                })))
+            ].filter((s) => Boolean(s.name));
+
+            if (grantedSpellsAtLvl.length > 0) {
+                const spellCards = grantedSpellsAtLvl.map((sp) => ({
+                    level: lvl,
+                    name: `${sp.name} (Granted Spell)`,
+                    description: `Automatically granted and always prepared by ${sp.source}.`,
+                    isSubclassFeature: sp.source !== cls.name,
+                    isGrantedSpell: true
+                }));
+                featuresAtLvl.push(...(spellCards as any));
+            }
+
             const choicesHtml = this.renderLevelChoices(cls, lvl, classIdx, resolvedSubId, isUnlocked);
 
             const boxHtml = `
@@ -3304,7 +3455,7 @@ export class CharacterCreatorController {
                                 <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
                                     <div class="card-title-row">
                                         <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
-                                        ${this.getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature))}
+                                        ${this.getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature), Boolean((f as any).isGrantedSpell))}
                                     </div>
                                     <p class="card-body">${f.description}</p>
                                 </div>
@@ -4117,6 +4268,29 @@ export class CharacterCreatorController {
                         ${this.state.metamagic.length > 0 ? `<div class="review-row"><span class="label">Metamagic:</span><strong>${this.state.metamagic.map((m) => METAMAGIC_OPTIONS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
                         ${this.state.invocations.length > 0 ? `<div class="review-row"><span class="label">Invocations:</span><strong>${this.state.invocations.map((i) => ELDRITCH_INVOCATIONS.find((o) => o.id === i)?.name || i).join(", ")}</strong></div>` : ""}
                         ${this.state.maneuvers.length > 0 ? `<div class="review-row"><span class="label">Maneuvers:</span><strong>${this.state.maneuvers.map((m) => BATTLE_MASTER_MANEUVERS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
+                        ${(() => {
+                            const handledReviewKeys = new Set([
+                                "wizard-2-scholar", "barbarian-3-wild-heart", "barbarian-3-zealot", "monk-3-elements",
+                                "ranger-3-beast-master", "ranger-3-hunter", "fighter-3-battle-master-student", "monk-3-open-hand",
+                                "ranger-3-fey-wanderer", "warlock-3-archfey", "druid-3-stars", "druid-3-sea", "druid-3-moon",
+                                "sorcerer-3-draconic", "rogue-5-cunning-strike", "druid-6-land", "cleric-6-war", "barbarian-6-wild-heart",
+                                "ranger-6-hunter", "druid-7", "cleric-7", "fighter-7-champion", "fighter-7-psi-warrior",
+                                "barbarian-9-brutal-strike", "fighter-9-tactical-master", "barbarian-10-world-tree", "warlock-10-fiend",
+                                "wizard-10-diviner", "barbarian-13-brutal-strike", "barbarian-14-wild-heart", "rogue-14-devious-strike",
+                                "sorcerer-14-aberrant", "ranger-15-hunter"
+                            ]);
+                            const rows: string[] = [];
+                            if (this.state.subclassFeatureChoices) {
+                                for (const [key, val] of Object.entries(this.state.subclassFeatureChoices)) {
+                                    if (handledReviewKeys.has(key)) continue;
+                                    const opt = findClassOption(key, val);
+                                    if (opt) {
+                                        rows.push(`<div class="review-row"><span class="label">${opt.name}:</span><strong>Selected</strong></div>`);
+                                    }
+                                }
+                            }
+                            return rows.join("");
+                        })()}
                         ${this.state.expertiseSkills.length > 0 ? `<div class="review-row"><span class="label">Expertise Skills:</span><strong>${this.state.expertiseSkills.join(", ")}</strong></div>` : ""}
                         ${this.getAsiLevels().length > 0 ? `
                             <div class="review-row" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
@@ -4140,6 +4314,33 @@ export class CharacterCreatorController {
                             const sp = SPELLS_2024.find((s) => s.name === name);
                             return sp ? `${name} (Lvl ${sp.level})` : name;
                         }).join(", ") || "None"}</strong></div>
+                        ${(() => {
+                            const grantedList: string[] = [];
+                            for (const c of this.state.classes) {
+                                const clsDef = this.classes.find((x) => x.id === c.classId);
+                                const subDef = clsDef?.subclasses?.find((s) => s.id === c.subclassId);
+                                for (const pl of clsDef?.progression || []) {
+                                    if (pl.level <= c.level) {
+                                        for (const sp of pl.grantedSpells || []) {
+                                            const name = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                                            if (name && !grantedList.includes(name)) grantedList.push(name);
+                                        }
+                                    }
+                                }
+                                for (const pl of subDef?.progression || []) {
+                                    if (pl.level <= c.level) {
+                                        for (const sp of pl.grantedSpells || []) {
+                                            const name = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                                            if (name && !grantedList.includes(name)) grantedList.push(name);
+                                        }
+                                    }
+                                }
+                            }
+                            if (grantedList.length > 0) {
+                                return `<div class="review-row"><span class="label">Granted Spells (Always Prepared):</span><strong>${grantedList.join(", ")}</strong></div>`;
+                            }
+                            return "";
+                        })()}
                         ${(() => {
                             const casterStats = this.getSpellcasterStatsList();
                             if (casterStats.length > 0) {
@@ -4874,27 +5075,11 @@ export class CharacterCreatorController {
         }
     }
 
-    // Submission to API
-    public async submitCharacter() {
-        if (!this.state.name.trim()) {
-            this.goToStep(1);
-            this.showAlert("Please enter a character name.");
-            return;
-        }
-
-        const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = this.state.savedId
-                ? `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`
-                : `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
-        }
-
-        try {
-            const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
-            const species = this.species.find((s) => s.id === this.state.speciesId) || this.species[0];
-            const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
-            const pb = this.getProficiencyBonus();
+    public buildPayload(): any {
+        const cls = this.classes.find((c) => c.id === this.state.classId) || this.classes[0];
+        const species = this.species.find((s) => s.id === this.state.speciesId) || this.species[0];
+        const bg = this.backgrounds.find((b) => b.id === this.state.backgroundId) || this.backgrounds[0];
+        const pb = this.getProficiencyBonus();
 
             const abilityNames: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
             const abilityTitles: Record<AbilityName, string> = {
@@ -5080,9 +5265,49 @@ export class CharacterCreatorController {
                     if (opt) selectedProgressionOptions.push(opt);
                 }
             }
+            const findDynamicProgressionOption = (key: string, val: string): any => {
+                for (const c of this.classes) {
+                    for (const pl of c.progression || []) {
+                        for (const ch of pl.choices || []) {
+                            if (ch.choiceId === key || ch.id === key) {
+                                const opt = ch.options?.find((o: any) => o.id === val);
+                                if (opt) {
+                                    return {
+                                        ...opt,
+                                        choiceName: ch.name,
+                                        source: c.name,
+                                        level: pl.level,
+                                        isSubclass: false
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    for (const sub of c.subclasses || []) {
+                        for (const pl of sub.progression || []) {
+                            for (const ch of pl.choices || []) {
+                                if (ch.choiceId === key || ch.id === key) {
+                                    const opt = ch.options?.find((o: any) => o.id === val);
+                                    if (opt) {
+                                        return {
+                                            ...opt,
+                                            choiceName: ch.name,
+                                            source: sub.name,
+                                            level: pl.level,
+                                            isSubclass: true
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return undefined;
+            };
+
             if (this.state.subclassFeatureChoices) {
                 for (const [featKey, optVal] of Object.entries(this.state.subclassFeatureChoices)) {
-                    const opt = findClassOption(featKey, optVal);
+                    const opt = findClassOption(featKey, optVal) || findDynamicProgressionOption(featKey, optVal);
                     if (opt) selectedProgressionOptions.push(opt);
                 }
             }
@@ -5090,17 +5315,18 @@ export class CharacterCreatorController {
             for (const opt of selectedProgressionOptions) {
                 if (Array.isArray(opt.grantedSpells)) {
                     for (const sp of opt.grantedSpells) {
-                        const spName = typeof sp === "string" ? sp : sp.name;
+                        const spName = typeof sp === "string" ? sp : (sp.name || sp.spellId);
                         const spLevel = typeof sp === "string" ? 0 : (sp.level ?? 0);
                         if (!spName) continue;
                         if (!spellsPayload.some((s) => s.name.toLowerCase() === spName.toLowerCase())) {
-                            const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase());
+                            const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase() || s.id.toLowerCase() === spName.toLowerCase());
                             spellsPayload.push({
-                                name: spName,
+                                name: spDef ? spDef.name : spName,
                                 level: spDef ? spDef.level : spLevel,
                                 school: spDef?.school || "Evocation",
                                 source: (typeof sp === "object" && sp.source) || opt.name || "Class",
                                 prepared: true,
+                                alwaysPrepared: true,
                                 castingTime: spDef?.castingTime || "1 Action",
                                 range: spDef?.range || "Self",
                                 duration: spDef?.duration || "Instantaneous",
@@ -5109,6 +5335,60 @@ export class CharacterCreatorController {
                                 ritual: (typeof sp === "object" && sp.ritual) || spDef?.ritual || false,
                                 description: (typeof sp === "object" && (sp.notes || sp.description)) || spDef?.description || `Granted by ${opt.name}.`
                             });
+                        }
+                    }
+                }
+            }
+
+            // Collect progression-granted spells from cls.progression and sub.progression for unlocked levels
+            for (const charCls of this.state.classes) {
+                const clsDef = this.classes.find((c) => c.id === charCls.classId);
+                const subId = charCls.subclassId || (charCls === this.state.classes[0] ? this.state.subclassId : "");
+                const subDef = clsDef?.subclasses?.find((s) => s.id === subId);
+                const unlockedLevel = charCls.level || 1;
+
+                const addProgGrantedSpell = (sp: any, defaultSource: string) => {
+                    const spName = typeof sp === "string" ? sp : (sp.name || sp.spellId);
+                    if (!spName) return;
+                    const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase() || s.id.toLowerCase() === spName.toLowerCase());
+                    const finalName = spDef ? spDef.name : spName;
+                    if (!spellsPayload.some((s) => s.name.toLowerCase() === finalName.toLowerCase())) {
+                        spellsPayload.push({
+                            name: finalName,
+                            level: spDef ? spDef.level : (typeof sp === "object" ? (sp.level ?? 1) : 1),
+                            school: spDef?.school || "Evocation",
+                            source: (typeof sp === "object" && sp.source) || defaultSource,
+                            prepared: true,
+                            alwaysPrepared: true,
+                            castingTime: spDef?.castingTime || "1 Action",
+                            range: spDef?.range || "Self",
+                            duration: spDef?.duration || "Instantaneous",
+                            components: spDef?.components || "V, S",
+                            concentration: spDef?.concentration || false,
+                            ritual: (typeof sp === "object" && sp.ritual) || spDef?.ritual || false,
+                            description: (typeof sp === "object" && (sp.notes || sp.description)) || spDef?.description || `Granted by ${defaultSource}.`
+                        });
+                    }
+                };
+
+                // From class progression
+                if (Array.isArray(clsDef?.progression)) {
+                    for (const pl of clsDef.progression) {
+                        if (pl.level <= unlockedLevel && Array.isArray(pl.grantedSpells)) {
+                            for (const sp of pl.grantedSpells) {
+                                addProgGrantedSpell(sp, clsDef.name);
+                            }
+                        }
+                    }
+                }
+
+                // From subclass progression
+                if (Array.isArray(subDef?.progression)) {
+                    for (const pl of subDef.progression) {
+                        if (pl.level <= unlockedLevel && Array.isArray(pl.grantedSpells)) {
+                            for (const sp of pl.grantedSpells) {
+                                addProgGrantedSpell(sp, subDef.name);
+                            }
                         }
                     }
                 }
@@ -5628,6 +5908,17 @@ export class CharacterCreatorController {
                                 description: opt.description
                             });
                         }
+                    } else {
+                        const dynOpt = findDynamicProgressionOption(key, val);
+                        if (dynOpt) {
+                            featuresPayload.push({
+                                name: `${dynOpt.choiceName || "Choice"}: ${dynOpt.name}`,
+                                source: dynOpt.source || "Class Option",
+                                type: dynOpt.isSubclass ? "Subclass" : "Class",
+                                level: dynOpt.level || 1,
+                                description: dynOpt.description
+                            });
+                        }
                     }
                 }
             }
@@ -6106,6 +6397,27 @@ export class CharacterCreatorController {
                 )
             };
 
+            return characterPayload;
+        }
+
+    // Submission to API
+    public async submitCharacter() {
+        if (!this.state.name.trim()) {
+            this.goToStep(1);
+            this.showAlert("Please enter a character name.");
+            return;
+        }
+
+        const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = this.state.savedId
+                ? `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`
+                : `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
+        }
+
+        try {
+            const characterPayload = this.buildPayload();
             const saveBody: any = {
                 name: this.state.name,
                 source: "site",

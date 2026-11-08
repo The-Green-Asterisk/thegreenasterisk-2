@@ -225,7 +225,8 @@ export interface ProgressionChoice {
     id: string;
     choiceId?: string;
     name: string;
-    prompt: string;
+    prompt?: string;
+    description?: string;
     chooseCount: number;
     choiceType?: "feature" | "spell" | "proficiency" | "custom";
     options: ProgressionChoiceOption[];
