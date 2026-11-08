@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyProgressionChoiceOption, applyStatModifier } from "../../../src/rules/dnd5e_2024/statModifierEvaluator";
+import { applyProgressionChoiceOption, applyStatModifier, evaluateCharacterStatModifiers } from "../../../src/rules/dnd5e_2024/statModifierEvaluator";
 import { CharacterData } from "../../../src/views/characterSheet/characterData";
 
 function createMockCharacter(): CharacterData {
@@ -301,6 +301,161 @@ describe("StatModifierEvaluator", () => {
 
             applyStatModifier(char, { target: "features.grant", type: "grant_feature", value: "Divine Spark" }, -1);
             expect(char.features.some(f => f.name === "Divine Spark")).toBe(false);
+        });
+    });
+
+    describe("Advantage, Disadvantage, and +N/-N Modifiers", () => {
+        it("applies advantage and disadvantage to saving throws and adds notes", () => {
+            const char = createMockCharacter();
+            expect(char.savingThrowNotes).toBeUndefined();
+
+            // Advantage on CON saves (Concentration)
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, 1);
+            expect(char.savingThrowNotes).toContain("Advantage on CON saving throws (to maintain Concentration)");
+            expect(char.vitals.savingThrowNotes).toContain("Advantage on CON saving throws (to maintain Concentration)");
+
+            // Disadvantage on all saves
+            applyStatModifier(char, { target: "saves.all", type: "disadvantage", condition: "while poisoned" }, 1);
+            expect(char.savingThrowNotes).toContain("Disadvantage on all saving throws (while poisoned)");
+
+            // Revert Advantage
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, -1);
+            expect(char.savingThrowNotes).not.toContain("Advantage on CON saving throws (to maintain Concentration)");
+            expect(char.savingThrowNotes).toContain("Disadvantage on all saving throws (while poisoned)");
+        });
+
+        it("applies advantage and disadvantage to skills and adjusts passive perception by +/-5", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.passivePerception).toBe(11);
+
+            // Advantage on Perception checks (e.g. Aspect of Owl)
+            applyStatModifier(char, { target: "skills.perception", type: "advantage" }, 1);
+            expect(char.savingThrowNotes).toContain("Advantage on Perception checks");
+            expect(char.vitals.passivePerception).toBe(16); // 11 + 5
+
+            // Revert
+            applyStatModifier(char, { target: "skills.perception", type: "advantage" }, -1);
+            expect(char.savingThrowNotes).not.toContain("Advantage on Perception checks");
+            expect(char.vitals.passivePerception).toBe(11);
+        });
+
+        it("applies positive and negative modifiers to spell save DC and spell attack bonus", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.spellSaveDc).toBe(10);
+            expect(char.vitals.spellAttackBonus).toBe(2);
+
+            // +2 bonus
+            applyStatModifier(char, { target: "vitals.spellSaveDc", type: "bonus", value: 2 }, 1);
+            applyStatModifier(char, { target: "vitals.spellAttackBonus", type: "bonus", value: 2 }, 1);
+            expect(char.vitals.spellSaveDc).toBe(12);
+            expect(char.vitals.spellAttackBonus).toBe(4);
+
+            // -1 penalty
+            applyStatModifier(char, { target: "vitals.spellSaveDc", type: "penalty", value: 1 }, 1);
+            applyStatModifier(char, { target: "vitals.spellAttackBonus", type: "penalty", value: 1 }, 1);
+            expect(char.vitals.spellSaveDc).toBe(11);
+            expect(char.vitals.spellAttackBonus).toBe(3);
+
+            // Revert penalty
+            applyStatModifier(char, { target: "vitals.spellSaveDc", type: "penalty", value: 1 }, -1);
+            expect(char.vitals.spellSaveDc).toBe(12);
+        });
+
+        it("applies weapon attack bonuses and advantage to attacks", () => {
+            const char = createMockCharacter();
+            char.weapons = [
+                { name: "Longbow", category: "Martial Ranged", toHitModifier: 5, attackBonus: "+5" } as any,
+                { name: "Longsword", category: "Martial Melee", toHitModifier: 5, attackBonus: "+5" } as any
+            ];
+
+            // Archery fighting style: +2 to ranged weapon attacks
+            applyStatModifier(char, { target: "attacks.ranged", type: "bonus", value: 2 }, 1);
+            expect(char.weapons[0].toHitModifier).toBe(7);
+            expect(char.weapons[0].attackBonus).toBe("+7");
+            expect(char.weapons[1].toHitModifier).toBe(5);
+
+            // Advantage on ranged weapon attacks
+            applyStatModifier(char, { target: "attacks.ranged", type: "advantage" }, 1);
+            expect(char.savingThrowNotes).toContain("Advantage on ranged weapon attacks");
+
+            // Revert bonus
+            applyStatModifier(char, { target: "attacks.ranged", type: "bonus", value: 2 }, -1);
+            expect(char.weapons[0].toHitModifier).toBe(5);
+            expect(char.weapons[0].attackBonus).toBe("+5");
+        });
+    });
+
+    describe("evaluateCharacterStatModifiers", () => {
+        it("evaluates choices from creatorState and applies stat modifiers, granted spells, and features", () => {
+            const char = createMockCharacter();
+            char.creatorState = {
+                fightingStyle: "defense",
+                subclassFeatureChoices: {
+                    "barbarian-6-wild-heart": "owl"
+                }
+            } as any;
+
+            expect(char.vitals.armorClass).toBe(16);
+            expect(char.vitals.darkvision).toBe("0 ft.");
+
+            evaluateCharacterStatModifiers(char);
+
+            // Defense gives +1 AC
+            expect(char.vitals.armorClass).toBe(17);
+            // Aspect of Owl gives Darkvision 60 ft and Advantage on Perception checks (+5 to passive perception)
+            expect(char.vitals.darkvision).toBe("60 ft.");
+            expect(char.savingThrowNotes).toContain("Advantage on Perception checks");
+            expect(char.vitals.passivePerception).toBe(16);
+        });
+
+        it("evaluates dynamic progression choices defined in custom class rules", () => {
+            const char = createMockCharacter();
+            char.subclassFeatureChoices = {
+                "custom-choice-1": "custom-opt-iron-hide"
+            };
+
+            const customRules = {
+                classes: [
+                    {
+                        name: "CustomClass",
+                        progression: [
+                            {
+                                level: 1,
+                                choices: [
+                                    {
+                                        choiceId: "custom-choice-1",
+                                        featureName: "Custom Boon",
+                                        prompt: "Choose your boon",
+                                        options: [
+                                            {
+                                                id: "custom-opt-iron-hide",
+                                                name: "Iron Hide",
+                                                description: "+2 AC and +10 ft speed",
+                                                modifiers: [
+                                                    { target: "vitals.ac", type: "bonus" as const, value: 2 },
+                                                    { target: "vitals.speed", type: "bonus" as const, value: 10 }
+                                                ],
+                                                grantedSpells: [
+                                                    { name: "Shield", level: 1 }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            expect(char.vitals.armorClass).toBe(16);
+            expect(char.vitals.speed).toBe("30 ft.");
+
+            evaluateCharacterStatModifiers(char, customRules);
+
+            expect(char.vitals.armorClass).toBe(18);
+            expect(char.vitals.speed).toBe("40 ft.");
+            expect(char.spells.some(s => s.name === "Shield")).toBe(true);
         });
     });
 });

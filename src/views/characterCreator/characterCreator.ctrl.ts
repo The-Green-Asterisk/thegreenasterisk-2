@@ -66,7 +66,8 @@ import {
     getMulticlassCasterInfo,
     calculateMulticlassSpellSlots,
     MulticlassCasterClassInfo,
-    MulticlassSpellSlotsResult
+    MulticlassSpellSlotsResult,
+    applyProgressionChoiceOption
 } from "../../rules/dnd5e_2024";
 
 export interface AsiChoice {
@@ -6396,6 +6397,10 @@ export class CharacterCreatorController {
                     })
                 )
             };
+
+            for (const opt of selectedProgressionOptions) {
+                applyProgressionChoiceOption(characterPayload, opt, 1);
+            }
 
             return characterPayload;
         }

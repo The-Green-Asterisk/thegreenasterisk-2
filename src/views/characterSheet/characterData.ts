@@ -146,6 +146,8 @@ export interface CharacterData {
     exhaustionLevel?: number;
     allowedSpellsByLevel?: Record<number, number>;
     featureChoices?: Record<string, string>;
+    subclassFeatureChoices?: Record<string, string>;
+    creatorState?: any;
     trackingState?: {
         slotPips?: Record<string, boolean[]>;
         resourcePips?: Record<string, boolean[]>;

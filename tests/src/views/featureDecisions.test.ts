@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyFeatureDecisionOnCharacterData } from "../../../src/views/characterSheet/featureDecisions";
+import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "../../../src/views/characterSheet/featureDecisions";
 import { CharacterData } from "../../../src/views/characterSheet/characterData";
 
 function createMockCharacter(): CharacterData {
@@ -184,5 +184,83 @@ describe("Feature Decisions Progression Choice Integration", () => {
         expect(char.spells.some(s => s.name === "Fireball")).toBe(false);
         expect(char.spells.some(s => s.name === "Hold Person")).toBe(true);
         expect(char.spells.some(s => s.name === "Ice Storm")).toBe(true);
+    });
+
+    it("ensureFeatureDecisionsOnCharacterData attaches decisions to features lacking them", () => {
+        const char = createMockCharacter();
+        // Remove pre-existing decisions
+        char.features.forEach(f => {
+            delete f.decisions;
+        });
+
+        ensureFeatureDecisionsOnCharacterData(char);
+
+        const divineOrderFeat = char.features.find(f => f.name === "Divine Order");
+        expect(divineOrderFeat?.decisions).toBeDefined();
+        expect(divineOrderFeat?.decisions?.length).toBeGreaterThan(0);
+        expect(divineOrderFeat?.decisions?.[0].options.some(o => o.value === "divine-order:protector")).toBe(true);
+
+        const fightingStyleFeat = char.features.find(f => f.name === "Fighting Style");
+        expect(fightingStyleFeat?.decisions).toBeDefined();
+        expect(fightingStyleFeat?.decisions?.[0].options.some(o => o.value === "fighting-style:defense")).toBe(true);
+    });
+
+    it("applies dynamic progression choice changes and modifies character sheet stats", () => {
+        const char = createMockCharacter();
+        const customOption = {
+            id: "iron-soul",
+            name: "Iron Soul",
+            description: "+1 AC and +1 to all saves",
+            modifiers: [
+                { target: "vitals.ac", type: "bonus" as const, value: 1 },
+                { target: "saves.all", type: "bonus" as const, value: 1 }
+            ]
+        };
+
+        char.features.push({
+            name: "Custom Transcendence",
+            source: "CustomClass",
+            type: "Class",
+            description: "Transcendent boon",
+            decisions: [
+                {
+                    id: "custom-transcendence",
+                    label: "Transcendence",
+                    selectedValue: "none",
+                    options: [
+                        { value: "none", label: "None" },
+                        { value: "custom-transcendence:iron-soul", label: "Iron Soul" }
+                    ]
+                }
+            ]
+        });
+
+        // Attach dynamic progression choice onto character classes
+        (char.classes as any)[0].progression = [
+            {
+                level: 1,
+                choices: [
+                    {
+                        choiceId: "custom-transcendence",
+                        featureName: "Transcendence",
+                        prompt: "Choose transcendence",
+                        options: [customOption]
+                    }
+                ]
+            }
+        ];
+
+        const initialAc = char.vitals.armorClass;
+        const initialStrSave = char.abilities.find(a => a.abbr === "STR")!.save;
+
+        applyFeatureDecisionOnCharacterData(char, "custom-transcendence", "custom-transcendence:iron-soul");
+
+        expect(char.vitals.armorClass).toBe(initialAc + 1);
+        expect(char.abilities.find(a => a.abbr === "STR")!.save).toBe(initialStrSave + 1);
+
+        // Revert by setting to none
+        applyFeatureDecisionOnCharacterData(char, "custom-transcendence", "none");
+        expect(char.vitals.armorClass).toBe(initialAc);
+        expect(char.abilities.find(a => a.abbr === "STR")!.save).toBe(initialStrSave);
     });
 });

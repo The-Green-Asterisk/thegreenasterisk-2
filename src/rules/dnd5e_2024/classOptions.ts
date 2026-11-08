@@ -1224,19 +1224,42 @@ export const ABERRANT_REVELATION_OPTIONS: FeatureOption[] = [
 
 const OPTION_REGISTRY: Record<string, FeatureOption[]> = {
     "fighting-style": FIGHTING_STYLES,
+    "fightingstyle": FIGHTING_STYLES,
     "divine-order": DIVINE_ORDERS,
+    "divineorder": DIVINE_ORDERS,
     "primal-order": PRIMAL_ORDERS,
+    "primalorder": PRIMAL_ORDERS,
     "invocation": ELDRITCH_INVOCATIONS,
+    "invocations": ELDRITCH_INVOCATIONS,
     "eldritch-invocation": ELDRITCH_INVOCATIONS,
     "pact-boon": ELDRITCH_INVOCATIONS,
     "metamagic": METAMAGIC_OPTIONS,
     "maneuver": BATTLE_MASTER_MANEUVERS,
+    "maneuvers": BATTLE_MASTER_MANEUVERS,
     "battle-master-maneuver": BATTLE_MASTER_MANEUVERS,
+    "fighter-3-battle-master-maneuvers": BATTLE_MASTER_MANEUVERS,
+    "fighter-3-battle-master-student": STUDENT_OF_WAR_SKILLS,
+    "fighter-7-champion": CHAMPION_ADDITIONAL_FIGHTING_STYLES,
+    "fighter-9-tactical-master": TACTICAL_MASTER_PROPERTIES,
     "land-biome": DRUID_LAND_BIOMES,
+    "druid-3-circle-of-the-land-biome": DRUID_LAND_BIOMES,
+    "druid-3-stars": STARRY_FORM_CONSTELLATIONS,
+    "druid-3-sea": SEA_WRATH_DAMAGE_TYPES,
+    "druid-3-moon": MOON_CIRCLE_FORMS_STRIKES,
     "elemental-fury": ELEMENTAL_FURY_OPTIONS,
+    "druid-7": ELEMENTAL_FURY_OPTIONS,
     "blessed-strikes": BLESSED_STRIKES_OPTIONS,
+    "cleric-7": BLESSED_STRIKES_OPTIONS,
+    "cleric-8-blessed-strikes": BLESSED_STRIKES_OPTIONS,
+    "cleric-6-war": WAR_GOD_BLESSING_OPTIONS,
     "aspect": BARBARIAN_ASPECTS,
     "barbarian-aspect": BARBARIAN_ASPECTS,
+    "barbarian-3-wild-heart": WILD_HEART_RAGES,
+    "barbarian-6-wild-heart": BARBARIAN_ASPECTS,
+    "barbarian-14-wild-heart": WILD_HEART_TOTEMIC_ATTUNEMENTS,
+    "barbarian-3-zealot": ZEALOT_DIVINE_FURIES,
+    "barbarian-9-brutal-strike": BRUTAL_STRIKE_OPTIONS,
+    "barbarian-13-brutal-strike": IMPROVED_BRUTAL_STRIKE_OPTIONS,
     "defensive-tactic": HUNTER_DEFENSIVE_TACTICS,
     "wild-heart-rage": WILD_HEART_RAGES,
     "totemic-attunement": WILD_HEART_TOTEMIC_ATTUNEMENTS,
@@ -1245,24 +1268,66 @@ const OPTION_REGISTRY: Record<string, FeatureOption[]> = {
     "tactical-master": TACTICAL_MASTER_PROPERTIES,
     "elemental-attunement": ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
     "hunter-prey": HUNTER_PREY_OPTIONS,
+    "ranger-3-hunter": HUNTER_PREY_OPTIONS,
+    "ranger-3-beast-master": PRIMAL_COMPANION_TYPES,
+    "ranger-3-fey-wanderer": FEY_WANDERER_GLAMOUR_SKILLS,
+    "ranger-6-hunter": HUNTER_DEFENSIVE_TACTICS,
+    "ranger-15-hunter": HUNTER_SUPERIOR_DEFENSE_OPTIONS,
     "primal-companion": PRIMAL_COMPANION_TYPES,
     "draconic-ancestor": DRACONIC_ANCESTOR_ELEMENTS,
+    "sorcerer-3-draconic": DRACONIC_ANCESTOR_ELEMENTS,
+    "sorcerer-14-aberrant": ABERRANT_REVELATION_OPTIONS,
     "fiendish-resilience": FIENDISH_RESILIENCE_DAMAGE_TYPES,
+    "warlock-10-fiend": FIENDISH_RESILIENCE_DAMAGE_TYPES,
     "wizard-scholar": WIZARD_SCHOLAR_SKILLS,
+    "wizard-2-scholar": WIZARD_SCHOLAR_SKILLS,
     "student-of-war": STUDENT_OF_WAR_SKILLS,
     "fey-wanderer-glamour": FEY_WANDERER_GLAMOUR_SKILLS,
     "starry-form": STARRY_FORM_CONSTELLATIONS,
     "open-hand-technique": OPEN_HAND_TECHNIQUES,
+    "monk-3-open-hand": OPEN_HAND_TECHNIQUES,
+    "monk-3-elements": ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
     "war-god-blessing": WAR_GOD_BLESSING_OPTIONS,
     "steps-of-the-fey": STEPS_OF_THE_FEY_OPTIONS,
     "hunter-superior-defense": HUNTER_SUPERIOR_DEFENSE_OPTIONS,
-    "aberrant-revelation": ABERRANT_REVELATION_OPTIONS
+    "aberrant-revelation": ABERRANT_REVELATION_OPTIONS,
+    "rogue-5-cunning-strike": ROGUE_CUNNING_STRIKES,
+    "rogue-14-devious-strike": ROGUE_DEVIOUS_STRIKES
 };
 
-export function findClassOption(kind: string, optId: string): FeatureOption | undefined {
-    if (!optId) return undefined;
-    const normKind = (kind || "").toLowerCase().trim();
-    const normId = optId.toLowerCase().trim();
+export function registerClassOption(kind: string, options: FeatureOption[]): void {
+    if (!kind || !Array.isArray(options)) return;
+    OPTION_REGISTRY[kind.toLowerCase().trim()] = options;
+}
+
+export function findClassOption(kind: string, optId: string, customOptions?: FeatureOption[]): FeatureOption | undefined {
+    let targetKind = kind;
+    let targetId = optId;
+
+    if (!targetId && targetKind && targetKind.includes(":")) {
+        const parts = targetKind.split(":");
+        targetKind = parts[0];
+        targetId = parts[1];
+    } else if (targetId && targetId.includes(":")) {
+        const parts = targetId.split(":");
+        if (!targetKind) targetKind = parts[0];
+        targetId = parts[1];
+    }
+
+    if (!targetId) return undefined;
+
+    const normKind = (targetKind || "").toLowerCase().trim();
+    const normId = targetId.toLowerCase().trim();
+
+    if (Array.isArray(customOptions)) {
+        const match = customOptions.find(o =>
+            o.id.toLowerCase() === normId ||
+            o.id.toLowerCase().endsWith(`-${normId}`) ||
+            o.id.toLowerCase() === `pact-of-the-${normId}`
+        );
+        if (match) return match;
+    }
+
     const list = OPTION_REGISTRY[normKind];
     if (list) {
         const found = list.find(o =>
