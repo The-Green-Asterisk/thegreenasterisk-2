@@ -1630,6 +1630,7 @@ export default class RulesController extends BaseController {
                     if (sub.id) registerSubclass(sub.id, cSlug);
                     for (const sf of sub.features || []) {
                         if (sf.name) registerClassFeature(sf.name, cSlug);
+                        if (sf.name === "Clairvoyant Combatant") registerClassFeature("Clairvoyant Combat", cSlug);
                     }
                 }
             }

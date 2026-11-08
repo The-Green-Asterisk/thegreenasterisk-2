@@ -1281,8 +1281,8 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                     choices.push({
                         id: "eldritch-invocations-2",
                         name: "Eldritch Invocations",
-                        prompt: "Choose 2 additional Eldritch Invocations.",
-                        chooseCount: 2,
+                        prompt: "Choose 1 additional Eldritch Invocation (2 total).",
+                        chooseCount: 1,
                         options: ELDRITCH_INVOCATIONS
                     });
                 }
@@ -1344,25 +1344,29 @@ export function getSubclassGrantedSpells(classSlug: string, normSub: string, lvl
     if (normSub.includes("great-old-one")) {
         if (lvl === 3) {
             spells.push(
-                makeGrantedSpell("Dissonant Whispers", 1, subName),
-                makeGrantedSpell("Tasha's Hideous Laughter", 1, subName),
                 makeGrantedSpell("Detect Thoughts", 2, subName),
-                makeGrantedSpell("Phantasmal Force", 2, subName)
+                makeGrantedSpell("Dissonant Whispers", 1, subName),
+                makeGrantedSpell("Phantasmal Force", 2, subName),
+                makeGrantedSpell("Tasha's Hideous Laughter", 1, subName)
             );
         } else if (lvl === 5) {
             spells.push(
                 makeGrantedSpell("Clairvoyance", 3, subName),
-                makeGrantedSpell("Sending", 3, subName)
+                makeGrantedSpell("Hunger of Hadar", 3, subName)
             );
         } else if (lvl === 7) {
             spells.push(
-                makeGrantedSpell("Dominate Beast", 4, subName),
-                makeGrantedSpell("Evard's Black Tentacles", 4, subName)
+                makeGrantedSpell("Confusion", 4, subName),
+                makeGrantedSpell("Summon Aberration", 4, subName)
             );
         } else if (lvl === 9) {
             spells.push(
-                makeGrantedSpell("Dominate Person", 5, subName),
+                makeGrantedSpell("Modify Memory", 5, subName),
                 makeGrantedSpell("Telekinesis", 5, subName)
+            );
+        } else if (lvl === 10) {
+            spells.push(
+                makeGrantedSpell("Hex", 1, subName, { notes: "Eldritch Hex: always prepared; target has Disadvantage on saves of the chosen ability" })
             );
         }
     } else if (normSub.includes("archfey")) {
@@ -1395,8 +1399,8 @@ export function getSubclassGrantedSpells(classSlug: string, normSub: string, lvl
             spells.push(
                 makeGrantedSpell("Burning Hands", 1, subName),
                 makeGrantedSpell("Command", 1, subName),
-                makeGrantedSpell("Blindness/Deafness", 2, subName),
-                makeGrantedSpell("Scorching Ray", 2, subName)
+                makeGrantedSpell("Scorching Ray", 2, subName),
+                makeGrantedSpell("Suggestion", 2, subName)
             );
         } else if (lvl === 5) {
             spells.push(
@@ -1410,16 +1414,18 @@ export function getSubclassGrantedSpells(classSlug: string, normSub: string, lvl
             );
         } else if (lvl === 9) {
             spells.push(
-                makeGrantedSpell("Flame Strike", 5, subName),
+                makeGrantedSpell("Geas", 5, subName),
                 makeGrantedSpell("Insect Plague", 5, subName)
             );
         }
     } else if (normSub.includes("celestial")) {
         if (lvl === 3) {
             spells.push(
+                makeGrantedSpell("Light", 0, subName, { notes: "Bonus Cantrip" }),
+                makeGrantedSpell("Sacred Flame", 0, subName, { notes: "Bonus Cantrip" }),
+                makeGrantedSpell("Aid", 2, subName),
                 makeGrantedSpell("Cure Wounds", 1, subName),
                 makeGrantedSpell("Guiding Bolt", 1, subName),
-                makeGrantedSpell("Flaming Sphere", 2, subName),
                 makeGrantedSpell("Lesser Restoration", 2, subName)
             );
         } else if (lvl === 5) {
@@ -1434,8 +1440,8 @@ export function getSubclassGrantedSpells(classSlug: string, normSub: string, lvl
             );
         } else if (lvl === 9) {
             spells.push(
-                makeGrantedSpell("Flame Strike", 5, subName),
-                makeGrantedSpell("Greater Restoration", 5, subName)
+                makeGrantedSpell("Greater Restoration", 5, subName),
+                makeGrantedSpell("Summon Celestial", 5, subName)
             );
         }
     }
@@ -2004,11 +2010,34 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 modifiers.push({ target: "vitals.darkvision", type: "bonus", value: 60, description: "Darkvision +60 ft." });
             }
 
+            let actionGrant: any = undefined;
+            if (featSlug === "awakened-mind") {
+                actionGrant = {
+                    name: "Awakened Mind",
+                    type: "Bonus Action",
+                    range: "30 ft.",
+                    notes: "Form telepathic connection with a creature within 30 ft. Lasts minutes equal to Warlock level."
+                };
+            } else if (featSlug === "clairvoyant-combatant" || featSlug === "clairvoyant-combat") {
+                actionGrant = {
+                    name: "Clairvoyant Combatant",
+                    type: "Special",
+                    notes: "When forming Awakened Mind link, target makes WIS save or has Disadvantage on attacks against you, and you have Advantage against it. Recharges on Short/Long Rest or 1 Pact slot."
+                };
+            } else if (featSlug === "thought-shield") {
+                actionGrant = {
+                    name: "Thought Shield (Reflect)",
+                    type: "Reaction",
+                    notes: "When an attacker deals psychic damage to you, that attacker takes the same amount of damage."
+                };
+            }
+
             return {
                 id: `${subSlug}-${lvl}-${featSlug}`,
                 name: f.name,
                 description: f.description,
                 modifiers: modifiers.length > 0 ? modifiers : undefined,
+                actionGrant,
                 grantedSpells: (f as any).grantedSpells,
                 grantedFeatures: (f as any).grantedFeatures
             };
@@ -2020,6 +2049,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 name: `${sub.name} Spells`,
                 description: `Spells granted by ${sub.name} at level ${lvl}.`,
                 modifiers: undefined,
+                actionGrant: undefined,
                 grantedSpells: spellsAtLevel,
                 grantedFeatures: undefined
             });

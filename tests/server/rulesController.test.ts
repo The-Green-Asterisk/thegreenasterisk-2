@@ -1002,5 +1002,101 @@ describe("RulesController", () => {
             expect(savedFeats.some((f) => f.name.includes("(2014)"))).toBe(false);
             expect(savedFeats.some((f) => f.name === "Alert")).toBe(true);
         });
+
+        it("translates 2024 Warlock & Great Old One Patron rules correctly and updates database via migration", async () => {
+            const { UpdateWarlock2024Rules1792788000000 } = await import(
+                "../../server/services/database/migration/1792788000000-update_warlock_2024_rules"
+            );
+            const { getSubclassGrantedSpells, buildSubclassProgression } = await import(
+                "../../server/services/database/rulesProgressionBuilder"
+            );
+
+            // 1. Verify 2024 Granted Spells for Great Old One
+            const lvl3Spells = getSubclassGrantedSpells("warlock", "great-old-one", 3, "Great Old One Patron");
+            const lvl5Spells = getSubclassGrantedSpells("warlock", "great-old-one", 5, "Great Old One Patron");
+            const lvl7Spells = getSubclassGrantedSpells("warlock", "great-old-one", 7, "Great Old One Patron");
+            const lvl9Spells = getSubclassGrantedSpells("warlock", "great-old-one", 9, "Great Old One Patron");
+            const lvl10Spells = getSubclassGrantedSpells("warlock", "great-old-one", 10, "Great Old One Patron");
+
+            expect(lvl3Spells.map((s) => s.name)).toEqual(
+                expect.arrayContaining(["Detect Thoughts", "Dissonant Whispers", "Phantasmal Force", "Tasha's Hideous Laughter"])
+            );
+            expect(lvl5Spells.map((s) => s.name)).toEqual(
+                expect.arrayContaining(["Clairvoyance", "Hunger of Hadar"])
+            );
+            expect(lvl5Spells.map((s) => s.name)).not.toContain("Sending");
+
+            expect(lvl7Spells.map((s) => s.name)).toEqual(
+                expect.arrayContaining(["Confusion", "Summon Aberration"])
+            );
+            expect(lvl7Spells.map((s) => s.name)).not.toContain("Dominate Beast");
+            expect(lvl7Spells.map((s) => s.name)).not.toContain("Evard's Black Tentacles");
+
+            expect(lvl9Spells.map((s) => s.name)).toEqual(
+                expect.arrayContaining(["Modify Memory", "Telekinesis"])
+            );
+            expect(lvl9Spells.map((s) => s.name)).not.toContain("Dominate Person");
+
+            expect(lvl10Spells.map((s) => s.name)).toContain("Hex");
+
+            // 2. Test migration execution with mock QueryRunner
+            const queries: Array<{ sql: string; params?: any[] }> = [];
+            const mockWarlockClass = {
+                id: 42,
+                slug: "warlock",
+                name: "Warlock",
+                featuresJson: JSON.stringify([{ level: 1, name: "Pact Magic" }]),
+                subclassesJson: JSON.stringify([{ id: "great-old-one", name: "Old Great Old One" }])
+            };
+            const mockGooSubclass = {
+                id: 88,
+                classId: 42,
+                classSlug: "warlock",
+                slug: "great-old-one-patron",
+                name: "Great Old One Patron",
+                description: "Old description",
+                progressionJson: "[]"
+            };
+
+            const mockQueryRunner = {
+                hasTable: vi.fn().mockImplementation(async (tbl: string) => true),
+                query: vi.fn().mockImplementation(async (sql: string, params?: any[]) => {
+                    queries.push({ sql, params });
+                    if (sql.includes("FROM `rule_classes` WHERE `slug` = 'warlock'")) {
+                        return [mockWarlockClass];
+                    }
+                    if (sql.includes("FROM `rule_subclasses`")) {
+                        return [mockGooSubclass];
+                    }
+                    return [];
+                })
+            };
+
+            const migration = new UpdateWarlock2024Rules1792788000000();
+            await migration.up(mockQueryRunner as any);
+
+            // Verify rule_classes update was called
+            const updateClassQuery = queries.find((q) => q.sql.includes("UPDATE `rule_classes`"));
+            expect(updateClassQuery).toBeDefined();
+            const updatedSubs = JSON.parse(updateClassQuery?.params?.[0]);
+            const updatedGooInClass = updatedSubs.find((s: any) => s.id === "great-old-one");
+            expect(updatedGooInClass).toBeDefined();
+            expect(updatedGooInClass.features.some((f: any) => f.name === "Clairvoyant Combatant")).toBe(true);
+            expect(updatedGooInClass.features.some((f: any) => f.name === "Eldritch Hex")).toBe(true);
+            expect(updatedGooInClass.features.some((f: any) => f.name === "Create Thrall")).toBe(true);
+
+            // Verify rule_subclasses update was called
+            const updateSubQuery = queries.find((q) => q.sql.includes("UPDATE `rule_subclasses`"));
+            expect(updateSubQuery).toBeDefined();
+            expect(updateSubQuery?.params?.[0]).toBe("Great Old One Patron");
+            expect(updateSubQuery?.params?.[1]).toBe("great-old-one-patron");
+            const savedSubProgression = JSON.parse(updateSubQuery?.params?.[3]);
+            expect(savedSubProgression.length).toBeGreaterThan(0);
+            const allGrantedSpellNames = savedSubProgression.flatMap((lvl: any) => (lvl.grantedSpells || []).map((s: any) => s.name));
+            expect(allGrantedSpellNames).toContain("Hunger of Hadar");
+            expect(allGrantedSpellNames).toContain("Summon Aberration");
+            expect(allGrantedSpellNames).toContain("Modify Memory");
+            expect(allGrantedSpellNames).toContain("Hex");
+        });
     });
 });
