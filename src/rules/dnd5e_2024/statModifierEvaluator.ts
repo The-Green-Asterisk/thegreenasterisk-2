@@ -152,15 +152,158 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
             }
         }
     }
+    // Grant Spell
+    else if (type === "grant_spell" || target === "spells.grant" || target === "spells.alwaysPrepared" || target === "spells.atWill") {
+        const spellName = String(mod.value || "").trim();
+        if (spellName) {
+            if (!Array.isArray(character.spells)) {
+                character.spells = [];
+            }
+            if (sign === 1) {
+                if (!character.spells.some(s => s.name.toLowerCase() === spellName.toLowerCase())) {
+                    character.spells.push({
+                        id: `granted-${spellName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+                        name: spellName,
+                        level: typeof mod.condition === "number" ? mod.condition : 0,
+                        school: "Evocation",
+                        source: mod.description || "Class Feature",
+                        castingTime: "1 Action",
+                        range: "Self",
+                        duration: "Instantaneous",
+                        components: "V, S",
+                        concentration: false,
+                        ritual: false,
+                        description: mod.description || `Granted by progression.`
+                    });
+                }
+            } else {
+                const idx = character.spells.findIndex(
+                    s => s.name.toLowerCase() === spellName.toLowerCase() && String(s.id || "").startsWith("granted-")
+                );
+                if (idx !== -1) {
+                    character.spells.splice(idx, 1);
+                }
+            }
+        }
+    }
+    // Grant Feature
+    else if (type === "grant_feature" || target === "features.grant") {
+        const featName = String(mod.value || "").trim();
+        if (featName) {
+            if (!Array.isArray(character.features)) {
+                character.features = [];
+            }
+            if (sign === 1) {
+                if (!character.features.some(f => f.name.toLowerCase() === featName.toLowerCase())) {
+                    character.features.push({
+                        name: featName,
+                        source: mod.description || "Class",
+                        type: "Class",
+                        description: mod.description || `Granted by progression.`
+                    });
+                }
+            } else {
+                const idx = character.features.findIndex(f => f.name.toLowerCase() === featName.toLowerCase());
+                if (idx !== -1) {
+                    character.features.splice(idx, 1);
+                }
+            }
+        }
+    }
 }
 
 export function applyProgressionChoiceOption(
     character: CharacterData,
-    option: { id: string; name: string; description: string; modifiers?: StatModifier[] },
+    option: {
+        id: string;
+        name: string;
+        description: string;
+        modifiers?: StatModifier[];
+        grantedSpells?: Array<any>;
+        grantedFeatures?: Array<any>;
+    },
     sign: 1 | -1
 ): void {
-    if (!character || !option || !Array.isArray(option.modifiers)) return;
-    for (const mod of option.modifiers) {
-        applyStatModifier(character, mod, sign);
+    if (!character || !option) return;
+
+    if (Array.isArray(option.modifiers)) {
+        for (const mod of option.modifiers) {
+            applyStatModifier(character, mod, sign);
+        }
     }
+
+    if (Array.isArray(option.grantedSpells)) {
+        if (!Array.isArray(character.spells)) character.spells = [];
+        for (const sp of option.grantedSpells) {
+            const spellName = typeof sp === "string" ? sp : sp.name;
+            const spellLvl = typeof sp === "string" ? 0 : (sp.level ?? 0);
+            if (!spellName) continue;
+            if (sign === 1) {
+                if (!character.spells.some(s => s.name.toLowerCase() === spellName.toLowerCase())) {
+                    character.spells.push({
+                        id: `prog-${option.id}-${spellName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+                        name: spellName,
+                        level: spellLvl,
+                        school: "Evocation",
+                        source: (typeof sp === "object" && sp.source) || option.name,
+                        castingTime: "1 Action",
+                        range: "Self",
+                        duration: "Instantaneous",
+                        components: "V, S",
+                        concentration: false,
+                        ritual: false,
+                        description: (typeof sp === "object" && (sp.notes || sp.description)) || `Granted by ${option.name}.`
+                    });
+                }
+            } else {
+                const idx = character.spells.findIndex(
+                    s => s.name.toLowerCase() === spellName.toLowerCase() && String(s.id || "").startsWith(`prog-${option.id}-`)
+                );
+                if (idx !== -1) {
+                    character.spells.splice(idx, 1);
+                }
+            }
+        }
+    }
+
+    if (Array.isArray(option.grantedFeatures)) {
+        if (!Array.isArray(character.features)) character.features = [];
+        for (const gf of option.grantedFeatures) {
+            const featName = typeof gf === "string" ? gf : gf.name;
+            const featDesc = typeof gf === "string" ? "" : gf.description;
+            const featType = typeof gf === "string" ? "Class" : (gf.type || "Class");
+            const featSource = typeof gf === "string" ? option.name : (gf.source || option.name);
+            if (!featName) continue;
+            if (sign === 1) {
+                if (!character.features.some(f => f.name.toLowerCase() === featName.toLowerCase())) {
+                    character.features.push({
+                        name: featName,
+                        source: featSource,
+                        type: featType,
+                        description: featDesc || `Granted by ${option.name}.`
+                    });
+                }
+            } else {
+                const idx = character.features.findIndex(f => f.name.toLowerCase() === featName.toLowerCase());
+                if (idx !== -1) {
+                    character.features.splice(idx, 1);
+                }
+            }
+        }
+    }
+}
+
+export function applyProgressionFeature(
+    character: CharacterData,
+    feature: {
+        id: string;
+        name: string;
+        description: string;
+        modifiers?: StatModifier[];
+        grantedSpells?: Array<any>;
+        grantedFeatures?: Array<any>;
+    },
+    sign: 1 | -1
+): void {
+    applyProgressionChoiceOption(character, feature, sign);
 }

@@ -124,7 +124,11 @@ export type ModifierTarget =
     | "proficiencies.tools"
     | "proficiencies.languages"
     | "weaponMasteryCount"
-    | "resources.pool";
+    | "resources.pool"
+    | "spells.grant"
+    | "spells.alwaysPrepared"
+    | "spells.atWill"
+    | "features.grant";
 
 export type ModifierType =
     | "bonus"            // +[number] (e.g. +1 AC, +2 attack)
@@ -135,7 +139,9 @@ export type ModifierType =
     | "proficiency_tier" // "proficient" | "expertise"
     | "ability_mod"      // Adds another ability modifier (e.g. add WIS to Arcana)
     | "resource_pool"    // Adds/modifies a class resource pool
-    | "grant_action";    // Injects an action/bonus action/reaction
+    | "grant_action"     // Injects an action/bonus action/reaction
+    | "grant_spell"      // Grants a specific spell or cantrip
+    | "grant_feature";   // Grants a specific feature or trait
 
 export interface StatModifier {
     target: ModifierTarget | string;
@@ -144,6 +150,39 @@ export interface StatModifier {
     abilitySource?: AbilityName;
     condition?: string;
     description?: string;
+}
+
+export interface ProgressionGrantedSpell {
+    id?: string;
+    name: string;
+    level?: number;                    // 0 for cantrip, 1-9 for leveled spells
+    alwaysPrepared?: boolean;          // Always prepared, does not count against prepared spell limits
+    atWill?: boolean;                  // Cast at will without expending a spell slot
+    usage?: {
+        count?: number;
+        resetOn?: "short" | "long" | "at_will";
+    };
+    ability?: AbilityName;             // Fixed casting ability if specified
+    notes?: string;                    // Usage notes or restrictions
+    source?: string;                   // E.g. "Warlock (Great Old One Patron)"
+}
+
+export interface ProgressionGrantedFeature {
+    id: string;
+    name: string;
+    description: string;
+    source?: string;
+    type?: "Class" | "Subclass" | "Invocation" | "Feat" | "Species";
+    level?: number;
+    modifiers?: StatModifier[];
+    actionGrant?: {
+        name: string;
+        type: "Action" | "Bonus Action" | "Reaction" | "Special";
+        range?: string;
+        cost?: string;
+        notes?: string;
+    };
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
 }
 
 export interface ProgressionFeature {
@@ -158,6 +197,8 @@ export interface ProgressionFeature {
         cost?: string;
         notes?: string;
     };
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
+    grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
 export interface ProgressionChoiceOption {
@@ -173,6 +214,8 @@ export interface ProgressionChoiceOption {
         cost?: string;
         notes?: string;
     };
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
+    grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
 export interface ProgressionChoice {
@@ -180,6 +223,7 @@ export interface ProgressionChoice {
     name: string;
     prompt: string;
     chooseCount: number;
+    choiceType?: "feature" | "spell" | "proficiency" | "custom";
     options: ProgressionChoiceOption[];
 }
 
@@ -195,6 +239,8 @@ export interface ProgressionLevel {
     features: ProgressionFeature[];
     choices?: ProgressionChoice[];
     resourceUpdates?: ProgressionResourceUpdate[];
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
+    grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
 export interface ClassDefinition {

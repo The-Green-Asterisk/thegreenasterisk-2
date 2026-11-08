@@ -225,5 +225,82 @@ describe("StatModifierEvaluator", () => {
             expect(char.proficiencies.armor).not.toContain("Heavy Armor");
             expect(char.proficiencies.weapons).not.toContain("Martial Weapons");
         });
+
+        it("grants spells from progression choice options and reverts them cleanly", () => {
+            const char = createMockCharacter();
+            char.spells = [];
+
+            const armorOfShadowsOption = {
+                id: "armor-of-shadows",
+                name: "Armor of Shadows",
+                description: "Cast Mage Armor at will without expending a spell slot.",
+                grantedSpells: [
+                    {
+                        name: "Mage Armor",
+                        level: 1,
+                        atWill: true,
+                        alwaysPrepared: true,
+                        notes: "Cast at will without expending a spell slot"
+                    }
+                ]
+            };
+
+            applyProgressionChoiceOption(char, armorOfShadowsOption, 1);
+            expect(char.spells.some(s => s.name === "Mage Armor")).toBe(true);
+
+            // Revert
+            applyProgressionChoiceOption(char, armorOfShadowsOption, -1);
+            expect(char.spells.some(s => s.name === "Mage Armor")).toBe(false);
+        });
+
+        it("grants features from progression choice options and reverts them cleanly", () => {
+            const char = createMockCharacter();
+            char.features = [];
+
+            const metamagicOption = {
+                id: "quickened-spell",
+                name: "Quickened Spell",
+                description: "Cast a spell with casting time of 1 action as a bonus action.",
+                grantedFeatures: [
+                    {
+                        id: "metamagic-quickened",
+                        name: "Metamagic: Quickened Spell",
+                        description: "Cast a 1-action spell as a bonus action.",
+                        type: "Class" as const
+                    }
+                ]
+            };
+
+            applyProgressionChoiceOption(char, metamagicOption, 1);
+            expect(char.features.some(f => f.name === "Metamagic: Quickened Spell")).toBe(true);
+
+            // Revert
+            applyProgressionChoiceOption(char, metamagicOption, -1);
+            expect(char.features.some(f => f.name === "Metamagic: Quickened Spell")).toBe(false);
+        });
+    });
+
+    describe("grant_spell and grant_feature modifiers", () => {
+        it("grants and reverts spells via grant_spell modifier", () => {
+            const char = createMockCharacter();
+            char.spells = [];
+
+            applyStatModifier(char, { target: "spells.grant", type: "grant_spell", value: "Sacred Flame" }, 1);
+            expect(char.spells.some(s => s.name === "Sacred Flame")).toBe(true);
+
+            applyStatModifier(char, { target: "spells.grant", type: "grant_spell", value: "Sacred Flame" }, -1);
+            expect(char.spells.some(s => s.name === "Sacred Flame")).toBe(false);
+        });
+
+        it("grants and reverts features via grant_feature modifier", () => {
+            const char = createMockCharacter();
+            char.features = [];
+
+            applyStatModifier(char, { target: "features.grant", type: "grant_feature", value: "Divine Spark" }, 1);
+            expect(char.features.some(f => f.name === "Divine Spark")).toBe(true);
+
+            applyStatModifier(char, { target: "features.grant", type: "grant_feature", value: "Divine Spark" }, -1);
+            expect(char.features.some(f => f.name === "Divine Spark")).toBe(false);
+        });
     });
 });

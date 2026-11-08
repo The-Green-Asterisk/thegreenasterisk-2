@@ -25,6 +25,10 @@ export type ModifierTarget =
     | "damage.ranged"
     | "spells.saveDc"
     | "spells.attackBonus"
+    | "spells.grant"
+    | "spells.alwaysPrepared"
+    | "spells.atWill"
+    | "features.grant"
     | "proficiencies.armor"
     | "proficiencies.weapons"
     | "proficiencies.tools"
@@ -42,7 +46,9 @@ export type ModifierType =
     | "proficiency_tier" // "proficient" | "expertise"
     | "ability_mod"      // Adds another ability modifier (e.g. add WIS to Arcana)
     | "resource_pool"    // Adds/modifies a class resource pool
-    | "grant_action";    // Injects an action/bonus action/reaction
+    | "grant_action"     // Injects an action/bonus action/reaction
+    | "grant_spell"      // Grants a specific spell or cantrip
+    | "grant_feature";   // Grants a specific feature or trait
 
 export interface StatModifier {
     target: ModifierTarget;
@@ -51,6 +57,39 @@ export interface StatModifier {
     abilitySource?: AbilityName;
     condition?: string;
     description?: string;
+}
+
+export interface ProgressionGrantedSpell {
+    id?: string;
+    name: string;
+    level?: number;                    // 0 for cantrip, 1-9 for leveled spells
+    alwaysPrepared?: boolean;          // Always prepared, does not count against prepared spell limits
+    atWill?: boolean;                  // Cast at will without expending a spell slot
+    usage?: {
+        count?: number;
+        resetOn?: "short" | "long" | "at_will";
+    };
+    ability?: AbilityName;             // Fixed casting ability if specified
+    notes?: string;                    // Usage notes or restrictions
+    source?: string;                   // E.g. "Warlock (Great Old One Patron)"
+}
+
+export interface ProgressionGrantedFeature {
+    id: string;
+    name: string;
+    description: string;
+    source?: string;
+    type?: "Class" | "Subclass" | "Invocation" | "Feat" | "Species";
+    level?: number;
+    modifiers?: StatModifier[];
+    actionGrant?: {
+        name: string;
+        type: "Action" | "Bonus Action" | "Reaction" | "Special";
+        range?: string;
+        cost?: string;
+        notes?: string;
+    };
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
 }
 
 export interface ProgressionFeature {
@@ -65,6 +104,8 @@ export interface ProgressionFeature {
         cost?: string;
         notes?: string;
     };
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
+    grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
 export interface ProgressionChoiceOption {
@@ -80,6 +121,8 @@ export interface ProgressionChoiceOption {
         cost?: string;
         notes?: string;
     };
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
+    grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
 export interface ProgressionChoice {
@@ -87,6 +130,7 @@ export interface ProgressionChoice {
     name: string;
     prompt: string;
     chooseCount: number;
+    choiceType?: "feature" | "spell" | "proficiency" | "custom";
     options: ProgressionChoiceOption[];
 }
 
@@ -102,6 +146,8 @@ export interface ProgressionLevel {
     features: ProgressionFeature[];
     choices?: ProgressionChoice[];
     resourceUpdates?: ProgressionResourceUpdate[];
+    grantedSpells?: Array<ProgressionGrantedSpell | string>;
+    grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
 export interface SubclassSeedDefinition {
@@ -305,6 +351,15 @@ export const DIVINE_ORDER_OPTIONS: ProgressionChoiceOption[] = [
         id: "thaumaturge",
         name: "Thaumaturge",
         description: "Know one extra Cleric cantrip, and add your Wisdom modifier to Intelligence (Arcana or Religion) checks.",
+        grantedSpells: [
+            {
+                name: "Sacred Flame",
+                level: 0,
+                alwaysPrepared: true,
+                ability: "wis",
+                notes: "Extra Cleric cantrip"
+            }
+        ],
         modifiers: [
             {
                 target: "spells.cantrips_known",
@@ -333,6 +388,15 @@ export const PRIMAL_ORDER_OPTIONS: ProgressionChoiceOption[] = [
         id: "magician",
         name: "Magician",
         description: "Know one extra Druid cantrip, and add your Wisdom modifier to Intelligence (Arcana or Nature) checks.",
+        grantedSpells: [
+            {
+                name: "Druidcraft",
+                level: 0,
+                alwaysPrepared: true,
+                ability: "wis",
+                notes: "Extra Druid cantrip"
+            }
+        ],
         modifiers: [
             {
                 target: "spells.cantrips_known",
@@ -471,7 +535,15 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     {
         id: "pact-of-the-chain",
         name: "Pact of the Chain",
-        description: "Cast Find Familiar as a ritual to summon an enhanced familiar."
+        description: "Cast Find Familiar as a ritual to summon an enhanced familiar.",
+        grantedSpells: [
+            {
+                name: "Find Familiar",
+                level: 1,
+                alwaysPrepared: true,
+                notes: "Can cast as a ritual to summon an enhanced familiar"
+            }
+        ]
     },
     {
         id: "agonizing-blast",
@@ -489,7 +561,16 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     {
         id: "armor-of-shadows",
         name: "Armor of Shadows",
-        description: "Cast Mage Armor on yourself at will without expending a spell slot."
+        description: "Cast Mage Armor on yourself at will without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "Mage Armor",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast at will without expending a spell slot"
+            }
+        ]
     },
     {
         id: "devils-sight",
@@ -525,17 +606,44 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     {
         id: "fiendish-vigor",
         name: "Fiendish Vigor",
-        description: "Cast False Life on yourself at will as a 1st-level spell."
+        description: "Cast False Life on yourself at will as a 1st-level spell.",
+        grantedSpells: [
+            {
+                name: "False Life",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast at will as a 1st-level spell without expending a spell slot"
+            }
+        ]
     },
     {
         id: "mask-of-many-faces",
         name: "Mask of Many Faces",
-        description: "Cast Disguise Self at will without expending a spell slot."
+        description: "Cast Disguise Self at will without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "Disguise Self",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast at will without expending a spell slot"
+            }
+        ]
     },
     {
         id: "misty-visions",
         name: "Misty Visions",
-        description: "Cast Silent Image at will without expending a spell slot."
+        description: "Cast Silent Image at will without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "Silent Image",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast at will without expending a spell slot"
+            }
+        ]
     },
     {
         id: "repelling-blast",
@@ -558,7 +666,16 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
         id: "whispers-of-the-grave",
         name: "Whispers of the Grave",
         description: "Cast Speak with Dead at will without expending a spell slot.",
-        prerequisite: "Level 9"
+        prerequisite: "Level 9",
+        grantedSpells: [
+            {
+                name: "Speak with Dead",
+                level: 3,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast at will without expending a spell slot"
+            }
+        ]
     }
 ];
 
@@ -603,10 +720,46 @@ export const DRACONIC_ANCESTOR_ELEMENTS: ProgressionChoiceOption[] = [
 ];
 
 export const DRUID_LAND_BIOMES: ProgressionChoiceOption[] = [
-    { id: "arid", name: "Arid (Desert / Plains)", description: "Gain Fire Resistance and Land's Aid spells Blur and Fireball.", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Resistance to Fire" }] },
-    { id: "polar", name: "Polar (Tundra / Ice)", description: "Gain Cold Resistance and Land's Aid spells Hold Person and Ice Storm.", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold", description: "Resistance to Cold" }] },
-    { id: "temperate", name: "Temperate (Forest / Grassland)", description: "Gain Lightning affinity and Land's Aid spells Misty Step and Lightning Bolt.", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning", description: "Resistance to Lightning" }] },
-    { id: "tropical", name: "Tropical (Rainforest / Swamp)", description: "Gain Poison Resistance and Land's Aid spells Web and Polymorph.", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison", description: "Resistance to Poison" }] }
+    {
+        id: "arid",
+        name: "Arid (Desert / Plains)",
+        description: "Gain Fire Resistance and Land's Aid spells Blur and Fireball.",
+        grantedSpells: [
+            { name: "Blur", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Arid)" },
+            { name: "Fireball", level: 3, alwaysPrepared: true, notes: "Circle of the Land (Arid)" }
+        ],
+        modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Resistance to Fire" }]
+    },
+    {
+        id: "polar",
+        name: "Polar (Tundra / Ice)",
+        description: "Gain Cold Resistance and Land's Aid spells Hold Person and Ice Storm.",
+        grantedSpells: [
+            { name: "Hold Person", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Polar)" },
+            { name: "Ice Storm", level: 4, alwaysPrepared: true, notes: "Circle of the Land (Polar)" }
+        ],
+        modifiers: [{ target: "defenses.resistance", type: "set", value: "cold", description: "Resistance to Cold" }]
+    },
+    {
+        id: "temperate",
+        name: "Temperate (Forest / Grassland)",
+        description: "Gain Lightning affinity and Land's Aid spells Misty Step and Lightning Bolt.",
+        grantedSpells: [
+            { name: "Misty Step", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Temperate)" },
+            { name: "Lightning Bolt", level: 3, alwaysPrepared: true, notes: "Circle of the Land (Temperate)" }
+        ],
+        modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning", description: "Resistance to Lightning" }]
+    },
+    {
+        id: "tropical",
+        name: "Tropical (Rainforest / Swamp)",
+        description: "Gain Poison Resistance and Land's Aid spells Web and Polymorph.",
+        grantedSpells: [
+            { name: "Web", level: 2, alwaysPrepared: true, notes: "Circle of the Land (Tropical)" },
+            { name: "Polymorph", level: 4, alwaysPrepared: true, notes: "Circle of the Land (Tropical)" }
+        ],
+        modifiers: [{ target: "defenses.resistance", type: "set", value: "poison", description: "Resistance to Poison" }]
+    }
 ];
 
 export const BARBARIAN_ASPECTS: ProgressionChoiceOption[] = [
@@ -901,11 +1054,50 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 modifiers.push({ target: "vitals.darkvision", type: "bonus", value: 60, description: "Darkvision +60 ft." });
             }
 
+            const grantedSpells: ProgressionGrantedSpell[] = [];
+
+            if (featSlug === "psychic-spells" || featSlug === "expanded-spell-list") {
+                if (lvl === 3) {
+                    grantedSpells.push(
+                        { name: "Dissonant Whispers", level: 1, alwaysPrepared: true, source: sub.name },
+                        { name: "Tasha's Hideous Laughter", level: 1, alwaysPrepared: true, source: sub.name },
+                        { name: "Detect Thoughts", level: 2, alwaysPrepared: true, source: sub.name },
+                        { name: "Phantasmal Force", level: 2, alwaysPrepared: true, source: sub.name }
+                    );
+                } else if (lvl === 6 || lvl === 5) {
+                    grantedSpells.push(
+                        { name: "Clairvoyance", level: 3, alwaysPrepared: true, source: sub.name },
+                        { name: "Sending", level: 3, alwaysPrepared: true, source: sub.name }
+                    );
+                } else if (lvl === 10 || lvl === 7) {
+                    grantedSpells.push(
+                        { name: "Dominate Beast", level: 4, alwaysPrepared: true, source: sub.name },
+                        { name: "Evard's Black Tentacles", level: 4, alwaysPrepared: true, source: sub.name }
+                    );
+                } else if (lvl === 14 || lvl === 9) {
+                    grantedSpells.push(
+                        { name: "Dominate Person", level: 5, alwaysPrepared: true, source: sub.name },
+                        { name: "Telekinesis", level: 5, alwaysPrepared: true, source: sub.name }
+                    );
+                }
+            } else if (featSlug === "beguiling-magic") {
+                grantedSpells.push(
+                    { name: "Charm Person", level: 1, alwaysPrepared: true, source: sub.name, notes: "College of Glamour" },
+                    { name: "Mirror Image", level: 2, alwaysPrepared: true, source: sub.name, notes: "College of Glamour" }
+                );
+            } else if (featSlug === "mantle-of-majesty") {
+                grantedSpells.push(
+                    { name: "Command", level: 1, alwaysPrepared: true, atWill: true, source: sub.name, notes: "Cast as Bonus Action without spell slot" }
+                );
+            }
+
             return {
                 id: `${subSlug}-${lvl}-${featSlug}`,
                 name: f.name,
                 description: f.description,
-                modifiers: modifiers.length > 0 ? modifiers : undefined
+                modifiers: modifiers.length > 0 ? modifiers : undefined,
+                grantedSpells: grantedSpells.length > 0 ? grantedSpells : (f as any).grantedSpells,
+                grantedFeatures: (f as any).grantedFeatures
             };
         });
 

@@ -1487,9 +1487,11 @@ export default class RulesController extends BaseController {
                 if (lsub.classSlug) {
                     if (lsub.name) registerSubclass(lsub.name, lsub.classSlug);
                     if (lsub.slug) registerSubclass(lsub.slug, lsub.classSlug);
-                    const sFeats: any[] = this.safeParse(lsub.featuresJson, []);
-                    for (const sf of sFeats) {
-                        if (sf?.name) registerClassFeature(sf.name, lsub.classSlug);
+                    const sProg: any[] = this.safeParse(lsub.progressionJson, []);
+                    for (const pl of sProg) {
+                        for (const sf of Array.isArray(pl?.features) ? pl.features : []) {
+                            if (sf?.name) registerClassFeature(sf.name, lsub.classSlug);
+                        }
                     }
                 }
             }
