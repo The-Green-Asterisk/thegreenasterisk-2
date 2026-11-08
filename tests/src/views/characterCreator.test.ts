@@ -2020,4 +2020,107 @@ describe("CharacterCreatorController", () => {
         expect(limits.currentByLevel[1].length).toBe(4);
         expect(limits.allowedByLevel[1]).toBe(2); // strictly allotment, not 4
     });
+
+    it("correctly handles multiclass spellcasting limits and spell availability", () => {
+        // Cleric 2 / Wizard 1
+        ctrl.state.classes = [
+            { classId: "cleric", level: 2, subclassId: "life" },
+            { classId: "wizard", level: 1, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Cantrips: Cleric 2 (3) + Wizard 1 (3) = 6 cantrips
+        expect(ctrl.getMaxCantrips()).toBe(6);
+
+        // Prepared spells: Cleric 2 (5) + Wizard 1 (4) = 9 prepared spells
+        expect(ctrl.getMaxPreparedSpells()).toBe(9);
+
+        // Combined Multiclass Spell Slots:
+        // Cleric 2 + Wizard 1 = Effective Caster Level 3 -> 4 x Lvl 1, 2 x Lvl 2
+        expect(ctrl.getSpellSlotsSummary()).toBe("4 × Lvl 1, 2 × Lvl 2");
+
+        // Allowed spell classes include both Cleric and Wizard
+        expect(ctrl.getAllowedSpellClasses()).toEqual(expect.arrayContaining(["Cleric", "Wizard"]));
+
+        // Available spells:
+        // Cleric max spell level is 1; Wizard max spell level is 1
+        // Even though combined slots have 2nd-level slots, neither class can prepare 2nd-level spells
+        const available = ctrl.getAvailableSpells();
+        const availableNames = available.leveledSpells.map((s) => s.name);
+
+        // 1st level spells available
+        expect(availableNames).toContain("Cure Wounds"); // Cleric 1
+        expect(availableNames).toContain("Bless"); // Cleric 1
+        expect(availableNames).toContain("Shield"); // Wizard 1
+        expect(availableNames).toContain("Magic Missile"); // Wizard 1
+
+        // 2nd level spells NOT available for Cleric 2 / Wizard 1
+        expect(availableNames).not.toContain("Spiritual Weapon"); // Cleric 2
+        expect(availableNames).not.toContain("Aid"); // Cleric 2
+        expect(availableNames).not.toContain("Misty Step"); // Wizard 2
+        expect(availableNames).not.toContain("Scorching Ray"); // Wizard 2
+    });
+
+    it("allows higher-level prepared spells only for classes that qualify by class level", () => {
+        // Cleric 3 / Wizard 1
+        ctrl.state.classes = [
+            { classId: "cleric", level: 3, subclassId: "life" },
+            { classId: "wizard", level: 1, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Cleric 3 (WIS) max spell level = 2; Wizard 1 (INT) max spell level = 1
+        expect(ctrl.getMaxCantrips()).toBe(3 + 3); // 6
+        expect(ctrl.getMaxPreparedSpells()).toBe(6 + 4); // 10
+
+        const available = ctrl.getAvailableSpells();
+        const availableNames = available.leveledSpells.map((s) => s.name);
+
+        // 2nd-level Cleric spells ARE available because Cleric level is 3
+        expect(availableNames).toContain("Spiritual Weapon");
+        expect(availableNames).toContain("Aid");
+
+        // 2nd-level Wizard spells are NOT available because Wizard level is only 1
+        expect(availableNames).not.toContain("Misty Step");
+        expect(availableNames).not.toContain("Scorching Ray");
+
+        // 1st-level Wizard spells ARE available
+        expect(availableNames).toContain("Shield");
+    });
+
+    it("activates Step 8 Spells when a secondary class is a spellcaster even if primary is not", () => {
+        // Fighter 3 (Champion) / Wizard 2 (Evoker)
+        ctrl.state.classes = [
+            { classId: "fighter", level: 3, subclassId: "champion" },
+            { classId: "wizard", level: 2, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Wizard 2 grants 3 cantrips and 5 prepared spells
+        expect(ctrl.getMaxCantrips()).toBe(3);
+        expect(ctrl.getMaxPreparedSpells()).toBe(5);
+        expect(ctrl.getMaxSpellLevel()).toBe(1);
+        expect(ctrl.getSpellSlotsSummary()).toBe("3 × Lvl 1");
+
+        // Step 8 renders with spellcasting interface, not the "No Spellcasting" notice
+        const html = ctrl["renderStep8Spells"]();
+        expect(html).toContain("Cantrips (Level 0)");
+        expect(html).toContain("Prepared Spells");
+        expect(html).not.toContain("No Spellcasting");
+    });
+
+    it("correctly separates and combines Pact Magic and Standard Spellcasting slots", () => {
+        // Paladin 2 (half caster) / Warlock 2 (pact caster)
+        ctrl.state.classes = [
+            { classId: "paladin", level: 2, subclassId: "devotion" },
+            { classId: "warlock", level: 2, subclassId: "fiend" }
+        ];
+        ctrl.syncStateClassProperties();
+
+        // Paladin 2: 0 cantrips, 3 prepared spells, 2 x Lvl 1 standard slots
+        // Warlock 2: 2 cantrips, 3 prepared spells, 2 x Lvl 1 pact slots
+        expect(ctrl.getMaxCantrips()).toBe(2);
+        expect(ctrl.getMaxPreparedSpells()).toBe(6);
+        expect(ctrl.getSpellSlotsSummary()).toBe("2 × Lvl 1; 2 × Lvl 1 (Pact Magic)");
+    });
 });

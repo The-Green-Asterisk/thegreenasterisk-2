@@ -1929,7 +1929,7 @@ export function parseDndBeyondCharacter(
         } else if (["bard", "cleric", "druid", "sorcerer", "wizard"].includes(cName)) {
             effectiveCasterLevel += lvl;
         } else if (["paladin", "ranger"].includes(cName)) {
-            effectiveCasterLevel += Math.floor(lvl / 2);
+            effectiveCasterLevel += Math.ceil(lvl / 2);
         } else if (cName === "artificer") {
             effectiveCasterLevel += Math.ceil(lvl / 2);
         } else if (subName.includes("eldritch knight") || subName.includes("arcane trickster")) {

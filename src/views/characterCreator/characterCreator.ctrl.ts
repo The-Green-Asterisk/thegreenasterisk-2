@@ -61,7 +61,11 @@ import {
     ABERRANT_REVELATION_OPTIONS,
     MULTICLASS_PREREQUISITES_2024,
     MULTICLASS_PROFICIENCIES_2024,
-    checkClassPrerequisite
+    checkClassPrerequisite,
+    getMulticlassCasterInfo,
+    calculateMulticlassSpellSlots,
+    MulticlassCasterClassInfo,
+    MulticlassSpellSlotsResult
 } from "../../rules/dnd5e_2024";
 
 export interface AsiChoice {
@@ -204,6 +208,7 @@ export class CharacterCreatorController {
     public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
 
     public activeSpellLevelFilter: number | "all" = "all";
+    public activeSpellClassFilter: string = "all";
     public spellSearchQuery: string = "";
     public progressionExpanded: boolean = false;
     public progressionFilter: "all" | "unlocked" = "all";
@@ -1540,19 +1545,35 @@ export class CharacterCreatorController {
         return true;
     }
 
-    public getMaxCantrips(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return 0;
-        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-        let count = cls.spellcasting?.cantripsKnownByLevel?.[lvlIdx] || 0;
-
-        // Subclass third-casters at level 3+
-        if (this.state.level >= 3) {
-            if (this.state.classId === "fighter" && this.state.subclassId === "eldritch-knight") {
-                count += (this.state.level >= 10 ? 3 : 2);
-            } else if (this.state.classId === "rogue" && this.state.subclassId === "arcane-trickster") {
-                count += (this.state.level >= 10 ? 4 : 3);
+    public getSpellcasterInfos(): MulticlassCasterClassInfo[] {
+        this.syncStateClassProperties();
+        if (Array.isArray(this.state.classes) && this.state.classes.length === 1) {
+            if (this.state.classId && this.state.classes[0].classId !== this.state.classId) {
+                this.state.classes[0].classId = this.state.classId;
             }
+            if (this.state.subclassId !== undefined && this.state.classes[0].subclassId !== this.state.subclassId) {
+                this.state.classes[0].subclassId = this.state.subclassId;
+            }
+            if (this.state.level && this.state.classes[0].level !== this.state.level) {
+                this.state.classes[0].level = this.state.level;
+            }
+        }
+        const infos: MulticlassCasterClassInfo[] = [];
+        for (const cc of this.state.classes || []) {
+            const classDef = this.classes.find((x) => x.id === (cc.classId || "").toLowerCase());
+            const info = getMulticlassCasterInfo(cc, classDef);
+            if (info) {
+                infos.push(info);
+            }
+        }
+        return infos;
+    }
+
+    public getMaxCantrips(): number {
+        const infos = this.getSpellcasterInfos();
+        let count = 0;
+        for (const info of infos) {
+            count += info.maxCantrips;
         }
 
         // Origin Feat bonus: Magic Initiate grants 2 cantrips
@@ -1564,19 +1585,10 @@ export class CharacterCreatorController {
     }
 
     public getMaxPreparedSpells(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls) return 0;
-        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-        let count = cls.spellcasting?.preparedSpellsByLevel?.[lvlIdx] || 0;
-
-        // Subclass third-casters at level 3+
-        if (this.state.level >= 3) {
-            const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
-            if (this.state.classId === "fighter" && this.state.subclassId === "eldritch-knight") {
-                count += thirdCasterSpells[lvlIdx];
-            } else if (this.state.classId === "rogue" && this.state.subclassId === "arcane-trickster") {
-                count += thirdCasterSpells[lvlIdx];
-            }
+        const infos = this.getSpellcasterInfos();
+        let count = 0;
+        for (const info of infos) {
+            count += info.maxPrepared;
         }
 
         // Origin Feat bonus: Magic Initiate grants 1 prepared 1st-level spell
@@ -1589,12 +1601,13 @@ export class CharacterCreatorController {
 
     public getAllowedSpellClasses(): string[] {
         const list: string[] = [];
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (cls?.spellcasting) {
-            list.push(cls.name);
-        }
-        if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
-            if (!list.includes("Wizard")) list.push("Wizard");
+        const infos = this.getSpellcasterInfos();
+        for (const info of infos) {
+            if (info.type === "third") {
+                if (!list.includes("Wizard")) list.push("Wizard");
+            } else if (!list.includes(info.className)) {
+                list.push(info.className);
+            }
         }
         if (this.state.originFeatId === "magic-initiate-cleric" && !list.includes("Cleric")) list.push("Cleric");
         if (this.state.originFeatId === "magic-initiate-druid" && !list.includes("Druid")) list.push("Druid");
@@ -1603,23 +1616,16 @@ export class CharacterCreatorController {
     }
 
     public getMaxSpellLevel(): number {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (!cls?.spellcasting) {
-            if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
-                if (this.state.level >= 19) return 4;
-                if (this.state.level >= 13) return 3;
-                if (this.state.level >= 7) return 2;
-                return 1;
-            }
+        const infos = this.getSpellcasterInfos();
+        if (infos.length === 0) {
             if (this.state.originFeatId.startsWith("magic-initiate")) return 1;
             return 0;
         }
-        const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-        const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
-        for (let i = slotsRow.length - 1; i >= 0; i--) {
-            if (slotsRow[i] > 0) return i + 1;
+        let maxLvl = Math.max(...infos.map((i) => i.maxSpellLevel), 0);
+        if (this.state.originFeatId.startsWith("magic-initiate") && maxLvl < 1) {
+            maxLvl = 1;
         }
-        return 1;
+        return maxLvl;
     }
 
     public getAvailableSpells(): { cantrips: RuleSpellDefinition[]; leveledSpells: RuleSpellDefinition[]; spellsLvl1: RuleSpellDefinition[] } {
@@ -1627,9 +1633,38 @@ export class CharacterCreatorController {
         if (allowed.length === 0) {
             return { cantrips: [], leveledSpells: [], spellsLvl1: [] };
         }
-        const maxLevel = this.getMaxSpellLevel();
-        const cantrips = SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.some((c) => allowed.includes(c)));
-        const leveledSpells = SPELLS_2024.filter((sp) => sp.level >= 1 && sp.level <= maxLevel && sp.classes.some((c) => allowed.includes(c)));
+        const infos = this.getSpellcasterInfos();
+        const hasMagicInitiate = this.state.originFeatId.startsWith("magic-initiate");
+        const miClass = this.state.originFeatId === "magic-initiate-cleric"
+            ? "Cleric"
+            : this.state.originFeatId === "magic-initiate-druid"
+              ? "Druid"
+              : this.state.originFeatId === "magic-initiate-wizard"
+                ? "Wizard"
+                : "";
+
+        const cantrips = SPELLS_2024.filter((sp) => {
+            if (sp.level !== 0) return false;
+            return sp.classes.some((c) => allowed.includes(c));
+        });
+
+        const leveledSpells = SPELLS_2024.filter((sp) => {
+            if (sp.level < 1) return false;
+            // D&D 2024 Multiclassing: prepare spells individually per class, up to that class's max spell level
+            const canPrepareFromClass = infos.some((info) => {
+                const targetClassName = info.type === "third" ? "Wizard" : info.className;
+                return sp.classes.includes(targetClassName) && sp.level <= info.maxSpellLevel;
+            });
+            if (canPrepareFromClass) return true;
+
+            // Granted by Magic Initiate (1st-level spell from selected spell list)
+            if (hasMagicInitiate && sp.level === 1 && miClass && sp.classes.includes(miClass)) {
+                return true;
+            }
+
+            return false;
+        });
+
         return { cantrips, leveledSpells, spellsLvl1: leveledSpells };
     }
 
@@ -1654,15 +1689,31 @@ export class CharacterCreatorController {
         const maxPrepared = this.getMaxPreparedSpells();
         const maxLevel = this.getMaxSpellLevel();
 
-        let classKey = (this.state.classId || "wizard").toLowerCase();
-        if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") {
-            classKey = "wizard";
+        const infos = this.getSpellcasterInfos();
+        const activeClassKeys = infos.map((i) => i.type === "third" ? "wizard" : i.classId.toLowerCase());
+        if (activeClassKeys.length === 0) {
+            activeClassKeys.push((this.state.classId || "wizard").toLowerCase());
         }
-        const priorities = CLASS_SPELL_PRIORITIES[classKey] || CLASS_SPELL_PRIORITIES["wizard"];
+
+        const combinedPriorities = {
+            cantrips: [] as string[],
+            leveled: [] as string[]
+        };
+        for (const ck of activeClassKeys) {
+            const p = CLASS_SPELL_PRIORITIES[ck];
+            if (p) {
+                p.cantrips.forEach((name) => {
+                    if (!combinedPriorities.cantrips.includes(name)) combinedPriorities.cantrips.push(name);
+                });
+                p.leveled.forEach((name) => {
+                    if (!combinedPriorities.leveled.includes(name)) combinedPriorities.leveled.push(name);
+                });
+            }
+        }
 
         // 1. Smart Cantrips: rank by class priorities, then alphabetical
         const cantripRank = (sp: RuleSpellDefinition) => {
-            const idx = priorities.cantrips.indexOf(sp.name);
+            const idx = combinedPriorities.cantrips.indexOf(sp.name);
             return idx >= 0 ? idx : 999;
         };
         const sortedCantrips = [...available.cantrips].sort((a, b) => {
@@ -1675,7 +1726,7 @@ export class CharacterCreatorController {
 
         // 2. Smart Prepared Spells: ensure coverage across available spell levels, prioritizing staples
         const leveledRank = (sp: RuleSpellDefinition) => {
-            const idx = priorities.leveled.indexOf(sp.name);
+            const idx = combinedPriorities.leveled.indexOf(sp.name);
             return idx >= 0 ? idx : 999;
         };
 
@@ -1694,7 +1745,7 @@ export class CharacterCreatorController {
 
         const selectedPreparedSet = new Set<string>();
 
-        if (maxLevel === 1) {
+        if (maxLevel <= 1) {
             // Level 1 only: take top priorities
             const topLvl1 = (byLevel[1] || []).slice(0, maxPrepared);
             topLvl1.forEach((s) => selectedPreparedSet.add(s.name));
@@ -1752,46 +1803,82 @@ export class CharacterCreatorController {
     }
 
     public getSpellcastingAbility(): AbilityName | null {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (cls?.spellcasting) return cls.spellcasting.ability;
-        if (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster") return "int";
+        const infos = this.getSpellcasterInfos();
+        if (infos.length > 0) {
+            const primary = infos.find((i) => i.classId === this.state.classId);
+            if (primary) return primary.ability;
+            return infos[0].ability;
+        }
         if (this.state.originFeatId === "magic-initiate-wizard") return "int";
         if (this.state.originFeatId === "magic-initiate-cleric" || this.state.originFeatId === "magic-initiate-druid") return "wis";
         return null;
     }
 
-    public getSpellSaveDc(): number | null {
-        const ability = this.getSpellcastingAbility();
+    public getSpellSaveDc(abilityOverride?: AbilityName): number | null {
+        const ability = abilityOverride || this.getSpellcastingAbility();
         if (!ability) return null;
         return 8 + this.getProficiencyBonus() + this.getAbilityModifier(ability);
     }
 
-    public getSpellAttackModifier(): number | null {
-        const ability = this.getSpellcastingAbility();
+    public getSpellAttackModifier(abilityOverride?: AbilityName): number | null {
+        const ability = abilityOverride || this.getSpellcastingAbility();
         if (!ability) return null;
         return this.getProficiencyBonus() + this.getAbilityModifier(ability);
     }
 
     public getSpellSlotsSummary(): string {
-        const cls = this.classes.find((c) => c.id === this.state.classId);
-        if (cls?.spellcasting) {
-            const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-            const slotsRow = cls.spellcasting.spellSlotsByLevel[lvlIdx];
-            if (cls.spellcasting.type === "pact") {
-                const count = slotsRow.find((s) => s > 0) || 1;
-                const pactLvl = slotsRow.findIndex((s) => s > 0) + 1;
-                return `${count} x Lvl ${pactLvl} (Pact Magic)`;
-            }
-            const pairs: string[] = [];
-            slotsRow.forEach((c, idx) => {
-                if (c > 0) pairs.push(`${c} × Lvl ${idx + 1}`);
-            });
-            return pairs.join(", ") || "None";
+        this.syncStateClassProperties();
+        const slotsResult = calculateMulticlassSpellSlots(this.state.classes, this.classes);
+        const parts: string[] = [];
+
+        const standardPairs: string[] = [];
+        slotsResult.standardSlots.forEach((c, idx) => {
+            if (c > 0) standardPairs.push(`${c} × Lvl ${idx + 1}`);
+        });
+
+        if (standardPairs.length > 0) {
+            parts.push(standardPairs.join(", "));
         }
-        if (this.state.originFeatId.startsWith("magic-initiate")) {
+
+        if (slotsResult.pactSlotCount > 0) {
+            parts.push(`${slotsResult.pactSlotCount} × Lvl ${slotsResult.pactSlotLevel} (Pact Magic)`);
+        }
+
+        if (parts.length === 0 && this.state.originFeatId.startsWith("magic-initiate")) {
             return "1 × Lvl 1 (1/Long Rest from Feat)";
         }
-        return "None";
+
+        return parts.join("; ") || "None";
+    }
+
+    public getSpellcasterStatsList(): Array<{
+        classId: string;
+        className: string;
+        level: number;
+        ability: AbilityName;
+        abilityMod: number;
+        saveDc: number;
+        attackMod: number;
+        maxCantrips: number;
+        maxPrepared: number;
+        maxSpellLevel: number;
+    }> {
+        const infos = this.getSpellcasterInfos();
+        return infos.map((info) => {
+            const mod = this.getAbilityModifier(info.ability);
+            return {
+                classId: info.classId,
+                className: info.className,
+                level: info.level,
+                ability: info.ability,
+                abilityMod: mod,
+                saveDc: 8 + this.getProficiencyBonus() + mod,
+                attackMod: this.getProficiencyBonus() + mod,
+                maxCantrips: info.maxCantrips,
+                maxPrepared: info.maxPrepared,
+                maxSpellLevel: info.maxSpellLevel
+            };
+        });
     }
 
     public updateLiveSummary() {
@@ -3734,6 +3821,7 @@ export class CharacterCreatorController {
         const maxPrepared = this.getMaxPreparedSpells();
         const maxSpellLevel = this.getMaxSpellLevel();
         const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;
+        const casterStats = this.getSpellcasterStatsList();
 
         if (!hasSpellcasting) {
             return `
@@ -3756,24 +3844,33 @@ export class CharacterCreatorController {
         }
 
         const available = this.getAvailableSpells();
-        const ability = this.getSpellcastingAbility();
-        const abilityMod = ability ? this.getAbilityModifier(ability) : 0;
-        const saveDc = this.getSpellSaveDc();
-        const attackMod = this.getSpellAttackModifier();
         const slotsSummary = this.getSpellSlotsSummary();
 
         const cantripsChosen = this.state.selectedCantrips.length;
         const spellsChosen = this.state.selectedSpellsLevel1.length;
         const isCantripsOver = maxCantrips > 0 && cantripsChosen > maxCantrips;
         const isSpellsOver = maxPrepared > 0 && spellsChosen > maxPrepared;
+        const isMulticlass = casterStats.length > 1;
+
+        const displayedCantrips = this.activeSpellClassFilter === "all"
+            ? available.cantrips
+            : available.cantrips.filter((s) => s.classes.includes(this.activeSpellClassFilter));
+
+        const leveledByClass = this.activeSpellClassFilter === "all"
+            ? available.leveledSpells
+            : available.leveledSpells.filter((s) => s.classes.includes(this.activeSpellClassFilter));
+
+        const displayedLeveled = this.activeSpellLevelFilter === "all"
+            ? leveledByClass
+            : leveledByClass.filter((s) => s.level === this.activeSpellLevelFilter);
 
         return `
             <div class="step-panel active">
                 <div class="panel-header">
                     <div class="spells-header-row">
                         <div>
-                            <h3 class="panel-title">Spells (${cls.name})</h3>
-                            <p class="panel-desc">Select cantrips and prepared spells according to your class limits at Level ${this.state.level}.</p>
+                            <h3 class="panel-title">${isMulticlass ? `Spells & Magic (${casterStats.map((c) => `${c.className} ${c.level}`).join(" / ")})` : `Spells (${casterStats[0]?.className || cls.name})`}</h3>
+                            <p class="panel-desc">${isMulticlass ? "Multiclass spellcasting: prepare spells individually per class at your class levels, sharing your multiclass spell slots." : `Select cantrips and prepared spells according to your class limits at Level ${this.state.level}.`}</p>
                         </div>
                         <div class="spells-actions-row">
                             <button type="button" class="creator-nav-btn secondary-btn auto-spells-btn">
@@ -3787,26 +3884,14 @@ export class CharacterCreatorController {
                 </div>
 
                 <div class="spellcaster-stats-banner">
-                    ${ability ? `
+                    ${casterStats.map((c) => `
                         <div class="stat-badge">
-                            <span class="label">Spell Ability</span>
-                            <strong>${ability.toUpperCase()} (${abilityMod >= 0 ? "+" : ""}${abilityMod})</strong>
+                            <span class="label">${isMulticlass ? `${c.className} (Lvl ${c.level})` : "Spell Ability"}</span>
+                            <strong>${c.ability.toUpperCase()} (${c.abilityMod >= 0 ? "+" : ""}${c.abilityMod}) • DC ${c.saveDc} • Atk ${c.attackMod >= 0 ? `+${c.attackMod}` : c.attackMod}</strong>
                         </div>
-                    ` : ""}
-                    ${saveDc != null ? `
-                        <div class="stat-badge">
-                            <span class="label">Spell Save DC</span>
-                            <strong>${saveDc}</strong>
-                        </div>
-                    ` : ""}
-                    ${attackMod != null ? `
-                        <div class="stat-badge">
-                            <span class="label">Spell Attack</span>
-                            <strong>${attackMod >= 0 ? "+" : ""}${attackMod}</strong>
-                        </div>
-                    ` : ""}
+                    `).join("")}
                     <div class="stat-badge">
-                        <span class="label">Spell Slots</span>
+                        <span class="label">${isMulticlass ? "Multiclass Slots" : "Spell Slots"}</span>
                         <strong>${slotsSummary}</strong>
                     </div>
                 </div>
@@ -3821,7 +3906,7 @@ export class CharacterCreatorController {
                             </span>
                         ` : `
                             <span class="spell-count-badge zero">
-                                <i class="fa-solid fa-ban"></i> 0 Cantrips for ${cls.name}
+                                <i class="fa-solid fa-ban"></i> 0 Cantrips
                             </span>
                         `}
                     </div>
@@ -3829,18 +3914,20 @@ export class CharacterCreatorController {
                     ${maxCantrips === 0 ? `
                         <p class="creator-empty-notice">
                             <i class="fa-solid fa-circle-info"></i>
-                            ${cls.name} does not prepare cantrips at Level ${this.state.level}.
+                            Your class features do not grant cantrips at current level.
                         </p>
                     ` : `
                         <div class="item-select-list">
-                            ${available.cantrips.map((sp) => {
+                            ${displayedCantrips.map((sp) => {
                                 const isSelected = this.state.selectedCantrips.includes(sp.name);
+                                const sourceBadges = sp.classes.filter((c) => casterStats.some((cs) => cs.className === c));
                                 return `
                                     <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""}" 
                                          data-spell-name="${sp.name}">
                                         <div class="item-row-left">
                                             <div class="item-row-title">
-                                                ${sp.name} (${sp.school})
+                                                <span>${sp.name} (${sp.school})</span>
+                                                ${isMulticlass && sourceBadges.length > 0 ? sourceBadges.map((c) => `<span class="stat-req-pill met">${c}</span>`).join(" ") : ""}
                                             </div>
                                             <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
                                             <div class="item-row-desc">${sp.description}</div>
@@ -3863,7 +3950,7 @@ export class CharacterCreatorController {
                             </span>
                         ` : `
                             <span class="spell-count-badge zero">
-                                <i class="fa-solid fa-ban"></i> 0 Spells for ${cls.name}
+                                <i class="fa-solid fa-ban"></i> 0 Spells
                             </span>
                         `}
                     </div>
@@ -3871,7 +3958,7 @@ export class CharacterCreatorController {
                     ${maxPrepared === 0 ? `
                         <p class="creator-empty-notice">
                             <i class="fa-solid fa-circle-info"></i>
-                            ${cls.name} does not prepare spells at Level ${this.state.level}.
+                            Your class features do not prepare spells at current level.
                         </p>
                     ` : `
                         <div class="spells-filter-bar">
@@ -3879,13 +3966,28 @@ export class CharacterCreatorController {
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <input type="text" id="spell-search-input" class="creator-input" placeholder="Search spells by name or school..." value="${this.spellSearchQuery}" />
                             </div>
+                            ${isMulticlass ? `
+                                <div class="spell-class-tabs" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                                    <button type="button" class="creator-nav-btn secondary-btn spell-class-tab-btn ${this.activeSpellClassFilter === "all" ? "active" : ""}" data-class="all" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                                        All Classes (${available.leveledSpells.length})
+                                    </button>
+                                    ${casterStats.map((cs) => {
+                                        const classCount = available.leveledSpells.filter((s) => s.classes.includes(cs.className)).length;
+                                        return `
+                                            <button type="button" class="creator-nav-btn secondary-btn spell-class-tab-btn ${this.activeSpellClassFilter === cs.className ? "active" : ""}" data-class="${cs.className}" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                                                ${cs.className} (Lvl ${cs.level} • Max Lvl ${cs.maxSpellLevel}) [${classCount}]
+                                            </button>
+                                        `;
+                                    }).join("")}
+                                </div>
+                            ` : ""}
                             ${maxSpellLevel > 1 ? `
                                 <div class="spell-level-tabs">
                                     <button type="button" class="spell-tab-btn ${this.activeSpellLevelFilter === "all" ? "active" : ""}" data-level="all">
-                                        All (${available.leveledSpells.length})
+                                        All Levels (${leveledByClass.length})
                                     </button>
                                     ${Array.from({ length: maxSpellLevel }, (_, i) => i + 1).map((lvl) => {
-                                        const count = available.leveledSpells.filter((s) => s.level === lvl).length;
+                                        const count = leveledByClass.filter((s) => s.level === lvl).length;
                                         if (count === 0) return "";
                                         const prepCount = this.state.selectedSpellsLevel1.filter((name) => {
                                             const s = SPELLS_2024.find((sp) => sp.name === name);
@@ -3902,8 +4004,9 @@ export class CharacterCreatorController {
                         </div>
 
                         <div class="item-select-list">
-                            ${(this.activeSpellLevelFilter === "all" ? available.leveledSpells : available.leveledSpells.filter((s) => s.level === this.activeSpellLevelFilter)).map((sp) => {
+                            ${displayedLeveled.map((sp) => {
                                 const isSelected = this.state.selectedSpellsLevel1.includes(sp.name);
+                                const sourceBadges = sp.classes.filter((c) => casterStats.some((cs) => cs.className === c));
                                 return `
                                     <div class="item-check-row spell1-row ${isSelected ? "selected" : ""}" 
                                          data-spell-name="${sp.name}"
@@ -3914,6 +4017,7 @@ export class CharacterCreatorController {
                                                 <span>${sp.name}</span>
                                                 <span class="stat-req-pill met">Lvl ${sp.level}</span>
                                                 <span class="stat-req-pill">${sp.school}</span>
+                                                ${isMulticlass && sourceBadges.length > 0 ? sourceBadges.map((c) => `<span class="stat-req-pill met">${c}</span>`).join(" ") : ""}
                                                 ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
                                                 ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain"></i> Conc.</span>' : ""}
                                             </div>
@@ -4033,9 +4137,16 @@ export class CharacterCreatorController {
                             const sp = SPELLS_2024.find((s) => s.name === name);
                             return sp ? `${name} (Lvl ${sp.level})` : name;
                         }).join(", ") || "None"}</strong></div>
-                        ${spellAbility ? `
-                            <div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Max Slot Level: ${this.getMaxSpellLevel()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>
-                        ` : ""}
+                        ${(() => {
+                            const casterStats = this.getSpellcasterStatsList();
+                            if (casterStats.length > 0) {
+                                return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${casterStats.map((c) => `${c.className}: ${c.ability.toUpperCase()} (Save DC: ${c.saveDc}, Atk: +${c.attackMod}, Max Spell Lvl: ${c.maxSpellLevel})`).join(" | ")} • Slots: ${this.getSpellSlotsSummary()}</strong></div>`;
+                            }
+                            if (spellAbility) {
+                                return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${this.getSpellSaveDc()}, Attack: +${this.getSpellAttackModifier()}, Max Slot Level: ${this.getMaxSpellLevel()}, Slots: ${this.getSpellSlotsSummary()})</strong></div>`;
+                            }
+                            return "";
+                        })()}
                     </div>
                 </div>
             </div>
@@ -4674,6 +4785,15 @@ export class CharacterCreatorController {
             });
         } else if (step === 8) {
             this.sanitizeSpellSelections();
+
+            // Spell class filter tabs
+            document.querySelectorAll(".spell-class-tab-btn").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const c = btn.getAttribute("data-class") || "all";
+                    this.activeSpellClassFilter = c;
+                    this.renderStep(8);
+                });
+            });
 
             // Spell level filter tabs
             document.querySelectorAll(".spell-tab-btn").forEach((btn) => {
@@ -5635,11 +5755,16 @@ export class CharacterCreatorController {
             const invSkill = skillsPayload.find((s) => s.name === "Investigation");
             const insSkill = skillsPayload.find((s) => s.name === "Insight");
 
-            const spellAttackMod = this.getSpellAttackModifier() ?? 0;
-            const spellSaveDcVal = this.getSpellSaveDc() ?? 10;
+            const casterStats = this.getSpellcasterStatsList();
+            const defaultSpellAttackMod = this.getSpellAttackModifier() ?? 0;
+            const defaultSpellSaveDcVal = this.getSpellSaveDc() ?? 10;
             const cantripActions: any[] = spellsPayload
                 .filter((sp) => sp.level === 0)
                 .map((sp) => {
+                    const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === sp.name.toLowerCase());
+                    const grantingCaster = casterStats.find((cs) => spDef?.classes.includes(cs.className)) || casterStats[0];
+                    const spellAttackMod = grantingCaster ? grantingCaster.attackMod : defaultSpellAttackMod;
+                    const spellSaveDcVal = grantingCaster ? grantingCaster.saveDc : defaultSpellSaveDcVal;
                     const descLower = (sp.description || "").toLowerCase();
                     let hitOrDc = `${spellAttackMod >= 0 ? `+${spellAttackMod}` : spellAttackMod} to hit`;
                     if (descLower.includes("saving throw") || descLower.includes("save")) {
@@ -5750,7 +5875,7 @@ export class CharacterCreatorController {
                 const rangeOrReach = rangeMatch ? rangeMatch[1].replace(/feet/i, "ft.") : "Special";
                 const forcesSave = /\bmust (?:succeed on|make) a [a-z]+ saving throw\b|\bfailed save\b/i.test(plainDesc);
                 const hitOrDc = forcesSave && (this.getSpellSaveDc() !== null)
-                    ? `DC ${spellSaveDcVal}`
+                    ? `DC ${this.getSpellSaveDc() ?? 10}`
                     : "Special";
                 featureActions.push({
                     name: feat.name,
@@ -5784,46 +5909,25 @@ export class CharacterCreatorController {
             ];
 
             const spellSlotsPayload: Record<string, any> = {};
-            if (cls.spellcasting) {
-                const lvlIdx = Math.max(0, Math.min(19, this.state.level - 1));
-                const slotsRow = cls.spellcasting.spellSlotsByLevel?.[lvlIdx] || [];
-                if (cls.spellcasting.type === "pact") {
-                    const count = slotsRow.find((s: number) => s > 0) || 0;
-                    const pactLvl = slotsRow.findIndex((s: number) => s > 0) + 1;
-                    if (count > 0 && pactLvl > 0) {
-                        spellSlotsPayload.pact = {
-                            level: pactLvl,
-                            total: count,
-                            label: `Pact Magic (${pactLvl}${this.getOrdinalSuffix(pactLvl)} Level)`
-                        };
-                    }
-                } else {
-                    slotsRow.forEach((total: number, idx: number) => {
-                        if (total > 0) {
-                            const slotLvl = idx + 1;
-                            spellSlotsPayload[`level${slotLvl}`] = {
-                                level: slotLvl,
-                                total,
-                                label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
-                            };
-                        }
-                    });
+            const slotsResult = calculateMulticlassSpellSlots(this.state.classes, this.classes);
+            slotsResult.standardSlots.forEach((total, idx) => {
+                if (total > 0) {
+                    const slotLvl = idx + 1;
+                    spellSlotsPayload[`level${slotLvl}`] = {
+                        level: slotLvl,
+                        total,
+                        label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
+                    };
                 }
-            } else if (this.state.level >= 3 && (this.state.subclassId === "eldritch-knight" || this.state.subclassId === "arcane-trickster")) {
-                const thirdCasterEffLvl = Math.ceil(this.state.level / 3);
-                const wizardDef = this.classes.find((c) => c.id === "wizard");
-                const slotsRow = wizardDef?.spellcasting?.spellSlotsByLevel?.[Math.max(0, Math.min(19, thirdCasterEffLvl - 1))] || [];
-                slotsRow.forEach((total: number, idx: number) => {
-                    if (total > 0) {
-                        const slotLvl = idx + 1;
-                        spellSlotsPayload[`level${slotLvl}`] = {
-                            level: slotLvl,
-                            total,
-                            label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
-                        };
-                    }
-                });
-            } else if (this.state.originFeatId.startsWith("magic-initiate")) {
+            });
+            if (slotsResult.pactSlotCount > 0) {
+                spellSlotsPayload.pact = {
+                    level: slotsResult.pactSlotLevel,
+                    total: slotsResult.pactSlotCount,
+                    label: `Pact Magic (${slotsResult.pactSlotLevel}${this.getOrdinalSuffix(slotsResult.pactSlotLevel)} Level)`
+                };
+            }
+            if (Object.keys(spellSlotsPayload).length === 0 && this.state.originFeatId.startsWith("magic-initiate")) {
                 spellSlotsPayload.level1 = {
                     level: 1,
                     total: 1,
