@@ -197,8 +197,12 @@ export interface CharacterData {
             isStable?: boolean;
         };
         savingThrowNotes?: string[];
+        damageResistances?: string[];
+        conditionImmunities?: string[];
     };
     savingThrowNotes?: string[];
+    damageResistances?: string[];
+    conditionImmunities?: string[];
     abilities: AbilityScore[];
     skills: SkillItem[];
     spellSlots: {

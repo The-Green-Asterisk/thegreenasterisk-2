@@ -1418,6 +1418,50 @@ describe("CharacterCreatorController", () => {
         expect(innateSpells).toContain("Detect Magic");
         expect(innateSpells).toContain("Misty Step");
 
+        // 4. Lineage label
+        expect(char.race).toBe("High Elf");
+        expect(char.species).toBe("Elf");
+
+        postSpy.mockRestore();
+    });
+
+    it("correctly sets Drow Superior Darkvision and Dragonborn breath weapon resource & damage resistance", async () => {
+        const requestModule = await import("../../../src/services/request");
+        let capturedPayload: any = null;
+        const postSpy = vi.spyOn(requestModule, "postData").mockImplementation(async (_url: string, payload: any) => {
+            capturedPayload = payload;
+            return { savedCharacter: { id: 1000, siteCharacterId: "tga-test-drow" } } as any;
+        });
+
+        // 1. Drow Elf at level 3
+        ctrl.state.name = "Viconia";
+        ctrl.state.level = 3;
+        ctrl.state.speciesId = "elf";
+        ctrl.state.lineageId = "drow";
+        ctrl.state.classId = "cleric";
+        await ctrl.submitCharacter();
+
+        let char = capturedPayload.character || capturedPayload;
+        expect(char.race).toBe("Drow");
+        expect(char.vitals.darkvision).toBe("Darkvision 120 ft.");
+
+        // 2. Dragonborn at level 5
+        postSpy.mockClear();
+        ctrl.state.name = "Drakon";
+        ctrl.state.level = 5;
+        ctrl.state.speciesId = "dragonborn";
+        ctrl.state.lineageId = "red";
+        ctrl.state.classId = "fighter";
+        await ctrl.submitCharacter();
+
+        char = capturedPayload.character || capturedPayload;
+        expect(char.damageResistances).toContain("Fire");
+        const bwRes = char.classResources.find((r: any) => r.name === "Breath Weapon");
+        expect(bwRes).toBeDefined();
+        expect(bwRes.total).toBe(3); // PB at lvl 5 is 3
+        const dfRes = char.classResources.find((r: any) => r.name === "Draconic Flight");
+        expect(dfRes).toBeDefined();
+
         postSpy.mockRestore();
     });
 });

@@ -4907,6 +4907,33 @@ export class CharacterCreatorController {
                 }
             }
 
+            // Species & Origin Feat expendable resources
+            if (this.state.speciesId === "dragonborn") {
+                resourcesPayload.push({ name: "Breath Weapon", total: pb, resetOn: "long", currentUsed: 0 });
+                if (this.state.level >= 5) {
+                    resourcesPayload.push({ name: "Draconic Flight", total: 1, resetOn: "long", currentUsed: 0 });
+                }
+            } else if (this.state.speciesId === "dwarf") {
+                resourcesPayload.push({ name: "Stonecunning", total: pb, resetOn: "long", currentUsed: 0 });
+            } else if (this.state.speciesId === "orc") {
+                resourcesPayload.push({ name: "Adrenaline Rush", total: pb, resetOn: "short", currentUsed: 0 });
+                resourcesPayload.push({ name: "Relentless Endurance", total: 1, resetOn: "long", currentUsed: 0 });
+            } else if (this.state.speciesId === "goliath") {
+                resourcesPayload.push({ name: "Giant Ancestry", total: pb, resetOn: "long", currentUsed: 0 });
+                if (this.state.level >= 5) {
+                    resourcesPayload.push({ name: "Large Form", total: 1, resetOn: "long", currentUsed: 0 });
+                }
+            } else if (this.state.speciesId === "aasimar") {
+                resourcesPayload.push({ name: "Healing Hands", total: 1, resetOn: "long", currentUsed: 0 });
+                if (this.state.level >= 3) {
+                    resourcesPayload.push({ name: "Celestial Revelation", total: 1, resetOn: "long", currentUsed: 0 });
+                }
+            }
+
+            if (this.state.originFeatId === "lucky" || (this.state.speciesId === "human" && this.state.humanExtraFeatId === "lucky")) {
+                resourcesPayload.push({ name: "Luck Points", total: pb, resetOn: "long", currentUsed: 0 });
+            }
+
             // Passive scores
             const percSkill = skillsPayload.find((s) => s.name === "Perception");
             const invSkill = skillsPayload.find((s) => s.name === "Investigation");
@@ -5108,13 +5135,39 @@ export class CharacterCreatorController {
                 };
             }
 
+            const chosenLineage = species.lineages?.find((l) => l.id === this.state.lineageId);
+            const raceLabel = chosenLineage ? chosenLineage.name : species.name;
+
+            const damageResistances: string[] = [];
+            if (this.state.speciesId === "dragonborn") {
+                const ancestryChoice = (this.state.lineageId || "red").toLowerCase();
+                const ancestryMap: Record<string, string> = {
+                    black: "Acid", copper: "Acid",
+                    blue: "Lightning", bronze: "Lightning",
+                    brass: "Fire", gold: "Fire", red: "Fire",
+                    green: "Poison",
+                    silver: "Cold", white: "Cold"
+                };
+                const dmg = ancestryMap[ancestryChoice] || "Fire";
+                damageResistances.push(dmg);
+            } else if (this.state.speciesId === "dwarf") {
+                damageResistances.push("Poison");
+            } else if (this.state.speciesId === "aasimar") {
+                damageResistances.push("Necrotic", "Radiant");
+            } else if (this.state.speciesId === "tiefling") {
+                if (this.state.lineageId === "abyssal") damageResistances.push("Poison");
+                else if (this.state.lineageId === "chthonic") damageResistances.push("Necrotic");
+                else damageResistances.push("Fire");
+            }
+
             const maxHp = this.getMaxHp();
             const characterPayload: any = {
                 name: this.state.name,
-                subtitle: `Level ${this.state.level} ${species.name} ${cls.name}`,
+                subtitle: `Level ${this.state.level} ${raceLabel} ${cls.name}`,
                 level: this.state.level,
-                race: species.name,
+                race: raceLabel,
                 species: species.name,
+                lineage: chosenLineage ? chosenLineage.name : undefined,
                 background: bg.name,
                 alignment: this.state.alignment,
                 avatarUrl: this.state.avatarUrl,
@@ -5124,6 +5177,7 @@ export class CharacterCreatorController {
                     level: this.state.level,
                     subclass: this.state.subclassId ? cls.subclasses.find((s) => s.id === this.state.subclassId)?.name : undefined
                 }],
+                damageResistances,
                 vitals: {
                     currentHp: maxHp,
                     maxHp: maxHp,
@@ -5135,13 +5189,14 @@ export class CharacterCreatorController {
                     passivePerception: 10 + (percSkill?.bonus || 0),
                     passiveInvestigation: 10 + (invSkill?.bonus || 0),
                     passiveInsight: 10 + (insSkill?.bonus || 0),
-                    darkvision: species.darkvision || "None",
+                    darkvision: chosenLineage?.darkvision || species.darkvision || "None",
                     hitDice: `${this.state.level}d${cls.hitDie}`,
                     heroicInspiration: false,
                     spellSaveDc: this.getSpellSaveDc() ?? 10,
                     spellAttackBonus: this.getSpellAttackModifier() ?? 0,
                     spellcastingAbility: this.getSpellcastingAbility() ?? "none",
-                    deathSaves: { successes: 0, failures: 0, isStable: false }
+                    deathSaves: { successes: 0, failures: 0, isStable: false },
+                    damageResistances
                 },
                 abilities: abilitiesPayload,
                 skills: skillsPayload,

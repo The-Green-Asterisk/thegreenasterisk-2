@@ -2536,4 +2536,118 @@ describe('Frontend View Templates', () => {
             expect(a.notes).toBeUndefined();
         });
     });
+
+    it('accounts for 2024 species and feat actions, expendable resources, and damage resistances', async () => {
+        const { parseDndBeyondCharacter, ensureClassResourcesOnCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+
+        const mockDragonbornFighter = {
+            id: 888123,
+            name: 'Balthazar Flametongue',
+            baseHitPoints: 44,
+            stats: [
+                { id: 1, value: 16 },
+                { id: 2, value: 14 },
+                { id: 3, value: 16 },
+                { id: 4, value: 10 },
+                { id: 5, value: 12 },
+                { id: 6, value: 8 }
+            ],
+            bonusStats: [],
+            overrideStats: [],
+            classes: [
+                {
+                    level: 5,
+                    definition: { name: 'Fighter' }
+                }
+            ],
+            race: {
+                fullName: 'Dragonborn',
+                weightSpeeds: { normal: { walk: 30 } }
+            },
+            modifiers: {
+                race: [
+                    { type: 'resistance', subType: 'fire', isGranted: true }
+                ],
+                class: [],
+                feat: [],
+                item: []
+            },
+            actions: {
+                race: [
+                    {
+                        name: 'Breath Weapon',
+                        activation: { activationType: 1 },
+                        range: { rangeValue: 15 },
+                        snippet: 'Exhale energy in a 15-foot cone.',
+                        limitedUse: { maxUses: 3, resetType: 2 }
+                    }
+                ],
+                class: [
+                    {
+                        name: 'Second Wind',
+                        activation: { activationType: 3 },
+                        snippet: 'Regain 1d10 + level HP.',
+                        limitedUse: { maxUses: 3, resetType: 1 }
+                    }
+                ],
+                feat: [
+                    {
+                        name: 'Tavern Brawler: Furniture Blow',
+                        activation: { activationType: 1 },
+                        snippet: 'Hit with improvised weapon.',
+                        limitedUse: null
+                    }
+                ]
+            },
+            inventory: []
+        };
+
+        const char = parseDndBeyondCharacter(mockDragonbornFighter, '888123');
+
+        // 1. Actions include species action (Breath Weapon) and feat action (Tavern Brawler) alongside class action (Second Wind)
+        const actionNames = char.actions.map(a => a.name);
+        expect(actionNames).toContain('Breath Weapon');
+        expect(actionNames).toContain('Second Wind');
+        expect(actionNames).toContain('Tavern Brawler: Furniture Blow');
+
+        const breathAction = char.actions.find(a => a.name === 'Breath Weapon');
+        expect(breathAction?.type).toBe('Action');
+        expect(breathAction?.rangeOrReach).toBe('15 ft.');
+
+        const secondWindAction = char.actions.find(a => a.name === 'Second Wind');
+        expect(secondWindAction?.type).toBe('Bonus Action');
+
+        // 2. Class resources include species resources (Breath Weapon PB uses, Draconic Flight at lvl 5)
+        const resourceNames = char.classResources.map(r => r.name);
+        expect(resourceNames).toContain('Second Wind');
+        expect(resourceNames).toContain('Breath Weapon');
+        expect(resourceNames).toContain('Draconic Flight');
+
+        const bwRes = char.classResources.find(r => r.name === 'Breath Weapon');
+        expect(bwRes?.total).toBe(3);
+        expect(bwRes?.resetOn).toBe('long');
+
+        // 3. Damage resistances extracted and rendered
+        expect(char.damageResistances).toContain('Fire');
+        expect(char.vitals.damageResistances).toContain('Fire');
+
+        const html = renderSheetContent(char);
+        expect(html).toContain('damage-resistances-row');
+        expect(html).toContain('Resistances:');
+        expect(html).toContain('Fire');
+
+        // 4. ensureClassResourcesOnCharacter heals species resources on legacy characters
+        const legacyOrc: any = {
+            name: 'Grom',
+            race: 'Orc',
+            level: 4,
+            vitals: { proficiencyBonus: 2 },
+            classResources: []
+        };
+        ensureClassResourcesOnCharacter(legacyOrc);
+        const orcResNames = legacyOrc.classResources.map((r: any) => r.name);
+        expect(orcResNames).toContain('Adrenaline Rush');
+        expect(orcResNames).toContain('Relentless Endurance');
+    });
 });
