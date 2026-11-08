@@ -38,52 +38,52 @@ export const SEED_CLASSES = [
             {
                 "level": 1,
                 "name": "Rage",
-                "description": "In battle, you fight with primal ferocity. Bonus Action to enter; bonus damage, Advantage on Str checks/saves, resistance to Bludgeoning/Piercing/Slashing damage."
+                "description": "You can imbue yourself with a primal power called Rage, a force that grants you extraordinary might and resilience. You can enter it as a Bonus Action if you aren't wearing Heavy armor. You can enter your Rage the number of times shown for your Barbarian level in the Rages column of the Barbarian Features table. You regain one expended use when you finish a Short Rest , and you regain all expended uses when you finish a Long Rest . While active, your Rage follows the rules below. Damage Resistance. You have Resistance to Bludgeoning, Piercing, and Slashing damage. Rage Damage. When you make an attack using Strength-with either a weapon or an Unarmed Strike -and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table. Strength Advantage. You have Advantage on Strength checks and Strength saving throws. No Concentration or Spells. You can't maintain Concentration , and you can't cast spells. Duration. The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the Incapacitated condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following: Make an attack roll against an enemy. Force an enemy to make a saving throw. Take a Bonus Action to extend your Rage. Each time the Rage is extended, it lasts until the end of your next turn. You can maintain a Rage for up to 10 minutes."
             },
             {
                 "level": 1,
                 "name": "Unarmored Defense",
-                "description": "While not wearing armor, your AC equals 10 + Dex modifier + Con modifier + Shield."
+                "description": "While you aren't wearing any armor, your base Armor Class equals 10 plus your Dexterity and Constitution modifiers. You can use a Shield and still gain this benefit."
             },
             {
                 "level": 1,
                 "name": "Weapon Mastery",
-                "description": "You gain mastery with 2 kinds of simple or martial melee weapons."
-            },
-            {
-                "level": 2,
-                "name": "Reckless Attack",
-                "description": "Gain Advantage on melee attack rolls using Strength, but attacks against you have Advantage until your next turn."
+                "description": "Your training with weapons allows you to use the mastery properties of two kinds of Simple or Martial Melee weapons of your choice, such as Greataxes and Handaxes. Whenever you finish a Long Rest , you can practice weapon drills and change one of those weapon choices. When you reach certain Barbarian levels, you gain the ability to use the mastery properties of more kinds of weapons, as shown in the Weapon Mastery column of the Barbarian Features table ."
             },
             {
                 "level": 2,
                 "name": "Danger Sense",
-                "description": "Advantage on Dexterity saving throws against effects you can see."
+                "description": "You gain an uncanny sense of when things aren't as they should be, giving you an edge when you dodge perils. You have Advantage on Dexterity saving throws unless you have the Incapacitated condition."
+            },
+            {
+                "level": 2,
+                "name": "Reckless Attack",
+                "description": "You can throw aside all concern for defense to attack with increased ferocity. When you make your first attack roll on your turn, you can decide to attack recklessly. Doing so gives you Advantage on attack rolls using Strength until the start of your next turn, but attack rolls against you have Advantage during that time."
             },
             {
                 "level": 3,
                 "name": "Barbarian Subclass",
-                "description": "Choose a subclass: Path of the Berserker, Path of the Wild Heart, Path of the World Tree, or Path of the Zealot."
+                "description": "You gain a Barbarian subclass of your choice. The Path of the Berserker subclass is detailed after this class's description. A subclass is a specialization that grants you features at certain Barbarian levels. For the rest of your career, you gain each of your subclass's features that are of your Barbarian level or lower."
             },
             {
                 "level": 3,
                 "name": "Primal Knowledge",
-                "description": "Gain proficiency in one additional barbarian skill. While raging, you can make Acrobatics, Intimidation, Perception, Stealth, or Survival checks using Strength."
+                "description": "You gain proficiency in another skill of your choice from the skill list available to Barbarians at level 1 . In addition, while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics , Intimidation , Perception , Stealth , or Survival . When you use this ability, your Strength represents primal power coursing through you, honing your agility, bearing, and senses."
             },
             {
                 "level": 4,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat (see \" Feats \") or another feat of your choice for which you qualify. You gain this feature again at Barbarian levels 8, 12, and 16."
             },
             {
                 "level": 5,
                 "name": "Extra Attack",
-                "description": "You can attack twice instead of once whenever you take the Attack action."
+                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
             },
             {
                 "level": 5,
                 "name": "Fast Movement",
-                "description": "Speed increases by 10 feet while not wearing Heavy armor."
+                "description": "Your speed increases by 10 feet while you aren't wearing Heavy armor."
             },
             {
                 "level": 6,
@@ -93,7 +93,7 @@ export const SEED_CLASSES = [
             {
                 "level": 7,
                 "name": "Feral Instinct",
-                "description": "Gain Advantage on Initiative rolls."
+                "description": "Your instincts are so honed that you have Advantage on Initiative rolls."
             },
             {
                 "level": 7,
@@ -103,12 +103,12 @@ export const SEED_CLASSES = [
             {
                 "level": 8,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 9,
                 "name": "Brutal Strike",
-                "description": "Forgo Advantage on a Reckless Attack to deal +1d10 damage and apply a Brutal Strike effect (Forceful Blow or Hamstring Blow)."
+                "description": "If you use Reckless Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn. The chosen attack roll mustn't have Disadvantage . If the chosen attack roll hits, the target takes an extra 1d10 damage of the same type dealt by the weapon or Unarmed Strike , and you can cause one Brutal Strike effect of your choice. You have the following effect options. Forceful Blow. The target is pushed 15 feet straight away from you. You can then move up to half your Speed straight toward the target without provoking Opportunity Attacks . Hamstring Blow. The target's Speed is reduced by 15 feet until the start of your next turn. A target can be affected by only one Hamstring Blow at a time-the most recent one."
             },
             {
                 "level": 10,
@@ -118,17 +118,17 @@ export const SEED_CLASSES = [
             {
                 "level": 11,
                 "name": "Relentless Rage",
-                "description": "If you drop to 0 HP while raging, succeed on a DC 10 Con save to drop to HP equal to twice your Barbarian level instead."
+                "description": "Your Rage can keep you fighting despite grievous wounds. If you drop to 0 Hit Points while your Rage is active and don't die outright, you can make a DC 10 Constitution saving throw. If you succeed, your Hit Points instead change to a number equal to twice your Barbarian level. Each time you use this feature after the first, the DC increases by 5. When you finish a Short or Long Rest , the DC resets to 10."
             },
             {
                 "level": 12,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 13,
                 "name": "Improved Brutal Strike",
-                "description": "Brutal Strike damage increases to 2d10; gain Staggering Blow and Sundering Blow options."
+                "description": "You have honed new ways to attack furiously. The following effects are now among your Brutal Strike options. Staggering Blow. The target has Disadvantage on the next saving throw it makes, and it can't make Opportunity Attacks until the start of your next turn. Sundering Blow. Before the start of your next turn, the next attack roll made by another creature against the target gains a +5 bonus to the roll. An attack roll can gain only one Sundering Blow bonus."
             },
             {
                 "level": 14,
@@ -138,32 +138,32 @@ export const SEED_CLASSES = [
             {
                 "level": 15,
                 "name": "Persistent Rage",
-                "description": "Rage lasts until incapacitated or donning heavy armor; regain all expended Rage uses once per Long Rest."
+                "description": "When you roll Initiative , you can regain all expended uses of Rage. After you regain uses of Rage in this way, you can't do so again until you finish a Long Rest . In addition, your Rage is so fierce that it now lasts for 10 minutes without you needing to do anything to extend it from round to round. Your Rage ends early if you have the Unconscious condition (not just the Incapacitated condition) or don Heavy armor."
             },
             {
                 "level": 16,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 17,
-                "name": "Improved Brutal Strike (2)",
-                "description": "Brutal Strike damage increases to 3d10; you can apply two different Brutal Strike effects to the same strike."
+                "name": "Improved Brutal Strike",
+                "description": "The extra damage of your Brutal Strike increases to 2d10. In addition, you can use two different Brutal Strike effects whenever you use your Brutal Strike feature."
             },
             {
                 "level": 18,
                 "name": "Indomitable Might",
-                "description": "If a Strength check or saving throw total is less than your Strength score, you can use that score instead."
+                "description": "If your total for a Strength check or Strength saving throw is less than your Strength score, you can use that score in place of the total."
             },
             {
                 "level": 19,
-                "name": "Epic Boon / Ability Score Improvement",
-                "description": "Choose an Epic Boon feat or another feat of your choice."
+                "name": "Epic Boon",
+                "description": "You gain an Epic Boon feat (see \" Feats \") or another feat of your choice for which you qualify. Boon of Irresistible Offense is recommended."
             },
             {
                 "level": 20,
                 "name": "Primal Champion",
-                "description": "Your Strength and Constitution scores increase by 4, up to a maximum of 25."
+                "description": "You embody primal power. Your Strength and Constitution scores increase by 4, to a maximum of 25."
             }
         ],
         "subclasses": [
@@ -615,48 +615,38 @@ export const SEED_CLASSES = [
         "features": [
             {
                 "level": 1,
-                "name": "Bardic Inspiration (d6)",
-                "description": "Bonus Action to inspire another creature within 60 ft with a d6 Inspiration die (Charisma modifier uses per Long Rest)."
+                "name": "Bardic Inspiration",
+                "description": "You can supernaturally inspire others through words, music, or dance. This inspiration is represented by your Bardic Inspiration die, which is a d6. Using Bardic Inspiration. As a Bonus Action, you can inspire another creature within 60 feet of yourself who can see or hear you. That creature gains one of your Bardic Inspiration dice. A creature can have only one Bardic Inspiration die at a time. Once within the next hour when the creature fails a D20 Test , the creature can roll the Bardic Inspiration die and add the number rolled to the d20, potentially turning the failure into a success. A Bardic Inspiration die is expended when it's rolled. Number of Uses. You can confer a Bardic Inspiration die a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a Long Rest . At Higher Levels. Your Bardic Inspiration die changes when you reach certain Bard levels, as shown in the Bardic Die column of the Bard Features table. The die becomes a d8 at level 5, a d10 at level 10, and a d12 at level 15."
             },
             {
                 "level": 1,
                 "name": "Spellcasting",
-                "description": "Cast bard spells using Charisma as your spellcasting ability."
+                "description": "You have learned to cast spells through your bardic arts. See \" Spells \" for the rules on spellcasting. The information below details how you use those rules with Bard spells, which appear in the Bard spell list later in the class's description. Cantrips. You know two cantrips of your choice from the Bard spell list. Dancing Lights and Vicious Mockery are recommended. Whenever you gain a Bard level, you can replace one of your cantrips with another cantrip of your choice from the Bard spell list. When you reach Bard levels 4 and 10, you learn another cantrip of your choice from the Bard spell list, as shown in the Cantrips column of the Bard Features table . Spell Slots. The Bard Features table shows how many spell slots you have to cast your level 1+ spells. You regain all expended slots when you finish a Long Rest . Prepared Spells of Level 1+. You prepare the list of level 1+ spells that are available for you to cast with this feature. To start, choose four level 1 spells from the Bard spell list. Charm Person , Color Spray , Dissonant Whispers , and Healing Word are recommended. The number of spells on your list increases as you gain Bard levels, as shown in the Prepared Spells column of the Bard Features table . Whenever that number increases, choose additional spells from the Bard spell list until the number of spells on your list matches the number on the table. The chosen spells must be of a level for which you have spell slots. For example, if you're a level 3 Bard, your list of prepared spells can include six spells of levels 1 and 2 in any combination. If another Bard feature gives you spells that you always have prepared, those spells don't count against the number of spells you can prepare with this feature, but those spells otherwise count as Bard spells for you. Changing Your Prepared Spells. Whenever you gain a Bard level, you can replace one spell on your list with another Bard spell for which you have spell slots. Spellcasting Ability. Charisma is your spellcasting ability for your Bard spells. Spellcasting Focus. You can use a Musical Instrument as a Spellcasting Focus for your Bard spells."
             },
             {
                 "level": 2,
                 "name": "Expertise",
-                "description": "Double proficiency bonus on two chosen skills."
+                "description": "You gain Expertise (see the rules glossary ) in two of your skill proficiencies of your choice. Performance and Persuasion are recommended if you have proficiency in them. At Bard level 9, you gain Expertise in two more of your skill proficiencies of your choice."
             },
             {
                 "level": 2,
                 "name": "Jack of All Trades",
-                "description": "Add half your proficiency bonus to any ability check that doesn't already include it."
+                "description": "You can add half your Proficiency Bonus (round down) to any ability check you make that uses a skill proficiency you lack and that doesn't otherwise use your Proficiency Bonus. For example, if you make a Strength ( Athletics ) check and lack Athletics proficiency, you can add half your Proficiency Bonus to the check. A Bard's Repertoire Does your Bard beat a drum while chanting the deeds of ancient heroes? Strum a lute while crooning romantic tunes? Perform arias of stirring power? Recite dramatic monologues from classic tragedies? Use the rhythm of a folk dance to coordinate the movement of allies in battle? Compose naughty limericks? When you play a Bard, consider the style of artistic performance you favor, the moods you might invoke, and the themes that inspire your own creations. Are your poems inspired by moments of natural beauty, or are they brooding reflections on loss? Do you prefer lofty hymns or rowdy tavern songs? Are you drawn to laments for the fallen or celebrations of joy? Do you dance merry jigs or perform elaborate interpretive choreography? Do you focus on one style of performance or strive to master them all?"
             },
             {
                 "level": 3,
                 "name": "Bard Subclass",
-                "description": "Choose a subclass: College of Dance, College of Glamour, College of Lore, or College of Valor."
+                "description": "You gain a Bard subclass of your choice. The College of Lore subclass is detailed after this class's description. A subclass is a specialization that grants you features at certain Bard levels. For the rest of your career, you gain each of your subclass's features that are of your Bard level or lower."
             },
             {
                 "level": 4,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat (see \" Feats \") or another feat of your choice for which you qualify. You gain this feature again at Bard levels 8, 12, and 16."
             },
             {
                 "level": 5,
                 "name": "Font of Inspiration",
-                "description": "Regain all expended uses of Bardic Inspiration when you finish a Short or Long Rest."
-            },
-            {
-                "level": 5,
-                "name": "Bardic Inspiration (d8)",
-                "description": "Your Bardic Inspiration die increases to a d8."
-            },
-            {
-                "level": 6,
-                "name": "Countercharm",
-                "description": "Reaction to protect allies within 30 ft against Charmed or Frightened conditions, granting a reroll with Advantage."
+                "description": "You now regain all your expended uses of Bardic Inspiration when you finish a Short or Long Rest . In addition, you can expend a spell slot (no action required) to regain one expended use of Bardic Inspiration."
             },
             {
                 "level": 6,
@@ -665,48 +655,38 @@ export const SEED_CLASSES = [
             },
             {
                 "level": 7,
-                "name": "4th-Level Spells",
-                "description": "You gain access to 4th-level spell slots."
+                "name": "Countercharm",
+                "description": "You can use musical notes or words of power to disrupt mind-influencing effects. If you or a creature within 30 feet of you fails a saving throw against an effect that applies the Charmed or Frightened condition, you can take a Reaction to cause the save to be rerolled, and the new roll has Advantage ."
             },
             {
                 "level": 8,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 9,
-                "name": "5th-Level Spells",
-                "description": "You gain access to 5th-level spell slots."
+                "name": "Expertise",
+                "description": "You gain Expertise in two more of your skill proficiencies of your choice."
             },
             {
                 "level": 10,
                 "name": "Magical Secrets",
-                "description": "You can prepare spells from the Cleric, Druid, and Wizard spell lists in addition to the Bard list."
-            },
-            {
-                "level": 10,
-                "name": "Bardic Inspiration (d10)",
-                "description": "Your Bardic Inspiration die increases to a d10."
-            },
-            {
-                "level": 10,
-                "name": "Expertise (2 Additional)",
-                "description": "Double proficiency bonus on two additional chosen skills."
+                "description": "You've learned secrets from various magical traditions. Whenever you reach a Bard level (including this level) and the Prepared Spells number in the Bard Features table increases, you can choose any of your new prepared spells from the Bard , Cleric , Druid , and Wizard spell lists, and the chosen spells count as Bard spells for you (see a class's section for its spell list). In addition, whenever you replace a spell prepared for this class, you can replace it with a spell from those lists."
             },
             {
                 "level": 11,
                 "name": "6th-Level Spells",
-                "description": "You gain access to 6th-level spell slots."
+                "description": "You gain access to 6th-level Bard spell slots."
             },
             {
                 "level": 12,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 13,
                 "name": "7th-Level Spells",
-                "description": "You gain access to 7th-level spell slots."
+                "description": "You gain access to 7th-level Bard spell slots."
             },
             {
                 "level": 14,
@@ -715,38 +695,33 @@ export const SEED_CLASSES = [
             },
             {
                 "level": 15,
-                "name": "Bardic Inspiration (d12)",
-                "description": "Your Bardic Inspiration die increases to a d12."
-            },
-            {
-                "level": 15,
                 "name": "8th-Level Spells",
-                "description": "You gain access to 8th-level spell slots."
+                "description": "You gain access to 8th-level Bard spell slots."
             },
             {
                 "level": 16,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 17,
                 "name": "9th-Level Spells",
-                "description": "You gain access to 9th-level spell slots."
+                "description": "You gain access to 9th-level Bard spell slots."
             },
             {
                 "level": 18,
                 "name": "Superior Inspiration",
-                "description": "When you roll Initiative and have fewer than two uses of Bardic Inspiration remaining, you regain uses until you have two."
+                "description": "When you roll Initiative, you regain expended uses of Bardic Inspiration until you have two if you have fewer than that."
             },
             {
                 "level": 19,
-                "name": "Epic Boon / Ability Score Improvement",
-                "description": "Choose an Epic Boon feat or another feat of your choice."
+                "name": "Epic Boon",
+                "description": "You gain an Epic Boon feat (see \" Feats \") or another feat of your choice for which you qualify. Boon of Spell Recall is recommended."
             },
             {
                 "level": 20,
                 "name": "Words of Creation",
-                "description": "Always have Power Word Heal and Power Word Kill prepared; can target two creatures with them simultaneously."
+                "description": "You have mastered two of the Words of Creation: the words of life and death. You therefore always have the Power Word Heal and Power Word Kill spells prepared. When you cast either spell, you can target a second creature with it if that creature is within 10 feet of the first target."
             }
         ],
         "subclasses": [
@@ -1184,38 +1159,33 @@ export const SEED_CLASSES = [
         "features": [
             {
                 "level": 1,
-                "name": "Divine Order",
-                "description": "Choose Protector (Martial weapons and Heavy armor proficiency) or Thaumaturge (extra Sacred Flame cantrip and Arcana/Religion bonus)."
+                "name": "Spellcasting",
+                "description": "You have learned to cast spells through prayer and meditation. See \" Spells \" for the rules on spellcasting. The information below details how you use those rules with Cleric spells, which appear on the Cleric spell list later in the class's description. Cantrips. You know three cantrips of your choice from the Cleric spell list. Guidance , Sacred Flame , and Thaumaturgy are recommended. Whenever you gain a Cleric level, you can replace one of your cantrips with another cantrip of your choice from the Cleric spell list. When you reach Cleric levels 4 and 10, you learn another cantrip of your choice from the Cleric spell list, as shown in the Cantrips column of the Cleric Features table . Spell Slots. The Cleric Features table shows how many spell slots you have to cast your level 1+ spells. You regain all expended slots when you finish a Long Rest . Prepared Spells of Level 1+. You prepare the list of level 1+ spells that are available for you to cast with this feature. To start, choose four level 1 spells from the Cleric spell list. Bless , Cure Wounds , Guiding Bolt , and Shield of Faith are recommended. The number of spells on your list increases as you gain Cleric levels, as shown in the Prepared Spells column of the Cleric Features table . Whenever that number increases, choose additional spells from the Cleric spell list until the number of spells on your list matches the number on the table. The chosen spells must be of a level for which you have spell slots. For example, if you're a level 3 Cleric, your list of prepared spells can include six spells of levels 1 and 2 in any combination. If another Cleric feature gives you spells that you always have prepared, those spells don't count against the number of spells you can prepare with this feature, but those spells otherwise count as Cleric spells for you. Changing Your Prepared Spells. Whenever you finish a Long Rest , you can change your list of prepared spells, replacing any of the spells there with other Cleric spells for which you have spell slots. Spellcasting Ability. Wisdom is your spellcasting ability for your Cleric spells. Spellcasting Focus. You can use a Holy Symbol as a Spellcasting Focus for your Cleric spells."
             },
             {
                 "level": 1,
-                "name": "Spellcasting",
-                "description": "Cast cleric spells using Wisdom as your spellcasting ability."
+                "name": "Divine Order",
+                "description": "You have dedicated yourself to one of the following sacred roles of your choice. Protector. Trained for battle, you gain proficiency with Martial weapons and training with Heavy armor. Thaumaturge. You know one extra cantrip from the Cleric spell list . In addition, your mystical connection to the divine gives you a bonus to your Intelligence ( Arcana or Religion ) checks. The bonus equals your Wisdom modifier (minimum of +1)."
             },
             {
                 "level": 2,
-                "name": "Channel Divinity (2/Rest)",
-                "description": "Channel holy energy: Divine Spark or Turn Undead. Usable 2 times per Short or Long Rest."
+                "name": "Channel Divinity",
+                "description": "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead, each of which is described below. Each time you use this class's Channel Divinity, choose which Channel Divinity effect from this class to create. You gain additional effect options at higher Cleric levels. You can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest , and you regain all expended uses when you finish a Long Rest . You gain additional uses when you reach certain Cleric levels, as shown in the Channel Divinity column of the Cleric Features table . If a Channel Divinity effect requires a saving throw, the DC equals the spell save DC from this class's Spellcasting feature. Divine Spark. As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll 1d8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down). You roll an additional d8 when you reach Cleric levels 7 (2d8), 13 (3d8), and 18 (4d8). Turn Undead. As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die."
             },
             {
                 "level": 3,
                 "name": "Cleric Subclass",
-                "description": "Choose a domain: Life Domain, Light Domain, Trickery Domain, or War Domain."
+                "description": "You gain a Cleric subclass of your choice. The Life Domain subclass is detailed after this class's description. A subclass is a specialization that grants you features at certain Cleric levels. For the rest of your career, you gain each of your subclass's features that are of your Cleric level or lower."
             },
             {
                 "level": 4,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat (see \" Feats \") or another feat of your choice for which you qualify. You gain this feature again at Cleric levels 8, 12, and 16."
             },
             {
                 "level": 5,
-                "name": "Smite Undead",
-                "description": "When you use Turn Undead, deal radiant damage equal to Wisdom modifier d8s to affected undead."
-            },
-            {
-                "level": 6,
-                "name": "Channel Divinity (3/Rest)",
-                "description": "You can now use Channel Divinity 3 times per Short or Long Rest."
+                "name": "Sear Undead",
+                "description": "Whenever you use Turn Undead, you can roll a number of d8s equal to your Wisdom modifier (minimum of 1d8) and add the rolls together. Each Undead that fails its saving throw against that use of Turn Undead takes Radiant damage equal to the roll's total. This damage doesn't end the turn effect."
             },
             {
                 "level": 6,
@@ -1225,52 +1195,52 @@ export const SEED_CLASSES = [
             {
                 "level": 7,
                 "name": "Blessed Strikes",
-                "description": "Choose Divine Strike (+1d8 radiant/necrotic weapon damage) or Potent Spellcasting (add Wis mod to cantrips)."
+                "description": "Divine power infuses you in battle. You gain one of the following options of your choice (if you get either option from a Cleric subclass in an older book, use only the option you choose for this feature). Divine Strike. Once on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage (your choice). Potent Spellcasting. Add your Wisdom modifier to the damage you deal with any Cleric cantrip."
             },
             {
                 "level": 8,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 9,
                 "name": "5th-Level Spells",
-                "description": "You gain access to 5th-level spell slots."
+                "description": "You gain access to 5th-level Cleric spell slots."
             },
             {
                 "level": 10,
                 "name": "Divine Intervention",
-                "description": "Action to call upon your deity: automatically cast any Cleric spell of level 5 or lower without a spell slot. Recharges on Long Rest."
+                "description": "You can call on your deity or pantheon to intervene on your behalf. As a Magic action, choose any Cleric spell of level 5 or lower that doesn't require a Reaction to cast. As part of the same action, you cast that spell without expending a spell slot or needing Material components. You can't use this feature again until you finish a Long Rest ."
             },
             {
                 "level": 11,
                 "name": "6th-Level Spells",
-                "description": "You gain access to 6th-level spell slots."
+                "description": "You gain access to 6th-level Cleric spell slots."
             },
             {
                 "level": 12,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 13,
                 "name": "7th-Level Spells",
-                "description": "You gain access to 7th-level spell slots."
+                "description": "You gain access to 7th-level Cleric spell slots."
             },
             {
                 "level": 14,
                 "name": "Improved Blessed Strikes",
-                "description": "Divine Strike damage increases to 2d8, or Potent Spellcasting grants temp HP equal to 2x Wis mod to yourself or an ally."
+                "description": "The option you chose for Blessed Strikes grows more powerful. Divine Strike. The extra damage of your Divine Strike increases to 2d8. Potent Spellcasting. When you cast a Cleric cantrip and deal damage to a creature with it, you can give vitality to yourself or another creature within 60 feet of yourself, granting a number of Temporary Hit Points equal to twice your Wisdom modifier."
             },
             {
                 "level": 15,
                 "name": "8th-Level Spells",
-                "description": "You gain access to 8th-level spell slots."
+                "description": "You gain access to 8th-level Cleric spell slots."
             },
             {
                 "level": 16,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 17,
@@ -1278,24 +1248,19 @@ export const SEED_CLASSES = [
                 "description": "Gain a feature granted by your chosen Divine Domain."
             },
             {
-                "level": 17,
-                "name": "9th-Level Spells",
-                "description": "You gain access to 9th-level spell slots."
-            },
-            {
                 "level": 18,
                 "name": "Channel Divinity (4/Rest)",
-                "description": "You can now use Channel Divinity 4 times per Short or Long Rest."
+                "description": "You can use your Channel Divinity four times between rests."
             },
             {
                 "level": 19,
-                "name": "Epic Boon / Ability Score Improvement",
-                "description": "Choose an Epic Boon feat or another feat of your choice."
+                "name": "Epic Boon",
+                "description": "You gain an Epic Boon feat (see \" Feats \") or another feat of your choice for which you qualify. Boon of Fate is recommended."
             },
             {
                 "level": 20,
                 "name": "Greater Divine Intervention",
-                "description": "Divine Intervention can now duplicate the Wish spell without risking losing the ability. Recharges in 2d4 Long Rests."
+                "description": "You can call on even more powerful divine intervention. When you use your Divine Intervention feature, you can choose Wish when you select a spell. If you do so, you can't use Divine Intervention again until you finish 2d4 Long Rests ."
             }
         ],
         "subclasses": [
@@ -1735,43 +1700,43 @@ export const SEED_CLASSES = [
         "features": [
             {
                 "level": 1,
-                "name": "Primal Order",
-                "description": "Choose Magician (bonus cantrip, Nature/Arcana checks) or Warden (Medium Armor and Martial Weapons)."
+                "name": "Spellcasting",
+                "description": "You have learned to cast spells through studying the mystical forces of nature. See \" Spells \" for the rules on spellcasting. The information below details how you use those rules with Druid spells, which appear on the Druid spell list later in the class's description. Cantrips. You know two cantrips of your choice from the Druid spell list. Druidcraft and Produce Flame are recommended. Whenever you gain a Druid level, you can replace one of your cantrips with another cantrip of your choice from the Druid spell list. When you reach Druid levels 4 and 10, you learn another cantrip of your choice from the Druid spell list, as shown in the Cantrips column of the Druid Features table. Spell Slots. The Druid Features table shows how many spell slots you have to cast your level 1+ spells. You regain all expended slots when you finish a Long Rest . Prepared Spells of Level 1+. You prepare the list of level 1+ spells that are available for you to cast with this feature. To start, choose four level 1 spells from the Druid spell list. Animal Friendship , Cure Wounds , Faerie Fire , and Thunderwave are recommended. The number of spells on your list increases as you gain Druid levels, as shown in the Prepared Spells column of the Druid Features table. Whenever that number increases, choose additional spells from the Druid spell list until the number of spells on your list matches the number on the table. The chosen spells must be of a level for which you have spell slots. For example, if you're a level 3 Druid, your list of prepared spells can include six spells of levels 1 and 2 in any combination. If another Druid feature gives you spells that you always have prepared, those spells don't count against the number of spells you can prepare with this feature, but those spells otherwise count as Druid spells for you. Changing Your Prepared Spells. Whenever you finish a Long Rest , you can change your list of prepared spells, replacing any of the spells with other Druid spells for which you have spell slots. Spellcasting Ability. Wisdom is your spellcasting ability for your Druid spells. Spellcasting Focus. You can use a Druidic Focus as a Spellcasting Focus for your Druid spells."
             },
             {
                 "level": 1,
-                "name": "Spellcasting",
-                "description": "Cast primal spells using Wisdom."
+                "name": "Druidic",
+                "description": "You know Druidic, the secret language of Druids. While learning this ancient tongue, you also unlocked the magic of communicating with animals; you always have the Speak with Animals spell prepared. You can use Druidic to leave hidden messages. You and others who know Druidic automatically spot such a message. Others spot the message's presence with a successful DC 15 Intelligence ( Investigation ) check but can't decipher it without magic."
+            },
+            {
+                "level": 1,
+                "name": "Primal Order",
+                "description": "You have dedicated yourself to one of the following sacred roles of your choice. Magician. You know one extra cantrip from the Druid spell list . In addition, your mystical connection to nature gives you a bonus to your Intelligence ( Arcana or Nature ) checks. The bonus equals your Wisdom modifier (minimum bonus of +1). Warden. Trained for battle, you gain proficiency with Martial weapons and training with Medium armor."
             },
             {
                 "level": 2,
                 "name": "Wild Shape",
-                "description": "Transform into Beast shapes as a Bonus Action. Gain temp HP equal to your Druid level and beast statistics."
+                "description": "The power of nature allows you to assume the form of an animal. As a Bonus Action, you shape-shift into a Beast form that you have learned for this feature (see \"Known Forms\" below). You stay in that form for a number of hours equal to half your Druid level or until you use Wild Shape again, have the Incapacitated condition, or die. You can also leave the form early as a Bonus Action. Number of Uses. You can use Wild Shape twice. You regain one expended use when you finish a Short Rest , and you regain all expended uses when you finish a Long Rest . You gain additional uses when you reach certain Druid levels, as shown in the Wild Shape column of the Druid Features table . Known Forms. You know four Beast forms for this feature, chosen from among Beast stat blocks that have a maximum Challenge Rating of 1/4 and that lack a Fly Speed (see appendix B for stat block options). The Rat , Riding Horse , Spider , and Wolf are recommended. Whenever you finish a Long Rest , you can replace one of your known forms with another eligible form. When you reach certain Druid levels, your number of known forms and the maximum Challenge Rating for those forms increases, as shown in the Beast Shapes table. In addition, starting at level 8, you can adopt a form that has a Fly Speed. When choosing known forms, you may look in the Monster Manual or elsewhere for eligible Beasts if the Dungeon Master permits you to do so. Beast Shapes Druid Level Known Forms Max CR Fly Speed 2 4 1/4 No 4 6 1/2 No 8 8 1 Yes Rules While Shape-Shifted. While in a form, you retain your personality, memories, and ability to speak, and the following rules apply: Temporary Hit Points. When you assume a Wild Shape form, you gain a number of Temporary Hit Points equal to your Druid level. Game Statistics. Your game statistics are replaced by the Beast's stat block, but you retain your creature type; Hit Points; Hit Point Dice; Intelligence, Wisdom, and Charisma scores; class features; languages; and feats. You also retain your skill and saving throw proficiencies and use your Proficiency Bonus for them, in addition to gaining the proficiencies of the creature. If a skill or saving throw modifier in the Beast's stat block is higher than yours, use the one in the stat block. No Spellcasting. You can't cast spells, but shape-shifting doesn't break your Concentration or otherwise interfere with a spell you've already cast. Objects. Your ability to handle objects is determined by the form's limbs rather than your own. In addition, you choose whether your equipment falls in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the DM decides whether it's practical for the new form to wear a piece of equipment based on the creature's size and shape. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with the form. Equipment that merges with the form has no effect while you're in that form."
             },
             {
                 "level": 2,
                 "name": "Wild Companion",
-                "description": "Cast Find Familiar without material components using Wild Shape."
+                "description": "You can summon a nature spirit that assumes an animal form to aid you. As a Magic action, you can expend a spell slot or a use of Wild Shape to cast the Find Familiar spell without Material components. When you cast the spell in this way, the familiar is Fey and disappears when you finish a Long Rest ."
             },
             {
                 "level": 3,
                 "name": "Druid Subclass",
-                "description": "Choose a circle: Circle of the Land, Circle of the Moon, Circle of the Sea, or Circle of the Stars."
+                "description": "You gain a Druid subclass of your choice. The Circle of the Land subclass is detailed after this class's description. A subclass is a specialization that grants you features at certain Druid levels. For the rest of your career, you gain each of your subclass's features that are of your Druid level or lower."
             },
             {
                 "level": 4,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 4,
-                "name": "Wild Shape (Swim Form)",
-                "description": "You can now transform into beasts that have a swimming speed."
+                "description": "You gain the Ability Score Improvement feat (see \" Feats \") or another feat of your choice for which you qualify. You gain this feature again at Druid levels 8, 12, and 16."
             },
             {
                 "level": 5,
                 "name": "Wild Resurgence",
-                "description": "Once per turn, convert a spell slot to a use of Wild Shape, or expend a Wild Shape to regain a 1st-level spell slot."
+                "description": "Once on each of your turns, if you have no uses of Wild Shape left, you can give yourself one use by expending a spell slot (no action required). In addition, you can expend one use of Wild Shape (no action required) to give yourself a level 1 spell slot, but you can't do so again until you finish a Long Rest ."
             },
             {
                 "level": 6,
@@ -1781,22 +1746,17 @@ export const SEED_CLASSES = [
             {
                 "level": 7,
                 "name": "Elemental Fury",
-                "description": "Choose Primal Strike (+1d8 cold, fire, lightning, or thunder damage to attacks) or Potent Spellcasting (add Wis mod to cantrips)."
+                "description": "The might of the elements flows through you. You gain one of the following options of your choice. Potent Spellcasting. Add your Wisdom modifier to the damage you deal with any Druid cantrip. Primal Strike. Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form's attack in Wild Shape, you can cause the target to take an extra 1d8 Cold, Fire, Lightning, or Thunder damage (choose when you hit)."
             },
             {
                 "level": 8,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 8,
-                "name": "Wild Shape (Fly Form)",
-                "description": "You can now transform into beasts that have a flying speed."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 9,
                 "name": "5th-Level Spells",
-                "description": "You gain access to 5th-level spell slots."
+                "description": "You gain access to 5th-level Druid spell slots."
             },
             {
                 "level": 10,
@@ -1806,17 +1766,17 @@ export const SEED_CLASSES = [
             {
                 "level": 11,
                 "name": "6th-Level Spells",
-                "description": "You gain access to 6th-level spell slots."
+                "description": "You gain access to 6th-level Druid spell slots."
             },
             {
                 "level": 12,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 13,
                 "name": "7th-Level Spells",
-                "description": "You gain access to 7th-level spell slots."
+                "description": "You gain access to 7th-level Druid spell slots."
             },
             {
                 "level": 14,
@@ -1826,32 +1786,32 @@ export const SEED_CLASSES = [
             {
                 "level": 15,
                 "name": "Improved Elemental Fury",
-                "description": "Primal Strike damage increases to 2d8, or Potent Spellcasting range increases by 300 ft."
+                "description": "The option you chose for Elemental Fury grows more powerful, as detailed below. Potent Spellcasting. When you cast a Druid cantrip with a range of 10 feet or greater, the spell's range increases by 300 feet. Primal Strike. The extra damage of your Primal Strike increases to 2d8."
             },
             {
                 "level": 16,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 17,
                 "name": "9th-Level Spells",
-                "description": "You gain access to 9th-level spell slots."
+                "description": "You gain access to 9th-level Druid spell slots."
             },
             {
                 "level": 18,
                 "name": "Beast Spells",
-                "description": "Cast spells with verbal and somatic components while transformed in Wild Shape."
+                "description": "While using Wild Shape, you can cast spells in Beast form, except for any spell that has a Material component with a cost specified or that consumes its Material component."
             },
             {
                 "level": 19,
-                "name": "Epic Boon / Ability Score Improvement",
-                "description": "Choose an Epic Boon feat or another feat of your choice."
+                "name": "Epic Boon",
+                "description": "You gain an Epic Boon feat (see \" Feats \") or another feat of your choice for which you qualify. Boon of Dimensional Travel is recommended."
             },
             {
                 "level": 20,
                 "name": "Archdruid",
-                "description": "Regain 1 expended Wild Shape on rolling Initiative; convert Wild Shape into spell slots with Wild Resurgence; age 10 times slower."
+                "description": "The vitality of nature constantly blooms within you, granting you the following benefits. Evergreen Wild Shape. Whenever you roll Initiative and have no uses of Wild Shape left, you regain one expended use of it. Nature Magician. You can convert uses of Wild Shape into a spell slot (no action required). Choose a number of your unexpended uses of Wild Shape and convert them into a single spell slot, with each use contributing 2 spell levels. For example, if you convert two uses of Wild Shape, you produce a level 4 spell slot. Once you use this benefit, you can't do so again until you finish a Long Rest . Longevity. The primal magic that you wield causes you to age more slowly. For every ten years that pass, your body ages only one year."
             }
         ],
         "subclasses": [
@@ -2046,57 +2006,52 @@ export const SEED_CLASSES = [
             {
                 "level": 1,
                 "name": "Fighting Style",
-                "description": "Choose a Fighting Style feat: Archery, Defense, Dueling, Great Weapon Fighting, Protection, Two-Weapon Fighting."
+                "description": "You have honed your martial prowess and gain a Fighting Style feat of your choice (see \" Feats \"). Defense is recommended. Whenever you gain a Fighter level, you can replace the feat you chose with a different Fighting Style feat."
             },
             {
                 "level": 1,
                 "name": "Second Wind",
-                "description": "Bonus Action to regain 1d10 + Fighter level HP. Regain uses on short/long rests."
+                "description": "You have a limited well of physical and mental stamina that you can draw on. As a Bonus Action, you can use it to regain Hit Points equal to 1d10 plus your Fighter level. You can use this feature twice. You regain one expended use when you finish a Short Rest , and you regain all expended uses when you finish a Long Rest . When you reach certain Fighter levels, you gain more uses of this feature, as shown in the Second Wind column of the Fighter Features table ."
             },
             {
                 "level": 1,
-                "name": "Weapon Mastery (3 Weapons)",
-                "description": "Master 3 kinds of weapons of your choice."
+                "name": "Weapon Mastery",
+                "description": "Your training with weapons allows you to use the mastery properties of three kinds of Simple or Martial weapons of your choice. Whenever you finish a Long Rest , you can practice weapon drills and change one of those weapon choices. When you reach certain Fighter levels, you gain the ability to use the mastery properties of more kinds of weapons, as shown in the Weapon Mastery column of the Fighter Features table ."
             },
             {
                 "level": 2,
                 "name": "Action Surge",
-                "description": "Take one additional action on your turn once per Short or Long Rest."
+                "description": "You can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action, except the Magic action. Once you use this feature, you can't do so again until you finish a Short or Long Rest . Starting at level 17, you can use it twice before a rest but only once on a turn."
             },
             {
                 "level": 2,
                 "name": "Tactical Mind",
-                "description": "Expend Second Wind to add 1d10 to a failed ability check."
+                "description": "You have a mind for tactics on and off the battlefield. When you fail an ability check, you can expend a use of your Second Wind to push yourself toward success. Rather than regaining Hit Points, you roll 1d10 and add the number rolled to the ability check, potentially turning it into a success. If the check still fails, this use of Second Wind isn't expended."
             },
             {
                 "level": 3,
                 "name": "Fighter Subclass",
-                "description": "Choose an archetype: Battle Master, Champion, Eldritch Knight, or Psi Warrior."
+                "description": "You gain a Fighter subclass of your choice. The Champion subclass is detailed after this class's description. A subclass is a specialization that grants you features at certain Fighter levels. For the rest of your career, you gain each of your subclass's features that are of your Fighter level or lower."
             },
             {
                 "level": 4,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 4,
-                "name": "Weapon Mastery (4 Weapons)",
-                "description": "Your weapon mastery capacity increases to 4 weapons."
+                "description": "You gain the Ability Score Improvement feat (see \" Feats \") or another feat of your choice for which you qualify. You gain this feature again at Fighter levels 6, 8, 12, 14, and 16."
             },
             {
                 "level": 5,
                 "name": "Extra Attack",
-                "description": "Attack twice whenever you take the Attack action."
+                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
             },
             {
                 "level": 5,
                 "name": "Tactical Shift",
-                "description": "Whenever you activate Second Wind, you can move up to half your speed without provoking opportunity attacks."
+                "description": "Whenever you activate your Second Wind with a Bonus Action, you can move up to half your Speed without provoking Opportunity Attacks ."
             },
             {
                 "level": 6,
-                "name": "Ability Score Improvement (Fighter Bonus)",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "name": "Ability Score Improvement",
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 7,
@@ -2106,17 +2061,17 @@ export const SEED_CLASSES = [
             {
                 "level": 8,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 9,
-                "name": "Indomitable (1/LR)",
-                "description": "Reroll a failed saving throw with a bonus equal to your Fighter level. Usable 1 time per Long Rest."
+                "name": "Indomitable",
+                "description": "If you fail a saving throw, you can reroll it with a bonus equal to your Fighter level. You must use the new roll, and you can't use this feature again until you finish a Long Rest . You can use this feature twice before a Long Rest starting at level 13 and three times before a Long Rest starting at level 17."
             },
             {
                 "level": 9,
                 "name": "Tactical Master",
-                "description": "When attacking with a mastery weapon, you can swap its mastery property for Push, Sap, or Slow."
+                "description": "When you attack with a weapon whose mastery property you can use, you can replace that property with the Push , Sap , or Slow property for that attack."
             },
             {
                 "level": 10,
@@ -2124,34 +2079,24 @@ export const SEED_CLASSES = [
                 "description": "Gain a feature granted by your chosen Fighter archetype."
             },
             {
-                "level": 10,
-                "name": "Weapon Mastery (5 Weapons)",
-                "description": "Your weapon mastery capacity increases to 5 weapons."
-            },
-            {
                 "level": 11,
                 "name": "Two Extra Attacks",
-                "description": "You can attack three times whenever you take the Attack action."
+                "description": "You can attack three times instead of once whenever you take the Attack action on your turn."
             },
             {
                 "level": 12,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 13,
-                "name": "Indomitable (2/LR)",
-                "description": "You can now use Indomitable twice per Long Rest."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 13,
                 "name": "Studied Attacks",
-                "description": "If you miss an attack roll, you have Advantage on your next attack roll against that target before the end of your next turn."
+                "description": "You study your opponents and learn from each attack you make. If you make an attack roll against a creature and miss, you have Advantage on your next attack roll against that creature before the end of your next turn."
             },
             {
                 "level": 14,
-                "name": "Ability Score Improvement (Fighter Bonus)",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "name": "Ability Score Improvement",
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 15,
@@ -2161,22 +2106,12 @@ export const SEED_CLASSES = [
             {
                 "level": 16,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 16,
-                "name": "Weapon Mastery (6 Weapons)",
-                "description": "Your weapon mastery capacity increases to 6 weapons."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 17,
-                "name": "Action Surge (2/Rest)",
-                "description": "You can use Action Surge twice per Short or Long Rest, though only once on a turn."
-            },
-            {
-                "level": 17,
-                "name": "Indomitable (3/LR)",
-                "description": "You can now use Indomitable three times per Long Rest."
+                "name": "Action Surge (2 uses) & Indomitable (3 uses)",
+                "description": "You can use Action Surge twice before a rest, but only once on a turn. You can also use Indomitable three times between Long Rests."
             },
             {
                 "level": 18,
@@ -2185,13 +2120,13 @@ export const SEED_CLASSES = [
             },
             {
                 "level": 19,
-                "name": "Epic Boon / Ability Score Improvement",
-                "description": "Choose an Epic Boon feat or another feat of your choice."
+                "name": "Epic Boon",
+                "description": "You gain an Epic Boon feat (see \" Feats \") or another feat of your choice for which you qualify. Boon of Combat Prowess is recommended."
             },
             {
                 "level": 20,
                 "name": "Three Extra Attacks",
-                "description": "You can attack four times whenever you take the Attack action."
+                "description": "You can attack four times instead of once whenever you take the Attack action on your turn."
             }
         ],
         "subclasses": [
@@ -2404,68 +2339,63 @@ export const SEED_CLASSES = [
         "features": [
             {
                 "level": 1,
-                "name": "Martial Arts (d6)",
-                "description": "Use Dex instead of Str for unarmed strikes and monk weapons. Unarmed strike damage is 1d6. Bonus Action unarmed strike."
+                "name": "Martial Arts",
+                "description": "Your practice of martial arts gives you mastery of combat styles that use your Unarmed Strike and Monk weapons, which are the following: Simple Melee weapons Martial Melee weapons that have the Light property You gain the following benefits while you are unarmed or wielding only Monk weapons and you aren't wearing armor or wielding a Shield. Bonus Unarmed Strike. You can make an Unarmed Strike as a Bonus Action. Martial Arts Die. You can roll 1d6 in place of the normal damage of your Unarmed Strike or Monk weapons. This die changes as you gain Monk levels, as shown in the Martial Arts column of the Monk Features table. Dexterous Attacks. You can use your Dexterity modifier instead of your Strength modifier for the attack and damage rolls of your Unarmed Strikes and Monk weapons. In addition, when you use the Grapple or Shove option of your Unarmed Strike, you can use your Dexterity modifier instead of your Strength modifier to determine the save DC."
             },
             {
                 "level": 1,
                 "name": "Unarmored Defense",
-                "description": "AC equals 10 + Dex modifier + Wis modifier while not wearing armor or shield."
+                "description": "While you aren't wearing armor or wielding a Shield, your base Armor Class equals 10 plus your Dexterity and Wisdom modifiers."
             },
             {
                 "level": 2,
                 "name": "Monk's Focus",
-                "description": "Focus Points equal to Monk level. Flurry of Blows (2 unarmed strikes), Patient Defense (Dodge + Disengage), Step of the Wind (Dash + jump)."
+                "description": "Your focus and martial training allow you to harness a well of extraordinary energy within yourself. This energy is represented by Focus Points. Your Monk level determines the number of points you have, as shown in the Focus Points column of the Monk Features table . You can expend these points to enhance or fuel certain Monk features. You start knowing three such features: Flurry of Blows, Patient Defense, and Step of the Wind, each of which is detailed below. When you expend a Focus Point, it is unavailable until you finish a Short or Long Rest , at the end of which you regain all your expended points. Some features that use Focus Points require your target to make a saving throw. The save DC equals 8 plus your Wisdom modifier and Proficiency Bonus. Flurry of Blows. You can expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action. Patient Defense. You can take the Disengage action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and the Dodge actions as a Bonus Action. Step of the Wind. You can take the Dash action as a Bonus Action. Alternatively, you can expend 1 Focus Point to take both the Disengage and Dash actions as a Bonus Action, and your jump distance is doubled for the turn."
             },
             {
                 "level": 2,
-                "name": "Unarmored Movement (+10 ft)",
-                "description": "Speed increases by 10 ft while not wearing armor or carrying a shield."
+                "name": "Unarmored Movement",
+                "description": "Your speed increases by 10 feet while you aren't wearing armor or wielding a Shield. This bonus increases when you reach certain Monk levels, as shown on the Monk Features table ."
             },
             {
                 "level": 2,
                 "name": "Uncanny Metabolism",
-                "description": "When rolling Initiative, regain all expended Focus Points and regain HP equal to your martial arts die + Monk level (1/LR)."
-            },
-            {
-                "level": 3,
-                "name": "Monk Subclass",
-                "description": "Choose a tradition: Warrior of the Open Hand, Warrior of Shadow, Warrior of Mercy, or Warrior of Elements."
+                "description": "When you roll Initiative , you can regain all expended Focus Points. When you do so, roll your Martial Arts die, and regain a number of Hit Points equal to your Monk level plus the number rolled. Once you use this feature, you can't use it again until you finish a Long Rest ."
             },
             {
                 "level": 3,
                 "name": "Deflect Attacks",
-                "description": "Reaction to reduce bludgeoning, piercing, or slashing damage by 1d10 + Dex mod + Monk level; redirect attack if reduced to 0."
+                "description": "When an attack roll hits you and its damage includes Bludgeoning, Piercing, or Slashing damage, you can take a Reaction to reduce the attack's total damage against you. The reduction equals 1d10 plus your Dexterity modifier and Monk level. If you reduce the damage to 0, you can expend 1 Focus Point to redirect some of the attack's force. If you do so, choose a creature you can see within 5 feet of yourself if the attack was a melee attack or a creature you can see within 60 feet of yourself that isn't behind Total Cover if the attack was a ranged attack. That creature must succeed on a Dexterity saving throw or take damage equal to two rolls of your Martial Arts die plus your Dexterity modifier. The damage is the same type dealt by the attack."
+            },
+            {
+                "level": 3,
+                "name": "Monk Subclass",
+                "description": "You gain a Monk subclass of your choice. The Warrior of the Open Hand subclass is detailed after this class's description. A subclass is a specialization that grants you features at certain Monk levels. For the rest of your career, you gain each of your subclass's features that are of your Monk level or lower."
             },
             {
                 "level": 4,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat (see \" Feats \") or another feat of your choice for which you qualify. You gain this feature again at Monk levels 8, 12, and 16."
             },
             {
                 "level": 4,
                 "name": "Slow Fall",
-                "description": "Reaction to reduce falling damage by five times your Monk level."
+                "description": "You can take a Reaction when you fall to reduce any damage you take from the fall by an amount equal to five times your Monk level."
             },
             {
                 "level": 5,
                 "name": "Extra Attack",
-                "description": "You can attack twice instead of once whenever you take the Attack action."
+                "description": "You can attack twice instead of once whenever you take the Attack action on your turn."
             },
             {
                 "level": 5,
                 "name": "Stunning Strike",
-                "description": "Spend 1 Focus Point on hit to force a Con save: Stunned until start of next turn, or half speed on success."
-            },
-            {
-                "level": 5,
-                "name": "Martial Arts (d8)",
-                "description": "Your Martial Arts unarmed strike die increases to 1d8."
+                "description": "Once per turn when you hit a creature with a Monk weapon or an Unarmed Strike , you can expend 1 Focus Point to attempt a stunning strike. The target must make a Constitution saving throw. On a failed save, the target has the Stunned condition until the start of your next turn. On a successful save, the target's Speed is halved until the start of your next turn, and the next attack roll made against the target before then has Advantage ."
             },
             {
                 "level": 6,
                 "name": "Empowered Strikes",
-                "description": "Your unarmed strikes can deal force damage instead of bludgeoning damage."
+                "description": "Whenever you deal damage with your Unarmed Strike , it can deal your choice of Force damage or its normal damage type."
             },
             {
                 "level": 6,
@@ -2473,39 +2403,29 @@ export const SEED_CLASSES = [
                 "description": "Gain a feature granted by your chosen Monk tradition."
             },
             {
-                "level": 6,
-                "name": "Unarmored Movement (+15 ft)",
-                "description": "Your Unarmored Movement speed bonus increases to +15 ft."
-            },
-            {
                 "level": 7,
                 "name": "Evasion",
-                "description": "Dex saves for half damage deal 0 damage on success and half damage on failure."
+                "description": "When you're subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw and only half damage if you fail. You don't benefit from this feature if you have the Incapacitated condition."
             },
             {
                 "level": 8,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 9,
                 "name": "Acrobatic Movement",
-                "description": "You can move along vertical surfaces and across liquids on your turn without falling."
+                "description": "While you aren't wearing armor or wielding a Shield, you gain the ability to move along vertical surfaces and across liquids on your turn without falling during the movement."
             },
             {
                 "level": 10,
                 "name": "Heightened Focus",
-                "description": "Flurry of Blows grants 3 unarmed strikes; Patient Defense gives temp HP; Step of the Wind allows carrying a willing creature."
+                "description": "Your Flurry of Blows, Patient Defense, and Step of the Wind gain the following benefits. Flurry of Blows. You can expend 1 Focus Point to use Flurry of Blows and make three Unarmed Strikes with it instead of two. Patient Defense. When you expend a Focus Point to use Patient Defense, you gain a number of Temporary Hit Points equal to two rolls of your Martial Arts die. Step of the Wind. When you expend a Focus Point to use Step of the Wind, you can choose a willing creature within 5 feet of yourself that is Large or smaller. You move the creature with you until the end of your turn. The creature's movement doesn't provoke Opportunity Attacks ."
             },
             {
                 "level": 10,
-                "name": "Unarmored Movement (+20 ft)",
-                "description": "Your Unarmored Movement speed bonus increases to +20 ft."
-            },
-            {
-                "level": 11,
-                "name": "Martial Arts (d10)",
-                "description": "Your Martial Arts unarmed strike die increases to 1d10."
+                "name": "Self-Restoration",
+                "description": "Through sheer force of will, you can remove one of the following conditions from yourself at the end of each of your turns: Charmed , Frightened , or Poisoned . In addition, forgoing food and drink doesn't give you levels of Exhaustion ."
             },
             {
                 "level": 11,
@@ -2515,37 +2435,27 @@ export const SEED_CLASSES = [
             {
                 "level": 12,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 13,
-                "name": "Self-Restoration",
-                "description": "At the end of your turn, end Charmed, Frightened, or Poisoned conditions on yourself; forgo food and water."
-            },
-            {
-                "level": 14,
                 "name": "Deflect Energy",
-                "description": "Deflect Attacks can now deflect any damage type, not just bludgeoning, piercing, or slashing."
+                "description": "You can now use your Deflect Attacks feature against attacks that deal any damage type, not just Bludgeoning, Piercing, or Slashing."
             },
             {
                 "level": 14,
-                "name": "Unarmored Movement (+25 ft)",
-                "description": "Your Unarmored Movement speed bonus increases to +25 ft."
+                "name": "Disciplined Survivor",
+                "description": "Your physical and mental discipline grant you proficiency in all saving throws. Additionally, whenever you make a saving throw and fail, you can expend 1 Focus Point to reroll it, and you must use the new roll."
             },
             {
                 "level": 15,
                 "name": "Perfect Focus",
-                "description": "When rolling Initiative with 3 or fewer Focus Points, regain Focus Points until you have 4."
+                "description": "When you roll Initiative and don't use Uncanny Metabolism, you regain expended Focus Points until you have 4 if you have 3 or fewer."
             },
             {
                 "level": 16,
                 "name": "Ability Score Improvement",
-                "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 17,
-                "name": "Martial Arts (d12)",
-                "description": "Your Martial Arts unarmed strike die increases to 1d12."
+                "description": "You gain the Ability Score Improvement feat or another feat of your choice for which you qualify."
             },
             {
                 "level": 17,
@@ -2555,22 +2465,17 @@ export const SEED_CLASSES = [
             {
                 "level": 18,
                 "name": "Superior Defense",
-                "description": "Bonus Action and 3 Focus Points to gain resistance to all damage except Force for 1 minute."
-            },
-            {
-                "level": 18,
-                "name": "Unarmored Movement (+30 ft)",
-                "description": "Your Unarmored Movement speed bonus increases to +30 ft."
+                "description": "At the start of your turn, you can expend 3 Focus Points to bolster yourself against harm for 1 minute or until you have the Incapacitated condition. During that time, you have Resistance to all damage except Force damage."
             },
             {
                 "level": 19,
-                "name": "Epic Boon / Ability Score Improvement",
-                "description": "Choose an Epic Boon feat or another feat of your choice."
+                "name": "Epic Boon",
+                "description": "You gain an Epic Boon feat (see \" Feats \") or another feat of your choice for which you qualify. Boon of Irresistible Offense is recommended."
             },
             {
                 "level": 20,
                 "name": "Body and Mind",
-                "description": "Your Dexterity and Wisdom scores increase by 4, up to a maximum of 25."
+                "description": "You have developed your body and mind to new heights. Your Dexterity and Wisdom scores increase by 4, to a maximum of 25."
             }
         ],
         "subclasses": [
