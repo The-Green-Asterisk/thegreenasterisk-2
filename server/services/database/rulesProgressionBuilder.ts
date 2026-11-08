@@ -62,6 +62,7 @@ export interface StatModifier {
 
 export interface ProgressionGrantedSpell {
     id?: string;
+    spellId?: string;
     name: string;
     level?: number;                    // 0 for cantrip, 1-9 for leveled spells
     alwaysPrepared?: boolean;          // Always prepared, does not count against prepared spell limits
@@ -129,6 +130,7 @@ export interface ProgressionChoiceOption {
 
 export interface ProgressionChoice {
     id: string;
+    choiceId?: string;
     name: string;
     prompt: string;
     chooseCount: number;
@@ -782,6 +784,289 @@ export const ROGUE_CUNNING_STRIKES: ProgressionChoiceOption[] = [
     { id: "withdraw", name: "Withdraw (Cost: 1d6)", description: "Move up to half speed without provoking opportunity attacks." }
 ];
 
+export const WILD_HEART_RAGES: ProgressionChoiceOption[] = [
+    {
+        id: "bear",
+        name: "Bear Heart",
+        description: "While raging, you have resistance to all damage types except Psychic damage.",
+        modifiers: [
+            {
+                target: "defenses.resistance",
+                type: "set",
+                value: "all-except-psychic",
+                condition: "while raging",
+                description: "Resistance to all damage types except psychic while raging"
+            }
+        ]
+    },
+    {
+        id: "eagle",
+        name: "Eagle Heart",
+        description: "While raging, you can take the Dash and Disengage actions as a Bonus Action on your turn, and opportunity attacks against you have Disadvantage.",
+        modifiers: [
+            {
+                target: "actions.bonus",
+                type: "grant_action",
+                value: "Dash / Disengage",
+                condition: "while raging",
+                description: "Dash and Disengage as Bonus Action while raging"
+            }
+        ]
+    },
+    {
+        id: "wolf",
+        name: "Wolf Heart",
+        description: "While raging, your allies have Advantage on melee attack rolls against any enemy within 5 feet of you.",
+        modifiers: [
+            {
+                target: "attacks.allies_melee",
+                type: "advantage",
+                condition: "while raging",
+                description: "Allies have Advantage on melee attack rolls against adjacent enemies while raging"
+            }
+        ]
+    }
+];
+
+export const WILD_HEART_TOTEMIC_ATTUNEMENTS: ProgressionChoiceOption[] = [
+    {
+        id: "falcon",
+        name: "Falcon",
+        description: "While raging, you gain a Flying Speed equal to your Walking Speed if you aren't wearing armor.",
+        modifiers: [
+            {
+                target: "speeds.fly",
+                type: "set",
+                value: "equal_walk",
+                condition: "while raging, not wearing armor",
+                description: "Flying speed equal to walking speed"
+            }
+        ]
+    },
+    {
+        id: "lion",
+        name: "Lion",
+        description: "While raging, whenever an enemy within 5 feet makes an attack against an ally, you can use your Reaction to make a melee attack roll against that enemy."
+    },
+    {
+        id: "ram",
+        name: "Ram",
+        description: "While raging, whenever you hit a Large or smaller creature with a melee weapon attack on your turn, you can knock it Prone."
+    }
+];
+
+export const ZEALOT_DIVINE_FURIES: ProgressionChoiceOption[] = [
+    {
+        id: "radiant",
+        name: "Radiant Fury",
+        description: "The first creature you hit on each of your turns with a weapon attack takes extra 1d6 + half Barbarian level Radiant damage.",
+        modifiers: [
+            {
+                target: "damage.weapon_once_per_turn",
+                type: "bonus",
+                value: "1d6+lvl/2",
+                description: "+1d6 + half level Radiant damage on first hit each turn"
+            }
+        ]
+    },
+    {
+        id: "necrotic",
+        name: "Necrotic Fury",
+        description: "The first creature you hit on each of your turns with a weapon attack takes extra 1d6 + half Barbarian level Necrotic damage.",
+        modifiers: [
+            {
+                target: "damage.weapon_once_per_turn",
+                type: "bonus",
+                value: "1d6+lvl/2",
+                description: "+1d6 + half level Necrotic damage on first hit each turn"
+            }
+        ]
+    }
+];
+
+export const HUNTER_DEFENSIVE_TACTICS: ProgressionChoiceOption[] = [
+    {
+        id: "escape-the-horde",
+        name: "Escape the Horde",
+        description: "Opportunity attacks made against you have Disadvantage.",
+        modifiers: [
+            {
+                target: "attacks.incoming_opportunity",
+                type: "disadvantage",
+                description: "Opportunity attacks against you have Disadvantage"
+            }
+        ]
+    },
+    {
+        id: "multiattack-defense",
+        name: "Multiattack Defense",
+        description: "When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you for the rest of the turn.",
+        modifiers: [
+            {
+                target: "attacks.incoming_consecutive",
+                type: "disadvantage",
+                description: "Disadvantage on consecutive attack rolls against you this turn"
+            }
+        ]
+    }
+];
+
+export const HUNTER_SUPERIOR_DEFENSE_OPTIONS: ProgressionChoiceOption[] = [
+    {
+        id: "evasion",
+        name: "Evasion",
+        description: "When subjected to an effect that allows a Dexterity saving throw for half damage, take no damage on success and half on failure.",
+        modifiers: [
+            {
+                target: "saves.dex_evasion",
+                type: "set",
+                value: 1,
+                description: "Take no damage on successful Dex save, half on failure"
+            }
+        ]
+    },
+    {
+        id: "uncanny-dodge",
+        name: "Uncanny Dodge",
+        description: "Reaction when hit by an attacker you can see to halve the attack's damage against you.",
+        modifiers: [
+            {
+                target: "actions.reaction",
+                type: "grant_action",
+                value: "Uncanny Dodge",
+                description: "Halve attack damage as a reaction"
+            }
+        ]
+    }
+];
+
+export const ELEMENTS_ATTUNEMENT_DAMAGE_TYPES: ProgressionChoiceOption[] = [
+    { id: "acid", name: "Acid Attunement", description: "Unarmed strikes reach +10 ft. and can deal Acid damage.", modifiers: [{ target: "attacks.unarmed_reach", type: "bonus", value: 10, description: "+10 ft. reach" }] },
+    { id: "cold", name: "Cold Attunement", description: "Unarmed strikes reach +10 ft. and can deal Cold damage.", modifiers: [{ target: "attacks.unarmed_reach", type: "bonus", value: 10, description: "+10 ft. reach" }] },
+    { id: "fire", name: "Fire Attunement", description: "Unarmed strikes reach +10 ft. and can deal Fire damage.", modifiers: [{ target: "attacks.unarmed_reach", type: "bonus", value: 10, description: "+10 ft. reach" }] },
+    { id: "lightning", name: "Lightning Attunement", description: "Unarmed strikes reach +10 ft. and can deal Lightning damage.", modifiers: [{ target: "attacks.unarmed_reach", type: "bonus", value: 10, description: "+10 ft. reach" }] },
+    { id: "thunder", name: "Thunder Attunement", description: "Unarmed strikes reach +10 ft. and can deal Thunder damage.", modifiers: [{ target: "attacks.unarmed_reach", type: "bonus", value: 10, description: "+10 ft. reach" }] }
+];
+
+export const PRIMAL_COMPANION_TYPES: ProgressionChoiceOption[] = [
+    { id: "land", name: "Beast of the Land", description: "A medium predatory beast with Maul (charge damage and knockdown prone) and 40 ft. walking + 40 ft. climbing speed." },
+    { id: "sea", name: "Beast of the Sea", description: "An amphibious beast with Binding Strike (grapples on hit) and 60 ft. swimming speed + water breathing." },
+    { id: "sky", name: "Beast of the Sky", description: "A small flying avian beast with Flyby and 60 ft. flying speed for scouting and aerial strikes." }
+];
+
+export const FIENDISH_RESILIENCE_DAMAGE_TYPES: ProgressionChoiceOption[] = [
+    { id: "acid", name: "Acid", description: "Resistance to Acid damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "acid", description: "Acid Resistance" }] },
+    { id: "bludgeoning", name: "Bludgeoning", description: "Resistance to Bludgeoning damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "bludgeoning", description: "Bludgeoning Resistance" }] },
+    { id: "cold", name: "Cold", description: "Resistance to Cold damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold", description: "Cold Resistance" }] },
+    { id: "fire", name: "Fire", description: "Resistance to Fire damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire", description: "Fire Resistance" }] },
+    { id: "force", name: "Force", description: "Resistance to Force damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "force", description: "Force Resistance" }] },
+    { id: "lightning", name: "Lightning", description: "Resistance to Lightning damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning", description: "Lightning Resistance" }] },
+    { id: "necrotic", name: "Necrotic", description: "Resistance to Necrotic damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic", description: "Necrotic Resistance" }] },
+    { id: "piercing", name: "Piercing", description: "Resistance to Piercing damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "piercing", description: "Piercing Resistance" }] },
+    { id: "poison", name: "Poison", description: "Resistance to Poison damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison", description: "Poison Resistance" }] },
+    { id: "psychic", name: "Psychic", description: "Resistance to Psychic damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "psychic", description: "Psychic Resistance" }] },
+    { id: "radiant", name: "Radiant", description: "Resistance to Radiant damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "radiant", description: "Radiant Resistance" }] },
+    { id: "slashing", name: "Slashing", description: "Resistance to Slashing damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "slashing", description: "Slashing Resistance" }] },
+    { id: "thunder", name: "Thunder", description: "Resistance to Thunder damage until next rest.", modifiers: [{ target: "defenses.resistance", type: "set", value: "thunder", description: "Thunder Resistance" }] }
+];
+
+export const OPEN_HAND_TECHNIQUES: ProgressionChoiceOption[] = [
+    { id: "addle", name: "Addle", description: "Target cannot make Opportunity Attacks or take Reactions until the start of its next turn." },
+    { id: "push", name: "Push", description: "Target must succeed on a Strength saving throw or be pushed up to 15 feet away." },
+    { id: "topple", name: "Topple", description: "Target must succeed on a Dexterity saving throw or fall Prone." }
+];
+
+export const FEY_WANDERER_GLAMOUR_SKILLS: ProgressionChoiceOption[] = [
+    { id: "Deception", name: "Deception", description: "Proficiency in Charisma (Deception).", modifiers: [{ target: "skills.deception", type: "proficiency_tier", value: "proficient" }] },
+    { id: "Performance", name: "Performance", description: "Proficiency in Charisma (Performance).", modifiers: [{ target: "skills.performance", type: "proficiency_tier", value: "proficient" }] },
+    { id: "Persuasion", name: "Persuasion", description: "Proficiency in Charisma (Persuasion).", modifiers: [{ target: "skills.persuasion", type: "proficiency_tier", value: "proficient" }] }
+];
+
+export const STEPS_OF_THE_FEY_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "taunting-step", name: "Taunting Step", description: "Creatures within 5 ft. of your origin space have Disadvantage on attack rolls against anyone but you." },
+    { id: "refreshing-step", name: "Refreshing Step", description: "You or an ally within 10 ft. of destination gains temporary HP equal to 1d10 + Charisma modifier." }
+];
+
+export const STARRY_FORM_CONSTELLATIONS: ProgressionChoiceOption[] = [
+    { id: "archer", name: "Archer", description: "Bonus Action ranged spell attack (60 ft.) dealing 1d8 + Wisdom modifier Radiant damage." },
+    { id: "chalice", name: "Chalice", description: "Healing spell slot triggers 1d8 + Wisdom modifier additional HP to self or ally within 30 ft." },
+    { id: "dragon", name: "Dragon", description: "Treat d20 rolls of 9 or lower as 10 on Int/Wis checks and Constitution concentration saves." }
+];
+
+export const SEA_WRATH_DAMAGE_TYPES: ProgressionChoiceOption[] = [
+    { id: "cold", name: "Cold Wrath", description: "Wrath of the Sea tempest aura deals Cold damage." },
+    { id: "thunder", name: "Thunder Wrath", description: "Wrath of the Sea tempest aura deals Thunder damage and repels enemies." }
+];
+
+export const MOON_CIRCLE_FORMS_STRIKES: ProgressionChoiceOption[] = [
+    { id: "radiant", name: "Radiant Strike", description: "Beast natural attacks deal Radiant damage." },
+    { id: "physical", name: "Natural Physical Strike", description: "Beast natural attacks deal standard physical damage." }
+];
+
+export const WAR_GOD_BLESSING_OPTIONS: ProgressionChoiceOption[] = [
+    {
+        id: "shield-of-faith",
+        name: "Shield of Faith",
+        description: "Cast Shield of Faith via Channel Divinity without expending a spell slot.",
+        grantedSpells: [{ name: "Shield of Faith", level: 1, alwaysPrepared: true, notes: "Cast via Channel Divinity" }]
+    },
+    {
+        id: "spiritual-weapon",
+        name: "Spiritual Weapon",
+        description: "Cast Spiritual Weapon via Channel Divinity without expending a spell slot.",
+        grantedSpells: [{ name: "Spiritual Weapon", level: 2, alwaysPrepared: true, notes: "Cast via Channel Divinity" }]
+    }
+];
+
+export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: ProgressionChoiceOption[] = [
+    { id: "archery", name: "Archery", description: "+2 bonus to attack rolls made with ranged weapons.", modifiers: [{ target: "attacks.ranged", type: "bonus", value: 2, description: "+2 bonus to ranged attacks" }] },
+    { id: "defense", name: "Defense", description: "+1 bonus to Armor Class while wearing armor.", modifiers: [{ target: "vitals.ac", type: "bonus", value: 1, condition: "wearing armor", description: "+1 AC" }] },
+    { id: "dueling", name: "Dueling", description: "+2 bonus to damage rolls with one-handed melee weapon.", modifiers: [{ target: "damage.melee_one_handed", type: "bonus", value: 2, description: "+2 damage" }] },
+    { id: "great-weapon", name: "Great Weapon Fighting", description: "Treat 1 or 2 on damage dice for two-handed weapon as 3." },
+    { id: "protection", name: "Protection", description: "Impose Disadvantage on attack against adjacent ally with shield reaction." },
+    { id: "two-weapon", name: "Two-Weapon Fighting", description: "Add ability modifier to off-hand attack damage." }
+];
+
+export const PSI_WARRIOR_THRUST_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "push", name: "Telekinetic Push", description: "Push target up to 10 feet horizontally away on a failed Strength save." },
+    { id: "topple", name: "Telekinetic Topple", description: "Knock target Prone on a failed Strength save." }
+];
+
+export const DIVINER_THIRD_EYE_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "darkvision", name: "Darkvision", description: "Gain Darkvision 60 feet until next rest.", modifiers: [{ target: "vitals.darkvision", type: "bonus", value: 60, description: "+60 ft. Darkvision" }] },
+    { id: "ethereal-sight", name: "Ethereal Sight", description: "See into the Ethereal Plane within 60 feet." },
+    { id: "greater-comprehension", name: "Greater Comprehension", description: "Read any language." },
+    { id: "see-invisibility", name: "See Invisibility", description: "See invisible creatures within 10 feet." }
+];
+
+export const ABERRANT_REVELATION_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "flight", name: "Aquatic / Aerial Flight", description: "Gain flying speed and swimming speed equal to walking speed and hover." },
+    { id: "see-invis", name: "See Invisibility", description: "See invisible creatures within 60 feet." },
+    { id: "viscous-body", name: "Viscous Body", description: "Escape grapples easily and squeeze through 1-inch spaces." }
+];
+
+export const ROGUE_DEVIOUS_STRIKES: ProgressionChoiceOption[] = [
+    { id: "daze", name: "Daze (Cost: 2d6)", description: "Target must make Con save or can only take an action or bonus action on its next turn." },
+    { id: "knock-out", name: "Knock Out (Cost: 6d6)", description: "Target must make Con save or fall Unconscious for 1 minute or until damaged." },
+    { id: "obscure", name: "Obscure (Cost: 3d6)", description: "Target is Blinded until end of its next turn on failed Dex save." }
+];
+
+export const TACTICAL_MASTER_PROPERTIES: ProgressionChoiceOption[] = [
+    { id: "push", name: "Push", description: "Push a target you hit up to 10 feet away." },
+    { id: "sap", name: "Sap", description: "Target has Disadvantage on its next attack roll before start of your next turn." },
+    { id: "slow", name: "Slow", description: "Target speed reduced by 10 feet until start of your next turn." }
+];
+
+export const BRUTAL_STRIKE_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "forceful-blow", name: "Forceful Blow", description: "Push target 15 ft. away and move toward it without provoking opportunity attacks." },
+    { id: "hamstring-blow", name: "Hamstring Blow", description: "Reduce target speed by 15 ft. until start of next turn." }
+];
+
+export const IMPROVED_BRUTAL_STRIKE_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "staggering-blow", name: "Staggering Blow", description: "Target has Disadvantage on saving throws and cannot make Opportunity Attacks until next turn." },
+    { id: "sundering-blow", name: "Sundering Blow", description: "Next attack roll against target by an ally has +5 bonus." }
+];
+
 // --------------------------------------------------------------------------
 // Class Progression Generator (Levels 1 to 20)
 // --------------------------------------------------------------------------
@@ -1031,21 +1316,684 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
 // Subclass Progression Generator (for all 48 subclasses)
 // --------------------------------------------------------------------------
 
-export function buildSubclassProgression(classSlug: string, sub: { id: string; name: string; description: string; features?: Array<{ name: string; level: number; description: string }> }): ProgressionLevel[] {
-    const subSlug = sub.id || sub.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const subFeatures = Array.isArray(sub.features) ? sub.features : [];
+function slugify(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/['’]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
 
-    // Distinct levels where this subclass has features
-    const featureLevels = Array.from(new Set(subFeatures.map(f => f.level || 3))).sort((a, b) => a - b);
-    if (featureLevels.length === 0) {
-        featureLevels.push(3);
+function makeGrantedSpell(name: string, level: number, source: string, extra?: Partial<ProgressionGrantedSpell>): ProgressionGrantedSpell {
+    const slug = slugify(name);
+    return {
+        id: slug,
+        spellId: slug,
+        name,
+        level,
+        alwaysPrepared: true,
+        source,
+        ...extra
+    };
+}
+
+export function getSubclassGrantedSpells(classSlug: string, normSub: string, lvl: number, subName: string): ProgressionGrantedSpell[] {
+    const spells: ProgressionGrantedSpell[] = [];
+
+    // Warlock Patrons
+    if (normSub.includes("great-old-one")) {
+        if (lvl === 3) {
+            spells.push(
+                makeGrantedSpell("Dissonant Whispers", 1, subName),
+                makeGrantedSpell("Tasha's Hideous Laughter", 1, subName),
+                makeGrantedSpell("Detect Thoughts", 2, subName),
+                makeGrantedSpell("Phantasmal Force", 2, subName)
+            );
+        } else if (lvl === 5) {
+            spells.push(
+                makeGrantedSpell("Clairvoyance", 3, subName),
+                makeGrantedSpell("Sending", 3, subName)
+            );
+        } else if (lvl === 7) {
+            spells.push(
+                makeGrantedSpell("Dominate Beast", 4, subName),
+                makeGrantedSpell("Evard's Black Tentacles", 4, subName)
+            );
+        } else if (lvl === 9) {
+            spells.push(
+                makeGrantedSpell("Dominate Person", 5, subName),
+                makeGrantedSpell("Telekinesis", 5, subName)
+            );
+        }
+    } else if (normSub.includes("archfey")) {
+        if (lvl === 3) {
+            spells.push(
+                makeGrantedSpell("Faerie Fire", 1, subName),
+                makeGrantedSpell("Sleep", 1, subName),
+                makeGrantedSpell("Calm Emotions", 2, subName),
+                makeGrantedSpell("Phantasmal Force", 2, subName),
+                makeGrantedSpell("Misty Step", 2, subName, { notes: "Steps of the Fey free casts per rest" })
+            );
+        } else if (lvl === 5) {
+            spells.push(
+                makeGrantedSpell("Blink", 3, subName),
+                makeGrantedSpell("Plant Growth", 3, subName)
+            );
+        } else if (lvl === 7) {
+            spells.push(
+                makeGrantedSpell("Dominate Beast", 4, subName),
+                makeGrantedSpell("Greater Invisibility", 4, subName)
+            );
+        } else if (lvl === 9) {
+            spells.push(
+                makeGrantedSpell("Dominate Person", 5, subName),
+                makeGrantedSpell("Seeming", 5, subName)
+            );
+        }
+    } else if (normSub.includes("fiend")) {
+        if (lvl === 3) {
+            spells.push(
+                makeGrantedSpell("Burning Hands", 1, subName),
+                makeGrantedSpell("Command", 1, subName),
+                makeGrantedSpell("Blindness/Deafness", 2, subName),
+                makeGrantedSpell("Scorching Ray", 2, subName)
+            );
+        } else if (lvl === 5) {
+            spells.push(
+                makeGrantedSpell("Fireball", 3, subName),
+                makeGrantedSpell("Stinking Cloud", 3, subName)
+            );
+        } else if (lvl === 7) {
+            spells.push(
+                makeGrantedSpell("Fire Shield", 4, subName),
+                makeGrantedSpell("Wall of Fire", 4, subName)
+            );
+        } else if (lvl === 9) {
+            spells.push(
+                makeGrantedSpell("Flame Strike", 5, subName),
+                makeGrantedSpell("Insect Plague", 5, subName)
+            );
+        }
+    } else if (normSub.includes("celestial")) {
+        if (lvl === 3) {
+            spells.push(
+                makeGrantedSpell("Cure Wounds", 1, subName),
+                makeGrantedSpell("Guiding Bolt", 1, subName),
+                makeGrantedSpell("Flaming Sphere", 2, subName),
+                makeGrantedSpell("Lesser Restoration", 2, subName)
+            );
+        } else if (lvl === 5) {
+            spells.push(
+                makeGrantedSpell("Daylight", 3, subName),
+                makeGrantedSpell("Revivify", 3, subName)
+            );
+        } else if (lvl === 7) {
+            spells.push(
+                makeGrantedSpell("Guardian of Faith", 4, subName),
+                makeGrantedSpell("Wall of Fire", 4, subName)
+            );
+        } else if (lvl === 9) {
+            spells.push(
+                makeGrantedSpell("Flame Strike", 5, subName),
+                makeGrantedSpell("Greater Restoration", 5, subName)
+            );
+        }
     }
+
+    // Cleric Domains
+    if (classSlug === "cleric" || normSub.includes("domain")) {
+        if (normSub.includes("life")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Bless", 1, subName),
+                    makeGrantedSpell("Cure Wounds", 1, subName),
+                    makeGrantedSpell("Aid", 2, subName),
+                    makeGrantedSpell("Lesser Restoration", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Beacon of Hope", 3, subName),
+                    makeGrantedSpell("Revivify", 3, subName)
+                );
+            } else if (lvl === 7) {
+                spells.push(
+                    makeGrantedSpell("Death Ward", 4, subName),
+                    makeGrantedSpell("Guardian of Faith", 4, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Mass Cure Wounds", 5, subName),
+                    makeGrantedSpell("Raise Dead", 5, subName)
+                );
+            }
+        } else if (normSub.includes("light")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Burning Hands", 1, subName),
+                    makeGrantedSpell("Faerie Fire", 1, subName),
+                    makeGrantedSpell("Flaming Sphere", 2, subName),
+                    makeGrantedSpell("Scorching Ray", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Daylight", 3, subName),
+                    makeGrantedSpell("Fireball", 3, subName)
+                );
+            } else if (lvl === 7) {
+                spells.push(
+                    makeGrantedSpell("Guardian of Faith", 4, subName),
+                    makeGrantedSpell("Wall of Fire", 4, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Flame Strike", 5, subName),
+                    makeGrantedSpell("Scrying", 5, subName)
+                );
+            }
+        } else if (normSub.includes("trickery")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Charm Person", 1, subName),
+                    makeGrantedSpell("Disguise Self", 1, subName),
+                    makeGrantedSpell("Invisibility", 2, subName),
+                    makeGrantedSpell("Pass without Trace", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Hypnotic Pattern", 3, subName),
+                    makeGrantedSpell("Nondetection", 3, subName)
+                );
+            } else if (lvl === 7) {
+                spells.push(
+                    makeGrantedSpell("Confusion", 4, subName),
+                    makeGrantedSpell("Dimension Door", 4, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Dominate Person", 5, subName),
+                    makeGrantedSpell("Modify Memory", 5, subName)
+                );
+            }
+        } else if (normSub.includes("war")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Divine Favor", 1, subName),
+                    makeGrantedSpell("Shield of Faith", 1, subName),
+                    makeGrantedSpell("Magic Weapon", 2, subName),
+                    makeGrantedSpell("Spiritual Weapon", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Crusader's Mantle", 3, subName),
+                    makeGrantedSpell("Spirit Guardians", 3, subName)
+                );
+            } else if (lvl === 7) {
+                spells.push(
+                    makeGrantedSpell("Fire Shield", 4, subName),
+                    makeGrantedSpell("Freedom of Movement", 4, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Hold Monster", 5, subName),
+                    makeGrantedSpell("Steel Wind Strike", 5, subName)
+                );
+            }
+        }
+    }
+
+    // Paladin Oaths
+    if (classSlug === "paladin" || normSub.includes("oath")) {
+        if (normSub.includes("devotion")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Protection from Evil and Good", 1, subName),
+                    makeGrantedSpell("Sanctuary", 1, subName),
+                    makeGrantedSpell("Aid", 2, subName),
+                    makeGrantedSpell("Zone of Truth", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Beacon of Hope", 3, subName),
+                    makeGrantedSpell("Dispel Magic", 3, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Freedom of Movement", 4, subName),
+                    makeGrantedSpell("Guardian of Faith", 4, subName)
+                );
+            } else if (lvl === 13) {
+                spells.push(
+                    makeGrantedSpell("Commune", 5, subName),
+                    makeGrantedSpell("Flame Strike", 5, subName)
+                );
+            }
+        } else if (normSub.includes("glory")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Guiding Bolt", 1, subName),
+                    makeGrantedSpell("Heroism", 1, subName),
+                    makeGrantedSpell("Enhance Ability", 2, subName),
+                    makeGrantedSpell("Magic Weapon", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Haste", 3, subName),
+                    makeGrantedSpell("Protection from Energy", 3, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Compulsion", 4, subName),
+                    makeGrantedSpell("Freedom of Movement", 4, subName)
+                );
+            } else if (lvl === 13) {
+                spells.push(
+                    makeGrantedSpell("Commune with Nature", 5, subName),
+                    makeGrantedSpell("Flame Strike", 5, subName)
+                );
+            }
+        } else if (normSub.includes("ancients")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Ensnaring Strike", 1, subName),
+                    makeGrantedSpell("Speak with Animals", 1, subName),
+                    makeGrantedSpell("Misty Step", 2, subName),
+                    makeGrantedSpell("Moonbeam", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Plant Growth", 3, subName),
+                    makeGrantedSpell("Protection from Energy", 3, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Ice Storm", 4, subName),
+                    makeGrantedSpell("Stoneskin", 4, subName)
+                );
+            } else if (lvl === 13) {
+                spells.push(
+                    makeGrantedSpell("Commune with Nature", 5, subName),
+                    makeGrantedSpell("Tree Stride", 5, subName)
+                );
+            }
+        } else if (normSub.includes("vengeance")) {
+            if (lvl === 3) {
+                spells.push(
+                    makeGrantedSpell("Bane", 1, subName),
+                    makeGrantedSpell("Hunter's Mark", 1, subName),
+                    makeGrantedSpell("Hold Person", 2, subName),
+                    makeGrantedSpell("Misty Step", 2, subName)
+                );
+            } else if (lvl === 5) {
+                spells.push(
+                    makeGrantedSpell("Haste", 3, subName),
+                    makeGrantedSpell("Protection from Energy", 3, subName)
+                );
+            } else if (lvl === 9) {
+                spells.push(
+                    makeGrantedSpell("Banishment", 4, subName),
+                    makeGrantedSpell("Dimension Door", 4, subName)
+                );
+            } else if (lvl === 13) {
+                spells.push(
+                    makeGrantedSpell("Hold Monster", 5, subName),
+                    makeGrantedSpell("Scrying", 5, subName)
+                );
+            }
+        }
+    }
+
+    // Ranger Archetypes
+    if (classSlug === "ranger") {
+        if (normSub.includes("gloom")) {
+            if (lvl === 3) spells.push(makeGrantedSpell("Disguise Self", 1, subName));
+            else if (lvl === 5) spells.push(makeGrantedSpell("Rope Trick", 2, subName));
+            else if (lvl === 9) spells.push(makeGrantedSpell("Fear", 3, subName));
+            else if (lvl === 13) spells.push(makeGrantedSpell("Greater Invisibility", 4, subName));
+            else if (lvl === 17) spells.push(makeGrantedSpell("Seeming", 5, subName));
+        } else if (normSub.includes("fey-wanderer") || normSub.includes("fey")) {
+            if (lvl === 3) spells.push(makeGrantedSpell("Charm Person", 1, subName));
+            else if (lvl === 5) spells.push(makeGrantedSpell("Misty Step", 2, subName));
+            else if (lvl === 9) spells.push(makeGrantedSpell("Dispel Magic", 3, subName));
+            else if (lvl === 13) spells.push(makeGrantedSpell("Dimension Door", 4, subName));
+            else if (lvl === 17) spells.push(makeGrantedSpell("Mislead", 5, subName));
+        }
+    }
+
+    // Druid Circles
+    if (normSub.includes("stars") && lvl === 3) {
+        spells.push(makeGrantedSpell("Guiding Bolt", 1, subName, { notes: "Star Map always prepared, free casts equal to PB" }));
+    } else if (normSub.includes("sea")) {
+        if (lvl === 3) {
+            spells.push(
+                makeGrantedSpell("Fog Cloud", 1, subName),
+                makeGrantedSpell("Thunderwave", 1, subName),
+                makeGrantedSpell("Gust of Wind", 2, subName),
+                makeGrantedSpell("Shatter", 2, subName)
+            );
+        } else if (lvl === 5) {
+            spells.push(
+                makeGrantedSpell("Lightning Bolt", 3, subName),
+                makeGrantedSpell("Water Breathing", 3, subName)
+            );
+        } else if (lvl === 7) {
+            spells.push(
+                makeGrantedSpell("Control Water", 4, subName),
+                makeGrantedSpell("Ice Storm", 4, subName)
+            );
+        } else if (lvl === 9) {
+            spells.push(
+                makeGrantedSpell("Conjure Elemental", 5, subName),
+                makeGrantedSpell("Maelstrom", 5, subName)
+            );
+        }
+    }
+
+    // Bard Colleges
+    if (normSub.includes("glamour")) {
+        if (lvl === 3) {
+            spells.push(
+                makeGrantedSpell("Charm Person", 1, subName, { notes: "Beguiling Magic" }),
+                makeGrantedSpell("Mirror Image", 2, subName, { notes: "Beguiling Magic" })
+            );
+        } else if (lvl === 6) {
+            spells.push(
+                makeGrantedSpell("Command", 1, subName, { atWill: true, notes: "Mantle of Majesty: cast as Bonus Action without spell slot" })
+            );
+        }
+    }
+
+    return spells;
+}
+
+export function getSubclassChoices(normSub: string, lvl: number): ProgressionChoice[] {
+    const choices: ProgressionChoice[] = [];
+
+    // 1. Barbarian Subclasses
+    if (normSub.includes("wild-heart")) {
+        if (lvl === 3) {
+            choices.push({
+                id: "wild-heart-rage",
+                choiceId: "wild-heart-rage",
+                name: "Rage of the Wilds",
+                prompt: "Choose your primary animal aspect for Rage.",
+                chooseCount: 1,
+                options: WILD_HEART_RAGES
+            });
+        } else if (lvl === 6) {
+            choices.push({
+                id: "aspect-of-the-beast",
+                choiceId: "aspect-of-the-beast",
+                name: "Aspect of the Beast",
+                prompt: "Choose 1 primal animal aspect.",
+                chooseCount: 1,
+                options: BARBARIAN_ASPECTS
+            });
+        } else if (lvl === 14) {
+            choices.push({
+                id: "totemic-attunement",
+                choiceId: "totemic-attunement",
+                name: "Totemic Attunement",
+                prompt: "Choose your Totemic Attunement benefit.",
+                chooseCount: 1,
+                options: WILD_HEART_TOTEMIC_ATTUNEMENTS
+            });
+        }
+    } else if (normSub.includes("zealot") && lvl === 3) {
+        choices.push({
+            id: "divine-fury",
+            choiceId: "divine-fury",
+            name: "Divine Fury",
+            prompt: "Choose Radiant or Necrotic damage for Divine Fury.",
+            chooseCount: 1,
+            options: ZEALOT_DIVINE_FURIES
+        });
+    }
+
+    // 2. Fighter Subclasses
+    if (normSub.includes("battle-master") && lvl === 3) {
+        choices.push({
+            id: "maneuvers-3",
+            choiceId: "maneuvers-3",
+            name: "Maneuvers",
+            prompt: "Choose 3 Battle Master Maneuvers.",
+            chooseCount: 3,
+            options: BATTLE_MASTER_MANEUVERS
+        });
+        choices.push({
+            id: "student-of-war",
+            choiceId: "student-of-war",
+            name: "Student of War",
+            prompt: "Choose 1 skill proficiency.",
+            chooseCount: 1,
+            options: STUDENT_OF_WAR_SKILLS
+        });
+    } else if (normSub.includes("champion") && lvl === 7) {
+        choices.push({
+            id: "additional-fighting-style",
+            choiceId: "additional-fighting-style",
+            name: "Additional Fighting Style",
+            prompt: "Choose a second Fighting Style feat.",
+            chooseCount: 1,
+            options: CHAMPION_ADDITIONAL_FIGHTING_STYLES
+        });
+    } else if (normSub.includes("psi-warrior") && lvl === 7) {
+        choices.push({
+            id: "telekinetic-thrust",
+            choiceId: "telekinetic-thrust",
+            name: "Telekinetic Thrust",
+            prompt: "Choose Telekinetic Push or Topple.",
+            chooseCount: 1,
+            options: PSI_WARRIOR_THRUST_OPTIONS
+        });
+    }
+
+    // 3. Druid Subclasses
+    if (normSub.includes("land") && lvl === 3) {
+        choices.push({
+            id: "land-biome",
+            choiceId: "land-biome",
+            name: "Land Biome",
+            prompt: "Choose your current land biome affinity.",
+            chooseCount: 1,
+            options: DRUID_LAND_BIOMES
+        });
+    } else if (normSub.includes("stars") && lvl === 3) {
+        choices.push({
+            id: "starry-form",
+            choiceId: "starry-form",
+            name: "Starry Form",
+            prompt: "Choose a Starry Form constellation.",
+            chooseCount: 1,
+            options: STARRY_FORM_CONSTELLATIONS
+        });
+    } else if (normSub.includes("sea") && lvl === 3) {
+        choices.push({
+            id: "wrath-of-the-sea",
+            choiceId: "wrath-of-the-sea",
+            name: "Wrath of the Sea",
+            prompt: "Choose Cold or Thunder wrath damage.",
+            chooseCount: 1,
+            options: SEA_WRATH_DAMAGE_TYPES
+        });
+    } else if (normSub.includes("moon") && lvl === 3) {
+        choices.push({
+            id: "circle-forms-strike",
+            choiceId: "circle-forms-strike",
+            name: "Circle Forms Strike",
+            prompt: "Choose Radiant or Natural Physical beast strike damage.",
+            chooseCount: 1,
+            options: MOON_CIRCLE_FORMS_STRIKES
+        });
+    }
+
+    // 4. Cleric Subclasses
+    if (normSub.includes("war") && lvl === 6) {
+        choices.push({
+            id: "war-god-blessing",
+            choiceId: "war-god-blessing",
+            name: "War God's Blessing",
+            prompt: "Choose a spell to cast via War God's Blessing.",
+            chooseCount: 1,
+            options: WAR_GOD_BLESSING_OPTIONS
+        });
+    }
+
+    // 5. Monk Subclasses
+    if (normSub.includes("open-hand") && lvl === 3) {
+        choices.push({
+            id: "open-hand-technique",
+            choiceId: "open-hand-technique",
+            name: "Open Hand Technique",
+            prompt: "Choose your preferred Open Hand Technique effect.",
+            chooseCount: 1,
+            options: OPEN_HAND_TECHNIQUES
+        });
+    } else if (normSub.includes("elements") && lvl === 3) {
+        choices.push({
+            id: "elemental-attunement",
+            choiceId: "elemental-attunement",
+            name: "Elemental Attunement",
+            prompt: "Choose an elemental damage type for unarmed strikes.",
+            chooseCount: 1,
+            options: ELEMENTS_ATTUNEMENT_DAMAGE_TYPES
+        });
+    }
+
+    // 6. Ranger Subclasses
+    if (normSub.includes("hunter")) {
+        if (lvl === 3) {
+            choices.push({
+                id: "hunter-prey",
+                choiceId: "hunter-prey",
+                name: "Hunter's Prey",
+                prompt: "Choose your Hunter's Prey feature.",
+                chooseCount: 1,
+                options: HUNTER_PREY_OPTIONS
+            });
+        } else if (lvl === 6) {
+            choices.push({
+                id: "defensive-tactics",
+                choiceId: "defensive-tactics",
+                name: "Defensive Tactics",
+                prompt: "Choose a Defensive Tactics feature.",
+                chooseCount: 1,
+                options: HUNTER_DEFENSIVE_TACTICS
+            });
+        } else if (lvl === 15) {
+            choices.push({
+                id: "superior-hunter-defense",
+                choiceId: "superior-hunter-defense",
+                name: "Superior Hunter's Defense",
+                prompt: "Choose Evasion or Uncanny Dodge.",
+                chooseCount: 1,
+                options: HUNTER_SUPERIOR_DEFENSE_OPTIONS
+            });
+        }
+    } else if (normSub.includes("fey-wanderer") && lvl === 3) {
+        choices.push({
+            id: "otherworldly-glamour",
+            choiceId: "otherworldly-glamour",
+            name: "Otherworldly Glamour",
+            prompt: "Choose 1 skill proficiency (Deception, Performance, or Persuasion).",
+            chooseCount: 1,
+            options: FEY_WANDERER_GLAMOUR_SKILLS
+        });
+    } else if (normSub.includes("beast-master") && lvl === 3) {
+        choices.push({
+            id: "primal-companion",
+            choiceId: "primal-companion",
+            name: "Primal Companion",
+            prompt: "Choose your Primal Companion beast type.",
+            chooseCount: 1,
+            options: PRIMAL_COMPANION_TYPES
+        });
+    }
+
+    // 7. Sorcerer Subclasses
+    if (normSub.includes("draconic") && lvl === 3) {
+        choices.push({
+            id: "draconic-ancestor",
+            choiceId: "draconic-ancestor",
+            name: "Draconic Ancestor",
+            prompt: "Choose your draconic ancestor dragon type.",
+            chooseCount: 1,
+            options: DRACONIC_ANCESTOR_ELEMENTS
+        });
+    } else if (normSub.includes("aberrant") && lvl === 14) {
+        choices.push({
+            id: "revelation-in-flesh",
+            choiceId: "revelation-in-flesh",
+            name: "Revelation in Flesh",
+            prompt: "Choose a Revelation in Flesh transformation.",
+            chooseCount: 1,
+            options: ABERRANT_REVELATION_OPTIONS
+        });
+    }
+
+    // 8. Warlock Subclasses
+    if (normSub.includes("archfey") && lvl === 3) {
+        choices.push({
+            id: "steps-of-the-fey",
+            choiceId: "steps-of-the-fey",
+            name: "Steps of the Fey",
+            prompt: "Choose Taunting Step or Refreshing Step.",
+            chooseCount: 1,
+            options: STEPS_OF_THE_FEY_OPTIONS
+        });
+    } else if (normSub.includes("fiend") && lvl === 10) {
+        choices.push({
+            id: "fiendish-resilience",
+            choiceId: "fiendish-resilience",
+            name: "Fiendish Resilience",
+            prompt: "Choose damage resistance type until next rest.",
+            chooseCount: 1,
+            options: FIENDISH_RESILIENCE_DAMAGE_TYPES
+        });
+    }
+
+    // 9. Wizard Subclasses
+    if (normSub.includes("divin") && lvl === 10) {
+        choices.push({
+            id: "the-third-eye",
+            choiceId: "the-third-eye",
+            name: "The Third Eye",
+            prompt: "Choose a Third Eye sensory benefit.",
+            chooseCount: 1,
+            options: DIVINER_THIRD_EYE_OPTIONS
+        });
+    }
+
+    return choices;
+}
+
+export function buildSubclassProgression(classSlug: string, sub: { id: string; name: string; description: string; features?: Array<{ name: string; level: number; description: string }> }): ProgressionLevel[] {
+    const subSlug = sub.id || slugify(sub.name || "");
+    const subFeatures = Array.isArray(sub.features) ? sub.features : [];
+    const normSub = subSlug.toLowerCase();
+
+    // Distinct levels where this subclass has features, choices, or granted spells
+    const knownCheckLevels = [1, 2, 3, 5, 6, 7, 9, 10, 13, 14, 15, 17, 20];
+    const candidateLevels = new Set<number>([
+        ...subFeatures.map(f => f.level || 3),
+        ...knownCheckLevels.filter(lvl => {
+            const sps = getSubclassGrantedSpells(classSlug, normSub, lvl, sub.name);
+            const chs = getSubclassChoices(normSub, lvl);
+            return sps.length > 0 || chs.length > 0;
+        })
+    ]);
+    if (candidateLevels.size === 0) {
+        candidateLevels.add(3);
+    }
+    const featureLevels = Array.from(candidateLevels).sort((a, b) => a - b);
 
     const levels: ProgressionLevel[] = [];
 
     for (const lvl of featureLevels) {
+        const spellsAtLevel = getSubclassGrantedSpells(classSlug, normSub, lvl, sub.name);
+        const choicesAtLevel = getSubclassChoices(normSub, lvl);
+
         const featsAtLevel = subFeatures.filter(f => (f.level || 3) === lvl).map(f => {
-            const featSlug = f.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            const featSlug = slugify(f.name);
             const modifiers: StatModifier[] = [];
 
             // Add inherent modifiers for concrete subclass features
@@ -1056,109 +2004,47 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 modifiers.push({ target: "vitals.darkvision", type: "bonus", value: 60, description: "Darkvision +60 ft." });
             }
 
-            const grantedSpells: ProgressionGrantedSpell[] = [];
-
-            if (featSlug === "psychic-spells" || featSlug === "expanded-spell-list") {
-                if (lvl === 3) {
-                    grantedSpells.push(
-                        { name: "Dissonant Whispers", level: 1, alwaysPrepared: true, source: sub.name },
-                        { name: "Tasha's Hideous Laughter", level: 1, alwaysPrepared: true, source: sub.name },
-                        { name: "Detect Thoughts", level: 2, alwaysPrepared: true, source: sub.name },
-                        { name: "Phantasmal Force", level: 2, alwaysPrepared: true, source: sub.name }
-                    );
-                } else if (lvl === 6 || lvl === 5) {
-                    grantedSpells.push(
-                        { name: "Clairvoyance", level: 3, alwaysPrepared: true, source: sub.name },
-                        { name: "Sending", level: 3, alwaysPrepared: true, source: sub.name }
-                    );
-                } else if (lvl === 10 || lvl === 7) {
-                    grantedSpells.push(
-                        { name: "Dominate Beast", level: 4, alwaysPrepared: true, source: sub.name },
-                        { name: "Evard's Black Tentacles", level: 4, alwaysPrepared: true, source: sub.name }
-                    );
-                } else if (lvl === 14 || lvl === 9) {
-                    grantedSpells.push(
-                        { name: "Dominate Person", level: 5, alwaysPrepared: true, source: sub.name },
-                        { name: "Telekinesis", level: 5, alwaysPrepared: true, source: sub.name }
-                    );
-                }
-            } else if (featSlug === "beguiling-magic") {
-                grantedSpells.push(
-                    { name: "Charm Person", level: 1, alwaysPrepared: true, source: sub.name, notes: "College of Glamour" },
-                    { name: "Mirror Image", level: 2, alwaysPrepared: true, source: sub.name, notes: "College of Glamour" }
-                );
-            } else if (featSlug === "mantle-of-majesty") {
-                grantedSpells.push(
-                    { name: "Command", level: 1, alwaysPrepared: true, atWill: true, source: sub.name, notes: "Cast as Bonus Action without spell slot" }
-                );
-            }
-
             return {
                 id: `${subSlug}-${lvl}-${featSlug}`,
                 name: f.name,
                 description: f.description,
                 modifiers: modifiers.length > 0 ? modifiers : undefined,
-                grantedSpells: grantedSpells.length > 0 ? grantedSpells : (f as any).grantedSpells,
+                grantedSpells: (f as any).grantedSpells,
                 grantedFeatures: (f as any).grantedFeatures
             };
         });
 
-        const choices: ProgressionChoice[] = [];
-
-        // Check for specific subclass feature choices at this level
-        if (subSlug === "battle-master" && lvl === 3) {
-            choices.push({
-                id: "maneuvers-3",
-                name: "Maneuvers",
-                prompt: "Choose 3 Battle Master Maneuvers.",
-                chooseCount: 3,
-                options: BATTLE_MASTER_MANEUVERS
+        if (featsAtLevel.length === 0 && spellsAtLevel.length > 0) {
+            featsAtLevel.push({
+                id: `${subSlug}-spells-${lvl}`,
+                name: `${sub.name} Spells`,
+                description: `Spells granted by ${sub.name} at level ${lvl}.`,
+                modifiers: undefined,
+                grantedSpells: spellsAtLevel,
+                grantedFeatures: undefined
             });
-            choices.push({
-                id: "student-of-war",
-                name: "Student of War",
-                prompt: "Choose 1 skill proficiency.",
-                chooseCount: 1,
-                options: STUDENT_OF_WAR_SKILLS
-            });
-        } else if (subSlug === "wild-heart" && lvl === 6) {
-            choices.push({
-                id: "aspect-of-the-beast",
-                name: "Aspect of the Beast",
-                prompt: "Choose 1 primal animal aspect.",
-                chooseCount: 1,
-                options: BARBARIAN_ASPECTS
-            });
-        } else if (subSlug === "land" && lvl === 3) {
-            choices.push({
-                id: "land-biome",
-                name: "Land Biome",
-                prompt: "Choose your current land biome affinity.",
-                chooseCount: 1,
-                options: DRUID_LAND_BIOMES
-            });
-        } else if (subSlug === "draconic-sorcery" && lvl === 3) {
-            choices.push({
-                id: "draconic-ancestor",
-                name: "Draconic Ancestor",
-                prompt: "Choose your draconic ancestor dragon type.",
-                chooseCount: 1,
-                options: DRACONIC_ANCESTOR_ELEMENTS
-            });
-        } else if (subSlug === "hunter" && lvl === 3) {
-            choices.push({
-                id: "hunter-prey",
-                name: "Hunter's Prey",
-                prompt: "Choose your Hunter's Prey feature.",
-                chooseCount: 1,
-                options: HUNTER_PREY_OPTIONS
-            });
+        } else if (featsAtLevel.length > 0 && spellsAtLevel.length > 0) {
+            const spellFeat = featsAtLevel.find(f => /spell|domain|oath|patron|expanded/i.test(f.name)) || featsAtLevel[0];
+            spellFeat.grantedSpells = [
+                ...((spellFeat.grantedSpells || []) as ProgressionGrantedSpell[]),
+                ...spellsAtLevel
+            ];
         }
+
+        const levelGrantedSpells = [
+            ...spellsAtLevel,
+            ...featsAtLevel.flatMap(f => (f.grantedSpells || []) as ProgressionGrantedSpell[])
+        ];
+
+        const uniqueSpells = Array.from(
+            new Map(levelGrantedSpells.map(s => [s.spellId || s.id || s.name, s])).values()
+        );
 
         levels.push({
             level: lvl,
             features: featsAtLevel,
-            choices: choices.length > 0 ? choices : undefined
+            choices: choicesAtLevel.length > 0 ? choicesAtLevel : undefined,
+            grantedSpells: uniqueSpells.length > 0 ? uniqueSpells : undefined
         });
     }
 

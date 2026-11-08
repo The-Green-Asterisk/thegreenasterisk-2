@@ -155,6 +155,7 @@ export interface StatModifier {
 
 export interface ProgressionGrantedSpell {
     id?: string;
+    spellId?: string;
     name: string;
     level?: number;                    // 0 for cantrip, 1-9 for leveled spells
     alwaysPrepared?: boolean;          // Always prepared, does not count against prepared spell limits
@@ -222,6 +223,7 @@ export interface ProgressionChoiceOption {
 
 export interface ProgressionChoice {
     id: string;
+    choiceId?: string;
     name: string;
     prompt: string;
     chooseCount: number;

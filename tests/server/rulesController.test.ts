@@ -519,6 +519,44 @@ describe("RulesController", () => {
             expect(subclasses[0].progression).toBeDefined();
             expect(subclasses[0].classSlug).toBeDefined();
         });
+
+        it("provides rich subclass progressions with granted spells and choices", async () => {
+            Object.defineProperty(AppDataSource, "isInitialized", { value: false, configurable: true });
+
+            const subsRes = await RulesController.getSubclasses(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            const subclasses = JSON.parse(subsRes.response);
+
+            // Fiend Patron (Warlock)
+            const fiend = subclasses.find((s: any) => s.id === "fiend" || s.name === "Fiend Patron");
+            expect(fiend).toBeDefined();
+            const fiendLvl3 = fiend.progression.find((p: any) => p.level === 3);
+            expect(fiendLvl3.grantedSpells).toBeDefined();
+            expect(fiendLvl3.grantedSpells.some((sp: any) => sp.spellId === "fireball" || sp.spellId === "burning-hands")).toBe(true);
+            const fiendLvl10 = fiend.progression.find((p: any) => p.level === 10);
+            expect(fiendLvl10.choices).toBeDefined();
+            expect(fiendLvl10.choices[0].choiceId).toBe("fiendish-resilience");
+
+            // Life Domain (Cleric)
+            const life = subclasses.find((s: any) => s.id === "life" || s.name === "Life Domain");
+            expect(life).toBeDefined();
+            const lifeLvl3 = life.progression.find((p: any) => p.level === 3);
+            expect(lifeLvl3.grantedSpells).toBeDefined();
+            expect(lifeLvl3.grantedSpells.some((sp: any) => sp.spellId === "bless" || sp.spellId === "cure-wounds")).toBe(true);
+
+            // Wild Heart (Barbarian)
+            const wildHeart = subclasses.find((s: any) => s.id === "wild-heart" || s.name === "Path of the Wild Heart");
+            expect(wildHeart).toBeDefined();
+            const wildHeartLvl3 = wildHeart.progression.find((p: any) => p.level === 3);
+            expect(wildHeartLvl3.choices).toBeDefined();
+            expect(wildHeartLvl3.choices[0].choiceId).toBe("wild-heart-rage");
+
+            // Circle of the Stars (Druid)
+            const stars = subclasses.find((s: any) => s.id === "stars" || s.name === "Circle of the Stars");
+            expect(stars).toBeDefined();
+            const starsLvl3 = stars.progression.find((p: any) => p.level === 3);
+            expect(starsLvl3.grantedSpells.some((sp: any) => sp.spellId === "guiding-bolt")).toBe(true);
+            expect(starsLvl3.choices.some((c: any) => c.id === "starry-form" || c.choiceId === "starry-form")).toBe(true);
+        });
     });
 
     describe("multiclass feature separation and cross-class contamination prevention", () => {
