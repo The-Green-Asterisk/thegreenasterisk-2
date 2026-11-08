@@ -302,13 +302,10 @@ export class CharacterCreatorController {
         const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
         if (!panel) return;
 
-        const panelRect = panel.getBoundingClientRect();
-        const viewportHeight = typeof window !== "undefined" ? (window.innerHeight || document.documentElement.clientHeight || 800) : 800;
-
-        if (bottomBar) {
-            // Locked to bottom of character-step-panel, or bottom of viewport, whichever is higher and in view
-            const bottomOffset = panelRect.bottom < viewportHeight ? (viewportHeight - panelRect.bottom) : 0;
-            bottomBar.style.bottom = `${bottomOffset}px`;
+        // Position of the bottom bar is handled purely by CSS position: sticky to stick to the viewport
+        // and stop at the bottom of the multiclass panel without scroll delay or animation lag.
+        if (bottomBar && bottomBar.style.bottom) {
+            bottomBar.style.bottom = "";
         }
 
         if (topBar) {
