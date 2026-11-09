@@ -321,9 +321,20 @@ export default class RulesController extends BaseController {
                         if (!cs) continue;
                         if (findCanonicalSeedSubclass(rc.slug, cs.id || cs.slug, cs.name)) continue;
                         const csKey = normalizeSubclassKey(cs.id || cs.slug || cs.name);
+                        const otherClass = SEED_CLASSES.find((sc) =>
+                            sc.id !== rc.slug &&
+                            (sc.subclasses || []).some((ss: any) =>
+                                ss.id === cs.id ||
+                                ss.id === cs.slug ||
+                                normalizeSubclassKey(ss.id || ss.name) === csKey
+                            )
+                        );
+                        if (otherClass) continue;
                         const csNameLower = String(cs.name || "").trim().toLowerCase();
                         if (!mergedSubs.some((ms) => ms.id === cs.id || String(ms.name || "").toLowerCase() === csNameLower || normalizeSubclassKey(ms.id || ms.name) === csKey)) {
-                            if (cs.isCustom || cs.classSlug === rc.slug || cs.classId === rc.id) {
+                            const matchesSlug = Boolean(cs.classSlug && rc.slug && cs.classSlug === rc.slug);
+                            const matchesId = Boolean(cs.classId && rc.id && cs.classId === rc.id);
+                            if (matchesSlug || matchesId || (cs.isCustom && !otherClass)) {
                                 mergedSubs.push(cs);
                             }
                         }
@@ -582,6 +593,15 @@ export default class RulesController extends BaseController {
                             if (sub.classSlug && sub.classSlug !== rc.slug) {
                                 return false;
                             }
+                            const otherClass = SEED_CLASSES.find((sc) =>
+                                sc.id !== rc.slug &&
+                                (sc.subclasses || []).some((ss: any) =>
+                                    ss.id === sub.id ||
+                                    ss.id === sub.slug ||
+                                    normalizeSubclassKey(ss.id || ss.name) === normalizeSubclassKey(sub.id || sub.slug || sub.name)
+                                )
+                            );
+                            if (otherClass) return false;
                             return true;
                         })
                         .map((sub: any) => {
@@ -658,7 +678,10 @@ export default class RulesController extends BaseController {
                 }
 
                 // If loadedSubclasses has entries for this class, merge in any custom/new subclasses
-                for (const lsub of loadedSubclasses.filter((ls) => ls.classSlug === rc.slug || ls.classId === rc.id)) {
+                for (const lsub of loadedSubclasses.filter((ls) =>
+                    Boolean(ls.classSlug && rc.slug && ls.classSlug === rc.slug) ||
+                    Boolean(ls.classId && rc.id && ls.classId === rc.id)
+                )) {
                     const lsubKey = normalizeSubclassKey(lsub.slug || lsub.name);
                     if (!seenSubKeys.has(lsubKey) && !subclasses.some((s: any) => s.id === lsub.slug || s.slug === lsub.slug || normalizeSubclassKey(s.id || s.name) === lsubKey)) {
                         seenSubKeys.add(lsubKey);

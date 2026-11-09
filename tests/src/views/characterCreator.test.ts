@@ -2422,6 +2422,36 @@ describe("CharacterCreatorController", () => {
             expect(gooCards[0].classList.contains("selected")).toBe(true);
         });
 
+        it("only displays subclasses belonging to the selected class and filters out subclasses from other classes", () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            const root = document.getElementById("creator-step-panels")!;
+
+            const fighterCls = ctrl.classes.find((c) => c.id === "fighter")!;
+            fighterCls.subclasses = [
+                ...fighterCls.subclasses,
+                { id: "berserker", name: "Path of the Berserker", classSlug: "barbarian", features: [] } as any,
+                { id: "life", name: "Life Domain", classSlug: "cleric", features: [] } as any,
+                { id: "abjurer", name: "School of Abjuration", classSlug: "wizard", features: [] } as any
+            ];
+
+            ctrl.state.classId = "fighter";
+            ctrl.state.level = 3;
+            ctrl.state.subclassId = "champion";
+            ctrl.state.classes = [{ classId: "fighter", level: 3, subclassId: "champion" }];
+            ctrl.renderStep(3);
+
+            const subclassCards = Array.from(root.querySelectorAll(".subclass-card"));
+            expect(subclassCards).toHaveLength(4);
+            const cardIds = subclassCards.map((c) => c.getAttribute("data-subclass-id"));
+            expect(cardIds).toContain("champion");
+            expect(cardIds).toContain("battle-master");
+            expect(cardIds).toContain("eldritch-knight");
+            expect(cardIds).toContain("psi-warrior");
+            expect(cardIds).not.toContain("berserker");
+            expect(cardIds).not.toContain("life");
+            expect(cardIds).not.toContain("abjurer");
+        });
+
         it("renders a referral note in Step 3 choice boxes and a dedicated progression spell selection section in Step 8 (e.g., Pact of the Tome, Thaumaturge, Blessed Warrior, Magical Secrets, Mystic Arcanum)", () => {
             document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
             const root = document.getElementById("creator-step-panels")!;

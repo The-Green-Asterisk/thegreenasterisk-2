@@ -191,7 +191,9 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                                 : [...(fallbackCls?.subclasses || [])];
                         if (Array.isArray(rules.subclasses)) {
                             for (const gs of rules.subclasses) {
-                                if (gs.classSlug === classSlug || gs.classId === rc.id || gs.classId === rc.slug) {
+                                const matchesSlug = Boolean(gs.classSlug && classSlug && gs.classSlug.toLowerCase() === classSlug.toLowerCase());
+                                const matchesId = Boolean(gs.classId && rc.id && String(gs.classId) === String(rc.id));
+                                if (matchesSlug || matchesId) {
                                     rawSubs.push(gs);
                                 }
                             }
@@ -278,14 +280,34 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             (classSlug && c.id.toLowerCase() === classSlug) ||
             c.name.toLowerCase() === String(classId).toLowerCase()
         ) || (typeof classId === "string" ? CLASSES_2024.find((c) => c.id === classId) : undefined);
+        const resolvedClassId = fallbackCls?.id || classSlug;
         const byKey = new Map<string, any>();
 
         for (const sub of rawSubs || []) {
             if (!sub) continue;
+            // 1. If the subclass specifies a classSlug that belongs to another class, reject it
+            if (sub.classSlug && resolvedClassId && sub.classSlug.toLowerCase() !== resolvedClassId.toLowerCase()) {
+                continue;
+            }
+
             const rawId = (typeof sub.slug === "string" && sub.slug) || (typeof sub.id === "string" && isNaN(Number(sub.id)) ? sub.id : "");
             const rawName = sub.name || "";
             const normKey = CharacterCreatorController.normalizeSubclassKey(rawName || rawId || (sub.slug || sub.id || ""));
             if (!normKey) continue;
+
+            // 2. Reject if this subclass canonically belongs to another D&D 2024 class
+            const canonicalOwnerClass = CLASSES_2024.find((c) =>
+                c.subclasses.some((s) =>
+                    (rawId && s.id === rawId) ||
+                    (rawName && s.name.toLowerCase() === rawName.toLowerCase()) ||
+                    CharacterCreatorController.normalizeSubclassKey(s.id) === normKey ||
+                    CharacterCreatorController.normalizeSubclassKey(s.name) === normKey
+                )
+            );
+
+            if (canonicalOwnerClass && resolvedClassId && canonicalOwnerClass.id.toLowerCase() !== resolvedClassId.toLowerCase()) {
+                continue;
+            }
 
             const fallbackSub = fallbackCls?.subclasses?.find((s) =>
                 (rawId && s.id === rawId) ||
@@ -293,6 +315,11 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                 CharacterCreatorController.normalizeSubclassKey(s.id) === normKey ||
                 CharacterCreatorController.normalizeSubclassKey(s.name) === normKey
             );
+
+            // 3. For canonical classes, reject anything not in fallbackSub unless explicitly tagged as a custom subclass for this class
+            if (fallbackCls && !fallbackSub && (!sub.classSlug || sub.classSlug.toLowerCase() !== resolvedClassId.toLowerCase()) && !sub.isCustom) {
+                continue;
+            }
 
             const canonicalId = fallbackSub ? fallbackSub.id : (rawId || normKey);
             const canonicalName = fallbackSub ? fallbackSub.name : (rawName || rawId || normKey);
@@ -302,6 +329,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                 ...sub,
                 id: canonicalId,
                 slug: canonicalId,
+                classSlug: resolvedClassId,
                 name: canonicalName,
                 description: sub.description || fallbackSub?.description || "",
                 features: Array.isArray(sub.features) && sub.features.length > 0
