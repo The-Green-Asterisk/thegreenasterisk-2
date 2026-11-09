@@ -356,6 +356,51 @@ describe('Frontend View Templates', () => {
         expect(html).toContain('120 ft.');
     });
 
+    it('labels Pact of the Tome spells with Warlock, not the first listed class, on a Bard/Warlock', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+
+        const payload = {
+            id: 138310322,
+            name: 'Darvell (2024)',
+            classes: [
+                {
+                    id: 1,
+                    level: 6,
+                    definition: { id: 10, name: 'Bard', hitDice: 8, canCastSpells: true, spellCastingAbilityId: 6 },
+                    classFeatures: [{ definition: { id: 100, name: 'Bardic Inspiration' } }]
+                },
+                {
+                    id: 2,
+                    level: 6,
+                    definition: { id: 20, name: 'Warlock', hitDice: 8, canCastSpells: true, spellCastingAbilityId: 6 },
+                    classFeatures: [{ definition: { id: 200, name: 'Eldritch Invocations' } }]
+                }
+            ],
+            race: { fullName: 'Tiefling', racialTraits: [] },
+            baseHitPoints: 75,
+            stats: [
+                { id: 1, value: 8 },
+                { id: 2, value: 15 },
+                { id: 3, value: 12 },
+                { id: 4, value: 10 },
+                { id: 5, value: 13 },
+                { id: 6, value: 19 }
+            ],
+            modifiers: {},
+            options: {
+                class: [{ componentId: 200, definition: { id: 300, name: 'Pact of the Tome' } }]
+            },
+            inventory: [],
+            spells: {
+                class: [{ componentId: 300, definition: { name: 'Acid Splash', level: 0, school: 'Evocation' } }]
+            }
+        };
+
+        const char = parseDndBeyondCharacter(payload);
+        const acidSplash = char.spells.find(s => s.name === 'Acid Splash');
+        expect(acidSplash?.source).toBe('Warlock / Pact of the Tome');
+    });
+
     it('calculates Monk Unarmored Defense, Unarmored Movement, Martial Arts, Diamond Soul, and Bracers of Defense', async () => {
         const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
 

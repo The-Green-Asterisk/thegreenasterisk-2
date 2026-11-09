@@ -138,6 +138,8 @@ export function parseDndBeyondCharacter(
     // Build map of componentId -> class level and class source label for class-specific scaling and feature isolation
     const componentClassLevelMap = new Map<number, number>();
     const componentClassSourceMap = new Map<number, string>();
+    // componentId -> base class name (never the subclass label), so class options can name the class that granted them
+    const componentClassNameMap = new Map<number, string>();
     (raw.classes || []).forEach((c: any) => {
         const cLvl = Number(c.level) || 1;
         const cName = c.definition?.name || "Class";
@@ -147,21 +149,25 @@ export function parseDndBeyondCharacter(
         if (c.definition?.id) {
             componentClassLevelMap.set(Number(c.definition.id), cLvl);
             componentClassSourceMap.set(Number(c.definition.id), cName);
+            componentClassNameMap.set(Number(c.definition.id), cName);
         }
         if (c.subclassDefinition?.id) {
             componentClassLevelMap.set(Number(c.subclassDefinition.id), cLvl);
             componentClassSourceMap.set(Number(c.subclassDefinition.id), subLabel);
+            componentClassNameMap.set(Number(c.subclassDefinition.id), cName);
         }
         (c.definition?.classFeatures || []).forEach((cf: any) => {
             if (cf?.id) {
                 componentClassLevelMap.set(Number(cf.id), cLvl);
                 componentClassSourceMap.set(Number(cf.id), cName);
+                componentClassNameMap.set(Number(cf.id), cName);
             }
         });
         (c.subclassDefinition?.classFeatures || []).forEach((cf: any) => {
             if (cf?.id) {
                 componentClassLevelMap.set(Number(cf.id), cLvl);
                 componentClassSourceMap.set(Number(cf.id), subLabel);
+                componentClassNameMap.set(Number(cf.id), cName);
             }
         });
         (c.classFeatures || []).forEach((cf: any) => {
@@ -171,6 +177,7 @@ export function parseDndBeyondCharacter(
                 const isSub = (cf?.definition?.classId && cf.definition.classId === c.subclassDefinition?.id) ||
                     (cf?.subclassId && cf.subclassId === c.subclassDefinition?.id);
                 componentClassSourceMap.set(Number(id), isSub ? subLabel : cName);
+                componentClassNameMap.set(Number(id), cName);
             }
         });
     });
@@ -178,8 +185,13 @@ export function parseDndBeyondCharacter(
     (raw.options?.class || []).forEach((opt: any) => {
         const optName = opt.definition?.name || opt.name || "";
         const optId = opt.definition?.id || opt.id || opt.componentId;
-        const cClass = (raw.classes || []).find((c: any) => c.id === opt.characterClassId) || raw.classes?.[0];
-        const cName = cClass?.definition?.name || "Class";
+        // D&D Beyond class options carry the granting feature's id in componentId, not a class id. Falling back to
+        // the first class mislabeled a Bard/Warlock's Pact of the Tome spells as "Bard / Pact of the Tome".
+        const cClass = (raw.classes || []).find((c: any) => opt.characterClassId && c.id === opt.characterClassId);
+        const cName = cClass?.definition?.name
+            || (opt.componentId ? componentClassNameMap.get(Number(opt.componentId)) : undefined)
+            || ((raw.classes || []).length === 1 ? raw.classes[0].definition?.name : undefined)
+            || "Class";
         if (optId && optName) {
             componentClassSourceMap.set(Number(optId), `${cName} / ${optName}`);
         }
