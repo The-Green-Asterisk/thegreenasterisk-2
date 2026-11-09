@@ -170,6 +170,9 @@ export interface CharacterData {
     level: number;
     classes: Array<{ name: string; level: number; subclass?: string }>;
     race: string;
+    species?: string;
+    lineage?: string;
+    subrace?: string;
     background: string;
     alignment: string;
     avatarUrl: string;
@@ -247,6 +250,8 @@ export const darvellData: CharacterData = {
         { name: "Warlock", level: 6, subclass: "The Great Old One" }
     ],
     race: "Tiefling",
+    species: "Tiefling",
+    lineage: "Infernal",
     background: "Entertainer",
     alignment: "Chaotic Good",
     avatarUrl: "https://www.dndbeyond.com/avatars/10/92/636339382508535391.png?width=150&height=150&fit=crop&quality=95&auto=webp",

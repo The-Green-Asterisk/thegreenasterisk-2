@@ -2292,6 +2292,56 @@ export function parseDndBeyondCharacter(
     }
     const activeConditions = Array.from(activeConditionsSet);
 
+    // Extract Species and Lineage / Heritage
+    const rawRaceFullName = String(raw.race?.fullName || "").trim();
+    const rawRaceBaseName = String(raw.race?.baseName || raw.race?.baseRaceName || raw.species || "").trim();
+    let detectedSpecies = rawRaceBaseName || rawRaceFullName || "Custom Species";
+    let detectedLineage = String(raw.race?.subRaceShortName || raw.race?.subRaceName || raw.lineage || "").trim();
+
+    if (!detectedLineage && Array.isArray(raw.options?.race)) {
+        for (const opt of raw.options.race) {
+            const optName = String(opt?.definition?.name || opt?.label || opt?.name || "").trim();
+            if (optName) {
+                detectedLineage = optName;
+                break;
+            }
+        }
+    }
+
+    if (!detectedLineage && Array.isArray(raw.race?.racialTraits)) {
+        for (const rt of raw.race.racialTraits) {
+            const tName = String(rt?.definition?.name || rt?.name || "").toLowerCase();
+            if (tName.includes("infernal")) { detectedLineage = "Infernal"; break; }
+            if (tName.includes("abyssal")) { detectedLineage = "Abyssal"; break; }
+            if (tName.includes("chthonic")) { detectedLineage = "Chthonic"; break; }
+            if (tName.includes("wood elf")) { detectedLineage = "Wood Elf"; break; }
+            if (tName.includes("high elf")) { detectedLineage = "High Elf"; break; }
+            if (tName.includes("drow")) { detectedLineage = "Drow"; break; }
+        }
+    }
+
+    const speciesLower = detectedSpecies.toLowerCase();
+    if (speciesLower.includes("tiefling")) {
+        detectedSpecies = "Tiefling";
+        if (!detectedLineage) {
+            if (damageResistances.some(r => String(r).toLowerCase() === "fire")) {
+                detectedLineage = "Infernal";
+            } else if (damageResistances.some(r => String(r).toLowerCase() === "poison")) {
+                detectedLineage = "Abyssal";
+            } else if (damageResistances.some(r => String(r).toLowerCase() === "necrotic")) {
+                detectedLineage = "Chthonic";
+            }
+        }
+    } else if (speciesLower.includes("elf")) {
+        detectedSpecies = "Elf";
+    } else if (speciesLower.includes("dragonborn")) {
+        detectedSpecies = "Dragonborn";
+    } else if (speciesLower.includes("goliath")) {
+        detectedSpecies = "Goliath";
+    } else if (speciesLower.includes("gnome")) {
+        detectedSpecies = "Gnome";
+    }
+
     const result: CharacterData = {
         id: characterId,
         name: raw.name || "Adventurer",
@@ -2299,6 +2349,8 @@ export function parseDndBeyondCharacter(
         level: totalLevel,
         classes,
         race: raw.race?.fullName || "Custom Species",
+        species: detectedSpecies,
+        lineage: detectedLineage || undefined,
         background: raw.background?.definition?.name || "Custom Background",
         alignment: ALIGNMENT_NAMES[raw.alignmentId] || "Neutral",
         avatarUrl,

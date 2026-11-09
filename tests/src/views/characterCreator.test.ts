@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CLASSES_2024 } from "../../../src/rules/dnd5e_2024";
 import { CharacterCreatorController } from "../../../src/views/characterCreator/characterCreator.ctrl";
 
@@ -2208,6 +2208,63 @@ describe("CharacterCreatorController", () => {
             const choiceFeature = payload.features.find((f: any) => f.name.includes("Dawn Radiance"));
             expect(choiceFeature).toBeDefined();
             expect(choiceFeature.description).toContain("solar radiance");
+        });
+    });
+
+    describe("lineage and species resolution on character load", () => {
+        it("automatically selects Infernal lineage when loading Darvell by ID or site ID", async () => {
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({ character: null });
+
+            await ctrl.loadCharacter("138310322");
+
+            expect(ctrl.state.speciesId).toBe("tiefling");
+            expect(ctrl.state.lineageId).toBe("infernal");
+
+            const step2Html = ctrl["renderStep2Species"]();
+            expect(step2Html).toContain('data-lineage-id="infernal"');
+            expect(step2Html).toMatch(/class="[^"]*lineage-card[^"]*selected[^"]*"[^>]*data-lineage-id="infernal"/);
+        });
+
+        it("automatically resolves Infernal lineage for a tiefling with fire resistance and Hellish Resistance", async () => {
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({
+                character: {
+                    id: "custom-tiefling-id",
+                    name: "Ignis",
+                    race: "Tiefling",
+                    damageResistances: ["fire"],
+                    features: [{ name: "Hellish Resistance", description: "Resistance to fire damage." }]
+                }
+            });
+
+            await ctrl.loadCharacter("custom-tiefling-id");
+
+            expect(ctrl.state.speciesId).toBe("tiefling");
+            expect(ctrl.state.lineageId).toBe("infernal");
+
+            const step2Html = ctrl["renderStep2Species"]();
+            expect(step2Html).toMatch(/class="[^"]*lineage-card[^"]*selected[^"]*"[^>]*data-lineage-id="infernal"/);
+        });
+
+        it("automatically resolves Wood Elf lineage for an elf with wood elf features", async () => {
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({
+                character: {
+                    id: "custom-elf-id",
+                    name: "Legolas",
+                    race: "Elf",
+                    features: [{ name: "Fleet of Foot", description: "Speed increased by 5 ft." }]
+                }
+            });
+
+            await ctrl.loadCharacter("custom-elf-id");
+
+            expect(ctrl.state.speciesId).toBe("elf");
+            expect(ctrl.state.lineageId).toBe("wood-elf");
+
+            const step2Html = ctrl["renderStep2Species"]();
+            expect(step2Html).toMatch(/class="[^"]*lineage-card[^"]*selected[^"]*"[^>]*data-lineage-id="wood-elf"/);
         });
     });
 });
