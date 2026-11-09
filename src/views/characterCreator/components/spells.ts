@@ -59,6 +59,13 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
         ? leveledByClass
         : leveledByClass.filter((s) => s.level === ctx.activeSpellLevelFilter);
 
+    const viaPill = (name: string): string => {
+        const feature = bucket?.via[name];
+        return feature
+            ? `<span class="stat-req-pill met" title="Not on the ${bucket?.baseList} spell list; available through ${feature}"><i class="fa-solid fa-key" aria-hidden="true"></i> ${feature}</span>`
+            : "";
+    };
+
     const countBadge = (chosen: number, max: number, over: boolean, unit: string, icon: string) => `
         <span class="spell-count-badge ${over ? "over-limit" : chosen === max ? "maxed" : "info"}">
             <i class="fa-solid ${over ? "fa-triangle-exclamation" : chosen === max ? "fa-check" : icon}" aria-hidden="true"></i>
@@ -203,6 +210,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                         <div class="item-row-title">
                                             <span>${sp.name} (${sp.school})</span>
                                             ${isGranted ? grantedPill : ""}
+                                            ${viaPill(sp.name)}
                                             ${elsewhere.map((c) => `<span class="stat-req-pill">Also known as ${c}</span>`).join(" ")}
                                         </div>
                                         <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
@@ -274,6 +282,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                             ${isGranted ? grantedPill : ""}
                                             <span class="stat-req-pill met">Lvl ${sp.level}</span>
                                             <span class="stat-req-pill">${sp.school}</span>
+                                            ${viaPill(sp.name)}
                                             ${elsewhere.map((c) => `<span class="stat-req-pill">Also prepared as ${c}</span>`).join(" ")}
                                             ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll" aria-hidden="true"></i> Ritual</span>' : ""}
                                             ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain" aria-hidden="true"></i> Conc.</span>' : ""}

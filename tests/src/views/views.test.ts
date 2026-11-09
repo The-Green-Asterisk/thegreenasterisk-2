@@ -873,6 +873,13 @@ describe('Frontend View Templates', () => {
         ]);
     });
 
+    it('shows the feature that put a spell on a class on its spell card', async () => {
+        const { renderSpellCard } = await import('../../../src/views/characterSheet/components/spells');
+        const base = { id: 'g', name: 'Guidance', level: 0, school: 'Divination', source: 'Bard', castingTime: '', range: '', duration: '', components: '', concentration: false, ritual: false, description: '' };
+        expect(renderSpellCard({ ...base, viaFeature: 'Magical Secrets' })).toContain('Magical Secrets');
+        expect(renderSpellCard(base)).not.toContain('Magical Secrets');
+    });
+
     it('does not give non-casters a cantrip allotment', async () => {
         const { getCharacterSpellLevelLimits } = await import('../../../src/views/characterSheet/components/spells');
         const limits = getCharacterSpellLevelLimits({

@@ -306,6 +306,7 @@ export function renderSpellCard(spell: SpellDefinition): string {
                 </div>
                 <div class="spell-badges">
                     <span class="badge badge-source">${spell.source}</span>
+                    ${spell.viaFeature ? `<span class="badge badge-source" title="Not on the ${spell.source} spell list; available through ${spell.viaFeature}">${spell.viaFeature}</span>` : ''}
                     ${concBadge}
                     ${ritBadge}
                 </div>

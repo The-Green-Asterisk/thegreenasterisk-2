@@ -167,7 +167,8 @@ export const CLASSES_2024: ClassDefinition[] = [
                 {
                     level: 10,
                     feature: "Magical Secrets",
-                    classes: ["Cleric", "Druid", "Wizard"]
+                    classes: ["Cleric", "Druid", "Wizard"],
+                    allowCantrips: true
                 }
             ]
         },

@@ -79,6 +79,8 @@ export interface ClassSubclassDefinition {
     }>;
     classSlug?: string;
     progression?: ProgressionLevel[];
+    /** Other classes' spell lists this subclass can prepare from, at or above a class level (like a class's own). */
+    expandedSpellLists?: ExpandedSpellListDefinition[];
     spellcastingOverride?: {
         ability: AbilityName;
         type: 'full' | 'half' | 'third' | 'pact';

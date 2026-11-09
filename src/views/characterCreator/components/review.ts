@@ -177,8 +177,9 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                         return buckets.map((b) => {
                             const sel = ctx.state.classSpellSelections?.[b.key] || { cantrips: [], prepared: [] };
                             const prefix = buckets.length > 1 ? `${b.label} ` : "";
-                            return `<div class="review-row"><span class="label">${prefix}Cantrips (${sel.cantrips.length}/${b.maxCantrips}):</span><strong>${sel.cantrips.join(", ") || "None"}</strong></div>
-                    <div class="review-row"><span class="label">${prefix}Prepared Spells (${sel.prepared.length}/${b.maxPrepared}):</span><strong>${sel.prepared.map(withLevel).join(", ") || "None"}</strong></div>`;
+                            const note = (name: string) => (b.via[name] ? ` [${b.via[name]}]` : "");
+                            return `<div class="review-row"><span class="label">${prefix}Cantrips (${sel.cantrips.length}/${b.maxCantrips}):</span><strong>${sel.cantrips.map((n) => n + note(n)).join(", ") || "None"}</strong></div>
+                    <div class="review-row"><span class="label">${prefix}Prepared Spells (${sel.prepared.length}/${b.maxPrepared}):</span><strong>${sel.prepared.map((n) => withLevel(n) + note(n)).join(", ") || "None"}</strong></div>`;
                         }).join("");
                     })()}
                     ${ctx.getFeatureSpellChoiceSections().map((sec) => {

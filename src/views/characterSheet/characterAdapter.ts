@@ -9,6 +9,7 @@ import {
     SpellDefinition,
     WeaponItem
 } from "./characterData";
+import { CLASSES_2024 } from "../../rules/dnd5e_2024/classes";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
@@ -1413,7 +1414,20 @@ export function parseDndBeyondCharacter(
         raw.classSpells.forEach((cs: any) => {
             const classObj = raw.classes?.find((c: any) => c.id === cs.characterClassId);
             const className = classObj?.definition?.name || "Class";
-            (cs.spells || []).forEach((s: any) => addSpell(s, className, true));
+            // spellListId is set when D&D Beyond added the spell from another class's list
+            const classLevel = Number(classObj?.level) || 1;
+            const clsRule = CLASSES_2024.find(cd => cd.name === className);
+            const subName = String(classObj?.subclassDefinition?.name || "").toLowerCase();
+            const subRule = clsRule?.subclasses.find(sc => subName && (sc.name.toLowerCase() === subName || subName.includes(sc.name.toLowerCase())));
+            const expandedFeature = [...(clsRule?.spellcasting?.expandedSpellLists || []), ...(subRule?.expandedSpellLists || [])]
+                .find(exp => classLevel >= exp.level)?.feature;
+            (cs.spells || []).forEach((s: any) => {
+                addSpell(s, className, true);
+                const added = spellsMap.get(String(s.definition?.name || "").toLowerCase());
+                if (added && s.spellListId !== null && s.spellListId !== undefined) {
+                    added.viaFeature = expandedFeature || "Another class's list";
+                }
+            });
         });
     }
 

@@ -615,7 +615,8 @@ export const SEED_CLASSES = [
                 {
                     "level": 10,
                     "feature": "Magical Secrets",
-                    "classes": ["Cleric", "Druid", "Wizard"]
+                    "classes": ["Cleric", "Druid", "Wizard"],
+                    "allowCantrips": true
                 }
             ]
         },

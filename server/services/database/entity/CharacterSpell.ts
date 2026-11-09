@@ -29,6 +29,9 @@ export class CharacterSpell {
     @Column({ type: "boolean", default: false })
     alwaysPrepared!: boolean;
 
+    @Column({ type: "varchar", length: 100, nullable: true })
+    viaFeature?: string | null; // feature that put the spell on a class it isn't normally on, e.g. "Magical Secrets"
+
     @Column({ type: "varchar", length: 255, default: "1 Action" })
     castingTime!: string;
 

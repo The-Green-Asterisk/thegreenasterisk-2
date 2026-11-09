@@ -4,6 +4,7 @@ import AppDataSource from "../services/database";
 import { Spell } from "../services/database/entity/Spell";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
+import { flattenDndBeyondSpellDefinition, mergeSpellClasses } from "../services/dndBeyondSpell";
 import BaseController from "./baseController";
 
 function slugify(text: string): string {
@@ -13,6 +14,21 @@ function slugify(text: string): string {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
 }
+
+const BROKEN_FIELD = "[object Object]";
+
+// D&D Beyond's 2024 class ids (game-data spell lists); classes without spellcasting are left out
+const DDB_2024_CLASS_IDS: Record<string, number> = {
+    Bard: 2190876,
+    Cleric: 2190877,
+    Druid: 2190878,
+    Paladin: 2190881,
+    Ranger: 2190882,
+    Sorcerer: 2190884,
+    Warlock: 2190885,
+    Wizard: 2190886
+};
+const CLASS_SPELL_LIST_TTL_SECONDS = 24 * 60 * 60;
 
 function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
@@ -125,11 +141,21 @@ export default class SpellController extends BaseController {
                             continue;
                         }
 
-                        if (classesVal && !existing.classes) {
-                            existing.classes = classesVal;
+                        const beforeClasses = existing.classes;
+                        let addClasses: string[] = [];
+                        try {
+                            addClasses = classesVal ? JSON.parse(classesVal) : [];
+                        } catch {
+                            addClasses = String(classesVal).split(",").map((c) => c.trim()).filter(Boolean);
                         }
+                        existing.classes = mergeSpellClasses(existing.classes, addClasses, rawSpell.offListClass) ?? undefined;
+                        const classesChanged = existing.classes !== beforeClasses;
 
-                        if (existingIsLegacy || !existing.description || existing.description === "<p>No description provided.</p>") {
+                        // Older pulls stored D&D Beyond's range/duration objects as "[object Object]"
+                        const hasBrokenFields = [existing.range, existing.duration, existing.castingTime, existing.components]
+                            .some((v) => String(v || "").includes(BROKEN_FIELD));
+
+                        if (existingIsLegacy || hasBrokenFields || !existing.description || existing.description === "<p>No description provided.</p>") {
                             // Prefer the definition from the character pull over free online sources, or upgrade legacy to 2024
                             existing.name = name;
                             existing.level = Number(rawSpell.level) ?? existing.level;
@@ -142,7 +168,6 @@ export default class SpellController extends BaseController {
                             existing.concentration = !!rawSpell.concentration;
                             existing.ritual = !!rawSpell.ritual;
                             existing.description = finalDescription;
-                            if (classesVal) existing.classes = classesVal;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
 
@@ -150,7 +175,7 @@ export default class SpellController extends BaseController {
                             cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                             cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                             savedCount++;
-                        } else if (classesVal && !existing.classes) {
+                        } else if (classesChanged) {
                             await spellRepo.save(existing);
                         }
                     }
@@ -216,9 +241,16 @@ export default class SpellController extends BaseController {
                 const className = classObj?.definition?.name || "Class";
                 for (const s of (cs.spells || [])) {
                     if (s.definition) {
+                        // Where a spell sits on a character sheet isn't proof of its class lists: subclass and feature
+                        // spells (e.g. a patron's Telekinesis) show up under the class too. Class lists come from
+                        // D&D Beyond's per-class spell lists instead (syncClassSpellListsFromDndBeyond). The one thing
+                        // a pull does prove: spellListId is set when the spell was taken from another class's list
+                        // (Magical Secrets, "add from any list"), so it is not on this class's list.
+                        const offList = s.spellListId !== null && s.spellListId !== undefined;
                         spellsToUpsert.push({
                             ...s.definition,
-                            classes: [className],
+                            ...flattenDndBeyondSpellDefinition(s.definition),
+                            offListClass: offList ? className : undefined,
                             source: className
                         });
                     }
@@ -234,6 +266,7 @@ export default class SpellController extends BaseController {
                         if (s.definition) {
                             spellsToUpsert.push({
                                 ...s.definition,
+                                ...flattenDndBeyondSpellDefinition(s.definition),
                                 source: key
                             });
                         }
@@ -242,8 +275,56 @@ export default class SpellController extends BaseController {
             }
         }
 
+        // Fill in class spell lists in the background; never holds up the character load
+        const pulledClasses = classes
+            .map((c: any) => ({ id: Number(c?.definition?.id), name: String(c?.definition?.name || "") }))
+            .filter((c: { id: number; name: string }) => c.id > 0 && c.name);
+        void this.syncClassSpellListsFromDndBeyond(pulledClasses).catch((err) => {
+            console.warn("Could not sync class spell lists from D&D Beyond:", err);
+        });
+
         if (spellsToUpsert.length === 0) return 0;
         return this.upsertSpellsFromCharacter(spellsToUpsert);
+    }
+
+    /**
+     * Adds each class to the lists of the spells D&D Beyond shows on that class's spell list, creating any spell the
+     * database doesn't have yet. Only ever adds: logged out, D&D Beyond returns partial lists, so a spell missing from
+     * one proves nothing. Each class is fetched at most once a day.
+     */
+    public static async syncClassSpellListsFromDndBeyond(extraClasses: Array<{ id: number; name: string }> = []): Promise<number> {
+        if (!AppDataSource.isInitialized) return 0;
+        const targets = new Map<number, string>();
+        for (const [name, id] of Object.entries(DDB_2024_CLASS_IDS)) targets.set(id, name);
+        for (const c of extraClasses) if (!targets.has(c.id)) targets.set(c.id, c.name);
+
+        let saved = 0;
+        for (const [classId, className] of targets) {
+            const cacheKey = `ddb_class_spell_list_${classId}`;
+            if (cache.get(cacheKey)) continue;
+            cache.set(cacheKey, true, CLASS_SPELL_LIST_TTL_SECONDS);
+            try {
+                const res = await fetch(
+                    `https://character-service.dndbeyond.com/character/v5/game-data/spells?classId=${classId}&classLevel=20&sharingSetting=2`,
+                    { headers: { "User-Agent": "TheGreenAsterisk" }, signal: AbortSignal.timeout(15000) }
+                );
+                if (!res.ok) continue;
+                const body: any = await res.json();
+                const spells = (Array.isArray(body?.data) ? body.data : [])
+                    .map((s: any) => s?.definition)
+                    .filter((def: any) => def?.name && !def.isLegacy)
+                    .map((def: any) => ({
+                        ...def,
+                        ...flattenDndBeyondSpellDefinition(def),
+                        classes: [className],
+                        source: "D&D Beyond"
+                    }));
+                saved += await this.upsertSpellsFromCharacter(spells);
+            } catch (err) {
+                console.warn(`Could not sync the ${className} spell list from D&D Beyond:`, err);
+            }
+        }
+        return saved;
     }
 
     public static async getSpells(_req: http.IncomingMessage, _res: http.ServerResponse) {

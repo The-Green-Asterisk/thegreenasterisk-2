@@ -120,6 +120,29 @@ function applyProgressionChoiceOption(characterPayload: any, opt: any, level: nu
     }
 }
 
+/**
+ * Puts saved spells whose source names one of the character's classes (or Magic Initiate) into that class's list.
+ */
+function seedClassSpellSelections(ctx: CharacterCreatorContext, spells: any[]): Record<string, { cantrips: string[]; prepared: string[] }> {
+    const seeded: Record<string, { cantrips: string[]; prepared: string[] }> = {};
+    for (const s of spells) {
+        if (s?.alwaysPrepared && resolveSpellBucketKey(ctx, s?.source) !== MAGIC_INITIATE_BUCKET_KEY) continue;
+        const key = resolveSpellBucketKey(ctx, s?.source);
+        if (!key || !s?.name) continue;
+        const sel = seeded[key] || { cantrips: [], prepared: [] };
+        (Number(s.level) === 0 ? sel.cantrips : sel.prepared).push(s.name);
+        seeded[key] = sel;
+    }
+    if (Object.keys(seeded).length > 0) {
+        ctx.state.importedClassSpells = Object.fromEntries(
+            Object.entries(seeded)
+                .filter(([key]) => key !== MAGIC_INITIATE_BUCKET_KEY)
+                .map(([key, sel]) => [key, [...sel.cantrips, ...sel.prepared]])
+        );
+    }
+    return seeded;
+}
+
 export async function loadCharacter(ctx: CharacterCreatorContext, targetId: string | number): Promise<void> {
     try {
         const queryParam = typeof targetId === "number" || /^\d+$/.test(String(targetId))
@@ -188,6 +211,10 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                 }
             }
             ctx.syncStateClassProperties();
+            const hasSplit = Object.values(ctx.state.classSpellSelections || {}).some((s: any) => (s?.cantrips?.length || 0) + (s?.prepared?.length || 0) > 0);
+            if (!hasSplit && Array.isArray(char.spells)) {
+                ctx.state.classSpellSelections = seedClassSpellSelections(ctx, char.spells);
+            }
         } else {
             if (char.name) ctx.state.name = char.name;
             if (char.level) ctx.state.level = Number(char.level);
@@ -280,14 +307,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                 ctx.state.selectedSpellsLevel1 = baseSpells.filter((s: any) => s.level > 0).map((s: any) => s.name);
                 // Multiclass: spells saved with a class name as their source go back to that class's list; the rest
                 // (e.g. older saves with a generic "Class" source) are assigned when selections are sanitized.
-                ctx.state.classSpellSelections = {};
-                for (const s of baseSpells) {
-                    const key = resolveSpellBucketKey(ctx, s?.source);
-                    if (!key) continue;
-                    const sel = ctx.state.classSpellSelections[key] || { cantrips: [], prepared: [] };
-                    (Number(s.level) === 0 ? sel.cantrips : sel.prepared).push(s.name);
-                    ctx.state.classSpellSelections[key] = sel;
-                }
+                ctx.state.classSpellSelections = seedClassSpellSelections(ctx, baseSpells);
             }
         }
 
@@ -732,6 +752,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
                 source: bucket.sourceLabel,
                 prepared: true,
                 ...(bucket.kind === "feat" ? { alwaysPrepared: true } : {}),
+                ...(bucket.via[spDef.name] ? { viaFeature: bucket.via[spDef.name] } : {}),
                 castingTime: spDef.castingTime,
                 range: spDef.range,
                 duration: spDef.duration,

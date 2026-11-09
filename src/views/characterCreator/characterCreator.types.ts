@@ -76,6 +76,8 @@ export interface CreatorState {
     selectedCantrips: string[];
     selectedSpellsLevel1: string[];
     classSpellSelections?: Record<string, SpellBucketSelection>;
+    /** Spells D&D Beyond put on a class (by class key), kept even when the spell database doesn't list them for it. */
+    importedClassSpells?: Record<string, string[]>;
     featureSpellChoices: Record<string, string[]>;
 }
 
@@ -95,8 +97,11 @@ export interface SpellBucket {
     maxPrepared: number;
     maxSpellLevel: number;
     priorityKey: string;
+    baseList: string;
     cantripPool: RuleSpellDefinition[];
     preparedPool: RuleSpellDefinition[];
+    /** Spell name → the feature that makes it available (e.g. "Magical Secrets"); absent when on the class's own list. */
+    via: Record<string, string>;
 }
 
 export const ALL_SKILLS: Array<{ name: string; stat: AbilityName }> = [

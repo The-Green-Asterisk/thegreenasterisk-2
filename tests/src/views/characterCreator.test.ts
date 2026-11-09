@@ -2201,6 +2201,89 @@ describe("CharacterCreatorController", () => {
         }
     });
 
+    it("does not overflow a Bard 10 / Warlock 10 when shared spells come first in an unsplit selection", () => {
+        ctrl.state.classes = [
+            { classId: "bard", level: 10, subclassId: "glamour" },
+            { classId: "warlock", level: 10, subclassId: "great-old-one" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "alert";
+        const [bard, warlock] = ctrl.getSpellBuckets();
+        expect([bard.maxPrepared, warlock.maxPrepared]).toEqual([15, 10]);
+
+        // Warlock-list spells the Bard could also take through Magical Secrets (Wizard list), listed first
+        const shared = warlock.preparedPool.filter((s) => bard.preparedPool.some((b) => b.name === s.name)).slice(0, 10).map((s) => s.name);
+        const bardOnly = bard.preparedPool.filter((s) => !warlock.preparedPool.some((w) => w.name === s.name)).slice(0, 15).map((s) => s.name);
+        expect(shared).toHaveLength(10);
+        ctrl.state.classSpellSelections = {};
+        ctrl.state.selectedSpellsLevel1 = [...shared, ...bardOnly];
+        ctrl.sanitizeSpellSelections();
+
+        expect(ctrl.state.classSpellSelections!.bard.prepared).toHaveLength(15);
+        expect(ctrl.state.classSpellSelections!.warlock.prepared).toHaveLength(10);
+        expect(ctrl.state.classSpellSelections!.warlock.prepared.sort()).toEqual([...shared].sort());
+    });
+
+    it("keeps spells D&D Beyond put on a class even when the spell database doesn't list them for it", () => {
+        ctrl.state.classes = [
+            { classId: "bard", level: 10, subclassId: "glamour" },
+            { classId: "warlock", level: 10, subclassId: "great-old-one" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "alert";
+        // A spell with no known class lists (as a D&D Beyond-only spell ends up in the database)
+        ctrl.spells = [...ctrl.spells, { ...ctrl.getSpell("Light")!, id: "gust", name: "Gust", classes: [] }];
+        expect(ctrl.getSpellBuckets()[0].cantripPool.some((s) => s.name === "Gust")).toBe(false);
+
+        ctrl.state.importedClassSpells = { bard: ["Gust"] };
+        ctrl.state.classSpellSelections = {};
+        ctrl.state.selectedCantrips = ["Gust"];
+        ctrl.sanitizeSpellSelections();
+        const bard = ctrl.getSpellBuckets()[0];
+        expect(ctrl.state.classSpellSelections!.bard.cantrips).toEqual(["Gust"]);
+        expect(bard.via["Gust"]).toBe("Magical Secrets");
+    });
+
+    it("saves the feature that made a spell available, for class and subclass expanded lists alike", () => {
+        // Class feature: Bard 10 Magical Secrets
+        ctrl.state.classId = "bard";
+        ctrl.state.level = 10;
+        ctrl.state.classes = [{ classId: "bard", level: 10, subclassId: "lore" }];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "alert";
+        ctrl.state.classSpellSelections = {};
+        ctrl.state.selectedCantrips = ["Sacred Flame", "Vicious Mockery"];
+        ctrl.state.selectedSpellsLevel1 = ["Fireball", "Dissonant Whispers"];
+        let payload = ctrl.buildPayload();
+        expect(payload.spells.find((s: any) => s.name === "Sacred Flame").viaFeature).toBe("Magical Secrets");
+        expect(payload.spells.find((s: any) => s.name === "Fireball").viaFeature).toBe("Magical Secrets");
+        expect(payload.spells.find((s: any) => s.name === "Vicious Mockery").viaFeature).toBeUndefined();
+        expect(payload.spells.find((s: any) => s.name === "Dissonant Whispers").viaFeature).toBeUndefined();
+
+        // Subclass feature: same pattern on a subclass (a hypothetical Fiend expanded list onto Cleric spells at 3)
+        ctrl.classes = ctrl.classes.map((c) => c.id !== "warlock" ? c : {
+            ...c,
+            subclasses: c.subclasses.map((s) => s.id !== "fiend" ? s : {
+                ...s,
+                expandedSpellLists: [{ level: 3, feature: "Fiend Expanded Spells", classes: ["Cleric"] }]
+            })
+        });
+        ctrl.state.classId = "warlock";
+        ctrl.state.subclassId = "fiend";
+        ctrl.state.level = 3;
+        ctrl.state.classes = [{ classId: "warlock", level: 3, subclassId: "fiend" }];
+        ctrl.syncStateClassProperties();
+        const warlock = ctrl.getSpellBuckets()[0];
+        expect(warlock.preparedPool.some((s) => s.name === "Cure Wounds")).toBe(true);
+        expect(warlock.via["Cure Wounds"]).toBe("Fiend Expanded Spells");
+        expect(warlock.cantripPool.some((s) => s.name === "Sacred Flame")).toBe(false);
+        ctrl.state.classSpellSelections = {};
+        ctrl.state.selectedCantrips = [];
+        ctrl.state.selectedSpellsLevel1 = ["Cure Wounds"];
+        payload = ctrl.buildPayload();
+        expect(payload.spells.find((s: any) => s.name === "Cure Wounds")).toMatchObject({ source: "Warlock", viaFeature: "Fiend Expanded Spells" });
+    });
+
     it("keeps Magic Initiate spells in their own pool", () => {
         ctrl.state.classId = "wizard";
         ctrl.state.level = 1;
@@ -2788,9 +2871,17 @@ describe("CharacterCreatorController", () => {
             expect(lvl10Spells.leveledSpells.some((s) => s.name === "Fireball")).toBe(true);
             expect(lvl10Spells.leveledSpells.some((s) => s.name === "Revivify")).toBe(true);
             expect(lvl10Spells.leveledSpells.some((s) => s.name === "Pass without Trace")).toBe(true);
-            // Cantrips for Bard should still only be Bard cantrips
+            // Magical Secrets covers cantrips too (table ruling, matching D&D Beyond), noted as such
             expect(lvl10Spells.cantrips.some((s) => s.name === "Vicious Mockery")).toBe(true);
-            expect(lvl10Spells.cantrips.some((s) => s.name === "Sacred Flame")).toBe(false);
+            expect(lvl10Spells.cantrips.some((s) => s.name === "Sacred Flame")).toBe(true);
+            const bardBucket = ctrl.getSpellBuckets()[0];
+            expect(bardBucket.via["Sacred Flame"]).toBe("Magical Secrets");
+            expect(bardBucket.via["Fireball"]).toBe("Magical Secrets");
+            expect(bardBucket.via["Vicious Mockery"]).toBeUndefined();
+            ctrl.activeSpellClassFilter = "bard";
+            ctrl.renderStep(8);
+            const sacredFlameRow = root.querySelector('.cantrip-row[data-spell-name="Sacred Flame"]');
+            expect(sacredFlameRow?.textContent).toContain("Magical Secrets");
 
             // 5. Preparing Fireball & Revivify in normal prepared spells works and saves with the Bard as source
             ctrl.state.selectedSpellsLevel1 = ["Fireball", "Revivify", "Dissonant Whispers"];

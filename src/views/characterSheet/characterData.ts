@@ -14,6 +14,8 @@ export interface SpellDefinition {
     imageUrl?: string;
     isLegacy?: boolean;
     alwaysPrepared?: boolean;
+    /** Feature that put this spell on a class it isn't normally on (e.g. "Magical Secrets"). */
+    viaFeature?: string;
 }
 
 export interface AbilityScore {

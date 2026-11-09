@@ -462,20 +462,58 @@ function getMagicInitiateClass(ctx: CharacterCreatorContext): string {
     return "";
 }
 
-function getClassSpellLists(ctx: CharacterCreatorContext, info: MulticlassCasterClassInfo): { cantripLists: string[]; leveledLists: string[] } {
+function getClassSpellLists(ctx: CharacterCreatorContext, info: MulticlassCasterClassInfo): {
+    base: string;
+    cantripLists: Array<{ list: string; feature?: string }>;
+    leveledLists: Array<{ list: string; feature?: string }>;
+} {
     const base = info.type === "third" ? "Wizard" : info.className;
-    const cantripLists = [base];
-    const leveledLists = [base];
+    const cantripLists: Array<{ list: string; feature?: string }> = [{ list: base }];
+    const leveledLists: Array<{ list: string; feature?: string }> = [{ list: base }];
     const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.classId);
     const clsDef = ctx.classes.find((c) => c.id === cc?.classId || c.slug === cc?.classId) || CLASSES_2024.find((c) => c.id === info.classId);
-    for (const exp of clsDef?.spellcasting?.expandedSpellLists || []) {
+    const subId = cc ? ctx.resolveCanonicalSubclassId(cc.classId, cc.subclassId) : "";
+    const subDef = clsDef?.subclasses?.find((s) => s.id === subId);
+    const expanded = [...(clsDef?.spellcasting?.expandedSpellLists || []), ...(subDef?.expandedSpellLists || [])];
+    for (const exp of expanded) {
         if (info.level < exp.level) continue;
         for (const expCls of exp.classes) {
-            if (!leveledLists.includes(expCls)) leveledLists.push(expCls);
-            if (exp.allowCantrips && !cantripLists.includes(expCls)) cantripLists.push(expCls);
+            if (!leveledLists.some((l) => l.list === expCls)) leveledLists.push({ list: expCls, feature: exp.feature });
+            if (exp.allowCantrips && !cantripLists.some((l) => l.list === expCls)) cantripLists.push({ list: expCls, feature: exp.feature });
         }
     }
-    return { cantripLists, leveledLists };
+    return { base, cantripLists, leveledLists };
+}
+
+/**
+ * Builds one class's spell pool. A spell on the class's own list needs no note; one reachable only through a feature
+ * such as Magical Secrets is noted with that feature; one D&D Beyond put on this class that the spell database can't
+ * place on any of these lists is kept and noted as coming from D&D Beyond (or the class's expanded-list feature).
+ */
+function buildClassPool(
+    allSpells: RuleSpellDefinition[],
+    lists: Array<{ list: string; feature?: string }>,
+    fits: (sp: RuleSpellDefinition) => boolean,
+    imported: string[],
+    importedNote: string,
+    via: Record<string, string>
+): RuleSpellDefinition[] {
+    const pool: RuleSpellDefinition[] = [];
+    for (const sp of allSpells) {
+        if (!fits(sp)) continue;
+        const matches = lists.filter((l) => sp.classes.includes(l.list));
+        if (matches.length === 0) continue;
+        pool.push(sp);
+        if (!matches.some((m) => !m.feature)) via[sp.name] = matches[0].feature || "";
+    }
+    for (const name of imported) {
+        if (pool.some((sp) => sp.name === name)) continue;
+        const sp = allSpells.find((s) => s.name === name);
+        if (!sp || !fits(sp)) continue;
+        pool.push(sp);
+        via[sp.name] = importedNote;
+    }
+    return pool;
 }
 
 /**
@@ -487,7 +525,11 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
     const buckets: SpellBucket[] = [];
     for (const info of getSpellcasterInfos(ctx)) {
         if (buckets.some((b) => b.key === info.classId)) continue;
-        const { cantripLists, leveledLists } = getClassSpellLists(ctx, info);
+        const { base, cantripLists, leveledLists } = getClassSpellLists(ctx, info);
+        const imported = ctx.state.importedClassSpells?.[info.classId] || [];
+        const expandedFeature = leveledLists.find((l) => l.feature)?.feature;
+        const importedNote = expandedFeature || "Added on D&D Beyond";
+        const via: Record<string, string> = {};
         buckets.push({
             key: info.classId,
             kind: "class",
@@ -499,10 +541,14 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
             maxPrepared: info.maxPrepared,
             maxSpellLevel: info.maxSpellLevel,
             priorityKey: info.type === "third" ? "wizard" : info.classId,
-            cantripPool: info.maxCantrips > 0 ? allSpells.filter((sp) => sp.level === 0 && sp.classes.some((c) => cantripLists.includes(c))) : [],
+            baseList: base,
+            cantripPool: info.maxCantrips > 0
+                ? buildClassPool(allSpells, cantripLists, (sp) => sp.level === 0, imported, importedNote, via)
+                : [],
             preparedPool: info.maxPrepared > 0
-                ? allSpells.filter((sp) => sp.level >= 1 && sp.level <= info.maxSpellLevel && sp.classes.some((c) => leveledLists.includes(c)))
-                : []
+                ? buildClassPool(allSpells, leveledLists, (sp) => sp.level >= 1 && sp.level <= info.maxSpellLevel, imported, importedNote, via)
+                : [],
+            via
         });
     }
     const miClass = getMagicInitiateClass(ctx);
@@ -518,8 +564,10 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
             maxPrepared: 1,
             maxSpellLevel: 1,
             priorityKey: miClass.toLowerCase(),
+            baseList: miClass,
             cantripPool: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes(miClass)),
-            preparedPool: allSpells.filter((sp) => sp.level === 1 && sp.classes.includes(miClass))
+            preparedPool: allSpells.filter((sp) => sp.level === 1 && sp.classes.includes(miClass)),
+            via: {}
         });
     }
     return buckets;
@@ -564,7 +612,7 @@ export function syncFlatSpellSelections(ctx: CharacterCreatorContext): void {
 
 /**
  * Keeps the per-class selections consistent with the flat selection lists: drops picks a class can no longer make,
- * and assigns any unattributed pick to the first class that can take it (preferring one that still has room).
+ * and assigns any unattributed pick to a class that can take it.
  */
 function reconcileSpellBuckets(ctx: CharacterCreatorContext): void {
     const buckets = getSpellBuckets(ctx);
@@ -583,19 +631,40 @@ function reconcileSpellBuckets(ctx: CharacterCreatorContext): void {
         };
     }
 
-    const assign = (name: string, field: "cantrips" | "prepared") => {
-        if (buckets.some((b) => next[b.key][field].includes(name))) return true;
+    // Most-constrained first: a spell only one class can take goes there before shared spells claim the room.
+    // A shared spell then goes to a class with room whose own list has it (e.g. Misty Step to the Warlock rather than
+    // to a Bard's Magical Secrets), then to any class with room, then to the first class that can take it.
+    const assignAll = (names: string[], field: "cantrips" | "prepared"): Set<string> => {
         const poolOf = (b: SpellBucket) => (field === "cantrips" ? b.cantripPool : b.preparedPool);
         const maxOf = (b: SpellBucket) => (field === "cantrips" ? b.maxCantrips : b.maxPrepared);
-        const eligible = buckets.filter((b) => poolOf(b).some((s) => s.name === name));
-        if (eligible.length === 0) return false;
-        const target = eligible.find((b) => next[b.key][field].length < maxOf(b)) || eligible[0];
-        next[target.key][field].push(name);
-        return true;
+        const hasRoom = (b: SpellBucket) => next[b.key][field].length < maxOf(b);
+        const placed = new Set<string>();
+        const pending: Array<{ name: string; eligible: SpellBucket[] }> = [];
+        for (const name of names) {
+            if (buckets.some((b) => next[b.key][field].includes(name))) {
+                placed.add(name);
+                continue;
+            }
+            const eligible = buckets.filter((b) => poolOf(b).some((s) => s.name === name));
+            if (eligible.length > 0) pending.push({ name, eligible });
+        }
+        pending.sort((a, b) => a.eligible.length - b.eligible.length);
+        for (const { name, eligible } of pending) {
+            const onOwnList = (b: SpellBucket) => (ctx.getSpell(name)?.classes || []).includes(b.baseList);
+            const target = eligible.find((b) => hasRoom(b) && onOwnList(b))
+                || eligible.find(hasRoom)
+                || eligible.find(onOwnList)
+                || eligible[0];
+            next[target.key][field].push(name);
+            placed.add(name);
+        }
+        return placed;
     };
 
-    ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((n) => assign(n, "cantrips"));
-    ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((n) => assign(n, "prepared"));
+    const placedCantrips = assignAll(ctx.state.selectedCantrips, "cantrips");
+    const placedPrepared = assignAll(ctx.state.selectedSpellsLevel1, "prepared");
+    ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((n) => placedCantrips.has(n));
+    ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((n) => placedPrepared.has(n));
     ctx.state.classSpellSelections = next;
 }
 
@@ -622,9 +691,9 @@ export function sanitizeSpellSelections(ctx: CharacterCreatorContext): void {
         ctx.state.classSpellSelections = {};
         return;
     }
-    const available = getAvailableSpells(ctx);
-    const validCantripNames = new Set(available.cantrips.map((c) => c.name));
-    const validLeveledNames = new Set(available.leveledSpells.map((s) => s.name));
+    const buckets = getSpellBuckets(ctx);
+    const validCantripNames = new Set(buckets.flatMap((b) => b.cantripPool.map((s) => s.name)));
+    const validLeveledNames = new Set(buckets.flatMap((b) => b.preparedPool.map((s) => s.name)));
 
     // Progression-granted spells are bonus spells: strip them from the base allotment so they are never double-counted
     const granted = getProgressionGrantedSpellNames(ctx);
