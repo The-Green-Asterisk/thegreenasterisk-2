@@ -252,16 +252,107 @@ export class CharacterCreatorController {
         this.sanitizeClassProgressionSelections();
     }
 
+    public static normalizeSubclassKey(value: string): string {
+        if (!value) return "";
+        return String(value)
+            .toLowerCase()
+            .replace(/\s*\([^)]+\)\s*$/g, "")
+            .replace(/^(the|path-of-the|path-of|circle-of-the|circle-of|college-of-the|college-of|oath-of-the|oath-of|warrior-of-the|warrior-of|way-of-the|way-of|school-of)[\s-]+/g, "")
+            .replace(/[\s-]+(patron|domain|sorcery|magic|oath|circle|college|path|school)$/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
+    }
+
+    public resolveCanonicalSubclassId(classId: string, subIdOrName?: string): string {
+        if (!subIdOrName) return "";
+        const raw = String(subIdOrName).trim();
+        if (!raw) return "";
+        const normKey = CharacterCreatorController.normalizeSubclassKey(raw);
+        const fallbackCls = CLASSES_2024.find((c) => c.id === classId || c.name.toLowerCase() === classId.toLowerCase());
+        const canonSub = fallbackCls?.subclasses?.find((s) =>
+            s.id === raw ||
+            s.name.toLowerCase() === raw.toLowerCase() ||
+            CharacterCreatorController.normalizeSubclassKey(s.id) === normKey ||
+            CharacterCreatorController.normalizeSubclassKey(s.name) === normKey
+        );
+        if (canonSub) return canonSub.id;
+        const activeCls = this.classes.find((c) => c.id === classId || c.name.toLowerCase() === classId.toLowerCase());
+        const matchedSub = activeCls?.subclasses?.find((s) =>
+            s.id === raw ||
+            s.name?.toLowerCase() === raw.toLowerCase() ||
+            CharacterCreatorController.normalizeSubclassKey(s.id || s.name || "") === normKey
+        );
+        return matchedSub ? matchedSub.id : raw;
+    }
+
+    public deduplicateClassSubclasses(classId: string, rawSubs: any[]): any[] {
+        const fallbackCls = CLASSES_2024.find((c) => c.id === classId || c.name.toLowerCase() === classId.toLowerCase());
+        const byKey = new Map<string, any>();
+
+        for (const sub of rawSubs || []) {
+            if (!sub) continue;
+            const rawId = sub.id || sub.slug || "";
+            const rawName = sub.name || "";
+            const normKey = CharacterCreatorController.normalizeSubclassKey(rawId || rawName);
+            if (!normKey) continue;
+
+            const fallbackSub = fallbackCls?.subclasses?.find((s) =>
+                s.id === rawId ||
+                s.name.toLowerCase() === rawName.toLowerCase() ||
+                CharacterCreatorController.normalizeSubclassKey(s.id) === normKey ||
+                CharacterCreatorController.normalizeSubclassKey(s.name) === normKey
+            );
+
+            const normalizedSub = {
+                ...sub,
+                id: fallbackSub ? fallbackSub.id : (rawId || normKey),
+                name: fallbackSub ? fallbackSub.name : (rawName || rawId),
+                description: sub.description || fallbackSub?.description || "",
+                features: Array.isArray(sub.features) && sub.features.length > 0
+                    ? sub.features
+                    : (fallbackSub?.features || []),
+                progression: sub.progression && sub.progression.length > 0
+                    ? sub.progression
+                    : fallbackSub?.progression
+            };
+
+            const canonKey = CharacterCreatorController.normalizeSubclassKey(normalizedSub.id || normalizedSub.name);
+            const existing = byKey.get(canonKey);
+            if (!existing) {
+                byKey.set(canonKey, normalizedSub);
+            } else {
+                // Keep richer description/features/progression when merging duplicate alias entries
+                if (!existing.description && normalizedSub.description) {
+                    existing.description = normalizedSub.description;
+                }
+                if ((!existing.features || existing.features.length === 0) && normalizedSub.features?.length > 0) {
+                    existing.features = normalizedSub.features;
+                }
+                if ((!existing.progression || existing.progression.length === 0) && normalizedSub.progression?.length > 0) {
+                    existing.progression = normalizedSub.progression;
+                }
+            }
+        }
+
+        return Array.from(byKey.values());
+    }
+
     public sanitizeClassProgressionSelections(): void {
         if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) return;
 
-        // 1. Subclasses: Subclass unlocks at Level 3 in D&D 2024
+        // 1. Subclasses: Subclass unlocks at Level 3 in D&D 2024; normalize alias IDs to canonical IDs
         for (let i = 0; i < this.state.classes.length; i++) {
             const cc = this.state.classes[i];
             if ((cc.level || 1) < 3) {
                 cc.subclassId = "";
                 if (i === 0) {
                     this.state.subclassId = "";
+                }
+            } else if (cc.subclassId) {
+                const resolvedId = this.resolveCanonicalSubclassId(cc.classId, cc.subclassId);
+                cc.subclassId = resolvedId;
+                if (i === 0) {
+                    this.state.subclassId = resolvedId;
                 }
             }
         }
@@ -509,45 +600,24 @@ export class CharacterCreatorController {
                 if (Array.isArray(rules.classes) && rules.classes.length > 0) {
                     this.classes = rules.classes.map((rc: any) => {
                         const fallbackCls = CLASSES_2024.find((c) => c.id === rc.id || c.name === rc.name);
+                        const classSlug = rc.id || rc.slug || fallbackCls?.id || "";
                         const rawSubs =
                             Array.isArray(rc.subclasses) && rc.subclasses.length > 0
-                                ? rc.subclasses
-                                : (fallbackCls?.subclasses || []);
-                        const enrichedSubs = rawSubs.map((sub: any) => {
-                            const fallbackSub = fallbackCls?.subclasses?.find(
-                                (s) => s.id === sub.id || s.name === sub.name
-                            );
-                            return {
-                                ...sub,
-                                features:
-                                    Array.isArray(sub.features) && sub.features.length > 0
-                                        ? sub.features
-                                        : (fallbackSub?.features || []),
-                                progression: sub.progression || fallbackSub?.progression
-                            };
-                        });
-                        const classSlug = rc.id || rc.slug;
+                                ? [...rc.subclasses]
+                                : [...(fallbackCls?.subclasses || [])];
                         if (Array.isArray(rules.subclasses)) {
                             for (const gs of rules.subclasses) {
                                 if (gs.classSlug === classSlug || gs.classId === rc.id) {
-                                    const existingIdx = enrichedSubs.findIndex(
-                                        (s: any) => s.id === gs.id || s.slug === gs.slug || s.name.toLowerCase() === gs.name.toLowerCase()
-                                    );
-                                    if (existingIdx === -1) {
-                                        enrichedSubs.push(gs);
-                                    } else if (!enrichedSubs[existingIdx].progression || enrichedSubs[existingIdx].progression.length === 0) {
-                                        enrichedSubs[existingIdx].progression = gs.progression;
-                                    }
+                                    rawSubs.push(gs);
                                 }
                             }
                         }
                         if (fallbackCls?.subclasses) {
                             for (const fs of fallbackCls.subclasses) {
-                                if (!enrichedSubs.some((s: any) => s.id === fs.id || s.name.toLowerCase() === fs.name.toLowerCase())) {
-                                    enrichedSubs.push(fs);
-                                }
+                                rawSubs.push(fs);
                             }
                         }
+                        const enrichedSubs = this.deduplicateClassSubclasses(classSlug, rawSubs);
                         return {
                             ...rc,
                             features:
@@ -2515,9 +2585,11 @@ export class CharacterCreatorController {
     private renderLevelChoices(cls: ClassDefinition, lvl: number, classIdx: number = 0, activeSubId?: string, isUnlocked: boolean = true): string {
         const choices: string[] = [];
         const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
-        const currentSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || "";
+        const rawSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || "";
+        const currentSubId = this.resolveCanonicalSubclassId(cls.id, rawSubId);
+        const deduplicatedSubclasses = this.deduplicateClassSubclasses(cls.id, cls.subclasses || fallbackCls?.subclasses || []);
         const subObj = currentSubId
-            ? (cls.subclasses?.find((s: any) => s.id === currentSubId) || fallbackCls?.subclasses?.find((s) => s.id === currentSubId))
+            ? (deduplicatedSubclasses.find((s: any) => s.id === currentSubId) || fallbackCls?.subclasses?.find((s) => s.id === currentSubId))
             : undefined;
         const fallbackSubObj = currentSubId ? fallbackCls?.subclasses?.find((s) => s.id === currentSubId) : undefined;
         const resolvedClsFeatures = (cls.features && cls.features.length > 0) ? cls.features : (fallbackCls?.features || []);
@@ -2735,13 +2807,13 @@ export class CharacterCreatorController {
         // Level 3 choices
         if (lvl === 3) {
             // Subclass Selection
-            if (cls.subclasses && cls.subclasses.length > 0) {
+            if (deduplicatedSubclasses.length > 0) {
                 choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> Subclass Selection (Level 3)</h5>
                         <p class="card-body">${getClsFeatureDesc(`${cls.name} Subclass`, `Choose a ${cls.name} specialization that grants you features at certain ${cls.name} levels.`, 3)}</p>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                            ${cls.subclasses.map((sub) => `
+                            ${deduplicatedSubclasses.map((sub) => `
                                 <div class="select-card subclass-card ${currentSubId === sub.id ? "selected" : ""}" data-class-index="${classIdx}" data-subclass-id="${sub.id}">
                                     <div class="card-title-row">
                                         <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
@@ -3619,7 +3691,7 @@ export class CharacterCreatorController {
                     <h5 class="level-choice-title"><i class="fa-solid fa-code-branch"></i> ${ch.name} (Choose ${ch.chooseCount || 1})</h5>
                     ${dynDesc ? `<p class="card-body">${dynDesc}</p>` : ""}
                     <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-                        ${(ch.options || []).map((opt) => `
+                        ${(ch.options || []).map((opt: any) => `
                             <div class="select-card subclass-feature-card ${currentChoice === opt.id ? "selected" : ""}" data-feature-key="${chId}" data-feature-choice="${opt.id}">
                                 <div class="card-title-row">
                                     <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
@@ -3650,9 +3722,11 @@ export class CharacterCreatorController {
         const boxes: string[] = [];
 
         const fallbackCls = CLASSES_2024.find((c) => c.id === cls.id);
-        const resolvedSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || cls.subclasses?.[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
+        const deduplicatedSubclasses = this.deduplicateClassSubclasses(cls.id, cls.subclasses || fallbackCls?.subclasses || []);
+        const rawSubId = activeSubId || this.state.classes[classIdx]?.subclassId || (classIdx === 0 ? this.state.subclassId : "") || deduplicatedSubclasses[0]?.id || fallbackCls?.subclasses?.[0]?.id || "";
+        const resolvedSubId = this.resolveCanonicalSubclassId(cls.id, rawSubId);
         const sub = resolvedSubId
-            ? (cls.subclasses?.find((s: any) => s.id === resolvedSubId) || fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId))
+            ? (deduplicatedSubclasses.find((s: any) => s.id === resolvedSubId) || fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId))
             : undefined;
         const fallbackSub = resolvedSubId ? fallbackCls?.subclasses?.find((s) => s.id === resolvedSubId) : undefined;
         const resolvedSubFeatures = (sub?.features && sub.features.length > 0) ? sub.features : (fallbackSub?.features || []);

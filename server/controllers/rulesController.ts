@@ -32,6 +32,51 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
+export function normalizeSubclassKey(value: string): string {
+    const cleaned = String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s*\([^)]+\)\s*$/, "")
+        .replace(/^the\s+/, "")
+        .replace(/\s+patron$/, "")
+        .replace(/^path of (?:the\s+)?/, "")
+        .replace(/^college of (?:the\s+)?/, "")
+        .replace(/\s+domain$/, "")
+        .replace(/^circle of (?:the\s+)?/, "")
+        .replace(/^warrior of (?:the\s+)?/, "")
+        .replace(/^way of (?:the\s+)?/, "")
+        .replace(/^oath of (?:the\s+)?/, "")
+        .replace(/\s+sorcery$/, "")
+        .replace(/^school of\s+/, "");
+    const s = slugify(cleaned);
+    if (s === "abjuration") return "abjurer";
+    if (s === "divination") return "diviner";
+    if (s === "evocation") return "evoker";
+    if (s === "illusion") return "illusionist";
+    return s;
+}
+
+export function findCanonicalSeedSubclass(classSlug: string, subIdOrName?: string, subName?: string): any | undefined {
+    const seedCls = SEED_CLASSES.find((sc) => sc.id === classSlug);
+    if (!seedCls || !Array.isArray(seedCls.subclasses)) return undefined;
+    const key1 = normalizeSubclassKey(subIdOrName || "");
+    const key2 = normalizeSubclassKey(subName || "");
+    const raw1 = slugify(String(subIdOrName || ""));
+    const raw2 = slugify(String(subName || ""));
+    return seedCls.subclasses.find((ss: any) => {
+        const ssKey = normalizeSubclassKey(ss.id || ss.name);
+        const ssNameKey = normalizeSubclassKey(ss.name);
+        const ssSlug = slugify(ss.id || ss.name);
+        const ssNameSlug = slugify(ss.name);
+        return (
+            (key1 && (ssKey === key1 || ssNameKey === key1)) ||
+            (key2 && (ssKey === key2 || ssNameKey === key2)) ||
+            (raw1 && (ssSlug === raw1 || ssNameSlug === raw1)) ||
+            (raw2 && (ssSlug === raw2 || ssNameSlug === raw2))
+        );
+    });
+}
+
 const BOILERPLATE_CLASS_FEATURES = new Set([
     "hit points",
     "proficiencies",
@@ -207,13 +252,19 @@ export default class RulesController extends BaseController {
 
                     const currentSubs: any[] = this.safeParse(rc.subclassesJson, []);
                     const mergedSubs = (seedCls.subclasses || []).map((ss) => {
-                        const existingSub = currentSubs.find(
-                            (cs) => cs?.id === ss.id ||
-                                    slugify(String(cs?.name || "")) === ss.id ||
-                                    String(cs?.name || "").toLowerCase() === ss.name.toLowerCase()
+                        const matchingExistingSubs = currentSubs.filter(
+                            (cs) => cs && (
+                                cs.id === ss.id ||
+                                slugify(String(cs.name || "")) === ss.id ||
+                                String(cs.name || "").toLowerCase() === ss.name.toLowerCase() ||
+                                findCanonicalSeedSubclass(rc.slug, cs.id || cs.slug, cs.name)?.id === ss.id
+                            )
                         );
-                        if (!existingSub) return ss;
-                        const existingSubFeatures: any[] = Array.isArray(existingSub.features) ? existingSub.features : [];
+                        if (matchingExistingSubs.length === 0) return ss;
+                        const existingSub = matchingExistingSubs.find((cs) => cs.fromDndBeyond && Array.isArray(cs.features) && cs.features.length > 0)
+                            || matchingExistingSubs.find((cs) => Array.isArray(cs.features) && cs.features.length > 0)
+                            || matchingExistingSubs[0];
+                        const existingSubFeatures: any[] = matchingExistingSubs.flatMap((cs) => Array.isArray(cs.features) ? cs.features : []);
                         const mergedSubFeatures = (ss.features || []).map((ssf) => {
                             const ddbSubFeat = existingSubFeatures.find(
                                 (esf) => esf?.fromDndBeyond && String(esf.name || "").toLowerCase() === ssf.name.toLowerCase()
@@ -264,8 +315,10 @@ export default class RulesController extends BaseController {
 
                     for (const cs of currentSubs) {
                         if (!cs) continue;
+                        if (findCanonicalSeedSubclass(rc.slug, cs.id || cs.slug, cs.name)) continue;
+                        const csKey = normalizeSubclassKey(cs.id || cs.slug || cs.name);
                         const csNameLower = String(cs.name || "").trim().toLowerCase();
-                        if (!mergedSubs.some((ms) => ms.id === cs.id || String(ms.name || "").toLowerCase() === csNameLower)) {
+                        if (!mergedSubs.some((ms) => ms.id === cs.id || String(ms.name || "").toLowerCase() === csNameLower || normalizeSubclassKey(ms.id || ms.name) === csKey)) {
                             if (cs.isCustom || cs.classSlug === rc.slug || cs.classId === rc.id) {
                                 mergedSubs.push(cs);
                             }
@@ -291,35 +344,56 @@ export default class RulesController extends BaseController {
                 const dbClasses = await classRepo.find();
                 const existingSubclasses = await subclassRepo.find();
                 const subEntitiesToSave: RuleSubclass[] = [];
+                const keptSubclassIds = new Set<number>();
 
                 for (const cls of dbClasses) {
                     const rawSubs = this.safeParse(cls.subclassesJson, []);
                     for (const sub of rawSubs) {
-                        const subSlug = sub.id || slugify(sub.name);
-                        const existingSubEntity = existingSubclasses.find(
-                            (se) => se.classId === cls.id && (se.slug === subSlug || se.name.toLowerCase() === sub.name.toLowerCase())
+                        const canonSub = findCanonicalSeedSubclass(cls.slug, sub.id || sub.slug, sub.name);
+                        const subSlug = canonSub ? canonSub.id : (sub.id || slugify(sub.name));
+                        const subName = canonSub ? canonSub.name : sub.name;
+                        const subKey = normalizeSubclassKey(subSlug || subName);
+                        const matchingEntities = existingSubclasses.filter(
+                            (se) => (se.classId === cls.id || se.classSlug === cls.slug) && (
+                                se.slug === subSlug ||
+                                se.name.toLowerCase() === subName.toLowerCase() ||
+                                normalizeSubclassKey(se.slug) === subKey ||
+                                normalizeSubclassKey(se.name) === subKey
+                            )
                         );
-                        const subProgression = buildSubclassProgression(cls.slug, sub);
+                        const existingSubEntity = matchingEntities.find((se) => se.slug === subSlug) || matchingEntities[0];
+                        const subProgression = buildSubclassProgression(cls.slug, { ...sub, id: subSlug, name: subName });
                         const desiredProgressionJson = JSON.stringify(subProgression);
                         const desiredSpellcastingOverride = sub.spellcastingOverride ? JSON.stringify(sub.spellcastingOverride) : undefined;
 
                         if (existingSubEntity) {
+                            if (existingSubEntity.id) keptSubclassIds.add(existingSubEntity.id);
                             if (
+                                existingSubEntity.slug !== subSlug ||
+                                existingSubEntity.name !== subName ||
                                 existingSubEntity.progressionJson !== desiredProgressionJson ||
                                 existingSubEntity.description !== (sub.description || "") ||
                                 existingSubEntity.spellcastingOverrideJson !== desiredSpellcastingOverride
                             ) {
+                                existingSubEntity.slug = subSlug;
+                                existingSubEntity.name = subName;
                                 existingSubEntity.description = sub.description || "";
                                 existingSubEntity.progressionJson = desiredProgressionJson;
                                 existingSubEntity.spellcastingOverrideJson = desiredSpellcastingOverride;
                                 subEntitiesToSave.push(existingSubEntity);
+                            }
+                            // Remove any extra duplicate rows for the same canonical subclass
+                            for (const dup of matchingEntities) {
+                                if (dup !== existingSubEntity && typeof subclassRepo.remove === "function") {
+                                    await subclassRepo.remove(dup);
+                                }
                             }
                         } else {
                             subEntitiesToSave.push(subclassRepo.create({
                                 classId: cls.id,
                                 classSlug: cls.slug,
                                 slug: subSlug,
-                                name: sub.name,
+                                name: subName,
                                 description: sub.description || "",
                                 progressionJson: desiredProgressionJson,
                                 spellcastingOverrideJson: desiredSpellcastingOverride,
@@ -496,7 +570,7 @@ export default class RulesController extends BaseController {
                 const seedCls = SEED_CLASSES.find((sc) => sc.id === rc.slug);
                 const rawSubs = this.safeParse(rc.subclassesJson, []);
                 const baseFeats = new Set((seedCls?.features || []).map((f: any) => String(f.name || "").toLowerCase()));
-                const subclasses = Array.isArray(rawSubs)
+                const mappedSubs = Array.isArray(rawSubs)
                     ? rawSubs
                         .filter((sub: any) => {
                             if (sub.classSlug && sub.classSlug !== rc.slug) {
@@ -505,7 +579,9 @@ export default class RulesController extends BaseController {
                             return true;
                         })
                         .map((sub: any) => {
-                            const seedSub = seedCls?.subclasses?.find((ss: any) => ss.id === sub.id || ss.name === sub.name);
+                            const seedSub = findCanonicalSeedSubclass(rc.slug, sub.id || sub.slug, sub.name);
+                            const canonicalId = seedSub ? seedSub.id : (sub.id || slugify(sub.name || ""));
+                            const canonicalName = seedSub ? seedSub.name : sub.name;
                             const feats = (Array.isArray(sub.features) && sub.features.length > 0)
                                 ? sub.features
                                     .filter((f: any) => {
@@ -524,15 +600,19 @@ export default class RulesController extends BaseController {
                                     })
                                 : (seedSub?.features || []);
                             feats.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
+                            const subKey = normalizeSubclassKey(canonicalId || canonicalName);
                             const matchedLSub = loadedSubclasses.find(
                                 (ls) => (ls.classSlug === rc.slug || ls.classId === rc.id) &&
-                                        (ls.slug === sub.id || ls.id === sub.id || ls.name.toLowerCase() === sub.name?.toLowerCase())
+                                        (ls.slug === canonicalId || ls.id === canonicalId || ls.name.toLowerCase() === canonicalName?.toLowerCase() || normalizeSubclassKey(ls.slug || ls.name) === subKey)
                             );
                             const subProg = (matchedLSub && matchedLSub.progression && matchedLSub.progression.length > 0)
                                 ? matchedLSub.progression
-                                : buildSubclassProgression(rc.slug, { ...sub, features: feats });
+                                : buildSubclassProgression(rc.slug, { ...sub, id: canonicalId, name: canonicalName, features: feats });
                             return {
                                 ...sub,
+                                id: canonicalId,
+                                name: canonicalName,
+                                description: sub.description || seedSub?.description || "",
                                 classSlug: rc.slug,
                                 progression: subProg,
                                 features: feats
@@ -540,12 +620,24 @@ export default class RulesController extends BaseController {
                         })
                     : (seedCls?.subclasses ? [...seedCls.subclasses] : []);
 
+                const subclasses: any[] = [];
+                const seenSubKeys = new Set<string>();
+                for (const s of mappedSubs) {
+                    const key = normalizeSubclassKey(s.id || s.slug || s.name);
+                    if (key && !seenSubKeys.has(key)) {
+                        seenSubKeys.add(key);
+                        subclasses.push(s);
+                    }
+                }
+
                 if (seedCls?.subclasses) {
                     for (const ss of seedCls.subclasses) {
-                        if (!subclasses.some((s: any) => s.id === ss.id || s.name.toLowerCase() === ss.name.toLowerCase())) {
+                        const ssKey = normalizeSubclassKey(ss.id || ss.name);
+                        if (!seenSubKeys.has(ssKey) && !subclasses.some((s: any) => s.id === ss.id || s.name.toLowerCase() === ss.name.toLowerCase())) {
+                            seenSubKeys.add(ssKey);
                             const matchedLSub = loadedSubclasses.find(
                                 (ls) => (ls.classSlug === rc.slug || ls.classId === rc.id) &&
-                                        (ls.slug === ss.id || ls.id === ss.id || ls.name.toLowerCase() === ss.name?.toLowerCase())
+                                        (ls.slug === ss.id || ls.id === ss.id || ls.name.toLowerCase() === ss.name?.toLowerCase() || normalizeSubclassKey(ls.slug || ls.name) === ssKey)
                             );
                             const subProg = (matchedLSub && matchedLSub.progression && matchedLSub.progression.length > 0)
                                 ? matchedLSub.progression
@@ -561,7 +653,9 @@ export default class RulesController extends BaseController {
 
                 // If loadedSubclasses has entries for this class, merge in any custom/new subclasses
                 for (const lsub of loadedSubclasses.filter((ls) => ls.classSlug === rc.slug || ls.classId === rc.id)) {
-                    if (!subclasses.some((s: any) => s.id === lsub.slug || s.slug === lsub.slug)) {
+                    const lsubKey = normalizeSubclassKey(lsub.slug || lsub.name);
+                    if (!seenSubKeys.has(lsubKey) && !subclasses.some((s: any) => s.id === lsub.slug || s.slug === lsub.slug || normalizeSubclassKey(s.id || s.name) === lsubKey)) {
+                        seenSubKeys.add(lsubKey);
                         subclasses.push(lsub);
                     }
                 }
@@ -862,26 +956,35 @@ export default class RulesController extends BaseController {
                         if (subDef && subDef.name && !isLegacySub) {
                             const rawSubName = String(subDef.name).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
-                            const subSlug = slugify(cleanSubName);
+                            const canonSub = findCanonicalSeedSubclass(slug, cleanSubName, rawSubName);
+                            const subSlug = canonSub ? canonSub.id : slugify(cleanSubName);
+                            const canonicalSubName = canonSub ? canonSub.name : cleanSubName;
                             const rawSubSlug = slugify(rawSubName);
+                            const targetSubKey = normalizeSubclassKey(subSlug);
                             targetSub = subclasses.find((s: any) =>
                                 s.id === subSlug ||
                                 s.id === rawSubSlug ||
-                                s.name.toLowerCase() === cleanSubName.toLowerCase() ||
-                                s.name.toLowerCase() === rawSubName.toLowerCase()
+                                s.name?.toLowerCase() === canonicalSubName.toLowerCase() ||
+                                s.name?.toLowerCase() === cleanSubName.toLowerCase() ||
+                                s.name?.toLowerCase() === rawSubName.toLowerCase() ||
+                                normalizeSubclassKey(s.id || s.name || "") === targetSubKey
                             );
                             if (!targetSub) {
                                 targetSub = {
                                     id: subSlug,
-                                    name: cleanSubName,
-                                    description: cleanHtmlTags(subDef.description || ""),
+                                    name: canonicalSubName,
+                                    description: cleanHtmlTags(subDef.description || "") || canonSub?.description || "",
                                     fromDndBeyond: true,
                                     features: extractedSubclassFeatures
                                 };
                                 subclasses.push(targetSub);
                                 count++;
                             } else {
-                                targetSub.name = cleanSubName;
+                                targetSub.id = subSlug;
+                                targetSub.name = canonicalSubName;
+                                if (!targetSub.description && canonSub?.description) {
+                                    targetSub.description = canonSub.description;
+                                }
                                 if (!Array.isArray(targetSub.features)) targetSub.features = [];
                                 for (const sf of extractedSubclassFeatures) {
                                     const existingIdx = targetSub.features.findIndex((f: any) => f.name.toLowerCase() === sf.name.toLowerCase());
@@ -912,10 +1015,23 @@ export default class RulesController extends BaseController {
                                 const cCls = getCanonicalClassForFeature(fnLower);
                                 if (cCls) return false;
                                 const cSub = getCanonicalSubclassForFeature(fnLower);
-                                if (cSub && (cSub.classSlug !== slug || (cSub.subSlug !== subSlug && cSub.subSlug !== rawSubSlug && cSub.subName.toLowerCase() !== cleanSubName.toLowerCase()))) return false;
+                                if (cSub && (cSub.classSlug !== slug || (cSub.subSlug !== subSlug && cSub.subSlug !== rawSubSlug && cSub.subName.toLowerCase() !== cleanSubName.toLowerCase() && cSub.subName.toLowerCase() !== canonicalSubName.toLowerCase()))) return false;
                                 return true;
                             });
                             targetSub.features.sort((a: any, b: any) => a.level - b.level);
+                            // Deduplicate subclasses by normalized canonical key
+                            const seenSubKeys = new Set<string>();
+                            subclasses = subclasses.filter((s: any) => {
+                                const sCanon = findCanonicalSeedSubclass(slug, s.id, s.name);
+                                if (sCanon) {
+                                    s.id = sCanon.id;
+                                    s.name = sCanon.name;
+                                }
+                                const k = normalizeSubclassKey(s.id || s.name || "");
+                                if (!k || seenSubKeys.has(k)) return false;
+                                seenSubKeys.add(k);
+                                return true;
+                            });
                             ruleClass.subclassesJson = JSON.stringify(subclasses);
                         }
 
@@ -1002,10 +1118,11 @@ export default class RulesController extends BaseController {
                         if (subDef && subDef.name && !isLegacySub) {
                             const rawSubName = String(subDef.name).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
+                            const canonSub = findCanonicalSeedSubclass(slug, cleanSubName, rawSubName);
                             subclasses.push({
-                                id: slugify(cleanSubName),
-                                name: cleanSubName,
-                                description: cleanHtmlTags(subDef.description || ""),
+                                id: canonSub ? canonSub.id : slugify(cleanSubName),
+                                name: canonSub ? canonSub.name : cleanSubName,
+                                description: cleanHtmlTags(subDef.description || "") || canonSub?.description || "",
                                 features: extractedSubclassFeatures
                             });
                         }
@@ -1239,7 +1356,16 @@ export default class RulesController extends BaseController {
                             weaponMasteryCount: 0,
                             skillChoicesJson: JSON.stringify({ count: 2, from: ["Athletics", "Perception"] }),
                             featuresJson: JSON.stringify([]),
-                            subclassesJson: JSON.stringify(cls.subclass && !isLegacyDndBeyondEntity({ name: cls.subclass }) ? [{ id: slugify(cls.subclass), name: cls.subclass, description: "", features: [] }] : []),
+                            subclassesJson: JSON.stringify((() => {
+                                if (!cls.subclass || isLegacyDndBeyondEntity({ name: cls.subclass })) return [];
+                                const canonSub = findCanonicalSeedSubclass(slug, cls.subclass, cls.subclass);
+                                return [{
+                                    id: canonSub ? canonSub.id : slugify(cls.subclass),
+                                    name: canonSub ? canonSub.name : cls.subclass,
+                                    description: canonSub?.description || "",
+                                    features: []
+                                }];
+                            })()),
                             progressionJson: JSON.stringify(buildClassProgression(slug, [])),
                             source: "Imported Character"
                         });
@@ -1260,21 +1386,30 @@ export default class RulesController extends BaseController {
                         if (cls.subclass && !isLegacyDndBeyondEntity({ name: cls.subclass })) {
                             const rawSubName = String(cls.subclass).trim();
                             const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
-                            const subSlug = slugify(cleanSubName);
+                            const canonSub = findCanonicalSeedSubclass(slug, cleanSubName, rawSubName);
+                            const subSlug = canonSub ? canonSub.id : slugify(cleanSubName);
+                            const canonicalSubName = canonSub ? canonSub.name : cleanSubName;
                             const rawSubSlug = slugify(rawSubName);
+                            const targetSubKey = normalizeSubclassKey(subSlug);
                             targetSub = existingSubclasses.find((s: any) =>
                                 s.id === subSlug ||
                                 s.id === rawSubSlug ||
-                                s.name.toLowerCase() === cleanSubName.toLowerCase() ||
-                                s.name.toLowerCase() === rawSubName.toLowerCase()
+                                s.name?.toLowerCase() === canonicalSubName.toLowerCase() ||
+                                s.name?.toLowerCase() === cleanSubName.toLowerCase() ||
+                                s.name?.toLowerCase() === rawSubName.toLowerCase() ||
+                                normalizeSubclassKey(s.id || s.name || "") === targetSubKey
                             );
                             if (!targetSub) {
-                                targetSub = { id: subSlug, name: cleanSubName, description: "", features: [] };
+                                targetSub = { id: subSlug, name: canonicalSubName, description: canonSub?.description || "", features: [] };
                                 existingSubclasses.push(targetSub);
                                 subsChanged = true;
                                 count++;
                             } else {
-                                targetSub.name = cleanSubName;
+                                if (targetSub.id !== subSlug || targetSub.name !== canonicalSubName) {
+                                    targetSub.id = subSlug;
+                                    targetSub.name = canonicalSubName;
+                                    subsChanged = true;
+                                }
                             }
                             if (!Array.isArray(targetSub.features)) targetSub.features = [];
                         }
@@ -1437,6 +1572,18 @@ export default class RulesController extends BaseController {
 
                         if (subsChanged) {
                             if (targetSub?.features) targetSub.features.sort((a: any, b: any) => (a.level || 0) - (b.level || 0));
+                            const seenSubKeys = new Set<string>();
+                            existingSubclasses = existingSubclasses.filter((s: any) => {
+                                const sCanon = findCanonicalSeedSubclass(slug, s.id, s.name);
+                                if (sCanon) {
+                                    s.id = sCanon.id;
+                                    s.name = sCanon.name;
+                                }
+                                const k = normalizeSubclassKey(s.id || s.name || "");
+                                if (!k || seenSubKeys.has(k)) return false;
+                                seenSubKeys.add(k);
+                                return true;
+                            });
                             ruleClass.subclassesJson = JSON.stringify(existingSubclasses);
                         }
                         if (featsChanged) {
@@ -1483,16 +1630,21 @@ export default class RulesController extends BaseController {
                         let subs: any[] = this.safeParse(ruleClass.subclassesJson, []);
                         const rawSubName = String(cls.subclass).trim();
                         const cleanSubName = rawSubName.replace(/\s*\([^)]+\)\s*$/, "").trim();
-                        const subSlug = slugify(cleanSubName);
+                        const canonSub = findCanonicalSeedSubclass(slug, cleanSubName, rawSubName);
+                        const subSlug = canonSub ? canonSub.id : slugify(cleanSubName);
+                        const canonicalSubName = canonSub ? canonSub.name : cleanSubName;
                         const rawSubSlug = slugify(rawSubName);
+                        const targetSubKey = normalizeSubclassKey(subSlug);
                         const existingSub = subs.find((s: any) =>
                             s.id === subSlug ||
                             s.id === rawSubSlug ||
-                            s.name.toLowerCase() === cleanSubName.toLowerCase() ||
-                            s.name.toLowerCase() === rawSubName.toLowerCase()
+                            s.name?.toLowerCase() === canonicalSubName.toLowerCase() ||
+                            s.name?.toLowerCase() === cleanSubName.toLowerCase() ||
+                            s.name?.toLowerCase() === rawSubName.toLowerCase() ||
+                            normalizeSubclassKey(s.id || s.name || "") === targetSubKey
                         );
                         if (!existingSub) {
-                            subs.push({ id: subSlug, name: cleanSubName, description: "", features: [] });
+                            subs.push({ id: subSlug, name: canonicalSubName, description: canonSub?.description || "", features: [] });
                             ruleClass.subclassesJson = JSON.stringify(subs);
                             if (typeof classRepo.save === "function") {
                                 await classRepo.save(ruleClass);

@@ -2367,5 +2367,46 @@ describe("CharacterCreatorController", () => {
                 }
             }
         });
+
+        it("renders only one Great Old One Patron box in Warlock Subclass Selection even when duplicate aliases are present", () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            const root = document.getElementById("creator-step-panels")!;
+
+            const warlockCls = ctrl.classes.find((c) => c.id === "warlock")!;
+            warlockCls.subclasses = [
+                ...warlockCls.subclasses,
+                {
+                    id: "great-old-one-patron",
+                    name: "Great Old One Patron",
+                    description: "Awakened Mind (telepathic connection), Psychic Spells, Clairvoyant Combatant, Eldritch Hex, Thought Shield, Create Thrall.",
+                    features: []
+                },
+                {
+                    id: "the-great-old-one",
+                    name: "The Great Old One",
+                    description: "",
+                    features: []
+                }
+            ];
+
+            ctrl.state.classId = "warlock";
+            ctrl.state.level = 3;
+            ctrl.state.subclassId = "the-great-old-one";
+            ctrl.state.classes = [{ classId: "warlock", level: 3, subclassId: "the-great-old-one" }];
+            ctrl.renderStep(3);
+
+            expect(ctrl.state.subclassId).toBe("great-old-one");
+            expect(ctrl.state.classes[0].subclassId).toBe("great-old-one");
+
+            const subclassCards = Array.from(root.querySelectorAll(".subclass-card"));
+            expect(subclassCards).toHaveLength(4);
+
+            const gooCards = subclassCards.filter((card) =>
+                (card.querySelector(".card-title")?.textContent || "").toLowerCase().includes("great old one")
+            );
+            expect(gooCards).toHaveLength(1);
+            expect(gooCards[0].getAttribute("data-subclass-id")).toBe("great-old-one");
+            expect(gooCards[0].classList.contains("selected")).toBe(true);
+        });
     });
 });
