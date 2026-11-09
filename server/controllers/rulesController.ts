@@ -37,6 +37,7 @@ const BOILERPLATE_CLASS_FEATURES = new Set([
     "proficiencies",
     "equipment",
     "expanded spell list",
+    "eldritch invocation options",
     "core barbarian traits",
     "core bard traits",
     "core cleric traits",
@@ -167,9 +168,14 @@ export default class RulesController extends BaseController {
                         return true;
                     });
                     const mergedFeatures = (seedCls.features || []).map((sf) => {
-                        const existingDdb = cleanCurrentFeatures.find(
-                            (cf) => cf?.fromDndBeyond && String(cf.name || "").toLowerCase() === sf.name.toLowerCase()
-                        );
+                        const sfLower = sf.name.toLowerCase();
+                        const sfNorm = sfLower.replace(/\s*\([^)]+\)\s*$/, "");
+                        const existingDdb = cleanCurrentFeatures.find((cf) => {
+                            if (!cf?.fromDndBeyond) return false;
+                            const cfLower = String(cf.name || "").toLowerCase();
+                            const cfNorm = cfLower.replace(/\s*\([^)]+\)\s*$/, "");
+                            return cfLower === sfLower || (cfNorm && sfNorm && cfNorm === sfNorm);
+                        });
                         return existingDdb || sf;
                     });
                     for (const cf of cleanCurrentFeatures) {
@@ -177,7 +183,13 @@ export default class RulesController extends BaseController {
                         const cSub = getCanonicalSubclassForFeature(cf.name);
                         if (cCls && cCls !== rc.slug) continue;
                         if (cSub) continue;
-                        if (cf?.fromDndBeyond && !mergedFeatures.some((mf) => String(mf.name || "").toLowerCase() === String(cf.name || "").toLowerCase())) {
+                        const cfLower = String(cf.name || "").toLowerCase();
+                        const cfNorm = cfLower.replace(/\s*\([^)]+\)\s*$/, "");
+                        if (cf?.fromDndBeyond && !mergedFeatures.some((mf) => {
+                            const mfLower = String(mf.name || "").toLowerCase();
+                            const mfNorm = mfLower.replace(/\s*\([^)]+\)\s*$/, "");
+                            return mfLower === cfLower || (cfNorm && mfNorm && cfNorm === mfNorm);
+                        })) {
                             mergedFeatures.push(cf);
                         }
                     }
@@ -910,7 +922,13 @@ export default class RulesController extends BaseController {
                         let existingFeatures: any[] = this.safeParse(ruleClass.featuresJson, []);
                         let featuresChanged = false;
                         for (const ef of extractedFeatures) {
-                            const existingIdx = existingFeatures.findIndex((f: any) => f.name.toLowerCase() === ef.name.toLowerCase());
+                            const efLower = ef.name.toLowerCase();
+                            const efNorm = efLower.replace(/\s*\([^)]+\)\s*$/, "");
+                            const existingIdx = existingFeatures.findIndex((f: any) => {
+                                const fLower = String(f.name || "").toLowerCase();
+                                const fNorm = fLower.replace(/\s*\([^)]+\)\s*$/, "");
+                                return fLower === efLower || (efNorm && fNorm && efNorm === fNorm);
+                            });
                             if (existingIdx === -1) {
                                 existingFeatures.push(ef);
                                 featuresChanged = true;
@@ -935,6 +953,12 @@ export default class RulesController extends BaseController {
                             const cSub = getCanonicalSubclassForFeature(fnLower);
                             if (cSub) return false;
                             if (targetSub?.features?.some((sf: any) => String(sf.name || "").trim().toLowerCase() === fnLower)) return false;
+                            if (slug === "warlock") {
+                                if (fnLower === "otherworldly patron" && f.level === 1) return false;
+                                if (fnLower === "pact boon" && f.level === 3) return false;
+                                if (fnLower === "mystic arcanum" && existingFeatures.some((ef: any) => ef !== f && String(ef.name || "").toLowerCase().startsWith("mystic arcanum"))) return false;
+                                if (fnLower === "eldritch invocations" && existingFeatures.some((ef: any) => ef !== f && String(ef.name || "").toLowerCase().startsWith("eldritch invocations ("))) return false;
+                            }
                             return true;
                         });
                         existingFeatures.sort((a, b) => a.level - b.level);

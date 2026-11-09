@@ -1371,26 +1371,6 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 }
                 break;
 
-            case "warlock":
-                if (lvl === 1) {
-                    choices.push({
-                        id: "eldritch-invocations-1",
-                        name: "Eldritch Invocations",
-                        prompt: "Choose 1 Eldritch Invocation.",
-                        chooseCount: 1,
-                        options: ELDRITCH_INVOCATIONS
-                    });
-                } else if (lvl === 2) {
-                    choices.push({
-                        id: "eldritch-invocations-2",
-                        name: "Eldritch Invocations",
-                        prompt: "Choose 1 additional Eldritch Invocation (2 total).",
-                        chooseCount: 1,
-                        options: ELDRITCH_INVOCATIONS
-                    });
-                }
-                break;
-
             case "wizard":
                 if (lvl === 2) {
                     choices.push({

@@ -2601,6 +2601,31 @@ export class CharacterCreatorController {
                     </div>
                 `);
             }
+
+            // Eldritch Invocations for Warlock (gained at Level 1 in 2024 rules)
+            if (cls.id === "warlock") {
+                const warlockLvl = this.state.classes?.find((c) => c.classId === "warlock")?.level || (this.state.classId === "warlock" ? this.state.level : 1);
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h5>
+                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || warlockLvl >= inv.minLevel).map((inv) => {
+                                const isSelected = this.state.invocations.includes(inv.id);
+                                return `
+                                    <div class="select-card invocation-card ${isSelected ? "selected" : ""}" data-invocation-id="${inv.id}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${inv.name}</h5>
+                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                        </div>
+                                        ${inv.minLevel ? `<span class="card-tag">Min Level: ${inv.minLevel}</span>` : ""}
+                                        <p class="card-body">${inv.description}</p>
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
+                    </div>
+                `);
+            }
         }
 
         // Level 2 choices
@@ -2648,30 +2673,6 @@ export class CharacterCreatorController {
                 `);
             }
 
-            // Eldritch Invocations for Warlock
-            if (cls.id === "warlock") {
-                const warlockLvl = this.state.classes?.find((c) => c.classId === "warlock")?.level || (this.state.classId === "warlock" ? this.state.level : 1);
-                choices.push(`
-                    <div class="level-choice-box">
-                        <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h5>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-                            ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || warlockLvl >= inv.minLevel).map((inv) => {
-                                const isSelected = this.state.invocations.includes(inv.id);
-                                return `
-                                    <div class="select-card invocation-card ${isSelected ? "selected" : ""}" data-invocation-id="${inv.id}">
-                                        <div class="card-title-row">
-                                            <h5 class="card-title" style="font-size: 0.95rem;">${inv.name}</h5>
-                                            <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                        </div>
-                                        ${inv.minLevel ? `<span class="card-tag">Min Level: ${inv.minLevel}</span>` : ""}
-                                        <p class="card-body">${inv.description}</p>
-                                    </div>
-                                `;
-                            }).join("")}
-                        </div>
-                    </div>
-                `);
-            }
 
             // Wizard Scholar (Level 2)
             if (cls.id === "wizard") {
@@ -3535,8 +3536,14 @@ export class CharacterCreatorController {
         ]);
 
         for (const ch of dynamicChoices) {
-            const chId = ch.choiceId || ch.id;
-            if (handledChoiceKeys.has(chId) || (ch.id && handledChoiceKeys.has(ch.id))) continue;
+            const chId = ch.choiceId || ch.id || "";
+            if (
+                handledChoiceKeys.has(chId) ||
+                (ch.id && handledChoiceKeys.has(ch.id)) ||
+                chId.startsWith("eldritch-invocation") ||
+                chId.startsWith("metamagic-") ||
+                ch.name === "Eldritch Invocations"
+            ) continue;
             const currentChoice = this.state.subclassFeatureChoices?.[chId] || "";
             choices.push(`
                 <div class="level-choice-box">

@@ -18,13 +18,13 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize: false,
     logging: false,
-    entities: [
-        path.join(__dirname, 'entity', '*.{js,ts}').replace(/\\/g, '/'),
-        path.join(__dirname, '..', '..', 'services', 'database', 'entity', '*.{js,ts}').replace(/\\/g, '/')
-    ],
-    migrations: [
-        path.join(__dirname, 'migration', '*.{js,ts}').replace(/\\/g, '/'),
-        path.join(__dirname, '..', '..', 'services', 'database', 'migration', '*.{js,ts}').replace(/\\/g, '/')
-    ],
+    entities: Array.from(new Set([
+        path.resolve(__dirname, 'entity', '*.{js,ts}').replace(/\\/g, '/'),
+        path.resolve(__dirname, '..', '..', 'services', 'database', 'entity', '*.{js,ts}').replace(/\\/g, '/')
+    ])),
+    migrations: Array.from(new Set([
+        path.resolve(__dirname, 'migration', '*.{js,ts}').replace(/\\/g, '/'),
+        path.resolve(__dirname, '..', '..', 'services', 'database', 'migration', '*.{js,ts}').replace(/\\/g, '/')
+    ])),
     subscribers: [],
 })
