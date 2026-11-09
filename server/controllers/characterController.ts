@@ -12,6 +12,7 @@ import CharacterSpell from "services/database/entity/CharacterSpell";
 import CharacterVitals from "services/database/entity/CharacterVitals";
 import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
+import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
 import BaseController from "./baseController";
 import ItemController from "./itemController";
 import RulesController from "./rulesController";
@@ -292,6 +293,8 @@ export default class CharacterController extends BaseController {
     }
 
     public static async getSavedCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
+        // Spell slot auto-heal reads class spellcasting from the rules data
+        await loadClassSpellcastingRules();
         const currentUser = SessionController.getUser(req as ReqAndUser);
         if (!currentUser) {
             return {
@@ -602,6 +605,8 @@ export default class CharacterController extends BaseController {
     }
 
     public static async saveCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
+        // Spell slot auto-heal reads class spellcasting from the rules data
+        await loadClassSpellcastingRules();
         return this.persistCharacter(req, res, "update");
     }
 
@@ -911,115 +916,32 @@ export default class CharacterController extends BaseController {
         return "th";
     }
 
+    /**
+     * Spell slots a character's classes should have, from the class rules (see spellSlotRules); with no spellcasting
+     * class, Magic Initiate's one 1st-level slot.
+     */
     private static computeExpectedSpellSlots(
         classes: Array<{ name?: string; level?: number; subclass?: string }>,
         features?: Array<{ name?: string }>
     ): Record<string, { level?: number; total: number; label: string }> {
-        const FULL_CASTER_SLOTS: number[][] = [
-            [2, 0, 0, 0, 0, 0, 0, 0, 0], // 1
-            [3, 0, 0, 0, 0, 0, 0, 0, 0], // 2
-            [4, 2, 0, 0, 0, 0, 0, 0, 0], // 3
-            [4, 3, 0, 0, 0, 0, 0, 0, 0], // 4
-            [4, 3, 2, 0, 0, 0, 0, 0, 0], // 5
-            [4, 3, 3, 0, 0, 0, 0, 0, 0], // 6
-            [4, 3, 3, 1, 0, 0, 0, 0, 0], // 7
-            [4, 3, 3, 2, 0, 0, 0, 0, 0], // 8
-            [4, 3, 3, 3, 1, 0, 0, 0, 0], // 9
-            [4, 3, 3, 3, 2, 0, 0, 0, 0], // 10
-            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 11
-            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 12
-            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 13
-            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 14
-            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 15
-            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 16
-            [4, 3, 3, 3, 2, 1, 1, 1, 1], // 17
-            [4, 3, 3, 3, 3, 1, 1, 1, 1], // 18
-            [4, 3, 3, 3, 3, 2, 1, 1, 1], // 19
-            [4, 3, 3, 3, 3, 2, 2, 1, 1]  // 20
-        ];
-
-        const WARLOCK_PACT_SLOTS: Array<{ count: number; level: number }> = [
-            { count: 1, level: 1 }, // 1
-            { count: 2, level: 1 }, // 2
-            { count: 2, level: 2 }, // 3
-            { count: 2, level: 2 }, // 4
-            { count: 2, level: 3 }, // 5
-            { count: 2, level: 3 }, // 6
-            { count: 2, level: 4 }, // 7
-            { count: 2, level: 4 }, // 8
-            { count: 2, level: 5 }, // 9
-            { count: 2, level: 5 }, // 10
-            { count: 3, level: 5 }, // 11
-            { count: 3, level: 5 }, // 12
-            { count: 3, level: 5 }, // 13
-            { count: 3, level: 5 }, // 14
-            { count: 3, level: 5 }, // 15
-            { count: 3, level: 5 }, // 16
-            { count: 4, level: 5 }, // 17
-            { count: 4, level: 5 }, // 18
-            { count: 4, level: 5 }, // 19
-            { count: 4, level: 5 }  // 20
-        ];
-
-        let effectiveCasterLevel = 0;
-        let warlockLevel = 0;
-
-        for (const cls of classes || []) {
-            const cName = String(cls?.name || "").toLowerCase().trim();
-            const cSub = String(cls?.subclass || "").toLowerCase().trim();
-            const cLvl = Math.max(1, Math.min(20, Number(cls?.level) || 1));
-
-            if (["bard", "cleric", "druid", "sorcerer", "wizard"].includes(cName)) {
-                effectiveCasterLevel += cLvl;
-            } else if (["paladin", "ranger", "artificer"].includes(cName)) {
-                effectiveCasterLevel += Math.ceil(cLvl / 2);
-            } else if (
-                (cName === "fighter" && cSub.includes("eldritch knight")) ||
-                (cName === "rogue" && cSub.includes("arcane trickster"))
-            ) {
-                if (cLvl >= 3) {
-                    effectiveCasterLevel += Math.ceil(cLvl / 3);
-                }
-            } else if (cName === "warlock") {
-                warlockLevel += cLvl;
-            }
-        }
-
         const result: Record<string, { level?: number; total: number; label: string }> = {};
-
-        if (effectiveCasterLevel > 0) {
-            const idx = Math.max(0, Math.min(19, effectiveCasterLevel - 1));
-            const row = FULL_CASTER_SLOTS[idx] || [];
-            row.forEach((total, i) => {
-                if (total > 0) {
-                    const slotLvl = i + 1;
-                    result[`level${slotLvl}`] = {
-                        level: slotLvl,
-                        total,
-                        label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level`
-                    };
-                }
-            });
-        } else if (Array.isArray(features) && features.some(f => String(f?.name || "").toLowerCase().includes("magic initiate"))) {
-            result.level1 = {
-                level: 1,
-                total: 1,
-                label: "1st Level"
+        const computed = computeSpellSlotsFromRules(classes || []);
+        computed.standard.forEach((total, i) => {
+            if (total > 0) {
+                const slotLvl = i + 1;
+                result[`level${slotLvl}`] = { level: slotLvl, total, label: `${slotLvl}${this.getOrdinalSuffix(slotLvl)} Level` };
+            }
+        });
+        if (Object.keys(result).length === 0 && Array.isArray(features) && features.some(f => String(f?.name || "").toLowerCase().includes("magic initiate"))) {
+            result.level1 = { level: 1, total: 1, label: "1st Level" };
+        }
+        if (computed.pact) {
+            result.pact = {
+                level: computed.pact.level,
+                total: computed.pact.count,
+                label: `Pact Magic (${computed.pact.level}${this.getOrdinalSuffix(computed.pact.level)} Level)`
             };
         }
-
-        if (warlockLevel > 0) {
-            const wIdx = Math.max(0, Math.min(19, warlockLevel - 1));
-            const pact = WARLOCK_PACT_SLOTS[wIdx];
-            if (pact && pact.count > 0) {
-                result.pact = {
-                    level: pact.level,
-                    total: pact.count,
-                    label: `Pact Magic (${pact.level}${this.getOrdinalSuffix(pact.level)} Level)`
-                };
-            }
-        }
-
         return result;
     }
 

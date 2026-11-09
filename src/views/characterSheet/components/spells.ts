@@ -1,5 +1,5 @@
-import { CLASSES_2024 } from "../../../rules/dnd5e_2024/classes";
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
+import { findClassRule } from "../../../services/classRules";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -67,21 +67,6 @@ export function isCharacterUncountedSpell(spell: SpellDefinition): boolean {
     );
 }
 
-const THIRD_CASTER_SUBCLASSES: Array<{ match: string; id: string }> = [
-    { match: "eldritch knight", id: "eldritch-knight" },
-    { match: "eldritch-knight", id: "eldritch-knight" },
-    { match: "arcane trickster", id: "arcane-trickster" },
-    { match: "arcane-trickster", id: "arcane-trickster" }
-];
-
-/**
- * Cantrips for classes that aren't in the 2024 rules.
- */
-function getLegacyCantripLimit(name: string, lvl: number): number {
-    if (name === "artificer") return lvl >= 14 ? 4 : lvl >= 10 ? 3 : 2;
-    return 0;
-}
-
 /**
  * D&D 2024 multiclassing: each class prepares its own spells, as if single-classed, using its own class level for
  * how many cantrips and prepared spells it gets and how high a spell level it can prepare. Spells are attributed to
@@ -95,37 +80,24 @@ export function getCharacterSpellcastingBreakdown(data: CharacterData): SheetSpe
     (data.classes || []).forEach(c => {
         const rawName = (c.name || "").trim();
         const name = rawName.toLowerCase();
-        const sub = (c.subclass || "").toLowerCase();
         const lvl = Math.max(1, Math.min(20, Number(c.level) || 1));
-        const clsDef = CLASSES_2024.find(cd => cd.id === name || cd.name.toLowerCase() === name);
-        const subclassId = THIRD_CASTER_SUBCLASSES.find(t => sub.includes(t.match))?.id || "";
-        const info = getMulticlassCasterInfo({ classId: clsDef?.id || name, level: lvl, subclassId }, clsDef);
+        // Spellcasting comes from the class rules: the class's own, or its subclass's (e.g. Eldritch Knight)
+        const clsDef = findClassRule(name);
+        const info = getMulticlassCasterInfo({ classId: clsDef?.id || name, level: lvl, subclassId: c.subclass || "" }, clsDef);
+        if (!info) return;
 
-        const entry: SheetSpellcastingClass = info
-            ? {
-                name: clsDef?.name || rawName,
-                level: lvl,
-                maxCantrips: info.maxCantrips,
-                maxPrepared: info.maxPrepared,
-                maxSpellLevel: info.maxSpellLevel,
-                currentCantrips: 0,
-                currentPrepared: 0,
-                aboveMaxLevel: [],
-                isCantripsOverLimit: false,
-                isPreparedOverLimit: false
-            }
-            : {
-                name: rawName,
-                level: lvl,
-                maxCantrips: getLegacyCantripLimit(name, lvl),
-                maxPrepared: 0,
-                maxSpellLevel: 9,
-                currentCantrips: 0,
-                currentPrepared: 0,
-                aboveMaxLevel: [],
-                isCantripsOverLimit: false,
-                isPreparedOverLimit: false
-            };
+        const entry: SheetSpellcastingClass = {
+            name: clsDef?.name || rawName,
+            level: lvl,
+            maxCantrips: info.maxCantrips,
+            maxPrepared: info.maxPrepared,
+            maxSpellLevel: info.maxSpellLevel,
+            currentCantrips: 0,
+            currentPrepared: 0,
+            aboveMaxLevel: [],
+            isCantripsOverLimit: false,
+            isPreparedOverLimit: false
+        };
         if (entry.maxCantrips === 0 && entry.maxPrepared === 0) return;
         classes.push(entry);
         sourceToClass.set(name, entry);

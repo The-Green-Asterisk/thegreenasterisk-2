@@ -81,6 +81,8 @@ export interface CreatorState {
     asiChoices: Record<string, AsiChoice>;
     classSkills: string[];
     expertiseSkills: string[];
+    /** Skills chosen through feats (Skilled, Skill Expert, Keen Mind, Observant), keyed by FeatSkillSection.key */
+    featSkillChoices?: Record<string, string[]>;
     selectedWeapons: string[];
     selectedArmor: string;
     hasShield: boolean;

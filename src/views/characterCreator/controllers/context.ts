@@ -27,6 +27,7 @@ export interface CharacterCreatorContext {
     collapsedProgressionLevels: Set<string>;
     progressionFilter: "all" | "unlocked";
     spellsWarningDismissed: boolean;
+    skillsWarningDismissed: boolean;
 
     // View & Navigation
     renderStep: (step: number, preserveScroll?: boolean) => void;
@@ -64,6 +65,7 @@ export interface CharacterCreatorContext {
     getAllToolProficiencies: () => string[];
     getMaxClassSkillCount: () => number;
     getAllowedClassSkills: () => string[];
+    sanitizeSkillSelections: () => void;
     isProficientWithArmor: (armorName: string) => boolean;
     isProficientWithShield: () => boolean;
     isProficientWithWeapon: (weaponName: string) => boolean;

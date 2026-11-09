@@ -10,6 +10,7 @@ import { Spell } from "../services/database/entity/Spell";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import {
     CLASS_SCALING_TRAITS_2024,
+    DND_BEYOND_2024_CLASS_IDS,
     MULTICLASS_DATA_2024,
     buildClassProgression,
     buildSubclassProgression
@@ -218,7 +219,8 @@ export default class RulesController extends BaseController {
                     progressionJson: JSON.stringify(buildClassProgression(cls.id, cls.features || [])),
                     subclassesJson: JSON.stringify(cls.subclasses || []),
                     startingEquipmentJson: cls.startingEquipmentOptions ? JSON.stringify(cls.startingEquipmentOptions) : undefined,
-                    source: "2024 Core Rules"
+                    source: "2024 Core Rules",
+                    dndBeyondId: DND_BEYOND_2024_CLASS_IDS[cls.id]
                 }));
                 await classRepo.save(classEntities);
             } else if (typeof classRepo.find === "function" && typeof classRepo.save === "function") {
@@ -705,7 +707,8 @@ export default class RulesController extends BaseController {
                             subclasses.push({
                                 ...ss,
                                 classSlug: rc.slug,
-                                progression: subProg
+                                progression: subProg,
+                                spellcastingOverride: (ss as any).spellcastingOverride ?? matchedLSub?.spellcastingOverride
                             });
                         }
                     }

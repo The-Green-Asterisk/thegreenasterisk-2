@@ -454,7 +454,7 @@ export function renderLevelChoices(ctx: CharacterCreatorContext, cls: ClassDefin
             choices.push(`
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-graduation-cap"></i> Scholar Academic Skill</h5>
-                        <p class="card-body">${getClsFeatureDesc("Scholar", "Gain Expertise in one of your proficient skills from: Arcana, History, Nature, Medicine, or Religion.", 2)}</p>
+                        <p class="card-body">${getClsFeatureDesc("Scholar", "Gain Expertise in one of your proficient skills from: Arcana, History, Investigation, Medicine, Nature, or Religion.", 2)}</p>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
                             ${WIZARD_SCHOLAR_SKILLS.map((sk) => `
                                 <div class="select-card subclass-feature-card ${currentChoice === sk.id ? "selected" : ""}" data-feature-key="wizard-2-scholar" data-feature-choice="${sk.id}">

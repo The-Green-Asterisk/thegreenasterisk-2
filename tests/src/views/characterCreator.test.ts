@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CLASSES_2024 } from "../../../src/rules/dnd5e_2024";
 import { CharacterCreatorController } from "../../../src/views/characterCreator/characterCreator.ctrl";
+import { serverRulesClasses } from "./serverRulesClasses";
 
 describe("CharacterCreatorController", () => {
     let ctrl: CharacterCreatorController;
 
     beforeEach(() => {
         ctrl = new CharacterCreatorController();
+        // Class rules come from rule_classes in the app; use the same seeded data here
+        ctrl.classes = serverRulesClasses();
     });
 
     it("initializes with default starting state", () => {
@@ -661,6 +664,147 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getAbilityModifier("con")).toBe(2);
     });
 
+    describe("skills step (2024 rules)", () => {
+        const setup = (classes: Array<{ classId: string; level: number; subclassId?: string }>, backgroundId = "farmer") => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div><div id="creator-validation-alert" class="hidden"></div>';
+            ctrl.state.classId = classes[0].classId;
+            ctrl.state.level = classes.reduce((s, c) => s + c.level, 0);
+            ctrl.state.classes = classes.map((c) => ({ subclassId: "", ...c }));
+            ctrl.state.backgroundId = backgroundId; // Farmer: Animal Handling, Nature
+            ctrl.state.speciesId = "dwarf";
+            ctrl.state.originFeatId = "alert";
+            ctrl.state.classSkills = [];
+            ctrl.state.expertiseSkills = [];
+            ctrl.state.featSkillChoices = {};
+            ctrl.syncStateClassProperties();
+            ctrl.state.currentStep = 6;
+            ctrl.renderStep(6);
+            return document.getElementById("creator-step-panels")!;
+        };
+        const click = (root: HTMLElement, selector: string) => (root.querySelector(selector) as HTMLElement).click();
+
+        it("only allows skills on the class list", () => {
+            const root = setup([{ classId: "fighter", level: 1 }]);
+            const arcana = root.querySelector('.class-skill-card[data-skill-name="Arcana"]') as HTMLElement;
+            expect(arcana.getAttribute("aria-disabled")).toBe("true");
+            arcana.click();
+            expect(ctrl.state.classSkills).toEqual([]);
+            click(root, '.class-skill-card[data-skill-name="Athletics"]');
+            expect(ctrl.state.classSkills).toEqual(["Athletics"]);
+        });
+
+        it("gives each class its own picks when multiclassed, rearranging shared skills as needed", () => {
+            // Fighter 1 / Rogue 1: 2 from the Fighter list + 1 from the Rogue list
+            let root = setup([{ classId: "fighter", level: 1 }, { classId: "rogue", level: 1 }]);
+            click(root, '.class-skill-card[data-skill-name="Sleight of Hand"]');
+            root = document.getElementById("creator-step-panels")!;
+            const deception = root.querySelector('.class-skill-card[data-skill-name="Deception"]') as HTMLElement;
+            expect(deception.getAttribute("aria-disabled")).toBe("true"); // only one Rogue pick
+            deception.click();
+            expect(ctrl.state.classSkills).toEqual(["Sleight of Hand"]);
+
+            // Shared skills picked first get moved to the Fighter so the Rogue pick stays open
+            root = setup([{ classId: "fighter", level: 1 }, { classId: "rogue", level: 1 }]);
+            click(root, '.class-skill-card[data-skill-name="Perception"]');
+            click(document.getElementById("creator-step-panels")!, '.class-skill-card[data-skill-name="Insight"]');
+            click(document.getElementById("creator-step-panels")!, '.class-skill-card[data-skill-name="Stealth"]');
+            expect(ctrl.state.classSkills).toEqual(["Perception", "Insight", "Stealth"]);
+            expect(document.querySelector('.class-skill-card[data-skill-name="Stealth"] .skill-stat-badge')?.textContent?.trim()).toBe("Rogue");
+        });
+
+        it("picking Expertise doesn't change class skills", () => {
+            const root = setup([{ classId: "rogue", level: 1 }]);
+            for (const s of ["Stealth", "Acrobatics", "Perception", "Deception"]) {
+                click(document.getElementById("creator-step-panels")!, `.class-skill-card[data-skill-name="${s}"]`);
+            }
+            click(document.getElementById("creator-step-panels")!, '.expertise-skill-card[data-skill-name="Stealth"]');
+            expect(ctrl.state.classSkills).toEqual(["Stealth", "Acrobatics", "Perception", "Deception"]);
+            expect(ctrl.state.expertiseSkills).toEqual(["Stealth"]);
+            expect(root).toBeTruthy();
+        });
+
+        it("toggles skills from the keyboard", () => {
+            setup([{ classId: "fighter", level: 1 }]);
+            const card = document.querySelector('.class-skill-card[data-skill-name="History"]') as HTMLElement;
+            expect(card.getAttribute("role")).toBe("checkbox");
+            expect(card.getAttribute("tabindex")).toBe("0");
+            card.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+            expect(ctrl.state.classSkills).toEqual(["History"]);
+            expect(document.querySelector('.class-skill-card[data-skill-name="History"]')?.getAttribute("aria-checked")).toBe("true");
+        });
+
+        it("adds skill picks for Skilled, Skill Expert, and Keen Mind", () => {
+            setup([{ classId: "fighter", level: 4 }]);
+            ctrl.state.originFeatId = "skilled";
+            ctrl.state.asiChoices = { "fighter-4": { type: "feat", featId: "keen-mind", statA: "int" } };
+            ctrl.state.classSkills = ["History", "Perception"];
+            ctrl.renderStep(6);
+            const keys = Array.from(document.querySelectorAll(".feat-skill-card")).map((c) => c.getAttribute("data-feat-section"));
+            expect(new Set(keys)).toEqual(new Set(["origin:skilled", "asi:fighter-4:keen-mind"]));
+            // Skilled can't take a skill already granted
+            expect(document.querySelector('.feat-skill-card[data-feat-section="origin:skilled"][data-skill-name="Nature"]')?.getAttribute("aria-disabled")).toBe("true");
+            ctrl.state.featSkillChoices = { "origin:skilled": ["Stealth", "Arcana", "Medicine"], "asi:fighter-4:keen-mind": ["History"] };
+            const payload = ctrl.buildPayload();
+            const skill = (n: string) => payload.skills.find((s: any) => s.name === n);
+            expect(skill("Stealth").proficiency).toBe("proficient");
+            expect(skill("Arcana").proficiency).toBe("proficient");
+            // Keen Mind on a skill already proficient (History, a Fighter pick) gives Expertise
+            expect(skill("History").proficiency).toBe("expertise");
+
+            // Skill Expert: one more skill and one Expertise pick
+            ctrl.state.asiChoices = { "fighter-4": { type: "feat", featId: "skill-expert", statA: "dex" } };
+            ctrl.state.featSkillChoices = { "origin:skilled": ["Stealth"] };
+            expect(ctrl.getMaxExpertiseCount()).toBe(1);
+        });
+
+        it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
+            setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
+            ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };
+            ctrl.state.classSkills = ["Investigation", "Medicine"];
+            const arcana = ctrl.buildPayload().skills.find((s: any) => s.name === "Arcana");
+            expect(arcana.proficiency).toBe("expertise");
+
+            ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "religion" };
+            ctrl.spellsWarningDismissed = false;
+            ctrl.skillsWarningDismissed = false;
+            ctrl.state.currentStep = 6;
+            expect(ctrl.validateCurrentStep()).toBe(false);
+            expect(document.getElementById("creator-validation-alert")!.textContent).toContain("gives Expertise in Religion, but you aren't proficient in it");
+        });
+
+        it("adds Jack of All Trades and Thaumaturge to skill bonuses", () => {
+            setup([{ classId: "bard", level: 2 }]);
+            ctrl.state.classSkills = ["Performance", "Persuasion", "Deception"];
+            const pb = ctrl.getProficiencyBonus();
+            const arcana = ctrl.buildPayload().skills.find((s: any) => s.name === "Arcana");
+            expect(arcana.bonus).toBe(ctrl.getAbilityModifier("int") + Math.floor(pb / 2));
+
+            setup([{ classId: "cleric", level: 1 }]);
+            ctrl.state.divineOrder = "thaumaturge";
+            ctrl.state.classSkills = ["Religion", "Insight"];
+            const religion = ctrl.buildPayload().skills.find((s: any) => s.name === "Religion");
+            expect(religion.bonus).toBe(ctrl.getAbilityModifier("int") + ctrl.getProficiencyBonus() + Math.max(1, ctrl.getAbilityModifier("wis")));
+        });
+
+        it("warns on Next when picks are missing, then lets the player continue", () => {
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.state.classSkills = ["Athletics"];
+            expect(ctrl.validateCurrentStep()).toBe(false);
+            expect(document.getElementById("creator-validation-alert")!.textContent).toContain("Fighter: 1 of 2 skills chosen");
+            expect(ctrl.validateCurrentStep()).toBe(true);
+        });
+
+        it("splits an imported character's skills between granted, class, and feat picks", async () => {
+            const { distributeImportedSkills } = await import("../../../src/views/characterCreator/services/skillRules");
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.state.originFeatId = "skilled";
+            // Farmer grants Animal Handling, Nature; Fighter picks 2; Skilled takes the rest
+            distributeImportedSkills(ctrl, ["Animal Handling", "Nature", "Athletics", "Perception", "Arcana", "Stealth", "Medicine"]);
+            expect(ctrl.state.classSkills).toEqual(["Athletics", "Perception"]);
+            expect(ctrl.state.featSkillChoices!["origin:skilled"]).toEqual(["Arcana", "Stealth", "Medicine"]);
+        });
+    });
+
     it("computes progression feature limits accurately across levels", () => {
         // Metamagic (Sorcerer)
         ctrl.state.classId = "sorcerer";
@@ -720,8 +864,9 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getMaxExpertiseCount()).toBe(0);
         ctrl.state.level = 2;
         expect(ctrl.getMaxExpertiseCount()).toBe(1);
+        // Deft Explorer (1 at 2) + Expertise (2 more at 9)
         ctrl.state.level = 9;
-        expect(ctrl.getMaxExpertiseCount()).toBe(2);
+        expect(ctrl.getMaxExpertiseCount()).toBe(3);
     });
 
     it("renders class level progression (levels 1-20) in Step 3", () => {
@@ -2229,10 +2374,10 @@ describe("CharacterCreatorController", () => {
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div><div id="creator-validation-alert" class="hidden"></div>';
         const root = document.getElementById("creator-step-panels")!;
 
-        // Wizard 1 / Cleric 3
+        // Wizard 1 / Cleric 3 (no subclass, so no domain spells are granted)
         ctrl.state.classes = [
             { classId: "wizard", level: 1, subclassId: "" },
-            { classId: "cleric", level: 3, subclassId: "life" }
+            { classId: "cleric", level: 3, subclassId: "" }
         ];
         ctrl.syncStateClassProperties();
         ctrl.state.originFeatId = "alert";
@@ -2281,9 +2426,9 @@ describe("CharacterCreatorController", () => {
     });
 
     it("assigns unattributed spells to a class that can prepare them and auto-fills each class separately", () => {
-        // Cleric 3 / Wizard 1, with a flat (pre-split) selection
+        // Cleric 3 / Wizard 1, with a flat (pre-split) selection (no Cleric subclass, so no domain spells are granted)
         ctrl.state.classes = [
-            { classId: "cleric", level: 3, subclassId: "life" },
+            { classId: "cleric", level: 3, subclassId: "" },
             { classId: "wizard", level: 1, subclassId: "evoker" }
         ];
         ctrl.syncStateClassProperties();
@@ -2308,9 +2453,10 @@ describe("CharacterCreatorController", () => {
     });
 
     it("does not overflow a Bard 10 / Warlock 10 when shared spells come first in an unsplit selection", () => {
+        // No subclasses, so no subclass spells are granted and every pick counts
         ctrl.state.classes = [
-            { classId: "bard", level: 10, subclassId: "glamour" },
-            { classId: "warlock", level: 10, subclassId: "great-old-one" }
+            { classId: "bard", level: 10, subclassId: "" },
+            { classId: "warlock", level: 10, subclassId: "" }
         ];
         ctrl.syncStateClassProperties();
         ctrl.state.originFeatId = "alert";
@@ -2388,6 +2534,40 @@ describe("CharacterCreatorController", () => {
         ctrl.state.selectedSpellsLevel1 = ["Cure Wounds"];
         payload = ctrl.buildPayload();
         expect(payload.spells.find((s: any) => s.name === "Cure Wounds")).toMatchObject({ source: "Warlock", viaFeature: "Fiend Expanded Spells" });
+    });
+
+    it("reads subclass spellcasting from the class rules, so a homebrew subclass caster works with no code", () => {
+        // A made-up Barbarian subclass that casts from the Sorcerer list as a third caster
+        ctrl.classes = ctrl.classes.map((c) => c.id !== "barbarian" ? c : {
+            ...c,
+            subclasses: [...c.subclasses, {
+                id: "spellrager", name: "Path of the Spellrager", description: "", features: [],
+                spellcastingOverride: {
+                    ability: "cha", type: "third", spellList: "Sorcerer",
+                    cantripsKnownByLevel: [0, 0, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                    preparedSpellsByLevel: [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13],
+                    spellSlotsByLevel: ctrl.classes.find((x) => x.id === "fighter")!.subclasses.find((s) => s.id === "eldritch-knight")!.spellcastingOverride!.spellSlotsByLevel
+                }
+            }]
+        });
+        ctrl.state.classId = "barbarian";
+        ctrl.state.subclassId = "spellrager";
+        ctrl.state.level = 7;
+        ctrl.state.classes = [{ classId: "barbarian", level: 7, subclassId: "spellrager" }];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "alert";
+        const [bucket] = ctrl.getSpellBuckets();
+        expect([bucket.label, bucket.baseList, bucket.maxCantrips, bucket.maxPrepared, bucket.maxSpellLevel]).toEqual(["Barbarian", "Sorcerer", 2, 5, 2]);
+        expect(bucket.preparedPool.every((s) => s.classes.includes("Sorcerer"))).toBe(true);
+        expect(ctrl.getSpellSlotsSummary()).toBe("4 × Lvl 1, 2 × Lvl 2");
+
+        // Eldritch Knight comes from its seeded spellcastingOverride the same way
+        ctrl.state.classId = "fighter";
+        ctrl.state.subclassId = "eldritch-knight";
+        ctrl.state.classes = [{ classId: "fighter", level: 7, subclassId: "eldritch-knight" }];
+        ctrl.syncStateClassProperties();
+        const [ek] = ctrl.getSpellBuckets();
+        expect([ek.baseList, ek.maxCantrips, ek.maxPrepared]).toEqual(["Wizard", 2, 5]);
     });
 
     it("keeps Magic Initiate spells in their own pool", () => {
@@ -2578,9 +2758,10 @@ describe("CharacterCreatorController", () => {
                 expect.arrayContaining(["Charm Person", "Mirror Image"])
             );
 
-            // Darvell's prepared spells should match his full allotment (17/17: Bard 6 gives 10 + Warlock 6 gives 7)
+            // Allotment is 17 (Bard 6 gives 10 + Warlock 6 gives 7). The sample's Bard pick of Command is always prepared by
+            // College of Glamour, so it doesn't count: 16 picks.
             expect(ctrl.getMaxPreparedSpells()).toBe(17);
-            expect(ctrl.state.selectedSpellsLevel1.length).toBe(17);
+            expect(ctrl.state.selectedSpellsLevel1.length).toBe(16);
 
             const step8Html = ctrl["renderStep8Spells"]();
             expect(step8Html).toContain('id="feature-spell-choices-section"');

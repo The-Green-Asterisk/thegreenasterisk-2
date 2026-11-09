@@ -9,7 +9,8 @@ import {
     SpellDefinition,
     WeaponItem
 } from "./characterData";
-import { CLASSES_2024 } from "../../rules/dnd5e_2024/classes";
+import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
+import { findClassRule, getClassRules } from "../../services/classRules";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
@@ -1440,7 +1441,7 @@ export function parseDndBeyondCharacter(
             const className = classObj?.definition?.name || "Class";
             // spellListId is set when D&D Beyond added the spell from another class's list
             const classLevel = Number(classObj?.level) || 1;
-            const clsRule = CLASSES_2024.find(cd => cd.name === className);
+            const clsRule = findClassRule(className);
             const subName = String(classObj?.subclassDefinition?.name || "").toLowerCase();
             const subRule = clsRule?.subclasses.find(sc => subName && (sc.name.toLowerCase() === subName || subName.includes(sc.name.toLowerCase())));
             const expandedFeature = [...(clsRule?.spellcasting?.expandedSpellLists || []), ...(subRule?.expandedSpellLists || [])]
@@ -1992,101 +1993,24 @@ export function parseDndBeyondCharacter(
         };
     });
 
-    // 13. Dynamic Spell Slots calculation across all classes (Levels 1-20, Full/Half/Third/Pact)
-    const FULL_CASTER_SLOTS: Record<number, number[]> = {
-        1: [2],
-        2: [3],
-        3: [4, 2],
-        4: [4, 3],
-        5: [4, 3, 2],
-        6: [4, 3, 3],
-        7: [4, 3, 3, 1],
-        8: [4, 3, 3, 2],
-        9: [4, 3, 3, 3, 1],
-        10: [4, 3, 3, 3, 2],
-        11: [4, 3, 3, 3, 2, 1],
-        12: [4, 3, 3, 3, 2, 1],
-        13: [4, 3, 3, 3, 2, 1, 1],
-        14: [4, 3, 3, 3, 2, 1, 1],
-        15: [4, 3, 3, 3, 2, 1, 1, 1],
-        16: [4, 3, 3, 3, 2, 1, 1, 1],
-        17: [4, 3, 3, 3, 2, 1, 1, 1, 1],
-        18: [4, 3, 3, 3, 3, 1, 1, 1, 1],
-        19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
-        20: [4, 3, 3, 3, 3, 2, 2, 1, 1]
-    };
-
-    const PACT_MAGIC_SLOTS: Record<number, { count: number; level: number }> = {
-        1: { count: 1, level: 1 },
-        2: { count: 2, level: 1 },
-        3: { count: 2, level: 2 },
-        4: { count: 2, level: 2 },
-        5: { count: 2, level: 3 },
-        6: { count: 2, level: 3 },
-        7: { count: 2, level: 4 },
-        8: { count: 2, level: 4 },
-        9: { count: 2, level: 5 },
-        10: { count: 2, level: 5 },
-        11: { count: 3, level: 5 },
-        12: { count: 3, level: 5 },
-        13: { count: 3, level: 5 },
-        14: { count: 3, level: 5 },
-        15: { count: 3, level: 5 },
-        16: { count: 3, level: 5 },
-        17: { count: 4, level: 5 },
-        18: { count: 4, level: 5 },
-        19: { count: 4, level: 5 },
-        20: { count: 4, level: 5 }
-    };
-
-    let effectiveCasterLevel = 0;
-    let warlockLevel = 0;
-
-    (raw.classes || []).forEach((c: any) => {
-        const cName = (c.definition?.name || "").toLowerCase();
-        const subName = (c.subclassDefinition?.name || "").toLowerCase();
-        const lvl = Number(c.level) || 0;
-
-        if (cName === "warlock") {
-            warlockLevel += lvl;
-        } else if (["bard", "cleric", "druid", "sorcerer", "wizard"].includes(cName)) {
-            effectiveCasterLevel += lvl;
-        } else if (["paladin", "ranger"].includes(cName)) {
-            effectiveCasterLevel += Math.ceil(lvl / 2);
-        } else if (cName === "artificer") {
-            effectiveCasterLevel += Math.ceil(lvl / 2);
-        } else if (subName.includes("eldritch knight") || subName.includes("arcane trickster")) {
-            effectiveCasterLevel += Math.floor(lvl / 3);
+    // 13. Spell slots from the class rules (each class's spellcasting, or its subclass's), multiclass table and Pact Magic
+    const spellSlots: CharacterData["spellSlots"] = {};
+    const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+    const computedSlots = computeSpellSlotsFromRules((raw.classes || []).map((c: any) => ({
+        name: c.definition?.name || "",
+        level: Number(c.level) || 0,
+        subclass: c.subclassDefinition?.name || ""
+    })));
+    computedSlots.standard.forEach((total, idx) => {
+        if (total > 0) {
+            spellSlots[`level${idx + 1}`] = { total, level: idx + 1, label: `${ordinals[idx]} Level` };
         }
     });
-
-    const spellSlots: CharacterData["spellSlots"] = {};
-
-    // Standard Spellcasting Slots
-    if (effectiveCasterLevel > 0) {
-        const boundedLvl = Math.min(20, Math.max(1, effectiveCasterLevel));
-        const slotCounts = FULL_CASTER_SLOTS[boundedLvl] || [];
-        const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
-        slotCounts.forEach((total, idx) => {
-            if (total > 0) {
-                const lvlNum = idx + 1;
-                spellSlots[`level${lvlNum}`] = {
-                    total,
-                    level: lvlNum,
-                    label: `${ordinals[idx]} Level`
-                };
-            }
-        });
-    }
-
-    // Warlock Pact Magic Slots
-    if (warlockLevel > 0) {
-        const boundedWarlock = Math.min(20, Math.max(1, warlockLevel));
-        const pact = PACT_MAGIC_SLOTS[boundedWarlock] || { count: 2, level: 3 };
+    if (computedSlots.pact) {
         spellSlots.pact = {
-            total: pact.count,
-            level: pact.level,
-            label: `Pact Magic (Lvl ${pact.level})`
+            total: computedSlots.pact.count,
+            level: computedSlots.pact.level,
+            label: `Pact Magic (Lvl ${computedSlots.pact.level})`
         };
     }
 
@@ -2515,6 +2439,27 @@ export function parseDndBeyondCharacter(
     return result;
 }
 
+/**
+ * Standard and Pact Magic spell slots for a character's classes, from the class rules (each class's spellcasting or
+ * its subclass's spellcastingOverride) and the multiclass spellcasting table.
+ */
+export function computeSpellSlotsFromRules(classes: Array<{ name: string; level: number; subclass?: string }>): {
+    standard: number[];
+    pact?: { count: number; level: number };
+} {
+    const inputs = classes
+        .filter((c) => (Number(c.level) || 0) > 0)
+        .map((c) => {
+            const def = findClassRule(c.name || "");
+            return { classId: def?.id || String(c.name || "").toLowerCase(), level: Number(c.level) || 1, subclassId: c.subclass || "" };
+        });
+    const result = calculateMulticlassSpellSlots(inputs, getClassRules());
+    return {
+        standard: result.standardSlots,
+        pact: result.pactSlotCount > 0 ? { count: result.pactSlotCount, level: result.pactSlotLevel } : undefined
+    };
+}
+
 export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload?: any): void {
     if (!character || !Array.isArray(character.abilities)) return;
 
@@ -2703,91 +2648,31 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
         character.classResources = [];
     }
 
-    // Auto-heal missing or truncated spellSlots based on character.classes
+    // Auto-heal missing or truncated spellSlots based on character.classes and the class rules
     if (Array.isArray(character.classes) && character.classes.length > 0) {
-        const FULL_CASTER_SLOTS: number[][] = [
-            [2, 0, 0, 0, 0, 0, 0, 0, 0], // 1
-            [3, 0, 0, 0, 0, 0, 0, 0, 0], // 2
-            [4, 2, 0, 0, 0, 0, 0, 0, 0], // 3
-            [4, 3, 0, 0, 0, 0, 0, 0, 0], // 4
-            [4, 3, 2, 0, 0, 0, 0, 0, 0], // 5
-            [4, 3, 3, 0, 0, 0, 0, 0, 0], // 6
-            [4, 3, 3, 1, 0, 0, 0, 0, 0], // 7
-            [4, 3, 3, 2, 0, 0, 0, 0, 0], // 8
-            [4, 3, 3, 3, 1, 0, 0, 0, 0], // 9
-            [4, 3, 3, 3, 2, 0, 0, 0, 0], // 10
-            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 11
-            [4, 3, 3, 3, 2, 1, 0, 0, 0], // 12
-            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 13
-            [4, 3, 3, 3, 2, 1, 1, 0, 0], // 14
-            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 15
-            [4, 3, 3, 3, 2, 1, 1, 1, 0], // 16
-            [4, 3, 3, 3, 2, 1, 1, 1, 1], // 17
-            [4, 3, 3, 3, 3, 1, 1, 1, 1], // 18
-            [4, 3, 3, 3, 3, 2, 1, 1, 1], // 19
-            [4, 3, 3, 3, 3, 2, 2, 1, 1]  // 20
-        ];
-        const WARLOCK_PACT_SLOTS: Array<{ count: number; level: number }> = [
-            { count: 1, level: 1 }, { count: 2, level: 1 }, { count: 2, level: 2 }, { count: 2, level: 2 },
-            { count: 2, level: 3 }, { count: 2, level: 3 }, { count: 2, level: 4 }, { count: 2, level: 4 },
-            { count: 2, level: 5 }, { count: 2, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 },
-            { count: 3, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 }, { count: 3, level: 5 },
-            { count: 4, level: 5 }, { count: 4, level: 5 }, { count: 4, level: 5 }, { count: 4, level: 5 }
-        ];
         const getOrd = (n: number) => (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th");
-
-        let effectiveCasterLevel = 0;
-        let warlockLevel = 0;
-        for (const cls of character.classes) {
-            const cName = String(cls?.name || "").toLowerCase().trim();
-            const cSub = String(cls?.subclass || "").toLowerCase().trim();
-            const cLvl = Math.max(1, Math.min(20, Number(cls?.level) || 1));
-            if (["bard", "cleric", "druid", "sorcerer", "wizard"].includes(cName)) {
-                effectiveCasterLevel += cLvl;
-            } else if (["paladin", "ranger", "artificer"].includes(cName)) {
-                effectiveCasterLevel += Math.ceil(cLvl / 2);
-            } else if (
-                (cName === "fighter" && cSub.includes("eldritch knight")) ||
-                (cName === "rogue" && cSub.includes("arcane trickster"))
-            ) {
-                if (cLvl >= 3) effectiveCasterLevel += Math.ceil(cLvl / 3);
-            } else if (cName === "warlock") {
-                warlockLevel += cLvl;
-            }
-        }
-
+        const computed = computeSpellSlotsFromRules(character.classes);
         if (!character.spellSlots || typeof character.spellSlots !== "object") {
             character.spellSlots = {};
         }
-
-        if (effectiveCasterLevel > 0) {
-            const row = FULL_CASTER_SLOTS[Math.max(0, Math.min(19, effectiveCasterLevel - 1))] || [];
-            row.forEach((total, idx) => {
-                if (total > 0) {
-                    const slotLvl = idx + 1;
-                    const key = `level${slotLvl}`;
-                    const existing = character.spellSlots[key];
-                    if (!existing || typeof existing.total !== "number" || existing.total < total) {
-                        character.spellSlots[key] = {
-                            total,
-                            label: `${slotLvl}${getOrd(slotLvl)} Level`
-                        };
-                    }
-                }
-            });
-        }
-
-        if (warlockLevel > 0) {
-            const pact = WARLOCK_PACT_SLOTS[Math.max(0, Math.min(19, warlockLevel - 1))];
-            if (pact && pact.count > 0) {
-                const existingPact = character.spellSlots.pact;
-                if (!existingPact || existingPact.total < pact.count || existingPact.level !== pact.level) {
-                    character.spellSlots.pact = {
-                        level: pact.level,
-                        total: pact.count,
-                        label: `Pact Magic (${pact.level}${getOrd(pact.level)} Level)`
-                    };
-                }
+        computed.standard.forEach((total, idx) => {
+            if (total <= 0) return;
+            const slotLvl = idx + 1;
+            const key = `level${slotLvl}`;
+            const existing = character.spellSlots[key];
+            if (!existing || typeof existing.total !== "number" || existing.total < total) {
+                character.spellSlots[key] = { total, label: `${slotLvl}${getOrd(slotLvl)} Level` };
+            }
+        });
+        if (computed.pact) {
+            const pact = computed.pact;
+            const existingPact = character.spellSlots.pact;
+            if (!existingPact || existingPact.total < pact.count || existingPact.level !== pact.level) {
+                character.spellSlots.pact = {
+                    level: pact.level,
+                    total: pact.count,
+                    label: `Pact Magic (${pact.level}${getOrd(pact.level)} Level)`
+                };
             }
         }
     }

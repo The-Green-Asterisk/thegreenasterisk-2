@@ -78,9 +78,9 @@ export function setStandardArrayScore(ctx: CharacterCreatorContext, targetStat: 
 }
 
 /**
- * D&D 2024: Ability Score Improvements are a class feature, earned at each class's own levels (4, 8, 12, 16, plus
- * Fighter 6 and 14 and Rogue 10), and every class gets an Epic Boon at 19. A Bard 10 / Warlock 10 has four slots
- * (Bard 4, Bard 8, Warlock 4, Warlock 8), not five at total levels 4–19.
+ * D&D 2024: Ability Score Improvements are a class feature, earned at each class's own levels, and every class gets
+ * an Epic Boon. A Bard 10 / Warlock 10 has four slots (Bard 4, Bard 8, Warlock 4, Warlock 8), not five at total
+ * levels 4–19. The levels are class rules data (scalingTraits.asiLevels / epicBoonLevel).
  */
 export function getAsiSlots(ctx: CharacterCreatorContext, syncClasses = true): AsiSlot[] {
     // syncStateClassProperties itself cleans up ASI choices, so that cleanup reads slots without syncing again
@@ -88,13 +88,15 @@ export function getAsiSlots(ctx: CharacterCreatorContext, syncClasses = true): A
     const slots: AsiSlot[] = [];
     for (const c of ctx.state.classes || []) {
         const classId = (c.classId || "").toLowerCase();
-        const className = ctx.classes.find((x) => x.id === classId)?.name || classId;
-        const levels = [4, 8, 12, 16, 19];
-        if (classId === "fighter") levels.push(6, 14);
-        else if (classId === "rogue") levels.push(10);
-        for (const classLevel of levels.sort((a, b) => a - b)) {
+        const cls = ctx.classes.find((x) => x.id === classId);
+        const className = cls?.name || classId;
+        // Levels come from the class rules (rule_classes.scalingTraitsJson)
+        const asiLevels: number[] = cls?.scalingTraits?.asiLevels || [];
+        const epicBoonLevel: number | undefined = cls?.scalingTraits?.epicBoonLevel;
+        const levels = [...asiLevels, ...(epicBoonLevel ? [epicBoonLevel] : [])].sort((a, b) => a - b);
+        for (const classLevel of levels) {
             if (classLevel > (c.level || 0)) continue;
-            slots.push({ key: `${classId}-${classLevel}`, classId, className, classLevel, isEpicBoon: classLevel === 19 });
+            slots.push({ key: `${classId}-${classLevel}`, classId, className, classLevel, isEpicBoon: classLevel === epicBoonLevel });
         }
     }
     return slots;
@@ -247,32 +249,6 @@ export function getMaxManeuversCount(ctx: CharacterCreatorContext): number {
     if (lvl >= 10) return 7;
     if (lvl >= 7) return 5;
     return 3;
-}
-
-export function getMaxExpertiseCount(ctx: CharacterCreatorContext): number {
-    if (ctx.state.classes && ctx.state.classes.length > 1) {
-        let count = 0;
-        for (const c of ctx.state.classes) {
-            if (c.classId === "rogue") {
-                count += c.level >= 6 ? 4 : (c.level >= 1 ? 2 : 0);
-            } else if (c.classId === "bard") {
-                if (c.level >= 9) count += 4;
-                else if (c.level >= 2) count += 2;
-            } else if (c.classId === "ranger") {
-                if (c.level >= 9) count += 2;
-                else if (c.level >= 2) count += 1;
-            }
-        }
-        return count;
-    }
-    const isRogue = ctx.state.classId === "rogue" || ctx.state.classes?.[0]?.classId === "rogue";
-    const isBard = ctx.state.classId === "bard" || ctx.state.classes?.[0]?.classId === "bard";
-    const isRanger = ctx.state.classId === "ranger" || ctx.state.classes?.[0]?.classId === "ranger";
-    const lvl = Math.max(ctx.state.level || 0, ctx.state.classes?.[0]?.level || 0);
-    if (isRogue) return lvl >= 6 ? 4 : (lvl >= 1 ? 2 : 0);
-    if (isBard) return lvl >= 9 ? 4 : (lvl >= 2 ? 2 : 0);
-    if (isRanger) return lvl >= 9 ? 2 : (lvl >= 2 ? 1 : 0);
-    return 0;
 }
 
 export function getEffectiveAbilityScore(ctx: CharacterCreatorContext, stat: AbilityName): number {
@@ -553,42 +529,6 @@ export function getAllToolProficiencies(ctx: CharacterCreatorContext): string[] 
         multi?.tools.forEach((t) => tools.add(t));
     }
     return Array.from(tools);
-}
-
-export function getMaxClassSkillCount(ctx: CharacterCreatorContext): number {
-    ctx.syncStateClassProperties();
-    const primary = ctx.state.classes[0];
-    const primaryCls = ctx.classes.find((c) => c.id === (primary?.classId || ctx.state.classId));
-    let count = primaryCls?.skillChoices.count || 2;
-    for (let i = 1; i < ctx.state.classes.length; i++) {
-        const cc = ctx.state.classes[i];
-        const cls = ctx.classes.find((c) => c.id === cc.classId);
-        const multi = cls?.multiclassing?.proficiencies || MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
-        if (multi?.skills?.count) {
-            count += multi.skills.count;
-        }
-    }
-    return count;
-}
-
-export function getAllowedClassSkills(ctx: CharacterCreatorContext): string[] {
-    ctx.syncStateClassProperties();
-    const primary = ctx.state.classes[0];
-    const primaryCls = ctx.classes.find((c) => c.id === (primary?.classId || ctx.state.classId));
-    const allowed = new Set<string>(primaryCls?.skillChoices.from || []);
-
-    for (let i = 1; i < ctx.state.classes.length; i++) {
-        const cc = ctx.state.classes[i];
-        const multi = MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
-        if (multi?.skills) {
-            if (multi.skills.from) {
-                multi.skills.from.forEach((s) => allowed.add(s));
-            } else {
-                ALL_SKILLS.forEach((s) => allowed.add(s.name));
-            }
-        }
-    }
-    return Array.from(allowed);
 }
 
 export function isProficientWithArmor(ctx: CharacterCreatorContext, armorName: string): boolean {

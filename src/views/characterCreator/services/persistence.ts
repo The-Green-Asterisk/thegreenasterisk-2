@@ -52,6 +52,7 @@ import {
 import { ALL_SKILLS } from "../characterCreator.types";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
+import { distributeImportedSkills, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
 import { CharacterCreatorContext } from "../controllers/context";
 import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, resolveSpellBucketKey } from "./spellReconciliation";
 
@@ -142,6 +143,20 @@ function seedClassSpellSelections(ctx: CharacterCreatorContext, spells: any[]): 
         );
     }
     return seeded;
+}
+
+/**
+ * Whether a progression choice stored as "<classId>-<classLevel>-<choice>" (e.g. "wizard-2-scholar") is unlocked by the
+ * character's level in that class, wherever the class sits in a multiclass.
+ */
+function isChoiceUnlocked(ctx: CharacterCreatorContext, key: string): boolean {
+    for (const c of ctx.state.classes || []) {
+        const prefix = `${c.classId}-`;
+        if (!key.startsWith(prefix)) continue;
+        const level = Number(key.slice(prefix.length).split("-")[0]);
+        if (!Number.isNaN(level) && (c.level || 0) >= level) return true;
+    }
+    return false;
 }
 
 export async function loadCharacter(ctx: CharacterCreatorContext, targetId: string | number): Promise<void> {
@@ -296,12 +311,15 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
             }
 
             if (Array.isArray(char.skills)) {
-                ctx.state.classSkills = char.skills
-                    .filter((s: any) => s.proficiency === "proficient")
+                // Background and species skills are granted, not class picks; feat skills go to their feats
+                const proficientNames = char.skills
+                    .filter((s: any) => s.proficiency === "proficient" || s.proficiency === "expertise")
                     .map((s: any) => s.name);
+                distributeImportedSkills(ctx, proficientNames);
                 ctx.state.expertiseSkills = char.skills
                     .filter((s: any) => s.proficiency === "expertise")
                     .map((s: any) => s.name);
+                sanitizeSkillSelections(ctx);
             }
 
             if (Array.isArray(char.weapons)) {
@@ -669,17 +687,17 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         };
     });
 
-    // Skills
-    const bgSkills = bg.skills;
-    const humanExtra = ctx.state.speciesId === "human" ? [ctx.state.humanExtraSkill] : [];
-    const elfKeen = ctx.state.speciesId === "elf" ? [ctx.state.elfKeenSkill || "Perception"] : [];
-    const allProfSkills = Array.from(new Set([...ctx.state.classSkills, ...bgSkills, ...humanExtra, ...elfKeen]));
+    // Skills: proficiency from every source, Expertise chosen or granted by feats, plus Jack of All Trades and
+    // Divine/Primal Order bonuses
+    sanitizeSkillSelections(ctx);
+    const proficientSkills = getProficientSkills(ctx);
+    const expertSkills = new Set<string>([...ctx.state.expertiseSkills, ...getGrantedExpertiseSkills(ctx).keys()]);
 
     const skillsPayload = ALL_SKILLS.map((sk) => {
-        const isProf = allProfSkills.includes(sk.name);
-        const isExpert = ctx.state.expertiseSkills.includes(sk.name);
+        const isProf = proficientSkills.has(sk.name);
+        const isExpert = isProf && expertSkills.has(sk.name);
         const mod = ctx.getAbilityModifier(sk.stat);
-        const bonus = mod + (isExpert ? 2 * pb : isProf ? pb : 0);
+        const bonus = mod + (isExpert ? 2 * pb : isProf ? pb : 0) + getSkillBonusExtras(ctx, sk.name, isProf, pb);
         return {
             name: sk.name,
             stat: sk.stat.toUpperCase(),
@@ -1215,7 +1233,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
                         description: opt.description
                     });
                 }
-            } else if (key === "wizard-2-scholar" && ctx.state.classId === "wizard" && ctx.state.level >= 2) {
+            } else if (key === "wizard-2-scholar" && isChoiceUnlocked(ctx, key)) {
                 const opt = WIZARD_SCHOLAR_SKILLS.find((s) => s.id === val);
                 if (opt) {
                     featuresPayload.push({

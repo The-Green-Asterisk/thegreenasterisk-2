@@ -72,28 +72,93 @@ export const MULTICLASS_DATA_2024: Record<string, MulticlassDefinition> = {
     }
 };
 
+// Class level -> value tables are indexed by class level (index 0 unused), like weaponMasteriesByLevel.
+const STANDARD_ASI_LEVELS = [4, 8, 12, 16];
+const EPIC_BOON_LEVEL = 19;
+
+/**
+ * Per-class tables and level lists stored in rule_classes.scalingTraitsJson:
+ *  - asiLevels / epicBoonLevel: class levels that grant an Ability Score Improvement / Epic Boon feat
+ *  - expertiseByLevel: total Expertise picks the class has granted by each class level
+ */
 export const CLASS_SCALING_TRAITS_2024: Record<string, any> = {
     barbarian: {
-        weaponMasteriesByLevel: [0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+        weaponMasteriesByLevel: [0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
+    },
+    bard: {
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL,
+        // Expertise: 2 at level 2, 2 more at level 9
+        expertiseByLevel: [0, 0, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+    },
+    cleric: {
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
+    },
+    druid: {
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
     },
     fighter: {
-        weaponMasteriesByLevel: [0, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6]
+        weaponMasteriesByLevel: [0, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6],
+        asiLevels: [4, 6, 8, 12, 14, 16],
+        epicBoonLevel: EPIC_BOON_LEVEL
+    },
+    monk: {
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
     },
     paladin: {
-        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
     },
     ranger: {
-        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL,
+        // Deft Explorer: 1 at level 2; Expertise: 2 more at level 9
+        expertiseByLevel: [0, 0, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
     },
     rogue: {
-        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-    },
-    warlock: {
-        invocationsByLevel: [0, 1, 3, 3, 3, 5, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10]
+        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        asiLevels: [4, 8, 10, 12, 16],
+        epicBoonLevel: EPIC_BOON_LEVEL,
+        // Expertise: 2 at level 1, 2 more at level 6
+        expertiseByLevel: [0, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
     },
     sorcerer: {
-        metamagicByLevel: [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 6]
+        metamagicByLevel: [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 6],
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
+    },
+    warlock: {
+        invocationsByLevel: [0, 1, 3, 3, 3, 5, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10],
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
+    },
+    wizard: {
+        asiLevels: STANDARD_ASI_LEVELS,
+        epicBoonLevel: EPIC_BOON_LEVEL
     }
+};
+
+// D&D Beyond's ids for the 2024 classes (stored in rule_classes.dndBeyondId; used to fetch class spell lists)
+export const DND_BEYOND_2024_CLASS_IDS: Record<string, number> = {
+    barbarian: 2190875,
+    bard: 2190876,
+    cleric: 2190877,
+    druid: 2190878,
+    fighter: 2190879,
+    monk: 2190880,
+    paladin: 2190881,
+    ranger: 2190882,
+    rogue: 2190883,
+    sorcerer: 2190884,
+    warlock: 2190885,
+    wizard: 2190886
 };
 
 export type ModifierTarget =
@@ -145,13 +210,15 @@ export type ModifierType =
     | "grant_action"     // Injects an action/bonus action/reaction
     | "grant_spell"      // Grants a specific spell or cantrip
     | "grant_feature"    // Grants a specific feature or trait
-    | "multiplier";      // Multiplies a value (e.g. 2x carrying capacity)
+    | "multiplier"       // Multiplies a value (e.g. 2x carrying capacity)
+    | "half_proficiency"; // Adds half the Proficiency Bonus, rounded down (e.g. Jack of All Trades)
 
 export interface StatModifier {
     target: ModifierTarget;
     type: ModifierType;
     value?: number | string;
     abilitySource?: AbilityName;
+    minimum?: number;              // floor for ability_mod (e.g. Thaumaturge: Wisdom modifier, minimum +1)
     condition?: string;
     description?: string;
 }
@@ -471,12 +538,14 @@ export const DIVINE_ORDER_OPTIONS: ProgressionChoiceOption[] = [
                 target: "skills.arcana",
                 type: "ability_mod",
                 abilitySource: "wis",
+                minimum: 1,
                 description: "Add Wisdom modifier to Arcana checks"
             },
             {
                 target: "skills.religion",
                 type: "ability_mod",
                 abilitySource: "wis",
+                minimum: 1,
                 description: "Add Wisdom modifier to Religion checks"
             }
         ]
@@ -508,12 +577,14 @@ export const PRIMAL_ORDER_OPTIONS: ProgressionChoiceOption[] = [
                 target: "skills.arcana",
                 type: "ability_mod",
                 abilitySource: "wis",
+                minimum: 1,
                 description: "Add Wisdom modifier to Arcana checks"
             },
             {
                 target: "skills.nature",
                 type: "ability_mod",
                 abilitySource: "wis",
+                minimum: 1,
                 description: "Add Wisdom modifier to Nature checks"
             }
         ]
@@ -905,6 +976,7 @@ export const WIZARD_SCHOLAR_SKILLS: ProgressionChoiceOption[] = [
     { id: "arcana", name: "Arcana", description: "Gain Expertise in Arcana.", modifiers: [{ target: "skills.arcana", type: "proficiency_tier", value: "expertise" }] },
     { id: "history", name: "History", description: "Gain Expertise in History.", modifiers: [{ target: "skills.history", type: "proficiency_tier", value: "expertise" }] },
     { id: "investigation", name: "Investigation", description: "Gain Expertise in Investigation.", modifiers: [{ target: "skills.investigation", type: "proficiency_tier", value: "expertise" }] },
+    { id: "medicine", name: "Medicine", description: "Gain Expertise in Medicine.", modifiers: [{ target: "skills.medicine", type: "proficiency_tier", value: "expertise" }] },
     { id: "nature", name: "Nature", description: "Gain Expertise in Nature.", modifiers: [{ target: "skills.nature", type: "proficiency_tier", value: "expertise" }] },
     { id: "religion", name: "Religion", description: "Gain Expertise in Religion.", modifiers: [{ target: "skills.religion", type: "proficiency_tier", value: "expertise" }] }
 ];
@@ -1291,6 +1363,8 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 modifiers.push({ target: "saves.all", type: "ability_mod", abilitySource: "cha", condition: "not incapacitated", description: "Add Charisma modifier to all saving throws" });
             } else if (featSlug === "unarmored-defense") {
                 modifiers.push({ target: "vitals.ac", type: "bonus", value: "con_or_wis", description: "Add ability modifier to unarmored AC" });
+            } else if (featSlug === "jack-of-all-trades") {
+                modifiers.push({ target: "skills.unproficient", type: "half_proficiency", description: "Add half your Proficiency Bonus to skill checks you aren't proficient in" });
             }
 
             return {

@@ -81,9 +81,12 @@ export interface ClassSubclassDefinition {
     progression?: ProgressionLevel[];
     /** Other classes' spell lists this subclass can prepare from, at or above a class level (like a class's own). */
     expandedSpellLists?: ExpandedSpellListDefinition[];
+    /** Spellcasting this subclass grants a class that has none of its own (e.g. Eldritch Knight, Arcane Trickster) */
     spellcastingOverride?: {
         ability: AbilityName;
         type: 'full' | 'half' | 'third' | 'pact';
+        /** Class spell list the subclass prepares from (e.g. "Wizard"); defaults to the class's own */
+        spellList?: string;
         cantripsKnownByLevel: number[];
         preparedSpellsByLevel?: number[];
         spellSlotsByLevel: number[][];
@@ -144,13 +147,15 @@ export type ModifierType =
     | "grant_action"     // Injects an action/bonus action/reaction
     | "grant_spell"      // Grants a specific spell or cantrip
     | "grant_feature"    // Grants a specific feature or trait
-    | "multiplier";      // Multiplies a value (e.g. 2x carrying capacity)
+    | "multiplier"       // Multiplies a value (e.g. 2x carrying capacity)
+    | "half_proficiency"; // Adds half the Proficiency Bonus, rounded down (e.g. Jack of All Trades)
 
 export interface StatModifier {
     target: ModifierTarget | string;
     type: ModifierType;
     value?: number | string;
     abilitySource?: AbilityName;
+    minimum?: number;              // floor for ability_mod (e.g. Thaumaturge: Wisdom modifier, minimum +1)
     condition?: string;
     description?: string;
 }
@@ -276,7 +281,9 @@ export interface ClassScalingTraits {
     invocationsByLevel?: number[];
     metamagicByLevel?: number[];
     maneuversByLevel?: number[];
-    expertiseByLevel?: number[];
+    expertiseByLevel?: number[];          // total Expertise picks granted by each class level (index = level)
+    asiLevels?: number[];                 // class levels that grant an Ability Score Improvement
+    epicBoonLevel?: number;               // class level that grants an Epic Boon feat
     [key: string]: any;
 }
 
@@ -308,6 +315,8 @@ export interface ClassDefinition {
     spellcasting?: {
         ability: AbilityName;
         type: 'full' | 'half' | 'third' | 'pact';
+        /** Class spell list prepared from; defaults to the class's own name */
+        spellList?: string;
         cantripsKnownByLevel: number[];
         preparedSpellsByLevel?: number[];
         spellsKnownByLevel?: number[];

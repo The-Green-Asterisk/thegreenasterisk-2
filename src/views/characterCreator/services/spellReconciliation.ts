@@ -73,11 +73,7 @@ export function getAllowedSpellClasses(ctx: CharacterCreatorContext): string[] {
     const list: string[] = [];
     const infos = getSpellcasterInfos(ctx);
     for (const info of infos) {
-        if (info.type === "third") {
-            if (!list.includes("Wizard")) list.push("Wizard");
-        } else if (!list.includes(info.className)) {
-            list.push(info.className);
-        }
+        if (!list.includes(info.spellList)) list.push(info.spellList);
 
         // Expanded spell lists (e.g. Bard's Magical Secrets at Level 10)
         const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.className.toLowerCase());
@@ -136,11 +132,7 @@ export function getAvailableSpells(ctx: CharacterCreatorContext): {
     // Base caster classes that provide cantrips (unless an expanded spell list explicitly enables cantrips)
     const cantripClasses: string[] = [];
     for (const info of infos) {
-        if (info.type === "third") {
-            if (!cantripClasses.includes("Wizard")) cantripClasses.push("Wizard");
-        } else if (!cantripClasses.includes(info.className)) {
-            cantripClasses.push(info.className);
-        }
+        if (!cantripClasses.includes(info.spellList)) cantripClasses.push(info.spellList);
         const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.className.toLowerCase());
         const clsDef = ctx.classes.find((c) => c.id === cc?.classId || c.slug === cc?.classId) || CLASSES_2024.find((c) => c.id === info.className.toLowerCase());
         const expLists = clsDef?.spellcasting?.expandedSpellLists;
@@ -183,7 +175,7 @@ export function getAvailableSpells(ctx: CharacterCreatorContext): {
                     }
                 }
             }
-            const targetClassName = info.type === "third" ? "Wizard" : info.className;
+            const targetClassName = info.spellList;
             return sp.classes.includes(targetClassName) && sp.level <= info.maxSpellLevel;
         });
         if (canPrepareFromClass) return true;
@@ -467,7 +459,7 @@ function getClassSpellLists(ctx: CharacterCreatorContext, info: MulticlassCaster
     cantripLists: Array<{ list: string; feature?: string }>;
     leveledLists: Array<{ list: string; feature?: string }>;
 } {
-    const base = info.type === "third" ? "Wizard" : info.className;
+    const base = info.spellList;
     const cantripLists: Array<{ list: string; feature?: string }> = [{ list: base }];
     const leveledLists: Array<{ list: string; feature?: string }> = [{ list: base }];
     const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.classId);
@@ -540,7 +532,7 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
             maxCantrips: info.maxCantrips,
             maxPrepared: info.maxPrepared,
             maxSpellLevel: info.maxSpellLevel,
-            priorityKey: info.type === "third" ? "wizard" : info.classId,
+            priorityKey: info.spellList.toLowerCase(),
             baseList: base,
             cantripPool: info.maxCantrips > 0
                 ? buildClassPool(allSpells, cantripLists, (sp) => sp.level === 0, imported, importedNote, via)

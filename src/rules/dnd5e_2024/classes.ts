@@ -1195,7 +1195,7 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 1, name: "Spellbook", description: "Your book contains six 1st-level spells of your choice. You add two wizard spells of your choice to it whenever you gain a Wizard level." },
             { level: 1, name: "Spellcasting & Ritual Casting", description: "Cast prepared wizard spells using Intelligence. You can cast any wizard spell in your spellbook as a ritual if it has the ritual tag." },
             { level: 1, name: "Arcane Recovery", description: "Once per day when you finish a Short Rest, recover expended spell slots with a combined level equal to up to half your Wizard level (rounded up)." },
-            { level: 2, name: "Scholar", description: "Gain Expertise in one of your proficient skills from: Arcana, History, Nature, Medicine, or Religion." },
+            { level: 2, name: "Scholar", description: "Gain Expertise in one of your proficient skills from: Arcana, History, Investigation, Medicine, Nature, or Religion." },
             { level: 3, name: "Wizard Subclass", description: "Choose an arcane tradition: Abjurer, Diviner, Evoker, or Illusionist." },
             { level: 4, name: "Ability Score Improvement", description: "Gain the Ability Score Improvement feat or another feat for which you qualify." },
             { level: 5, name: "Memorize Spell", description: "Whenever you finish a Short Rest, you can study your spellbook and replace one prepared spell with another from your book." },

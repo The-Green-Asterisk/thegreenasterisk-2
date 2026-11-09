@@ -2,6 +2,7 @@ import el from "@elements";
 import { delData, getData, postData, putData } from "@services/request";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
+import { loadClassRules } from "../../services/classRules";
 import { renderSheetContent } from "./characterSheet.template";
 import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
 import { renderAbilityCards } from "./components/abilities";
@@ -1483,10 +1484,14 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     ctx.renderActiveCharacterView = renderActiveCharacterView;
     ctx.setCharacterActionsVisibility();
 
+    // Class rules (spellcasting, expanded spell lists) come from the server; load them before the first character
+    const classRulesReady = loadClassRules();
+
     // Check if a specific ID was passed via initial parameters, query string, or path
     if (activeCharacterId) {
         if (idInput) idInput.value = activeCharacterId.toString();
-        void loadCharacter(activeCharacterId.toString());
+        const initialId = activeCharacterId.toString();
+        void classRulesReady.then(() => loadCharacter(initialId));
     } else {
         if (idInput) idInput.value = "";
         if (el.isAuth) {

@@ -1,5 +1,5 @@
 import { AbilityName, ClassDefinition, MulticlassProficiencies } from "./types";
-import { FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, CLASSES_2024 } from "./classes";
+import { FULL_CASTER_SLOTS, CLASSES_2024 } from "./classes";
 
 export interface MulticlassPrerequisite {
     stats: AbilityName[];
@@ -138,6 +138,10 @@ export interface MulticlassCasterClassInfo {
     subclassId?: string;
     ability: AbilityName;
     type: "full" | "half" | "third" | "pact";
+    /** Class spell list this caster prepares from (e.g. "Wizard" for an Eldritch Knight) */
+    spellList: string;
+    /** This caster's own slot table (by class level), used when it's the only standard caster */
+    spellSlotsByLevel?: number[][];
     maxCantrips: number;
     maxPrepared: number;
     maxSpellLevel: number;
@@ -152,52 +156,10 @@ export interface MulticlassSpellSlotsResult {
     isMulticlassTableUsed: boolean;
 }
 
-export const WARLOCK_PACT_SLOTS: Array<{ count: number; level: number }> = [
-    { count: 1, level: 1 }, // 1
-    { count: 2, level: 1 }, // 2
-    { count: 2, level: 2 }, // 3
-    { count: 2, level: 2 }, // 4
-    { count: 2, level: 3 }, // 5
-    { count: 2, level: 3 }, // 6
-    { count: 2, level: 4 }, // 7
-    { count: 2, level: 4 }, // 8
-    { count: 2, level: 5 }, // 9
-    { count: 2, level: 5 }, // 10
-    { count: 3, level: 5 }, // 11
-    { count: 3, level: 5 }, // 12
-    { count: 3, level: 5 }, // 13
-    { count: 3, level: 5 }, // 14
-    { count: 3, level: 5 }, // 15
-    { count: 3, level: 5 }, // 16
-    { count: 4, level: 5 }, // 17
-    { count: 4, level: 5 }, // 18
-    { count: 4, level: 5 }, // 19
-    { count: 4, level: 5 }  // 20
-];
-
-export const THIRD_CASTER_SLOTS: number[][] = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0], // Lvl 1
-    [0, 0, 0, 0, 0, 0, 0, 0, 0], // Lvl 2
-    [2, 0, 0, 0, 0, 0, 0, 0, 0], // Lvl 3
-    [3, 0, 0, 0, 0, 0, 0, 0, 0], // Lvl 4
-    [3, 0, 0, 0, 0, 0, 0, 0, 0], // Lvl 5
-    [3, 0, 0, 0, 0, 0, 0, 0, 0], // Lvl 6
-    [4, 2, 0, 0, 0, 0, 0, 0, 0], // Lvl 7
-    [4, 2, 0, 0, 0, 0, 0, 0, 0], // Lvl 8
-    [4, 2, 0, 0, 0, 0, 0, 0, 0], // Lvl 9
-    [4, 3, 0, 0, 0, 0, 0, 0, 0], // Lvl 10
-    [4, 3, 0, 0, 0, 0, 0, 0, 0], // Lvl 11
-    [4, 3, 0, 0, 0, 0, 0, 0, 0], // Lvl 12
-    [4, 3, 2, 0, 0, 0, 0, 0, 0], // Lvl 13
-    [4, 3, 2, 0, 0, 0, 0, 0, 0], // Lvl 14
-    [4, 3, 2, 0, 0, 0, 0, 0, 0], // Lvl 15
-    [4, 3, 3, 0, 0, 0, 0, 0, 0], // Lvl 16
-    [4, 3, 3, 0, 0, 0, 0, 0, 0], // Lvl 17
-    [4, 3, 3, 0, 0, 0, 0, 0, 0], // Lvl 18
-    [4, 3, 3, 1, 0, 0, 0, 0, 0], // Lvl 19
-    [4, 3, 3, 1, 0, 0, 0, 0, 0]  // Lvl 20
-];
-
+/**
+ * A class's spellcasting at a class level: its own spellcasting rules, or the spellcastingOverride of its subclass
+ * (e.g. Eldritch Knight, Arcane Trickster). Null when the class has no spellcasting at that level.
+ */
 export function getMulticlassCasterInfo(
     classChoice: CharacterClassInput,
     classDef?: ClassDefinition
@@ -207,65 +169,39 @@ export function getMulticlassCasterInfo(
     const lvl = Math.max(1, Math.min(20, Number(classChoice.level) || 1));
     const def = classDef || CLASSES_2024.find((c) => c.id === cId);
     const className = def?.name || cId.charAt(0).toUpperCase() + cId.slice(1);
+    const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const sub = subId
+        ? def?.subclasses?.find((s) => s.id === subId || slug(s.name) === slug(subId) || s.name.toLowerCase() === subId)
+        : undefined;
+    const sc = def?.spellcasting || sub?.spellcastingOverride;
+    if (!sc) return null;
 
-    if (def?.spellcasting) {
-        const lvlIdx = lvl - 1;
-        const maxCantrips = def.spellcasting.cantripsKnownByLevel?.[lvlIdx] || 0;
-        const maxPrepared = def.spellcasting.preparedSpellsByLevel?.[lvlIdx] || 0;
-        const slotsRow = def.spellcasting.spellSlotsByLevel?.[lvlIdx] || [];
-        let maxSpellLevel = 0;
-        for (let i = slotsRow.length - 1; i >= 0; i--) {
-            if (slotsRow[i] > 0) {
-                maxSpellLevel = i + 1;
-                break;
-            }
+    const lvlIdx = lvl - 1;
+    const maxCantrips = sc.cantripsKnownByLevel?.[lvlIdx] || 0;
+    const maxPrepared = sc.preparedSpellsByLevel?.[lvlIdx] || 0;
+    const slotsRow = sc.spellSlotsByLevel?.[lvlIdx] || [];
+    let maxSpellLevel = 0;
+    for (let i = slotsRow.length - 1; i >= 0; i--) {
+        if (slotsRow[i] > 0) {
+            maxSpellLevel = i + 1;
+            break;
         }
-        return {
-            classId: cId,
-            className,
-            level: lvl,
-            subclassId: classChoice.subclassId,
-            ability: def.spellcasting.ability,
-            type: def.spellcasting.type,
-            maxCantrips,
-            maxPrepared,
-            maxSpellLevel
-        };
     }
+    if (maxCantrips === 0 && maxPrepared === 0 && maxSpellLevel === 0) return null;
 
-    if (cId === "fighter" && subId === "eldritch-knight" && lvl >= 3) {
-        const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
-        const maxSpellLevel = lvl >= 19 ? 4 : lvl >= 13 ? 3 : lvl >= 7 ? 2 : 1;
-        return {
-            classId: cId,
-            className,
-            level: lvl,
-            subclassId: classChoice.subclassId,
-            ability: "int",
-            type: "third",
-            maxCantrips: lvl >= 10 ? 3 : 2,
-            maxPrepared: thirdCasterSpells[lvl - 1] || 0,
-            maxSpellLevel
-        };
-    }
-
-    if (cId === "rogue" && subId === "arcane-trickster" && lvl >= 3) {
-        const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
-        const maxSpellLevel = lvl >= 19 ? 4 : lvl >= 13 ? 3 : lvl >= 7 ? 2 : 1;
-        return {
-            classId: cId,
-            className,
-            level: lvl,
-            subclassId: classChoice.subclassId,
-            ability: "int",
-            type: "third",
-            maxCantrips: lvl >= 10 ? 4 : 3,
-            maxPrepared: thirdCasterSpells[lvl - 1] || 0,
-            maxSpellLevel
-        };
-    }
-
-    return null;
+    return {
+        classId: cId,
+        className,
+        level: lvl,
+        subclassId: classChoice.subclassId,
+        ability: sc.ability,
+        type: sc.type,
+        spellList: sc.spellList || className,
+        spellSlotsByLevel: sc.spellSlotsByLevel,
+        maxCantrips,
+        maxPrepared,
+        maxSpellLevel
+    };
 }
 
 export function calculateMulticlassSpellSlots(
@@ -288,18 +224,14 @@ export function calculateMulticlassSpellSlots(
     const isMulticlassTableUsed = standardCasters.length > 1;
 
     if (standardCasters.length === 1 && !isMulticlassTableUsed) {
+        // A single spellcasting class uses its own slot table (its rules data)
         const single = standardCasters[0];
         const lvlIdx = single.level - 1;
-        if (single.type === "full") {
-            effectiveCasterLevel = single.level;
-            standardSlots = [...(FULL_CASTER_SLOTS[lvlIdx] || [0, 0, 0, 0, 0, 0, 0, 0, 0])];
-        } else if (single.type === "half") {
-            effectiveCasterLevel = Math.ceil(single.level / 2);
-            standardSlots = [...(HALF_CASTER_SLOTS[lvlIdx] || [0, 0, 0, 0, 0, 0, 0, 0, 0])];
-        } else if (single.type === "third") {
-            effectiveCasterLevel = Math.floor(single.level / 3);
-            standardSlots = [...(THIRD_CASTER_SLOTS[lvlIdx] || [0, 0, 0, 0, 0, 0, 0, 0, 0])];
-        }
+        effectiveCasterLevel = single.type === "full"
+            ? single.level
+            : single.type === "half" ? Math.ceil(single.level / 2) : Math.floor(single.level / 3);
+        const row = single.spellSlotsByLevel?.[lvlIdx] || [];
+        standardSlots = Array.from({ length: 9 }, (_, i) => Number(row[i]) || 0);
     } else if (standardCasters.length > 1) {
         for (const sc of standardCasters) {
             if (sc.type === "full") {
@@ -323,11 +255,15 @@ export function calculateMulticlassSpellSlots(
     let pactSlotLevel = 0;
 
     if (pactCaster) {
+        // Pact Magic: the pact caster's own slot table row gives the slot count at its single slot level
         warlockLevel = pactCaster.level;
-        const boundedWarlock = Math.max(1, Math.min(20, warlockLevel));
-        const pactData = WARLOCK_PACT_SLOTS[boundedWarlock - 1] || { count: 1, level: 1 };
-        pactSlotCount = pactData.count;
-        pactSlotLevel = pactData.level;
+        const row = pactCaster.spellSlotsByLevel?.[Math.max(1, Math.min(20, warlockLevel)) - 1] || [];
+        row.forEach((count, i) => {
+            if (count > 0) {
+                pactSlotCount = count;
+                pactSlotLevel = i + 1;
+            }
+        });
     }
 
     return {

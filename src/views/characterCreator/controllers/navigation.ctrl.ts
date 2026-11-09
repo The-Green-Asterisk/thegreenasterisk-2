@@ -1,5 +1,44 @@
 import { CharacterCreatorContext } from "./context";
 
+import {
+    getClassSkillMatch,
+    getClassSkillSources,
+    getExpertiseMatch,
+    getExpertiseSources,
+    getFeatSkillSections,
+    getUnmetProgressionExpertise
+} from "../services/skillRules";
+
+/**
+ * Skill picks left unmade or over a source's limit, phrased for the step's warning.
+ */
+export function getSkillStepProblems(ctx: CharacterCreatorContext): string[] {
+    const problems: string[] = [];
+    const classSources = getClassSkillSources(ctx);
+    const classMatch = getClassSkillMatch(ctx);
+    for (const s of classSources) {
+        const used = Array.from(classMatch.assigned.values()).filter((k) => k === s.key).length;
+        if (used < s.count) problems.push(`${s.label}: ${used} of ${s.count} skills chosen`);
+    }
+    if (classMatch.unassigned.length > 0) {
+        problems.push(`${classMatch.unassigned.join(", ")} ${classMatch.unassigned.length === 1 ? "isn't" : "aren't"} covered by any class's skill choices`);
+    }
+    for (const sec of getFeatSkillSections(ctx)) {
+        const chosen = (ctx.state.featSkillChoices?.[sec.key] || []).length;
+        if (chosen < sec.count && sec.count === 1) problems.push(`${sec.label}: no skill chosen`);
+    }
+    const expMatch = getExpertiseMatch(ctx);
+    for (const s of getExpertiseSources(ctx)) {
+        const used = Array.from(expMatch.assigned.values()).filter((k) => k === s.key).length;
+        if (used < s.count) problems.push(`${s.label} Expertise: ${used} of ${s.count} chosen`);
+    }
+    if (expMatch.unassigned.length > 0) problems.push(`Expertise in ${expMatch.unassigned.join(", ")} is over the limit`);
+    for (const u of getUnmetProgressionExpertise(ctx)) {
+        problems.push(`${u.source} gives Expertise in ${u.skill}, but you aren't proficient in it, so it gives nothing`);
+    }
+    return problems;
+}
+
 export function showAlert(msg: string, type: "error" | "warning" = "error"): void {
     const alertBox = document.getElementById("creator-validation-alert");
     if (alertBox) {
@@ -45,6 +84,20 @@ export function validateCurrentStep(ctx: CharacterCreatorContext): boolean {
                 return false;
             }
             return true;
+        case 6: {
+            ctx.sanitizeSkillSelections();
+            if (ctx.skillsWarningDismissed) {
+                ctx.skillsWarningDismissed = false;
+                return true;
+            }
+            const problems = getSkillStepProblems(ctx);
+            if (problems.length > 0) {
+                showAlert(`Warning: ${problems.join("; ")}. Click Next again to proceed anyway, or adjust your selections below.`, "warning");
+                ctx.skillsWarningDismissed = true;
+                return false;
+            }
+            return true;
+        }
         case 8: {
             ctx.sanitizeSpellSelections();
             const maxCantrips = ctx.getMaxCantrips();

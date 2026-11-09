@@ -904,8 +904,14 @@ describe('Frontend View Templates', () => {
         expect(limits2.byClass.find(c => c.name === 'Wizard')).toMatchObject({ currentPrepared: 5, aboveMaxLevel: ['Misty Step'] });
     });
 
-    it('gives Eldritch Knights and Arcane Tricksters their 2024 cantrip and prepared counts on the sheet', async () => {
+    it('gives Eldritch Knights and Arcane Tricksters their 2024 cantrip and prepared counts on the sheet, from the class rules', async () => {
         const { getCharacterSpellLevelLimits } = await import('../../../src/views/characterSheet/components/spells');
+        const { setClassRules } = await import('../../../src/services/classRules');
+        const { serverRulesClasses } = await import('./serverRulesClasses');
+        // Without the subclass spellcasting data, a Fighter/Rogue isn't a caster
+        setClassRules(null);
+        expect(getCharacterSpellLevelLimits({ classes: [{ name: 'Fighter', level: 10, subclass: 'Eldritch Knight' }], spellSlots: {}, features: [], spells: [] } as any).byClass).toEqual([]);
+        setClassRules(serverRulesClasses());
         const limits = getCharacterSpellLevelLimits({
             classes: [{ name: 'Rogue', level: 3, subclass: 'Arcane Trickster' }, { name: 'Fighter', level: 10, subclass: 'Eldritch Knight' }],
             spellSlots: {},
@@ -916,6 +922,7 @@ describe('Frontend View Templates', () => {
             ['Rogue', 3, 3],
             ['Fighter', 3, 7]
         ]);
+        setClassRules(null);
     });
 
     it('shows the feature that put a spell on a class on its spell card', async () => {
@@ -972,6 +979,25 @@ describe('Frontend View Templates', () => {
             "Remove the extra copies on D&D Beyond."
         );
         expect(describeDuplicateSpells({ name: 'Nobody', duplicateSpells: undefined })).toBe('');
+    });
+
+    it('computes sheet spell slots from the class rules (third casters round down; Pact Magic from the Warlock table)', async () => {
+        const { computeSpellSlotsFromRules } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { setClassRules } = await import('../../../src/services/classRules');
+        const { serverRulesClasses } = await import('./serverRulesClasses');
+        setClassRules(serverRulesClasses());
+        // Eldritch Knight 4 (4/3 rounded down = 1) + Wizard 1 = caster level 2: three 1st-level slots
+        expect(computeSpellSlotsFromRules([
+            { name: 'Fighter', level: 4, subclass: 'Eldritch Knight' },
+            { name: 'Wizard', level: 1 }
+        ]).standard).toEqual([3, 0, 0, 0, 0, 0, 0, 0, 0]);
+        // A lone Eldritch Knight uses its own table
+        expect(computeSpellSlotsFromRules([{ name: 'Fighter', level: 7, subclass: 'Eldritch Knight' }]).standard.slice(0, 2)).toEqual([4, 2]);
+        // Pact Magic comes from the Warlock's own slot table
+        expect(computeSpellSlotsFromRules([{ name: 'Warlock', level: 11 }]).pact).toEqual({ count: 3, level: 5 });
+        // Without a spellcasting subclass, a Fighter has no slots
+        expect(computeSpellSlotsFromRules([{ name: 'Fighter', level: 7, subclass: 'Champion' }]).standard.every(v => v === 0)).toBe(true);
+        setClassRules(null);
     });
 
     it('does not give non-casters a cantrip allotment', async () => {

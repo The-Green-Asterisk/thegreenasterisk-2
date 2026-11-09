@@ -1,6 +1,7 @@
 import http from "http";
 import cache from "../cache";
 import AppDataSource from "../services/database";
+import RuleClass from "../services/database/entity/RuleClass";
 import { Spell } from "../services/database/entity/Spell";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
@@ -17,17 +18,6 @@ function slugify(text: string): string {
 
 const BROKEN_FIELD = "[object Object]";
 
-// D&D Beyond's 2024 class ids (game-data spell lists); classes without spellcasting are left out
-const DDB_2024_CLASS_IDS: Record<string, number> = {
-    Bard: 2190876,
-    Cleric: 2190877,
-    Druid: 2190878,
-    Paladin: 2190881,
-    Ranger: 2190882,
-    Sorcerer: 2190884,
-    Warlock: 2190885,
-    Wizard: 2190886
-};
 const CLASS_SPELL_LIST_TTL_SECONDS = 24 * 60 * 60;
 
 function cleanHtmlTags(html: string): string {
@@ -294,8 +284,12 @@ export default class SpellController extends BaseController {
      */
     public static async syncClassSpellListsFromDndBeyond(extraClasses: Array<{ id: number; name: string }> = []): Promise<number> {
         if (!AppDataSource.isInitialized) return 0;
+        // Class ids come from the rules data (rule_classes.dndBeyondId), plus any the pulled character has
         const targets = new Map<number, string>();
-        for (const [name, id] of Object.entries(DDB_2024_CLASS_IDS)) targets.set(id, name);
+        const ruleClasses = await AppDataSource.getRepository(RuleClass).find();
+        for (const rc of ruleClasses) {
+            if (rc.dndBeyondId) targets.set(Number(rc.dndBeyondId), rc.name);
+        }
         for (const c of extraClasses) if (!targets.has(c.id)) targets.set(c.id, c.name);
 
         let saved = 0;

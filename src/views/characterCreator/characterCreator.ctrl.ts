@@ -63,6 +63,7 @@ import {
 } from "./controllers";
 import * as persistService from "./services/persistence";
 import * as rulesCalc from "./services/rulesCalculations";
+import * as skillRules from "./services/skillRules";
 import * as spellCalc from "./services/spellReconciliation";
 
 export { ALL_SKILLS, AsiChoice, CharacterClassChoice, CreatorState, FeatureSpellChoiceSection };
@@ -124,6 +125,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         selectedCantrips: [],
         selectedSpellsLevel1: [],
         classSpellSelections: {},
+        featSkillChoices: {},
         featureSpellChoices: {}
     };
 
@@ -183,6 +185,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public collapsedProgressionLevels: Set<string> = new Set<string>();
     public progressionFilter: "all" | "unlocked" = "all";
     public spellsWarningDismissed: boolean = false;
+    public skillsWarningDismissed: boolean = false;
 
     // View & Navigation delegates
     public getNavBottom(): number {
@@ -651,11 +654,17 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public getMaxClassSkillCount(): number {
-        return rulesCalc.getMaxClassSkillCount(this);
+        return skillRules.getClassSkillSources(this).reduce((sum, s) => sum + s.count, 0);
     }
 
     public getAllowedClassSkills(): string[] {
-        return rulesCalc.getAllowedClassSkills(this);
+        const sources = skillRules.getClassSkillSources(this);
+        if (sources.some((s) => !s.from)) return ALL_SKILLS.map((s) => s.name);
+        return Array.from(new Set(sources.flatMap((s) => s.from || [])));
+    }
+
+    public sanitizeSkillSelections(): void {
+        skillRules.sanitizeSkillSelections(this);
     }
 
     public isProficientWithArmor(armorName: string): boolean {
@@ -743,7 +752,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public getMaxExpertiseCount(): number {
-        return rulesCalc.getMaxExpertiseCount(this);
+        return skillRules.getMaxExpertiseCount(this);
     }
 
     // Spellcasting delegates
