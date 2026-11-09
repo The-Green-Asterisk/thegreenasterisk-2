@@ -1,5 +1,101 @@
 export type AbilityName = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
+export interface MulticlassPrerequisites {
+    stats: AbilityName[];
+    mode: "and" | "or";
+    label: string;
+}
+
+export interface MulticlassProficiencies {
+    armor: string[];
+    weapons: string[];
+    tools: string[];
+    skills?: {
+        count: number;
+        from?: string[];
+    };
+}
+
+export interface MulticlassDefinition {
+    prerequisites: MulticlassPrerequisites;
+    proficiencies: MulticlassProficiencies;
+}
+
+export const MULTICLASS_DATA_2024: Record<string, MulticlassDefinition> = {
+    barbarian: {
+        prerequisites: { stats: ["str"], mode: "and", label: "Str 13+" },
+        proficiencies: { armor: ["Shields"], weapons: ["Martial Weapons"], tools: [] }
+    },
+    bard: {
+        prerequisites: { stats: ["cha"], mode: "and", label: "Cha 13+" },
+        proficiencies: { armor: ["Light Armor"], weapons: [], tools: ["Musical Instrument"], skills: { count: 1 } }
+    },
+    cleric: {
+        prerequisites: { stats: ["wis"], mode: "and", label: "Wis 13+" },
+        proficiencies: { armor: ["Light Armor", "Medium Armor", "Shields"], weapons: [], tools: [] }
+    },
+    druid: {
+        prerequisites: { stats: ["wis"], mode: "and", label: "Wis 13+" },
+        proficiencies: { armor: ["Light Armor", "Medium Armor", "Shields"], weapons: [], tools: [] }
+    },
+    fighter: {
+        prerequisites: { stats: ["str", "dex"], mode: "or", label: "Str 13+ or Dex 13+" },
+        proficiencies: { armor: ["Light Armor", "Medium Armor", "Shields"], weapons: ["Martial Weapons"], tools: [] }
+    },
+    monk: {
+        prerequisites: { stats: ["dex", "wis"], mode: "and", label: "Dex 13+ & Wis 13+" },
+        proficiencies: { armor: [], weapons: [], tools: [] }
+    },
+    paladin: {
+        prerequisites: { stats: ["str", "cha"], mode: "and", label: "Str 13+ & Cha 13+" },
+        proficiencies: { armor: ["Light Armor", "Medium Armor", "Shields"], weapons: ["Martial Weapons"], tools: [] }
+    },
+    ranger: {
+        prerequisites: { stats: ["dex", "wis"], mode: "and", label: "Dex 13+ & Wis 13+" },
+        proficiencies: { armor: ["Light Armor", "Medium Armor", "Shields"], weapons: ["Martial Weapons"], tools: [], skills: { count: 1 } }
+    },
+    rogue: {
+        prerequisites: { stats: ["dex"], mode: "and", label: "Dex 13+" },
+        proficiencies: { armor: ["Light Armor"], weapons: [], tools: ["Thieves' Tools"], skills: { count: 1 } }
+    },
+    sorcerer: {
+        prerequisites: { stats: ["cha"], mode: "and", label: "Cha 13+" },
+        proficiencies: { armor: [], weapons: [], tools: [] }
+    },
+    warlock: {
+        prerequisites: { stats: ["cha"], mode: "and", label: "Cha 13+" },
+        proficiencies: { armor: ["Light Armor"], weapons: [], tools: [] }
+    },
+    wizard: {
+        prerequisites: { stats: ["int"], mode: "and", label: "Int 13+" },
+        proficiencies: { armor: [], weapons: [], tools: [] }
+    }
+};
+
+export const CLASS_SCALING_TRAITS_2024: Record<string, any> = {
+    barbarian: {
+        weaponMasteriesByLevel: [0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+    },
+    fighter: {
+        weaponMasteriesByLevel: [0, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6]
+    },
+    paladin: {
+        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    },
+    ranger: {
+        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    },
+    rogue: {
+        weaponMasteriesByLevel: [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    },
+    warlock: {
+        invocationsByLevel: [0, 1, 3, 3, 3, 5, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10]
+    },
+    sorcerer: {
+        metamagicByLevel: [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 6]
+    }
+};
+
 export type ModifierTarget =
     | "vitals.ac"
     | "vitals.maxHp"
@@ -1369,6 +1465,18 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                         options: METAMAGIC_OPTIONS
                     });
                 }
+                break;
+
+            case "warlock":
+                const invCount = lvl >= 18 ? 10 : lvl >= 15 ? 9 : lvl >= 12 ? 8 : lvl >= 9 ? 7 : lvl >= 7 ? 6 : lvl >= 5 ? 5 : lvl >= 2 ? 3 : 1;
+                choices.push({
+                    id: "eldritch-invocations",
+                    choiceId: "eldritch-invocations",
+                    name: "Eldritch Invocations",
+                    prompt: `Select Eldritch Invocations (choose up to ${invCount}).`,
+                    chooseCount: invCount,
+                    options: ELDRITCH_INVOCATIONS
+                });
                 break;
 
             case "wizard":

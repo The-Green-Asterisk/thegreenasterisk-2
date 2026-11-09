@@ -183,15 +183,15 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             if (rules) {
                 if (Array.isArray(rules.classes) && rules.classes.length > 0) {
                     this.classes = rules.classes.map((rc: any) => {
-                        const fallbackCls = CLASSES_2024.find((c) => c.id === rc.id || c.name === rc.name);
-                        const classSlug = rc.id || rc.slug || fallbackCls?.id || "";
+                        const fallbackCls = CLASSES_2024.find((c) => c.id === rc.id || c.slug === rc.slug || c.name === rc.name);
+                        const classSlug = (typeof rc.slug === "string" && rc.slug) || (typeof rc.id === "string" && isNaN(Number(rc.id)) ? rc.id : "") || fallbackCls?.id || "";
                         const rawSubs =
                             Array.isArray(rc.subclasses) && rc.subclasses.length > 0
                                 ? [...rc.subclasses]
                                 : [...(fallbackCls?.subclasses || [])];
                         if (Array.isArray(rules.subclasses)) {
                             for (const gs of rules.subclasses) {
-                                if (gs.classSlug === classSlug || gs.classId === rc.id) {
+                                if (gs.classSlug === classSlug || gs.classId === rc.id || gs.classId === rc.slug) {
                                     rawSubs.push(gs);
                                 }
                             }
@@ -204,6 +204,8 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                         const enrichedSubs = this.deduplicateClassSubclasses(classSlug, rawSubs);
                         return {
                             ...rc,
+                            id: classSlug || rc.id,
+                            slug: classSlug,
                             features:
                                 Array.isArray(rc.features) && rc.features.length > 0
                                     ? rc.features
@@ -246,7 +248,11 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         const raw = String(subIdOrName).trim();
         if (!raw) return "";
         const normKey = CharacterCreatorController.normalizeSubclassKey(raw);
-        const fallbackCls = CLASSES_2024.find((c) => c.id === classId || c.name.toLowerCase() === classId.toLowerCase());
+        const classSlug = (typeof classId === "string" && isNaN(Number(classId))) ? classId.toLowerCase() : "";
+        const fallbackCls = CLASSES_2024.find((c) =>
+            (classSlug && c.id.toLowerCase() === classSlug) ||
+            c.name.toLowerCase() === String(classId).toLowerCase()
+        ) || (typeof classId === "string" ? CLASSES_2024.find((c) => c.id === classId) : undefined);
         const canonSub = fallbackCls?.subclasses?.find((s) =>
             s.id === raw ||
             s.name.toLowerCase() === raw.toLowerCase() ||
@@ -254,7 +260,10 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             CharacterCreatorController.normalizeSubclassKey(s.name) === normKey
         );
         if (canonSub) return canonSub.id;
-        const activeCls = this.classes.find((c) => c.id === classId || c.name.toLowerCase() === classId.toLowerCase());
+        const activeCls = this.classes.find((c) =>
+            (classSlug && (c.id === classSlug || c.slug === classSlug)) ||
+            c.name.toLowerCase() === String(classId).toLowerCase()
+        );
         const matchedSub = activeCls?.subclasses?.find((s) =>
             s.id === raw ||
             s.name?.toLowerCase() === raw.toLowerCase() ||
@@ -264,27 +273,36 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public deduplicateClassSubclasses(classId: string, rawSubs: any[]): any[] {
-        const fallbackCls = CLASSES_2024.find((c) => c.id === classId || c.name.toLowerCase() === classId.toLowerCase());
+        const classSlug = (typeof classId === "string" && isNaN(Number(classId))) ? classId.toLowerCase() : "";
+        const fallbackCls = CLASSES_2024.find((c) =>
+            (classSlug && c.id.toLowerCase() === classSlug) ||
+            c.name.toLowerCase() === String(classId).toLowerCase()
+        ) || (typeof classId === "string" ? CLASSES_2024.find((c) => c.id === classId) : undefined);
         const byKey = new Map<string, any>();
 
         for (const sub of rawSubs || []) {
             if (!sub) continue;
-            const rawId = sub.id || sub.slug || "";
+            const rawId = (typeof sub.slug === "string" && sub.slug) || (typeof sub.id === "string" && isNaN(Number(sub.id)) ? sub.id : "");
             const rawName = sub.name || "";
-            const normKey = CharacterCreatorController.normalizeSubclassKey(rawId || rawName);
+            const normKey = CharacterCreatorController.normalizeSubclassKey(rawName || rawId || (sub.slug || sub.id || ""));
             if (!normKey) continue;
 
             const fallbackSub = fallbackCls?.subclasses?.find((s) =>
-                s.id === rawId ||
-                s.name.toLowerCase() === rawName.toLowerCase() ||
+                (rawId && s.id === rawId) ||
+                (rawName && s.name.toLowerCase() === rawName.toLowerCase()) ||
                 CharacterCreatorController.normalizeSubclassKey(s.id) === normKey ||
                 CharacterCreatorController.normalizeSubclassKey(s.name) === normKey
             );
 
+            const canonicalId = fallbackSub ? fallbackSub.id : (rawId || normKey);
+            const canonicalName = fallbackSub ? fallbackSub.name : (rawName || rawId || normKey);
+            const canonKey = CharacterCreatorController.normalizeSubclassKey(canonicalId || canonicalName || normKey);
+
             const normalizedSub = {
                 ...sub,
-                id: fallbackSub ? fallbackSub.id : (rawId || normKey),
-                name: fallbackSub ? fallbackSub.name : (rawName || rawId),
+                id: canonicalId,
+                slug: canonicalId,
+                name: canonicalName,
                 description: sub.description || fallbackSub?.description || "",
                 features: Array.isArray(sub.features) && sub.features.length > 0
                     ? sub.features
@@ -294,7 +312,6 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                     : fallbackSub?.progression
             };
 
-            const canonKey = CharacterCreatorController.normalizeSubclassKey(normalizedSub.id || normalizedSub.name);
             const existing = byKey.get(canonKey);
             if (!existing) {
                 byKey.set(canonKey, normalizedSub);

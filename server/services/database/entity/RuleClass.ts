@@ -39,6 +39,12 @@ export class RuleClass {
     @Column({ type: "text", nullable: true })
     spellcastingJson?: string; // JSON spellcasting details
 
+    @Column({ type: "text", nullable: true })
+    multiclassingJson?: string; // JSON { prerequisites: ..., proficiencies: ... }
+
+    @Column({ type: "text", nullable: true })
+    scalingTraitsJson?: string; // JSON { weaponMasteriesByLevel: [...], ... }
+
     @Column({ type: "longtext" })
     featuresJson!: string; // JSON array of { level, name, description }
 

@@ -1,4 +1,4 @@
-import { AbilityName, ClassDefinition } from "./types";
+import { AbilityName, ClassDefinition, MulticlassProficiencies } from "./types";
 import { FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, CLASSES_2024 } from "./classes";
 
 export interface MulticlassPrerequisite {
@@ -22,15 +22,7 @@ export const MULTICLASS_PREREQUISITES_2024: Record<string, MulticlassPrerequisit
     wizard: { stats: ["int"], mode: "and", label: "Int 13+" }
 };
 
-export interface MulticlassProficiencies {
-    armor: string[];
-    weapons: string[];
-    tools: string[];
-    skills?: {
-        count: number;
-        from?: string[]; // undefined means any skill
-    };
-}
+export type { MulticlassProficiencies };
 
 export const MULTICLASS_PROFICIENCIES_2024: Record<string, MulticlassProficiencies> = {
     barbarian: {
@@ -108,10 +100,19 @@ export const MULTICLASS_PROFICIENCIES_2024: Record<string, MulticlassProficienci
  * Checks if a specific class meets its ability score prerequisite (13+ in required stat(s)).
  */
 export function checkClassPrerequisite(
-    classId: string,
+    classDefOrId: string | ClassDefinition,
     getStatScore: (stat: AbilityName) => number
 ): { met: boolean; label: string; currentScoreText: string } {
-    const prereq = MULTICLASS_PREREQUISITES_2024[classId.toLowerCase()];
+    let prereq: MulticlassPrerequisite | undefined;
+    if (typeof classDefOrId === "object" && classDefOrId !== null) {
+        prereq = classDefOrId.multiclassing?.prerequisites;
+        if (!prereq && classDefOrId.id) {
+            prereq = MULTICLASS_PREREQUISITES_2024[classDefOrId.id.toLowerCase()];
+        }
+    } else if (typeof classDefOrId === "string") {
+        const found = CLASSES_2024.find((c) => c.id.toLowerCase() === classDefOrId.toLowerCase());
+        prereq = found?.multiclassing?.prerequisites || MULTICLASS_PREREQUISITES_2024[classDefOrId.toLowerCase()];
+    }
     if (!prereq) {
         return { met: true, label: "None", currentScoreText: "" };
     }

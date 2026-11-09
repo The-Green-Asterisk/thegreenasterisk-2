@@ -248,8 +248,39 @@ export interface ProgressionLevel {
     grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
 
+export interface MulticlassPrerequisites {
+    stats: AbilityName[];
+    mode: "and" | "or";
+    label: string;
+}
+
+export interface MulticlassProficiencies {
+    armor: string[];
+    weapons: string[];
+    tools: string[];
+    skills?: {
+        count: number;
+        from?: string[];
+    };
+}
+
+export interface MulticlassDefinition {
+    prerequisites: MulticlassPrerequisites;
+    proficiencies: MulticlassProficiencies;
+}
+
+export interface ClassScalingTraits {
+    weaponMasteriesByLevel?: number[];
+    invocationsByLevel?: number[];
+    metamagicByLevel?: number[];
+    maneuversByLevel?: number[];
+    expertiseByLevel?: number[];
+    [key: string]: any;
+}
+
 export interface ClassDefinition {
     id: string;
+    slug?: string;
     name: string;
     description: string;
     hitDie: number; // 6, 8, 10, 12
@@ -258,10 +289,13 @@ export interface ClassDefinition {
     armorProficiencies: string[];
     weaponProficiencies: string[];
     weaponMasteryCount: number;
+    weaponMasteryByLevel?: number[];
     skillChoices: {
         count: number;
         from: string[];
     };
+    multiclassing?: MulticlassDefinition;
+    scalingTraits?: ClassScalingTraits;
     spellcasting?: {
         ability: AbilityName;
         type: 'full' | 'half' | 'third' | 'pact';

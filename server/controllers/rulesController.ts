@@ -7,6 +7,8 @@ import RuleFeat from "../services/database/entity/RuleFeat";
 import RuleSpecies from "../services/database/entity/RuleSpecies";
 import RuleSubclass from "../services/database/entity/RuleSubclass";
 import {
+    CLASS_SCALING_TRAITS_2024,
+    MULTICLASS_DATA_2024,
     buildClassProgression,
     buildSubclassProgression
 } from "../services/database/rulesProgressionBuilder";
@@ -37,17 +39,17 @@ export function normalizeSubclassKey(value: string): string {
         .trim()
         .toLowerCase()
         .replace(/\s*\([^)]+\)\s*$/, "")
-        .replace(/^the\s+/, "")
-        .replace(/\s+patron$/, "")
-        .replace(/^path of (?:the\s+)?/, "")
-        .replace(/^college of (?:the\s+)?/, "")
-        .replace(/\s+domain$/, "")
-        .replace(/^circle of (?:the\s+)?/, "")
-        .replace(/^warrior of (?:the\s+)?/, "")
-        .replace(/^way of (?:the\s+)?/, "")
-        .replace(/^oath of (?:the\s+)?/, "")
-        .replace(/\s+sorcery$/, "")
-        .replace(/^school of\s+/, "");
+        .replace(/^the[\s-]+/, "")
+        .replace(/[\s-]+patron$/, "")
+        .replace(/^path[\s-]+of[\s-]+(?:the[\s-]+)?/, "")
+        .replace(/^college[\s-]+of[\s-]+(?:the[\s-]+)?/, "")
+        .replace(/[\s-]+domain$/, "")
+        .replace(/^circle[\s-]+of[\s-]+(?:the[\s-]+)?/, "")
+        .replace(/^warrior[\s-]+of[\s-]+(?:the[\s-]+)?/, "")
+        .replace(/^way[\s-]+of[\s-]+(?:the[\s-]+)?/, "")
+        .replace(/^oath[\s-]+of[\s-]+(?:the[\s-]+)?/, "")
+        .replace(/[\s-]+sorcery$/, "")
+        .replace(/^school[\s-]+of[\s-]+/, "");
     const s = slugify(cleaned);
     if (s === "abjuration") return "abjurer";
     if (s === "divination") return "diviner";
@@ -189,6 +191,8 @@ export default class RulesController extends BaseController {
                     weaponProficienciesJson: JSON.stringify(cls.weaponProficiencies),
                     weaponMasteryCount: cls.weaponMasteryCount || 0,
                     skillChoicesJson: JSON.stringify(cls.skillChoices),
+                    multiclassingJson: JSON.stringify((cls as any).multiclassing || MULTICLASS_DATA_2024[cls.id] || null),
+                    scalingTraitsJson: JSON.stringify((cls as any).scalingTraits || CLASS_SCALING_TRAITS_2024[cls.id] || null),
                     spellcastingJson: cls.spellcasting ? JSON.stringify(cls.spellcasting) : undefined,
                     featuresJson: JSON.stringify(cls.features || []),
                     progressionJson: JSON.stringify(buildClassProgression(cls.id, cls.features || [])),
@@ -512,6 +516,8 @@ export default class RulesController extends BaseController {
                 });
                 return {
                     ...cls,
+                    multiclassing: (cls as any).multiclassing || MULTICLASS_DATA_2024[cls.id],
+                    scalingTraits: (cls as any).scalingTraits || CLASS_SCALING_TRAITS_2024[cls.id],
                     progression: clsProg,
                     subclasses: subs
                 };
@@ -685,6 +691,8 @@ export default class RulesController extends BaseController {
                     features: rawFeatures,
                     progression,
                     subclasses,
+                    multiclassing: rc.multiclassingJson ? this.safeParse(rc.multiclassingJson, undefined) : MULTICLASS_DATA_2024[rc.slug],
+                    scalingTraits: rc.scalingTraitsJson ? this.safeParse(rc.scalingTraitsJson, undefined) : CLASS_SCALING_TRAITS_2024[rc.slug],
                     startingEquipmentOptions: rc.startingEquipmentJson ? this.safeParse(rc.startingEquipmentJson, []) : []
                 };
             });
