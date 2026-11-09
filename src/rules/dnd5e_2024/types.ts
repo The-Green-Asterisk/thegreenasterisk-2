@@ -278,6 +278,13 @@ export interface ClassScalingTraits {
     [key: string]: any;
 }
 
+export interface ExpandedSpellListDefinition {
+    level: number;
+    feature: string;
+    classes: string[];
+    allowCantrips?: boolean;
+}
+
 export interface ClassDefinition {
     id: string;
     slug?: string;
@@ -301,7 +308,9 @@ export interface ClassDefinition {
         type: 'full' | 'half' | 'third' | 'pact';
         cantripsKnownByLevel: number[];
         preparedSpellsByLevel?: number[];
+        spellsKnownByLevel?: number[];
         spellSlotsByLevel: number[][]; // 20 rows, 9 cols
+        expandedSpellLists?: ExpandedSpellListDefinition[];
     };
     subclasses: ClassSubclassDefinition[];
     features: ClassLevelFeature[];

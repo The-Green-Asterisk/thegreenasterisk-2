@@ -2602,5 +2602,61 @@ describe("CharacterCreatorController", () => {
             expect(fighterPayload.spells.map((s: any) => s.name)).toContain("Toll the Dead");
             expect(fighterPayload.spells.map((s: any) => s.name)).not.toContain("Sacred Flame");
         });
+
+        it("Bard Magical Secrets at Level 10 expands prepared spells to Cleric, Druid, and Wizard lists without a separate 2-spell picker", () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            const root = document.getElementById("creator-step-panels")!;
+
+            // 1. Level 9 Bard: available leveled spells should only be Bard spells
+            ctrl.state.classId = "bard";
+            ctrl.state.level = 9;
+            ctrl.state.subclassId = "lore";
+            ctrl.state.classes = [{ classId: "bard", level: 9, subclassId: "lore" }];
+            ctrl.state.originFeatId = "alert";
+
+            const lvl9Spells = ctrl.getAvailableSpells();
+            expect(lvl9Spells.leveledSpells.some((s) => s.name === "Fireball")).toBe(false);
+            expect(lvl9Spells.leveledSpells.some((s) => s.name === "Revivify")).toBe(false);
+            expect(lvl9Spells.leveledSpells.some((s) => s.name === "Dissonant Whispers")).toBe(true);
+
+            // 2. Level 10 Bard: Step 3 renders Magical Secrets as a standard ability feature card, NOT a choice box
+            ctrl.state.level = 10;
+            ctrl.state.classes[0].level = 10;
+            ctrl.renderStep(3);
+
+            const magicalSecretsChoiceBox = root.querySelector('.level-choice-box .level-choice-title');
+            const allChoiceTitles = Array.from(root.querySelectorAll('.level-choice-title')).map((t) => t.textContent || "");
+            expect(allChoiceTitles.some((t) => t.toLowerCase().includes("magical secrets"))).toBe(false);
+
+            const allFeatureCardTitles = Array.from(root.querySelectorAll('.ability-feature-card .card-title')).map((t) => t.textContent || "");
+            expect(allFeatureCardTitles.some((t) => t.toLowerCase().includes("magical secrets"))).toBe(true);
+
+            // 3. Step 8: getFeatureSpellChoiceSections does NOT contain bard-10-magical-secrets
+            ctrl.renderStep(8);
+            const featureSections = ctrl.getFeatureSpellChoiceSections();
+            expect(featureSections.some((s) => s.id === "bard-10-magical-secrets")).toBe(false);
+
+            // 4. Step 8: getAvailableSpells expands leveled spells to include Cleric, Druid, and Wizard spells up to 5th level
+            const lvl10Spells = ctrl.getAvailableSpells();
+            // Fireball is Wizard, Revivify is Cleric, Pass without Trace is Druid
+            expect(lvl10Spells.leveledSpells.some((s) => s.name === "Fireball")).toBe(true);
+            expect(lvl10Spells.leveledSpells.some((s) => s.name === "Revivify")).toBe(true);
+            expect(lvl10Spells.leveledSpells.some((s) => s.name === "Pass without Trace")).toBe(true);
+            // Cantrips for Bard should still only be Bard cantrips
+            expect(lvl10Spells.cantrips.some((s) => s.name === "Vicious Mockery")).toBe(true);
+            expect(lvl10Spells.cantrips.some((s) => s.name === "Sacred Flame")).toBe(false);
+
+            // 5. Preparing Fireball & Revivify in normal prepared spells works and saves with Class source
+            ctrl.state.selectedSpellsLevel1 = ["Fireball", "Revivify", "Dissonant Whispers"];
+            const payload = ctrl.buildPayload();
+            const fireball = payload.spells.find((s: any) => s.name === "Fireball");
+            const revivify = payload.spells.find((s: any) => s.name === "Revivify");
+            expect(fireball).toBeDefined();
+            expect(fireball.source).toBe("Class");
+            expect(fireball.prepared).toBe(true);
+            expect(revivify).toBeDefined();
+            expect(revivify.source).toBe("Class");
+            expect(revivify.prepared).toBe(true);
+        });
     });
 });

@@ -172,6 +172,23 @@ export default class RulesController extends BaseController {
         if (!AppDataSource.isInitialized) return;
 
         try {
+            // Ensure newly added schema columns exist on rule_classes to prevent ER_BAD_FIELD_ERROR
+            try {
+                const hasRuleClasses = await AppDataSource.query("SHOW TABLES LIKE 'rule_classes'");
+                if (hasRuleClasses && hasRuleClasses.length > 0) {
+                    const checkMulti: any[] = await AppDataSource.query("SHOW COLUMNS FROM `rule_classes` LIKE 'multiclassingJson'");
+                    if (!checkMulti || checkMulti.length === 0) {
+                        await AppDataSource.query("ALTER TABLE `rule_classes` ADD COLUMN `multiclassingJson` text NULL AFTER `skillChoicesJson`");
+                    }
+                    const checkScale: any[] = await AppDataSource.query("SHOW COLUMNS FROM `rule_classes` LIKE 'scalingTraitsJson'");
+                    if (!checkScale || checkScale.length === 0) {
+                        await AppDataSource.query("ALTER TABLE `rule_classes` ADD COLUMN `scalingTraitsJson` text NULL AFTER `multiclassingJson`");
+                    }
+                }
+            } catch (colErr) {
+                // Ignore if query fails on offline/mock databases
+            }
+
             const classRepo = AppDataSource.getRepository(RuleClass);
             const speciesRepo = AppDataSource.getRepository(RuleSpecies);
             const bgRepo = AppDataSource.getRepository(RuleBackground);
@@ -557,8 +574,19 @@ export default class RulesController extends BaseController {
             const bgRepo = AppDataSource.getRepository(RuleBackground);
             const featRepo = AppDataSource.getRepository(RuleFeat);
 
-            const [dbClasses, dbSubclasses, dbSpecies, dbBackgrounds, dbFeats] = await Promise.all([
-                classRepo.find({ order: { name: "ASC" } }),
+            let dbClasses: any[] = [];
+            try {
+                dbClasses = await classRepo.find({ order: { name: "ASC" } });
+            } catch (err: any) {
+                if (err?.code === "ER_BAD_FIELD_ERROR" || String(err?.message || "").includes("ER_BAD_FIELD_ERROR")) {
+                    console.warn("ER_BAD_FIELD_ERROR when fetching rule_classes, falling back to raw table query:", err?.message);
+                    dbClasses = await classRepo.query("SELECT * FROM `rule_classes` ORDER BY `name` ASC");
+                } else {
+                    throw err;
+                }
+            }
+
+            const [dbSubclasses, dbSpecies, dbBackgrounds, dbFeats] = await Promise.all([
                 typeof subclassRepo?.find === "function" ? subclassRepo.find({ order: { name: "ASC" } }) : Promise.resolve([]),
                 speciesRepo.find({ order: { name: "ASC" } }),
                 bgRepo.find({ order: { name: "ASC" } }),

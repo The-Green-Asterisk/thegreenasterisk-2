@@ -1142,19 +1142,6 @@ import { CharacterCreatorContext } from "../controllers/context";
                     </div>
                 `);
             }
-
-            // Bard: Magical Secrets (Level 10)
-            if (cls.id === "bard") {
-                choices.push(`
-                    <div class="level-choice-box">
-                        <h5 class="level-choice-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Magical Secrets (Choose 2 Spells)</h5>
-                        <p class="card-body">${getClsFeatureDesc("Magical Secrets", "Whenever you reach a Bard level that grants prepared spells from this point onward, you can choose your new prepared spells from the Bard, Cleric, Druid, and Wizard spell lists.", 10)}</p>
-                        <div class="level-info-note choice-spells-referral-note">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Select your <strong>Magical Secrets</strong> spells in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
-                        </div>
-                    </div>
-                `);
-            }
         }
 
         // Warlock Mystic Arcanum choices (Levels 11, 13, 15, 17)
@@ -1552,7 +1539,6 @@ import { CharacterCreatorContext } from "../controllers/context";
                 if (cls.id === "warlock" && resolvedSubId === "fiend" && normLower === "fiendish resilience") return true;
                 if (cls.id === "barbarian" && resolvedSubId === "world-tree" && normLower === "battering roots") return true;
                 if (cls.id === "wizard" && resolvedSubId === "diviner" && normLower === "the third eye") return true;
-                if (cls.id === "bard" && normLower === "magical secrets") return true;
             }
             if (lvl === 11 || lvl === 13 || lvl === 15 || lvl === 17) {
                 if (cls.id === "warlock" && (baseLower.startsWith("mystic arcanum") || normLower === "mystic arcanum")) return true;

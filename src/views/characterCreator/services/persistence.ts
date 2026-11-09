@@ -479,7 +479,6 @@ function applyProgressionChoiceOption(characterPayload: any, opt: any, level: nu
                                 (sec.id === "fighting-style-blessed-warrior" && spSource.includes("blessed warrior")) ||
                                 (sec.id === "fighting-style-druidic-warrior" && spSource.includes("druidic warrior")) ||
                                 (sec.id === "bard-6-magical-discoveries" && (spSource.includes("magical discoveries") || spSource.includes("lore"))) ||
-                                (sec.id === "bard-10-magical-secrets" && spSource.includes("magical secrets")) ||
                                 (sec.id.includes("mystic-arcanum") && (spSource.includes("mystic arcanum") || spLvl >= 6)) ||
                                 (sec.id.startsWith("wizard-18-spell-mastery") && spSource.includes("spell mastery")) ||
                                 (sec.id === "wizard-20-signature-spells" && spSource.includes("signature spell")) ||
@@ -518,7 +517,7 @@ function applyProgressionChoiceOption(characterPayload: any, opt: any, level: nu
                                 fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Cleric");
                             } else if (sec.id === "primal-order-magician") {
                                 fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Druid");
-                            } else if (sec.id === "bard-6-magical-discoveries" || sec.id === "bard-10-magical-secrets") {
+                            } else if (sec.id === "bard-6-magical-discoveries") {
                                 fallbackMatch = !matchedDef.classes.includes("Bard") && (matchedDef.classes.includes("Cleric") || matchedDef.classes.includes("Druid") || matchedDef.classes.includes("Wizard"));
                             } else if (sec.id.includes("mystic-arcanum")) {
                                 fallbackMatch = spLvl >= 6 && matchedDef.classes.includes("Warlock");

@@ -1,6 +1,8 @@
 import {
     AbilityName,
     CLASS_SPELL_PRIORITIES,
+    CLASSES_2024,
+    ClassDefinition,
     MulticlassCasterClassInfo,
     RuleSpellDefinition,
     SPELLS_2024,
@@ -73,6 +75,22 @@ export function getAllowedSpellClasses(ctx: CharacterCreatorContext): string[] {
         } else if (!list.includes(info.className)) {
             list.push(info.className);
         }
+
+        // Expanded spell lists (e.g. Bard's Magical Secrets at Level 10)
+        const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.className.toLowerCase());
+        const clsDef = ctx.classes.find((c) => c.id === cc?.classId || c.slug === cc?.classId) || CLASSES_2024.find((c) => c.id === info.className.toLowerCase());
+        const expLists = clsDef?.spellcasting?.expandedSpellLists;
+        if (Array.isArray(expLists)) {
+            for (const exp of expLists) {
+                if ((info.level || cc?.level || 1) >= exp.level) {
+                    for (const expCls of exp.classes) {
+                        if (!list.includes(expCls)) {
+                            list.push(expCls);
+                        }
+                    }
+                }
+            }
+        }
     }
     if (ctx.state.originFeatId === "magic-initiate-cleric" && !list.includes("Cleric")) list.push("Cleric");
     if (ctx.state.originFeatId === "magic-initiate-druid" && !list.includes("Druid")) list.push("Druid");
@@ -112,15 +130,54 @@ export function getAvailableSpells(ctx: CharacterCreatorContext): {
             ? "Wizard"
             : "";
 
+    // Base caster classes that provide cantrips (unless an expanded spell list explicitly enables cantrips)
+    const cantripClasses: string[] = [];
+    for (const info of infos) {
+        if (info.type === "third") {
+            if (!cantripClasses.includes("Wizard")) cantripClasses.push("Wizard");
+        } else if (!cantripClasses.includes(info.className)) {
+            cantripClasses.push(info.className);
+        }
+        const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.className.toLowerCase());
+        const clsDef = ctx.classes.find((c) => c.id === cc?.classId || c.slug === cc?.classId) || CLASSES_2024.find((c) => c.id === info.className.toLowerCase());
+        const expLists = clsDef?.spellcasting?.expandedSpellLists;
+        if (Array.isArray(expLists)) {
+            for (const exp of expLists) {
+                if (exp.allowCantrips && (info.level || cc?.level || 1) >= exp.level) {
+                    for (const expCls of exp.classes) {
+                        if (!cantripClasses.includes(expCls)) {
+                            cantripClasses.push(expCls);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (miClass && !cantripClasses.includes(miClass)) {
+        cantripClasses.push(miClass);
+    }
+
     const cantrips = SPELLS_2024.filter((sp) => {
         if (sp.level !== 0) return false;
-        return sp.classes.some((c) => allowed.includes(c));
+        return sp.classes.some((c) => cantripClasses.includes(c));
     });
 
     const leveledSpells = SPELLS_2024.filter((sp) => {
         if (sp.level < 1) return false;
         // D&D 2024 Multiclassing: prepare spells individually per class, up to that class's max spell level
         const canPrepareFromClass = infos.some((info) => {
+            const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.className.toLowerCase());
+            const clsDef = ctx.classes.find((c) => c.id === cc?.classId || c.slug === cc?.classId) || CLASSES_2024.find((c) => c.id === info.className.toLowerCase());
+            const expLists = clsDef?.spellcasting?.expandedSpellLists;
+            if (Array.isArray(expLists)) {
+                for (const exp of expLists) {
+                    if ((info.level || cc?.level || 1) >= exp.level) {
+                        if (sp.classes.some((c) => exp.classes.includes(c)) && sp.level <= info.maxSpellLevel) {
+                            return true;
+                        }
+                    }
+                }
+            }
             const targetClassName = info.type === "third" ? "Wizard" : info.className;
             return sp.classes.includes(targetClassName) && sp.level <= info.maxSpellLevel;
         });
@@ -268,21 +325,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
         });
     }
 
-    // 7. Bard — Magical Secrets (Level 10+: 2 spells from Bard, Cleric, Druid, or Wizard)
-    if (bardLvl >= 10) {
-        const bardMaxSpellLvl = Math.min(9, Math.ceil(bardLvl / 2));
-        sections.push({
-            id: "bard-10-magical-secrets",
-            title: "Magical Secrets (Bard Level 10) — Cross-Class Spells",
-            sourceLabel: "Bard / Magical Secrets",
-            description: "You have conjured magical knowledge from the Bard, Cleric, Druid, and Wizard spell lists. Choose two spells from those lists of a level you can cast.",
-            chooseCount: 2,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level >= 1 && sp.level <= bardMaxSpellLvl && sp.classes.some((c) => c === "Bard" || c === "Cleric" || c === "Druid" || c === "Wizard")),
-            ability: "cha"
-        });
-    }
-
-    // 8. Warlock — Mystic Arcanum (Levels 11, 13, 15, 17: 6th, 7th, 8th, 9th level Warlock spell)
+    // 7. Warlock — Mystic Arcanum (Levels 11, 13, 15, 17: 6th, 7th, 8th, 9th level Warlock spell)
     const warlockLvl = getClassLevel("warlock");
     const arcanumTiers = [
         { minLvl: 11, spellLvl: 6, label: "6th" },

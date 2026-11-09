@@ -610,6 +610,13 @@ export const SEED_CLASSES = [
                     1,
                     1
                 ]
+            ],
+            "expandedSpellLists": [
+                {
+                    "level": 10,
+                    "feature": "Magical Secrets",
+                    "classes": ["Cleric", "Druid", "Wizard"]
+                }
             ]
         },
         "features": [
