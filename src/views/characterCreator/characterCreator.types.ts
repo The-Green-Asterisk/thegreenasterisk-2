@@ -44,6 +44,8 @@ export interface CreatorState {
     currentStep: number;
     savedId?: number;
     siteCharacterId?: string;
+    /** D&D Beyond character id, for characters imported from D&D Beyond */
+    dndBeyondId?: string;
     name: string;
     level: number;
     alignment: string;

@@ -108,6 +108,29 @@ export function renderStep5Abilities(ctx: CharacterCreatorContext): string {
                 <p class="panel-desc">Configure your base ability scores. Background bonuses are added automatically.</p>
             </div>
 
+            ${ctx.state.dndBeyondId ? `
+                <div class="creator-detail-box ddb-reread-box" style="margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <p class="card-body" style="margin: 0; flex: 1; min-width: 14rem;">
+                            Imported from D&amp;D Beyond. Changed this character's ability scores or feats there?
+                        </p>
+                        <button type="button" class="creator-nav-btn secondary-btn ddb-reread-btn" aria-expanded="false" aria-controls="ddb-reread-confirm">
+                            <i class="fa-solid fa-rotate" aria-hidden="true"></i> Re-read from D&amp;D Beyond
+                        </button>
+                    </div>
+                    <div id="ddb-reread-confirm" class="ddb-reread-confirm" hidden style="margin-top: 0.75rem;">
+                        <p class="card-body" style="margin: 0 0 0.5rem;">
+                            This replaces the base scores, background bonuses, origin feat, and every Ability Score Improvement and feat choice here with what's on D&amp;D Beyond.
+                        </p>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="creator-nav-btn ddb-reread-confirm-btn">Replace with D&amp;D Beyond's</button>
+                            <button type="button" class="creator-nav-btn secondary-btn ddb-reread-cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                    <p class="ddb-reread-status card-body" role="status" style="margin: 0.5rem 0 0;"></p>
+                </div>
+            ` : ""}
+
             <div class="ability-modes-tabs">
                 <button type="button" class="tab-btn ${mode === "standard" ? "active" : ""}" data-mode="standard">Standard Array</button>
                 <button type="button" class="tab-btn ${mode === "pointbuy" ? "active" : ""}" data-mode="pointbuy">Point Buy (27)</button>

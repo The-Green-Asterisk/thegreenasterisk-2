@@ -582,6 +582,55 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getEffectiveAbilityScore("dex")).toBe(15);
     });
 
+    it("re-reads ability scores and feats from D&D Beyond for a saved character, after confirming", async () => {
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div><div id="creator-validation-alert" class="hidden"></div>';
+        const root = document.getElementById("creator-step-panels")!;
+        ctrl.state.classId = "bard";
+        ctrl.state.level = 4;
+        ctrl.state.classes = [{ classId: "bard", level: 4, subclassId: "" }];
+        ctrl.syncStateClassProperties();
+
+        // Not linked to D&D Beyond: no button
+        ctrl.renderStep(5);
+        expect(root.querySelector(".ddb-reread-btn")).toBeNull();
+
+        // Saved earlier in the creator with its own choices
+        ctrl.state.dndBeyondId = "4242";
+        ctrl.state.asiChoices = { "bard-4": { type: "single", statA: "str" } };
+        const requestModule = await import("../../../src/services/request");
+        const getData = vi.spyOn(requestModule, "getData").mockResolvedValue({
+            data: {
+                stats: [{ id: 1, value: 8 }, { id: 2, value: 14 }, { id: 3, value: 12 }, { id: 4, value: 10 }, { id: 5, value: 13 }, { id: 6, value: 15 }],
+                classes: [{ definition: { name: "Bard" }, classFeatures: [{ definition: { id: 101, name: "Ability Score Improvement", requiredLevel: 4 } }] }],
+                feats: [{ componentId: 101, definition: { id: 910, name: "Actor", categories: [{ tagName: "General" }] } }],
+                modifiers: { feat: [{ type: "bonus", subType: "charisma-score", componentId: 910, fixedValue: 1 }] }
+            }
+        });
+        ctrl.renderStep(5);
+        const btn = root.querySelector(".ddb-reread-btn") as HTMLButtonElement;
+        const confirmBox = document.getElementById("ddb-reread-confirm")!;
+        expect(confirmBox.hidden).toBe(true);
+
+        // First click only asks
+        btn.click();
+        expect(confirmBox.hidden).toBe(false);
+        expect(ctrl.state.asiChoices["bard-4"]).toEqual({ type: "single", statA: "str" });
+
+        // Cancel keeps the creator's choices
+        (root.querySelector(".ddb-reread-cancel-btn") as HTMLButtonElement).click();
+        expect(confirmBox.hidden).toBe(true);
+        expect(getData).not.toHaveBeenCalled();
+
+        // Confirm replaces them, bypassing the server's cache
+        btn.click();
+        (root.querySelector(".ddb-reread-confirm-btn") as HTMLButtonElement).click();
+        await vi.waitFor(() => expect(ctrl.state.asiChoices["bard-4"]).toEqual({ type: "feat", featId: "actor", statA: "cha" }));
+        expect(getData).toHaveBeenCalledWith("/get-dndbeyond-character?id=4242&fresh=true");
+        expect(ctrl.state.abilityMode).toBe("manual");
+        expect(ctrl.state.baseAbilities.cha).toBe(15);
+        await vi.waitFor(() => expect(root.querySelector(".ddb-reread-status")?.textContent).toContain("now match D&D Beyond"));
+    });
+
     it("applies ASI choices (single +2, dual +1/+1, and feat +1) to effective ability scores", () => {
         ctrl.state.classId = "fighter";
         ctrl.state.level = 8;

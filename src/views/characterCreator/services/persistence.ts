@@ -177,8 +177,13 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
             ctx.state.siteCharacterId = String(siteCharacterId);
         }
 
+        const isDndBeyond = (response?.savedCharacter?.source || char.source) === "dndbeyond";
+        const externalId: string | undefined = response?.savedCharacter?.externalCharacterId
+            || (isDndBeyond && /^\d+$/.test(String(char.id || "")) ? String(char.id) : undefined);
+
         if (char.creatorState && typeof char.creatorState === "object") {
             Object.assign(ctx.state, char.creatorState);
+            if (isDndBeyond && externalId) ctx.state.dndBeyondId = String(externalId);
             if (savedId) ctx.state.savedId = Number(savedId);
             if (siteCharacterId) ctx.state.siteCharacterId = String(siteCharacterId);
             if (!Array.isArray(ctx.state.classes) || ctx.state.classes.length === 0) {
@@ -280,10 +285,8 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
 
             // D&D Beyond imports: the saved sheet keeps final scores and feat names but not which class level granted
             // each feat, so read base scores, background bonuses, origin feats and ASI/feat choices from D&D Beyond
-            const isDndBeyond = (response?.savedCharacter?.source || char.source) === "dndbeyond";
-            const externalId = response?.savedCharacter?.externalCharacterId
-                || (isDndBeyond && /^\d+$/.test(String(char.id || "")) ? String(char.id) : undefined);
             if (isDndBeyond && externalId) {
+                ctx.state.dndBeyondId = String(externalId);
                 try {
                     const raw = await getData<any>(`/get-dndbeyond-character?id=${externalId}`);
                     if (raw) applyDndBeyondAbilityChoices(ctx, raw);

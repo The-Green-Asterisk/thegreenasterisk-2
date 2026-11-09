@@ -1,5 +1,9 @@
 import { AbilityName } from "../../../rules/dnd5e_2024";
+import { rereadDndBeyondAbilityChoices } from "../services/dndBeyondAbilityChoices";
 import { CharacterCreatorContext } from "./context";
+
+// Shown once after the step re-renders following a re-read
+let lastRereadMessage = "";
 
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
@@ -111,6 +115,40 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         }
         ctx.renderStep(5);
         ctx.updateLiveSummary();
+    });
+
+    // Re-read ability scores, background bonuses and feats from D&D Beyond (asks first: it replaces creator choices)
+    const rereadBtn = document.querySelector<HTMLButtonElement>(".ddb-reread-btn");
+    const rereadConfirm = document.getElementById("ddb-reread-confirm");
+    const rereadStatus = document.querySelector<HTMLElement>(".ddb-reread-status");
+    if (rereadStatus && lastRereadMessage) {
+        rereadStatus.textContent = lastRereadMessage;
+        lastRereadMessage = "";
+    }
+    rereadBtn?.addEventListener("click", () => {
+        if (!rereadConfirm) return;
+        rereadConfirm.hidden = false;
+        rereadBtn.setAttribute("aria-expanded", "true");
+        document.querySelector<HTMLButtonElement>(".ddb-reread-confirm-btn")?.focus();
+    });
+    document.querySelector(".ddb-reread-cancel-btn")?.addEventListener("click", () => {
+        if (rereadConfirm) rereadConfirm.hidden = true;
+        rereadBtn?.setAttribute("aria-expanded", "false");
+        rereadBtn?.focus();
+    });
+    document.querySelector<HTMLButtonElement>(".ddb-reread-confirm-btn")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        btn.disabled = true;
+        btn.textContent = "Reading from D&D Beyond…";
+        try {
+            await rereadDndBeyondAbilityChoices(ctx);
+            lastRereadMessage = "Ability scores, background bonuses, and feats now match D&D Beyond.";
+        } catch (err: any) {
+            lastRereadMessage = `Couldn't read from D&D Beyond: ${err?.message || "request failed"}`;
+        }
+        ctx.renderStep(5);
+        ctx.updateLiveSummary();
+        document.querySelector<HTMLButtonElement>(".ddb-reread-btn")?.focus();
     });
 
     // ASI / Feats controls

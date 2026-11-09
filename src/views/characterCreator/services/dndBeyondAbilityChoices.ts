@@ -1,3 +1,4 @@
+import { getData } from "@services/request";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { AsiChoice } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
@@ -32,11 +33,16 @@ export function applyDndBeyondAbilityChoices(ctx: CharacterCreatorContext, rawCh
     const raw = rawCharacter?.data || rawCharacter;
     if (!raw || typeof raw !== "object") return;
 
-    // Base scores before any bonuses
+    // Base scores before any bonuses, shown as entered (they needn't be a standard array or point buy)
+    let readScores = false;
     for (const st of Array.isArray(raw.stats) ? raw.stats : []) {
         const ab = DDB_STAT_IDS[Number(st?.id)];
-        if (ab && typeof st.value === "number") ctx.state.baseAbilities[ab] = st.value;
+        if (ab && typeof st.value === "number") {
+            ctx.state.baseAbilities[ab] = st.value;
+            readScores = true;
+        }
     }
+    if (readScores) ctx.state.abilityMode = "manual";
 
     // Ability score bonuses by the feat (definition id) that grants them
     const bonusesByFeat = new Map<number, Array<{ stat: AbilityName; value: number }>>();
@@ -115,4 +121,17 @@ export function applyDndBeyondAbilityChoices(ctx: CharacterCreatorContext, rawCh
         };
     }
     ctx.state.asiChoices = choices;
+}
+
+/**
+ * Re-reads base scores, background bonuses, origin feats and ASI/feat choices from D&D Beyond for a character the
+ * creator has already saved (which otherwise keeps its own choices). Bypasses the server's D&D Beyond cache, since
+ * the point is to pick up changes just made there.
+ */
+export async function rereadDndBeyondAbilityChoices(ctx: CharacterCreatorContext): Promise<void> {
+    const id = ctx.state.dndBeyondId;
+    if (!id) throw new Error("This character isn't linked to D&D Beyond.");
+    const raw = await getData<any>(`/get-dndbeyond-character?id=${encodeURIComponent(id)}&fresh=true`);
+    if (!raw || !(raw.data || raw).stats) throw new Error("D&D Beyond didn't return this character. Make sure it's public.");
+    applyDndBeyondAbilityChoices(ctx, raw);
 }
