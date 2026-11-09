@@ -1063,8 +1063,13 @@ export class CharacterCreatorController {
                             const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
                             let subclassId = "";
                             if (c.subclass && matchedCls) {
-                                const subName = String(c.subclass).toLowerCase();
-                                const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
+                                const subName = String(c.subclass).toLowerCase().trim();
+                                const cleanSubName = subName.replace(/\s+patron$/i, "").replace(/^the\s+/i, "");
+                                const matchedSub = matchedCls.subclasses.find((s) => {
+                                    const sName = s.name.toLowerCase();
+                                    const cleanSName = sName.replace(/^the\s+/i, "");
+                                    return sName === subName || s.id === subName || cleanSName === cleanSubName || subName.includes(s.id);
+                                });
                                 if (matchedSub) subclassId = matchedSub.id;
                             }
                             return {
@@ -1073,6 +1078,11 @@ export class CharacterCreatorController {
                                 subclassId
                             };
                         });
+                        if (this.state.classes.length > 0) {
+                            this.state.classId = this.state.classes[0].classId;
+                            this.state.subclassId = this.state.classes[0].subclassId || "";
+                            this.state.level = this.state.classes.reduce((sum, c) => sum + (c.level || 0), 0);
+                        }
                     }
                 }
                 this.syncStateClassProperties();
@@ -1097,8 +1107,13 @@ export class CharacterCreatorController {
                         const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
                         let subclassId = "";
                         if (c.subclass && matchedCls) {
-                            const subName = String(c.subclass).toLowerCase();
-                            const matchedSub = matchedCls.subclasses.find((s) => s.name.toLowerCase() === subName || s.id === subName);
+                            const subName = String(c.subclass).toLowerCase().trim();
+                            const cleanSubName = subName.replace(/\s+patron$/i, "").replace(/^the\s+/i, "");
+                            const matchedSub = matchedCls.subclasses.find((s) => {
+                                const sName = s.name.toLowerCase();
+                                const cleanSName = sName.replace(/^the\s+/i, "");
+                                return sName === subName || s.id === subName || cleanSName === cleanSubName || subName.includes(s.id);
+                            });
                             if (matchedSub) subclassId = matchedSub.id;
                         }
                         return {
@@ -1107,6 +1122,11 @@ export class CharacterCreatorController {
                             subclassId
                         };
                     });
+                    if (this.state.classes.length > 0) {
+                        this.state.classId = this.state.classes[0].classId;
+                        this.state.subclassId = this.state.classes[0].subclassId || "";
+                        this.state.level = this.state.classes.reduce((sum, c) => sum + (c.level || 0), 0);
+                    }
                     this.syncStateClassProperties();
                 } else {
                     this.state.classes = [{ classId: "fighter", level: Number(char.level) || 1, subclassId: "" }];
@@ -1254,6 +1274,96 @@ export class CharacterCreatorController {
                     this.state.lineageId = matchedLin?.id || activeSpecies.lineages[0].id;
                 }
             }
+
+            // Robustly resolve Eldritch Invocations for Warlock characters
+            const warlockClass = this.state.classes?.find((c) => c.classId === "warlock");
+            if (warlockClass && warlockClass.level >= 1) {
+                const rawInvocations: string[] = [
+                    ...(Array.isArray(this.state.invocations) ? this.state.invocations : []),
+                    ...(Array.isArray(char.invocations) ? char.invocations : []),
+                    ...(Array.isArray(char.creatorState?.invocations) ? char.creatorState.invocations : [])
+                ];
+
+                if (Array.isArray(char.features)) {
+                    for (const feat of char.features) {
+                        const fName: string = String(feat?.name || "").trim();
+                        const fType: string = String(feat?.type || "").trim();
+                        const fSource: string = String(feat?.source || "").trim();
+
+                        const isInvocation =
+                            fType.toLowerCase() === "invocation" ||
+                            fSource.toLowerCase().includes("invocation") ||
+                            fName.toLowerCase().startsWith("invocation:") ||
+                            fName.toLowerCase().startsWith("eldritch invocation");
+
+                        // Strip prefixes and parentheticals, e.g. "Agonizing Blast (Eldritch Blast)" -> "Agonizing Blast"
+                        const cleanName: string = fName
+                            .replace(/^invocation:\s*/i, "")
+                            .replace(/^eldritch invocation:\s*/i, "")
+                            .replace(/\s*\(.*?\)\s*$/g, "")
+                            .replace(/['’]/g, "'")
+                            .trim();
+
+                        const matchedInv = ELDRITCH_INVOCATIONS.find((inv) => {
+                            const invNorm = inv.name.replace(/['’]/g, "'").toLowerCase();
+                            const cleanNorm = cleanName.toLowerCase();
+                            return (
+                                inv.id === cleanNorm ||
+                                invNorm === cleanNorm ||
+                                (isInvocation && (cleanNorm.includes(invNorm) || invNorm.includes(cleanNorm)))
+                            );
+                        });
+
+                        if (matchedInv && !rawInvocations.includes(matchedInv.id)) {
+                            rawInvocations.push(matchedInv.id);
+                        }
+                    }
+                }
+
+                const maxInvocations = this.getMaxInvocationsCount();
+                const validInvocations = rawInvocations.filter((id: string) => {
+                    const invDef = ELDRITCH_INVOCATIONS.find((inv) => inv.id === id);
+                    return invDef && (!invDef.minLevel || warlockClass.level >= invDef.minLevel);
+                });
+
+                this.state.invocations = validInvocations.slice(0, maxInvocations);
+            }
+
+            // Resolve fighting style if present in features
+            if (!this.state.fightingStyle && Array.isArray(char.features)) {
+                for (const feat of char.features) {
+                    const fName = String(feat?.name || "").toLowerCase();
+                    const matchedFs = FIGHTING_STYLES.find((fs) => fName.includes(fs.name.toLowerCase()) || fName.includes(fs.id));
+                    if (matchedFs) {
+                        this.state.fightingStyle = matchedFs.id;
+                        break;
+                    }
+                }
+            }
+
+            // Resolve Divine Order / Primal Order if present in features
+            if (!this.state.divineOrder && Array.isArray(char.features)) {
+                const doFeat = char.features.find((f: any) => {
+                    const name = String(f?.name || "").toLowerCase();
+                    return name.includes("protector") || name.includes("thaumaturge");
+                });
+                if (doFeat) {
+                    const name = String(doFeat.name).toLowerCase();
+                    this.state.divineOrder = name.includes("thaumaturge") ? "thaumaturge" : "protector";
+                }
+            }
+            if (!this.state.primalOrder && Array.isArray(char.features)) {
+                const poFeat = char.features.find((f: any) => {
+                    const name = String(f?.name || "").toLowerCase();
+                    return name.includes("warden") || name.includes("magician");
+                });
+                if (poFeat) {
+                    const name = String(poFeat.name).toLowerCase();
+                    this.state.primalOrder = name.includes("warden") ? "warden" : "magician";
+                }
+            }
+
+            this.syncStateClassProperties();
 
             const submitBtn = document.getElementById("creator-submit-btn");
             if (submitBtn) {

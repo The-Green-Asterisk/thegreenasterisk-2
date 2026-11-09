@@ -2266,5 +2266,52 @@ describe("CharacterCreatorController", () => {
             const step2Html = ctrl["renderStep2Species"]();
             expect(step2Html).toMatch(/class="[^"]*lineage-card[^"]*selected[^"]*"[^>]*data-lineage-id="wood-elf"/);
         });
+
+        it("automatically resolves Eldritch Invocations when loading Darvell", async () => {
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({ character: null });
+
+            await ctrl.loadCharacter("138310322");
+
+            expect(ctrl.state.invocations.length).toBeGreaterThan(0);
+            expect(ctrl.state.invocations).toContain("agonizing-blast");
+            expect(ctrl.state.invocations).toContain("devils-sight");
+            expect(ctrl.state.invocations).toContain("pact-of-the-tome");
+            expect(ctrl.state.invocations).toContain("beguiling-influence");
+            expect(ctrl.state.invocations).toContain("eyes-of-the-rune-keeper");
+
+            const step3Html = ctrl["renderStep3Class"]();
+            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="agonizing-blast"/);
+            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="devils-sight"/);
+            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="pact-of-the-tome"/);
+        });
+
+        it("resolves Eldritch Invocations with parenthetical names and curly quotes from character features", async () => {
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({
+                character: {
+                    id: "custom-warlock-id",
+                    name: "Warlock Test",
+                    level: 9,
+                    classes: [{ name: "Warlock", level: 9, subclass: "The Fiend" }],
+                    features: [
+                        { name: "Agonizing Blast (Eldritch Blast)", type: "Invocation", source: "Class Option / Invocation" },
+                        { name: "Devil’s Sight", type: "Invocation", source: "Class Option / Invocation" },
+                        { name: "Eldritch Mind", type: "Invocation", source: "Class Option / Invocation" },
+                        { name: "Whispers of the Grave", type: "Invocation", source: "Class Option / Invocation" }
+                    ]
+                }
+            });
+
+            await ctrl.loadCharacter("custom-warlock-id");
+
+            expect(ctrl.state.invocations).toContain("agonizing-blast");
+            expect(ctrl.state.invocations).toContain("devils-sight");
+            expect(ctrl.state.invocations).toContain("eldritch-mind");
+            expect(ctrl.state.invocations).toContain("whispers-of-the-grave");
+
+            const step3Html = ctrl["renderStep3Class"]();
+            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="whispers-of-the-grave"/);
+        });
     });
 });

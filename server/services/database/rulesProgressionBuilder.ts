@@ -680,6 +680,109 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
                 notes: "Cast at will without expending a spell slot"
             }
         ]
+    },
+    {
+        id: "beguiling-influence",
+        name: "Beguiling Influence",
+        description: "You gain proficiency in the Deception and Persuasion skills.",
+        modifiers: [
+            { target: "skills.deception", type: "proficiency_tier", value: "proficient", description: "Proficiency in Deception" },
+            { target: "skills.persuasion", type: "proficiency_tier", value: "proficient", description: "Proficiency in Persuasion" }
+        ]
+    },
+    {
+        id: "eyes-of-the-rune-keeper",
+        name: "Eyes of the Rune Keeper",
+        description: "You can read all writing, regardless of the script or language."
+    },
+    {
+        id: "gaze-of-two-minds",
+        name: "Gaze of Two Minds",
+        description: "Use a Bonus Action to touch a willing humanoid and perceive through its senses until the end of your next turn. While perceiving, you can cast spells as though you were in its space.",
+        prerequisite: "Level 5"
+    },
+    {
+        id: "beast-speech",
+        name: "Beast Speech",
+        description: "You can cast Speak with Animals at will, without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "Speak with Animals",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Speak with Animals at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "lessons-of-the-first-ones",
+        name: "Lessons of the First Ones",
+        description: "You gain one Origin feat of your choice.",
+        prerequisite: "Level 2"
+    },
+    {
+        id: "otherworldly-leap",
+        name: "Otherworldly Leap",
+        description: "You can cast Jump on yourself at will, without expending a spell slot.",
+        prerequisite: "Level 2",
+        grantedSpells: [
+            {
+                name: "Jump",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Jump on yourself at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "ascendant-step",
+        name: "Ascendant Step",
+        description: "You can cast Levitate on yourself at will, without expending a spell slot or material components.",
+        prerequisite: "Level 5",
+        grantedSpells: [
+            {
+                name: "Levitate",
+                level: 2,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Levitate on yourself at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "eldritch-smite",
+        name: "Eldritch Smite",
+        description: "Once per turn when you hit with your pact weapon, spend a pact slot to deal 1d8 force damage plus 1d8 per slot level, and knock target prone if Huge or smaller.",
+        prerequisite: "Level 5, Pact of the Blade"
+    },
+    {
+        id: "master-of-myriad-forms",
+        name: "Master of Myriad Forms",
+        description: "You can cast Alter Self at will, without expending a spell slot.",
+        prerequisite: "Level 5",
+        grantedSpells: [
+            {
+                name: "Alter Self",
+                level: 2,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Alter Self at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "one-with-shadows",
+        name: "One with Shadows",
+        description: "When you are in dim light or darkness, you can take a Magic action to become Invisible until you move or take an action or reaction.",
+        prerequisite: "Level 5"
+    },
+    {
+        id: "witch-sight",
+        name: "Witch Sight",
+        description: "You can see the true form of any shapechanger or creature concealed by illusion or transmutation magic within 30 feet.",
+        prerequisite: "Level 15"
     }
 ];
 

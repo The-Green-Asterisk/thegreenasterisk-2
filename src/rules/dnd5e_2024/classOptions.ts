@@ -489,6 +489,109 @@ export const ELDRITCH_INVOCATIONS: FeatureOption[] = [
                 notes: "Cast Speak with Dead at will without a spell slot"
             }
         ]
+    },
+    {
+        id: "beguiling-influence",
+        name: "Beguiling Influence",
+        description: "You gain proficiency in the Deception and Persuasion skills.",
+        modifiers: [
+            { target: "skills.deception", type: "proficiency_tier", value: "proficient", description: "Proficiency in Deception" },
+            { target: "skills.persuasion", type: "proficiency_tier", value: "proficient", description: "Proficiency in Persuasion" }
+        ]
+    },
+    {
+        id: "eyes-of-the-rune-keeper",
+        name: "Eyes of the Rune Keeper",
+        description: "You can read all writing, regardless of the script or language."
+    },
+    {
+        id: "gaze-of-two-minds",
+        name: "Gaze of Two Minds",
+        description: "Prerequisite: Level 5. Use a Bonus Action to touch a willing humanoid and perceive through its senses until the end of your next turn. While perceiving, you can cast spells as though you were in its space.",
+        minLevel: 5
+    },
+    {
+        id: "beast-speech",
+        name: "Beast Speech",
+        description: "You can cast Speak with Animals at will, without expending a spell slot.",
+        grantedSpells: [
+            {
+                name: "Speak with Animals",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Speak with Animals at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "lessons-of-the-first-ones",
+        name: "Lessons of the First Ones",
+        description: "Prerequisite: Level 2. You gain one Origin feat of your choice.",
+        minLevel: 2
+    },
+    {
+        id: "otherworldly-leap",
+        name: "Otherworldly Leap",
+        description: "Prerequisite: Level 2. You can cast Jump on yourself at will, without expending a spell slot.",
+        minLevel: 2,
+        grantedSpells: [
+            {
+                name: "Jump",
+                level: 1,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Jump on yourself at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "ascendant-step",
+        name: "Ascendant Step",
+        description: "Prerequisite: Level 5. You can cast Levitate on yourself at will, without expending a spell slot or material components.",
+        minLevel: 5,
+        grantedSpells: [
+            {
+                name: "Levitate",
+                level: 2,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Levitate on yourself at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "eldritch-smite",
+        name: "Eldritch Smite",
+        description: "Prerequisite: Level 5, Pact of the Blade. Once per turn when you hit with your pact weapon, spend a pact slot to deal 1d8 force damage plus 1d8 per slot level, and knock target prone if Huge or smaller.",
+        minLevel: 5
+    },
+    {
+        id: "master-of-myriad-forms",
+        name: "Master of Myriad Forms",
+        description: "Prerequisite: Level 5. You can cast Alter Self at will, without expending a spell slot.",
+        minLevel: 5,
+        grantedSpells: [
+            {
+                name: "Alter Self",
+                level: 2,
+                atWill: true,
+                alwaysPrepared: true,
+                notes: "Cast Alter Self at will without a spell slot"
+            }
+        ]
+    },
+    {
+        id: "one-with-shadows",
+        name: "One with Shadows",
+        description: "Prerequisite: Level 5. When you are in dim light or darkness, you can take a Magic action to become Invisible until you move or take an action or reaction.",
+        minLevel: 5
+    },
+    {
+        id: "witch-sight",
+        name: "Witch Sight",
+        description: "Prerequisite: Level 15. You can see the true form of any shapechanger or creature concealed by illusion or transmutation magic within 30 feet.",
+        minLevel: 15
     }
 ];
 
