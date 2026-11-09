@@ -46,6 +46,7 @@ export function validateCurrentStep(ctx: CharacterCreatorContext): boolean {
             }
             return true;
         case 8: {
+            ctx.sanitizeSpellSelections();
             const maxCantrips = ctx.getMaxCantrips();
             const maxPrepared = ctx.getMaxPreparedSpells();
             const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;

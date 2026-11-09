@@ -2397,3 +2397,11 @@ el-character-creator,
 
 
 
+
+/* Spells granted by class/subclass progression: shown as selected but locked; they don't count against the base allotment */
+.item-check-row.progression-granted {
+    cursor: default;
+    opacity: 0.75;
+    border-style: dashed;
+}
+

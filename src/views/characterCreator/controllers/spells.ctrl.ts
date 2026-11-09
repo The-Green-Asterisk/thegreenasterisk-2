@@ -92,6 +92,8 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     // Cantrip toggles
     document.querySelectorAll(".cantrip-row").forEach((row) => {
         row.addEventListener("click", () => {
+            // Progression-granted spells are bonus spells and cannot be added to the base allotment
+            if (row.getAttribute("data-granted") === "true") return;
             const spName = row.getAttribute("data-spell-name") || "";
             if (ctx.state.selectedCantrips.includes(spName)) {
                 ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((s) => s !== spName);
@@ -107,6 +109,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     // Prepared spell toggles
     document.querySelectorAll(".spell1-row").forEach((row) => {
         row.addEventListener("click", () => {
+            if (row.getAttribute("data-granted") === "true") return;
             const spName = row.getAttribute("data-spell-name") || "";
             if (ctx.state.selectedSpellsLevel1.includes(spName)) {
                 ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((s) => s !== spName);

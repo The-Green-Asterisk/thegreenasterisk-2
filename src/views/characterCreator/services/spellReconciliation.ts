@@ -415,6 +415,36 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
     return sections;
 }
 
+/**
+ * Returns the (lower-cased) names of every spell granted by class or subclass progression:
+ *  - spells chosen in the "Class & Subclass Progression Spells" sections (featureSpellChoices)
+ *  - always-prepared spells listed in unlocked class/subclass progression levels (grantedSpells)
+ * These are bonus spells and must never count against the base cantrip/prepared spell allotment.
+ */
+export function getProgressionGrantedSpellNames(ctx: CharacterCreatorContext): Set<string> {
+    const names = new Set<string>();
+    for (const list of Object.values(ctx.state.featureSpellChoices || {})) {
+        if (Array.isArray(list)) list.forEach((n) => names.add(String(n).toLowerCase()));
+    }
+    const addGranted = (sp: any) => {
+        const raw = typeof sp === "string" ? sp : (sp?.name || sp?.spellId || "");
+        if (!raw) return;
+        const def = SPELLS_2024.find((s) => s.name.toLowerCase() === String(raw).toLowerCase() || s.id.toLowerCase() === String(raw).toLowerCase());
+        names.add((def ? def.name : String(raw)).toLowerCase());
+    };
+    for (const c of ctx.state.classes || []) {
+        const clsDef = ctx.classes.find((x) => x.id === c.classId);
+        const subDef = clsDef?.subclasses?.find((s) => s.id === ctx.resolveCanonicalSubclassId(c.classId, c.subclassId));
+        const unlocked = c.level || 1;
+        for (const pl of [...(clsDef?.progression || []), ...(subDef?.progression || [])]) {
+            if (pl.level <= unlocked && Array.isArray(pl.grantedSpells)) {
+                pl.grantedSpells.forEach(addGranted);
+            }
+        }
+    }
+    return names;
+}
+
 export function sanitizeSpellSelections(ctx: CharacterCreatorContext): void {
     ctx.state.featureSpellChoices = ctx.state.featureSpellChoices || {};
     const activeFeatureSections = getFeatureSpellChoiceSections(ctx);
@@ -441,12 +471,20 @@ export function sanitizeSpellSelections(ctx: CharacterCreatorContext): void {
     const validCantripNames = new Set(available.cantrips.map((c) => c.name));
     const validLeveledNames = new Set(available.leveledSpells.map((s) => s.name));
 
-    ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((s) => validCantripNames.has(s));
-    ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((s) => validLeveledNames.has(s));
+    // Progression-granted spells are bonus spells: strip them from the base allotment so they are never double-counted
+    const granted = getProgressionGrantedSpellNames(ctx);
+    ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((s) => validCantripNames.has(s) && !granted.has(s.toLowerCase()));
+    ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((s) => validLeveledNames.has(s) && !granted.has(s.toLowerCase()));
 }
 
 export function getSmartAutoFillSpells(ctx: CharacterCreatorContext): { cantrips: string[]; prepared: string[] } {
-    const available = getAvailableSpells(ctx);
+    const rawAvailable = getAvailableSpells(ctx);
+    // Don't spend base allotment on spells already granted by class/subclass progression
+    const grantedNames = getProgressionGrantedSpellNames(ctx);
+    const available = {
+        cantrips: rawAvailable.cantrips.filter((s) => !grantedNames.has(s.name.toLowerCase())),
+        leveledSpells: rawAvailable.leveledSpells.filter((s) => !grantedNames.has(s.name.toLowerCase()))
+    };
     const maxCantrips = getMaxCantrips(ctx);
     const maxPrepared = getMaxPreparedSpells(ctx);
     const maxLevel = getMaxSpellLevel(ctx);

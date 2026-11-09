@@ -1,4 +1,5 @@
 import { getData, postData, putData } from "@services/request";
+import { getProgressionGrantedSpellNames } from "./spellReconciliation";
 import {
     ABERRANT_REVELATION_OPTIONS,
     AbilityName,
@@ -260,8 +261,11 @@ function applyProgressionChoiceOption(characterPayload: any, opt: any, level: nu
                 }
 
                 if (Array.isArray(char.spells)) {
-                    ctx.state.selectedCantrips = char.spells.filter((s: any) => s.level === 0).map((s: any) => s.name);
-                    ctx.state.selectedSpellsLevel1 = char.spells.filter((s: any) => s.level > 0).map((s: any) => s.name);
+                    // Always-prepared spells come from class/subclass progression, species, or feats; they are bonus
+                    // spells and must not be loaded into the base cantrip/prepared allotment.
+                    const baseSpells = char.spells.filter((s: any) => !s?.alwaysPrepared);
+                    ctx.state.selectedCantrips = baseSpells.filter((s: any) => s.level === 0).map((s: any) => s.name);
+                    ctx.state.selectedSpellsLevel1 = baseSpells.filter((s: any) => s.level > 0).map((s: any) => s.name);
                 }
             }
 
@@ -564,6 +568,9 @@ function applyProgressionChoiceOption(characterPayload: any, opt: any, level: nu
                 );
             }
 
+            // Ensure class/subclass progression spells never occupy the base cantrip/prepared allotment
+            ctx.sanitizeSpellSelections();
+
             const submitBtn = document.getElementById("creator-submit-btn");
             if (submitBtn) {
                 submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
@@ -683,7 +690,10 @@ function applyProgressionChoiceOption(characterPayload: any, opt: any, level: nu
 
             // Spells
             const spellsPayload: any[] = [];
+            const progressionGrantedNames = getProgressionGrantedSpellNames(ctx);
             for (const spName of [...ctx.state.selectedCantrips, ...ctx.state.selectedSpellsLevel1]) {
+                // Progression-granted spells are emitted below as always-prepared bonus spells, not base "Class" spells
+                if (progressionGrantedNames.has(spName.toLowerCase())) continue;
                 const spDef = SPELLS_2024.find((s) => s.name === spName);
                 if (spDef) {
                     spellsPayload.push({

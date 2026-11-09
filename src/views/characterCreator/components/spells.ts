@@ -1,8 +1,11 @@
 import { SPELLS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
+import { getProgressionGrantedSpellNames } from "../services/spellReconciliation";
 
 export function renderStep8Spells(ctx: CharacterCreatorContext): string {
     ctx.sanitizeSpellSelections();
+    const grantedNames = getProgressionGrantedSpellNames(ctx);
+    const grantedPill = `<span class="stat-req-pill met" title="Granted by class/subclass progression — does not count against your allotment"><i class="fa-solid fa-gift"></i> Granted</span>`;
 
     const cls = ctx.classes.find((c) => c.id === ctx.state.classId) || ctx.classes[0];
     const maxCantrips = ctx.getMaxCantrips();
@@ -167,14 +170,16 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                 ` : `
                     <div class="item-select-list">
                         ${displayedCantrips.map((sp) => {
-                            const isSelected = ctx.state.selectedCantrips.includes(sp.name);
+                            const isGranted = grantedNames.has(sp.name.toLowerCase());
+                            const isSelected = isGranted || ctx.state.selectedCantrips.includes(sp.name);
                             const sourceBadges = sp.classes.filter((c) => casterStats.some((cs: any) => cs.className === c));
                             return `
-                                <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""}" 
-                                     data-spell-name="${sp.name}">
+                                <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""} ${isGranted ? "progression-granted" : ""}" 
+                                     data-spell-name="${sp.name}"${isGranted ? ' data-granted="true" aria-disabled="true"' : ""}>
                                     <div class="item-row-left">
                                         <div class="item-row-title">
                                             <span>${sp.name} (${sp.school})</span>
+                                            ${isGranted ? grantedPill : ""}
                                             ${isMulticlass && sourceBadges.length > 0 ? sourceBadges.map((c) => `<span class="stat-req-pill met">${c}</span>`).join(" ") : ""}
                                         </div>
                                         <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
@@ -253,16 +258,18 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
 
                     <div class="item-select-list">
                         ${displayedLeveled.map((sp) => {
-                            const isSelected = ctx.state.selectedSpellsLevel1.includes(sp.name);
+                            const isGranted = grantedNames.has(sp.name.toLowerCase());
+                            const isSelected = isGranted || ctx.state.selectedSpellsLevel1.includes(sp.name);
                             const sourceBadges = sp.classes.filter((c) => casterStats.some((cs: any) => cs.className === c));
                             return `
-                                <div class="item-check-row spell1-row ${isSelected ? "selected" : ""}" 
+                                <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isGranted ? "progression-granted" : ""}" 
                                      data-spell-name="${sp.name}"
                                      data-spell-school="${sp.school}"
-                                     data-spell-level="${sp.level}">
+                                     data-spell-level="${sp.level}"${isGranted ? ' data-granted="true" aria-disabled="true"' : ""}>
                                     <div class="item-row-left">
                                         <div class="item-row-title">
                                             <span>${sp.name}</span>
+                                            ${isGranted ? grantedPill : ""}
                                             <span class="stat-req-pill met">Lvl ${sp.level}</span>
                                             <span class="stat-req-pill">${sp.school}</span>
                                             ${isMulticlass && sourceBadges.length > 0 ? sourceBadges.map((c) => `<span class="stat-req-pill met">${c}</span>`).join(" ") : ""}

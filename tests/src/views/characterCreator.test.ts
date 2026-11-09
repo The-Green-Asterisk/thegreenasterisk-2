@@ -2603,6 +2603,46 @@ describe("CharacterCreatorController", () => {
             expect(fighterPayload.spells.map((s: any) => s.name)).not.toContain("Sacred Flame");
         });
 
+        it("does not count Class & Subclass Progression spells against the base cantrip/prepared allotment", () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            const root = document.getElementById("creator-step-panels")!;
+
+            ctrl.state.classId = "warlock";
+            ctrl.state.level = 3;
+            ctrl.state.subclassId = "great-old-one";
+            ctrl.state.classes = [{ classId: "warlock", level: 3, subclassId: "great-old-one" }];
+            ctrl.state.invocations = ["pact-of-the-tome"];
+            ctrl.state.originFeatId = "alert";
+
+            // Player had these in base selections, and also chose them via Pact of the Tome
+            ctrl.state.selectedCantrips = ["Eldritch Blast", "Minor Illusion"];
+            ctrl.state.selectedSpellsLevel1 = ["Charm Person", "Find Familiar"];
+            ctrl.state.featureSpellChoices = {
+                "pact-of-the-tome-cantrips": ["Minor Illusion"],
+                "pact-of-the-tome-rituals": ["Find Familiar"]
+            };
+
+            ctrl.renderStep(8);
+
+            // Progression spells are removed from the base allotment
+            expect(ctrl.state.selectedCantrips).toEqual(["Eldritch Blast"]);
+            expect(ctrl.state.selectedSpellsLevel1).toEqual(["Charm Person"]);
+
+            // Granted rows are displayed as locked and clicking them does not add them to the base allotment
+            const grantedRow = root.querySelector('.cantrip-row[data-spell-name="Minor Illusion"]') as HTMLElement | null;
+            expect(grantedRow?.getAttribute("data-granted")).toBe("true");
+            grantedRow!.click();
+            expect(ctrl.state.selectedCantrips).not.toContain("Minor Illusion");
+
+            // Payload: progression spells are saved as always-prepared bonus spells, base spells as Class spells
+            const payload = ctrl.buildPayload();
+            const illusion = payload.spells.find((s: any) => s.name === "Minor Illusion");
+            expect(illusion.source).toBe("Warlock / Pact of the Tome");
+            expect(illusion.alwaysPrepared).toBe(true);
+            const charm = payload.spells.find((s: any) => s.name === "Charm Person");
+            expect(charm.source).toBe("Class");
+        });
+
         it("Bard Magical Secrets at Level 10 expands prepared spells to Cleric, Druid, and Wizard lists without a separate 2-spell picker", () => {
             document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
             const root = document.getElementById("creator-step-panels")!;
