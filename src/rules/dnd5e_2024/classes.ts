@@ -971,6 +971,7 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 7, name: "Sorcery Incarnate", description: "While Innate Sorcery is active, use up to two Metamagic options on a spell; spend 2 Sorcery Points to regain a use of Innate Sorcery." },
             { level: 8, name: "Ability Score Improvement", description: "Gain the Ability Score Improvement feat or another feat for which you qualify." },
             { level: 9, name: "5th-Level Spells", description: "You gain access to 5th-level spell slots." },
+            { level: 10, name: "Sorcerous Cantrip Expansion", description: "You learn an additional Sorcerer cantrip of your choice, bringing your total to 6." },
             { level: 11, name: "6th-Level Spells", description: "You gain access to 6th-level spell slots." },
             { level: 12, name: "Ability Score Improvement", description: "Gain the Ability Score Improvement feat or another feat for which you qualify." },
             { level: 13, name: "7th-Level Spells", description: "You gain access to 7th-level spell slots." },
@@ -1103,6 +1104,7 @@ export const CLASSES_2024: ClassDefinition[] = [
             { level: 16, name: "Ability Score Improvement", description: "Gain the Ability Score Improvement feat or another feat for which you qualify." },
             { level: 17, name: "Mystic Arcanum (9th Level)", description: "Choose one 9th-level Warlock spell. You can cast it once per Long Rest without expending a spell slot." },
             { level: 17, name: "4th Pact Spell Slot", description: "You gain a fourth pact magic spell slot." },
+            { level: 18, name: "Pact Magic Mastery", description: "Your mastery of eldritch magic deepens, expanding your repertoire of prepared Warlock spells." },
             { level: 19, name: "Epic Boon / Ability Score Improvement", description: "Choose an Epic Boon feat or another feat of your choice." },
             { level: 20, name: "Eldritch Master", description: "Spend 1 minute entreating your patron to regain all expended pact magic spell slots once per Long Rest." }
         ],

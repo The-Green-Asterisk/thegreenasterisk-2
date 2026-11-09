@@ -835,7 +835,7 @@ describe("RulesController", () => {
             expect(glamourFeatures).not.toContain("Awakened Mind");
 
             const warlockSubs = JSON.parse(warlock.subclassesJson);
-            const goo = warlockSubs.find((s: any) => s.id === "great-old-one-patron" || s.name === "Great Old One Patron");
+            const goo = warlockSubs.find((s: any) => s.id === "great-old-one" || s.id === "great-old-one-patron" || s.name === "Great Old One Patron");
             expect(goo).toBeDefined();
             const gooFeatures = goo.features.map((f: any) => f.name);
             expect(gooFeatures).toContain("Awakened Mind");
@@ -843,7 +843,7 @@ describe("RulesController", () => {
 
             // Also check that RuleSubclass entities were saved cleanly
             expect(savedSubclasses.length).toBeGreaterThanOrEqual(2);
-            const gooEntity = savedSubclasses.find((s) => s.slug === "great-old-one-patron");
+            const gooEntity = savedSubclasses.find((s) => s.slug === "great-old-one" || s.slug === "great-old-one-patron");
             expect(gooEntity).toBeDefined();
             expect(gooEntity.classSlug).toBe("warlock");
         });

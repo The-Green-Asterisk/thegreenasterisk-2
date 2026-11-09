@@ -174,6 +174,16 @@ export function parseDndBeyondCharacter(
         });
     });
 
+    (raw.options?.class || []).forEach((opt: any) => {
+        const optName = opt.definition?.name || opt.name || "";
+        const optId = opt.definition?.id || opt.id || opt.componentId;
+        const cClass = (raw.classes || []).find((c: any) => c.id === opt.characterClassId) || raw.classes?.[0];
+        const cName = cClass?.definition?.name || "Class";
+        if (optId && optName) {
+            componentClassSourceMap.set(Number(optId), `${cName} / ${optName}`);
+        }
+    });
+
     // Helper: check if an inventory item's modifiers should be active
     const isInventoryItemActive = (item: any): boolean => {
         const def = item.definition;

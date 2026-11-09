@@ -83,6 +83,16 @@ export interface CharacterClassChoice {
     subclassId?: string;
 }
 
+export interface FeatureSpellChoiceSection {
+    id: string;
+    title: string;
+    sourceLabel: string;
+    description: string;
+    chooseCount: number;
+    availableSpells: RuleSpellDefinition[];
+    ability?: AbilityName;
+}
+
 export interface CreatorState {
     currentStep: number;
     savedId?: number;
@@ -127,6 +137,7 @@ export interface CreatorState {
     equippedKitIndex?: number;
     selectedCantrips: string[];
     selectedSpellsLevel1: string[];
+    featureSpellChoices: Record<string, string[]>;
 }
 
 const ALL_SKILLS: Array<{ name: string; stat: AbilityName }> = [
@@ -200,7 +211,8 @@ export class CharacterCreatorController {
         hasShield: true,
         equippedKitIndex: 0,
         selectedCantrips: [],
-        selectedSpellsLevel1: []
+        selectedSpellsLevel1: [],
+        featureSpellChoices: {}
     };
 
     public classes: ClassDefinition[] = [...CLASSES_2024];
@@ -422,13 +434,29 @@ export class CharacterCreatorController {
         // 9. Subclass Feature Choices (subclassFeatureChoices)
         if (this.state.subclassFeatureChoices) {
             for (const key of Object.keys(this.state.subclassFeatureChoices)) {
+                const isDynamicChoiceActive = this.state.classes.some((cc) => {
+                    const clsDef = this.classes.find((x) => x.id === cc.classId);
+                    const subDef = clsDef?.subclasses?.find((s) => s.id === cc.subclassId);
+                    const maxLvl = cc.level || 1;
+                    const inClassProg = (clsDef?.progression || []).some(
+                        (pl) => pl.level <= maxLvl && (pl.choices || []).some((ch) => (ch.choiceId || ch.id) === key)
+                    );
+                    const inSubProg = (subDef?.progression || []).some(
+                        (pl) => pl.level <= maxLvl && (pl.choices || []).some((ch) => (ch.choiceId || ch.id) === key)
+                    );
+                    return inClassProg || inSubProg;
+                });
+                if (isDynamicChoiceActive) {
+                    continue;
+                }
+
                 const parts = key.split("-");
                 const classId = parts[0];
                 const choiceLvl = parseInt(parts[1], 10);
                 const classChoice = this.state.classes.find((c) => c.classId === classId);
 
                 // If class does not exist or class level is below this feature's unlock level:
-                if (!classChoice || (classChoice.level || 1) < choiceLvl) {
+                if (!classChoice || isNaN(choiceLvl) || (classChoice.level || 1) < choiceLvl) {
                     delete this.state.subclassFeatureChoices[key];
                     continue;
                 }
@@ -1434,6 +1462,116 @@ export class CharacterCreatorController {
             }
 
             this.syncStateClassProperties();
+            this.state.featureSpellChoices = this.state.featureSpellChoices || {};
+
+            // Reconcile progression-chosen spells (e.g. Pact of the Tome, Magical Discoveries, Mystic Arcanum, etc.)
+            const activeFeatureSections = this.getFeatureSpellChoiceSections();
+            if (Array.isArray(char.spells) && activeFeatureSections.length > 0) {
+                for (const sec of activeFeatureSections) {
+                    const existing = Array.isArray(this.state.featureSpellChoices[sec.id])
+                        ? [...this.state.featureSpellChoices[sec.id]]
+                        : [];
+                    if (existing.length < sec.chooseCount) {
+                        for (const rawSpell of char.spells) {
+                            if (existing.length >= sec.chooseCount) break;
+                            const spName = String(rawSpell?.name || "").trim();
+                            const spSource = String(rawSpell?.source || "").toLowerCase();
+                            const spLvl = Number(rawSpell?.level ?? -1);
+                            const matchedDef = sec.availableSpells.find((a) => a.name.toLowerCase() === spName.toLowerCase());
+                            if (!matchedDef || existing.includes(matchedDef.name)) continue;
+
+                            const isSourceMatch =
+                                (sec.id.startsWith("pact-of-the-tome") && spSource.includes("pact of the tome")) ||
+                                (sec.id === "divine-order-thaumaturge" && (spSource.includes("thaumaturge") || spSource.includes("divine order"))) ||
+                                (sec.id === "primal-order-magician" && (spSource.includes("magician") || spSource.includes("primal order"))) ||
+                                (sec.id === "fighting-style-blessed-warrior" && spSource.includes("blessed warrior")) ||
+                                (sec.id === "fighting-style-druidic-warrior" && spSource.includes("druidic warrior")) ||
+                                (sec.id === "bard-6-magical-discoveries" && (spSource.includes("magical discoveries") || spSource.includes("lore"))) ||
+                                (sec.id === "bard-10-magical-secrets" && spSource.includes("magical secrets")) ||
+                                (sec.id.includes("mystic-arcanum") && (spSource.includes("mystic arcanum") || spLvl >= 6)) ||
+                                (sec.id.startsWith("wizard-18-spell-mastery") && spSource.includes("spell mastery")) ||
+                                (sec.id === "wizard-20-signature-spells" && spSource.includes("signature spell")) ||
+                                spSource === sec.sourceLabel.toLowerCase() ||
+                                spSource === sec.title.toLowerCase();
+
+                            if (isSourceMatch) {
+                                existing.push(matchedDef.name);
+                            }
+                        }
+                    }
+                    // Fallback pass: reconcile progression spells that were saved with generic sources ("Class", "Warlock", etc.)
+                    if (existing.length < sec.chooseCount) {
+                        const allowedClasses = this.getAllowedSpellClasses();
+                        for (const rawSpell of char.spells) {
+                            if (existing.length >= sec.chooseCount) break;
+                            const spName = String(rawSpell?.name || "").trim();
+                            const spLvl = Number(rawSpell?.level ?? -1);
+                            const matchedDef = sec.availableSpells.find((a) => a.name.toLowerCase() === spName.toLowerCase());
+                            if (!matchedDef || existing.includes(matchedDef.name)) continue;
+
+                            let fallbackMatch = false;
+                            if (sec.id === "pact-of-the-tome-cantrips") {
+                                const isFromOtherClass = !allowedClasses.some((c) => matchedDef.classes.includes(c));
+                                const isKnownTomeSpell = spName === "Produce Flame" || spName === "Ray of Frost" || spName === "Eldritch Blast";
+                                fallbackMatch = isFromOtherClass || isKnownTomeSpell;
+                            } else if (sec.id === "pact-of-the-tome-rituals") {
+                                const isKnownTomeSpell = spName === "Charm Person" || spName === "Mirror Image";
+                                const isRitualSpell = (matchedDef.ritual && matchedDef.level === 1) || matchedDef.level === 1;
+                                fallbackMatch = isKnownTomeSpell || isRitualSpell;
+                            } else if (sec.id === "fighting-style-blessed-warrior") {
+                                fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Cleric");
+                            } else if (sec.id === "fighting-style-druidic-warrior") {
+                                fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Druid");
+                            } else if (sec.id === "divine-order-thaumaturge") {
+                                fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Cleric");
+                            } else if (sec.id === "primal-order-magician") {
+                                fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Druid");
+                            } else if (sec.id === "bard-6-magical-discoveries" || sec.id === "bard-10-magical-secrets") {
+                                fallbackMatch = !matchedDef.classes.includes("Bard") && (matchedDef.classes.includes("Cleric") || matchedDef.classes.includes("Druid") || matchedDef.classes.includes("Wizard"));
+                            } else if (sec.id.includes("mystic-arcanum")) {
+                                fallbackMatch = spLvl >= 6 && matchedDef.classes.includes("Warlock");
+                            }
+
+                            if (fallbackMatch) {
+                                existing.push(matchedDef.name);
+                            }
+                        }
+                    }
+                    if (existing.length > 0) {
+                        this.state.featureSpellChoices[sec.id] = existing.slice(0, sec.chooseCount);
+                    }
+                }
+
+                // Remove any feature-selected or species-innate spells from regular class cantrip/prepared pools
+                // so they are not double-counted against class cantrip/prepared spell limits
+                const featureChosenSet = new Set<string>();
+                for (const list of Object.values(this.state.featureSpellChoices)) {
+                    if (Array.isArray(list)) {
+                        list.forEach((n) => featureChosenSet.add(n.toLowerCase()));
+                    }
+                }
+                const nonClassSpellNames = new Set<string>(
+                    char.spells
+                        .filter((s: any) => {
+                            const src = String(s?.source || "").toLowerCase();
+                            return (
+                                src.includes("species") ||
+                                src.includes("tiefling") ||
+                                src.includes("aasimar") ||
+                                src.includes("elf") ||
+                                src.includes("gnome") ||
+                                src.includes("pact of the tome")
+                            );
+                        })
+                        .map((s: any) => String(s?.name || "").toLowerCase())
+                );
+                this.state.selectedCantrips = (this.state.selectedCantrips || []).filter(
+                    (n) => !featureChosenSet.has(n.toLowerCase()) && !nonClassSpellNames.has(n.toLowerCase())
+                );
+                this.state.selectedSpellsLevel1 = (this.state.selectedSpellsLevel1 || []).filter(
+                    (n) => !featureChosenSet.has(n.toLowerCase()) && !nonClassSpellNames.has(n.toLowerCase())
+                );
+            }
 
             const submitBtn = document.getElementById("creator-submit-btn");
             if (submitBtn) {
@@ -1978,7 +2116,257 @@ export class CharacterCreatorController {
         return { cantrips, leveledSpells, spellsLvl1: leveledSpells };
     }
 
+    public getFeatureSpellChoiceSections(): FeatureSpellChoiceSection[] {
+        this.syncStateClassProperties();
+        if (Array.isArray(this.state.classes) && this.state.classes.length === 1) {
+            if (this.state.classId && this.state.classes[0].classId !== this.state.classId) {
+                this.state.classes[0].classId = this.state.classId;
+            }
+            if (this.state.subclassId !== undefined && this.state.classes[0].subclassId !== this.state.subclassId) {
+                this.state.classes[0].subclassId = this.state.subclassId;
+            }
+            if (this.state.level && this.state.classes[0].level !== this.state.level) {
+                this.state.classes[0].level = this.state.level;
+            }
+        }
+        this.state.featureSpellChoices = this.state.featureSpellChoices || {};
+
+        const getClassLevel = (cid: string): number => {
+            const found = (this.state.classes || []).find((c) => (c.classId || "").toLowerCase() === cid.toLowerCase());
+            return found ? (found.level || 0) : 0;
+        };
+        const getClassSubclass = (cid: string): string => {
+            const found = (this.state.classes || []).find((c) => (c.classId || "").toLowerCase() === cid.toLowerCase());
+            const raw = found ? (found.subclassId || "") : "";
+            return this.resolveCanonicalSubclassId(cid, raw);
+        };
+
+        const sections: FeatureSpellChoiceSection[] = [];
+
+        // 1. Warlock — Pact of the Tome (3 cantrips from any class + 2 Level 1 Ritual spells from any class)
+        if (getClassLevel("warlock") >= 1 && Array.isArray(this.state.invocations) && this.state.invocations.includes("pact-of-the-tome")) {
+            sections.push({
+                id: "pact-of-the-tome-cantrips",
+                title: "Pact of the Tome: Book of Shadows — Cantrips",
+                sourceLabel: "Warlock / Pact of the Tome",
+                description: "While the Book of Shadows is on your person, you have three chosen cantrips prepared from any class's spell list, and they function as Warlock spells for you.",
+                chooseCount: 3,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 0),
+                ability: "cha"
+            });
+            const currentTomeRitualNames = new Set(this.state.featureSpellChoices?.["pact-of-the-tome-rituals"] || []);
+            const availableRituals = SPELLS_2024.filter((sp) =>
+                (sp.level === 1) ||
+                sp.ritual ||
+                sp.name === "Mirror Image" ||
+                currentTomeRitualNames.has(sp.name)
+            );
+            sections.push({
+                id: "pact-of-the-tome-rituals",
+                title: "Pact of the Tome: Book of Shadows — 1st-Level Rituals & Bonus Spells",
+                sourceLabel: "Warlock / Pact of the Tome",
+                description: "Choose two 1st-level spells that have the Ritual tag (or bonus spells granted by your Book of Shadows) from any class's spell list. While the book is on your person, you have the chosen spells prepared, and they function as Warlock spells for you.",
+                chooseCount: 2,
+                availableSpells: availableRituals,
+                ability: "cha"
+            });
+        }
+
+        // 2. Cleric — Divine Order: Thaumaturge (1 extra Cleric cantrip)
+        if (getClassLevel("cleric") >= 1 && this.state.divineOrder === "thaumaturge") {
+            sections.push({
+                id: "divine-order-thaumaturge",
+                title: "Divine Order: Thaumaturge — Bonus Cleric Cantrip",
+                sourceLabel: "Cleric / Divine Order (Thaumaturge)",
+                description: "You know one extra cantrip of your choice from the Cleric spell list.",
+                chooseCount: 1,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
+                ability: "wis"
+            });
+        }
+
+        // 3. Druid — Primal Order: Magician (1 extra Druid cantrip)
+        if (getClassLevel("druid") >= 1 && this.state.primalOrder === "magician") {
+            sections.push({
+                id: "primal-order-magician",
+                title: "Primal Order: Magician — Bonus Druid Cantrip",
+                sourceLabel: "Druid / Primal Order (Magician)",
+                description: "You know one extra cantrip of your choice from the Druid spell list.",
+                chooseCount: 1,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
+                ability: "wis"
+            });
+        }
+
+        // 4. Fighting Style — Blessed Warrior (2 Cleric cantrips)
+        const hasFightingStyleClass = getClassLevel("fighter") >= 1 || getClassLevel("paladin") >= 2 || getClassLevel("ranger") >= 2;
+        const hasChampionAdditionalFs = getClassLevel("fighter") >= 7 && getClassSubclass("fighter") === "champion";
+        if (
+            (hasFightingStyleClass && this.state.fightingStyle === "blessed-warrior") ||
+            (hasChampionAdditionalFs && this.state.subclassFeatureChoices?.["fighter-7-champion"] === "blessed-warrior")
+        ) {
+            sections.push({
+                id: "fighting-style-blessed-warrior",
+                title: "Fighting Style: Blessed Warrior — Cleric Cantrips",
+                sourceLabel: "Fighting Style (Blessed Warrior)",
+                description: "You learn two Cleric cantrips of your choice. They count as class spells for you, and Charisma is your spellcasting ability for them.",
+                chooseCount: 2,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
+                ability: "cha"
+            });
+        }
+
+        // 5. Fighting Style — Druidic Warrior (2 Druid cantrips)
+        if (
+            (hasFightingStyleClass && this.state.fightingStyle === "druidic-warrior") ||
+            (hasChampionAdditionalFs && this.state.subclassFeatureChoices?.["fighter-7-champion"] === "druidic-warrior")
+        ) {
+            sections.push({
+                id: "fighting-style-druidic-warrior",
+                title: "Fighting Style: Druidic Warrior — Druid Cantrips",
+                sourceLabel: "Fighting Style (Druidic Warrior)",
+                description: "You learn two Druid cantrips of your choice. They count as class spells for you, and Wisdom is your spellcasting ability for them.",
+                chooseCount: 2,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
+                ability: "wis"
+            });
+        }
+
+        // 6. Bard — College of Lore: Magical Discoveries (Level 6+: 2 spells from Cleric, Druid, or Wizard)
+        const bardLvl = getClassLevel("bard");
+        if (bardLvl >= 6 && getClassSubclass("bard") === "lore") {
+            const bardMaxSpellLvl = Math.min(9, Math.ceil(bardLvl / 2));
+            sections.push({
+                id: "bard-6-magical-discoveries",
+                title: "Magical Discoveries (College of Lore) — Bonus Spells",
+                sourceLabel: "Bard / Magical Discoveries",
+                description: "You learn two spells of your choice from the Cleric, Druid, or Wizard spell list (cantrip or a spell of a level you can cast). You always have the chosen spells prepared.",
+                chooseCount: 2,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level <= bardMaxSpellLvl && sp.classes.some((c) => c === "Cleric" || c === "Druid" || c === "Wizard")),
+                ability: "cha"
+            });
+        }
+
+        // 7. Bard — Magical Secrets (Level 10+: 2 spells from Bard, Cleric, Druid, or Wizard)
+        if (bardLvl >= 10) {
+            const bardMaxSpellLvl = Math.min(9, Math.ceil(bardLvl / 2));
+            sections.push({
+                id: "bard-10-magical-secrets",
+                title: "Magical Secrets (Bard Level 10) — Cross-Class Spells",
+                sourceLabel: "Bard / Magical Secrets",
+                description: "You have conjured magical knowledge from the Bard, Cleric, Druid, and Wizard spell lists. Choose two spells from those lists of a level you can cast.",
+                chooseCount: 2,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level >= 1 && sp.level <= bardMaxSpellLvl && sp.classes.some((c) => c === "Bard" || c === "Cleric" || c === "Druid" || c === "Wizard")),
+                ability: "cha"
+            });
+        }
+
+        // 8. Warlock — Mystic Arcanum (Levels 11, 13, 15, 17: 6th, 7th, 8th, 9th level Warlock spell)
+        const warlockLvl = getClassLevel("warlock");
+        const arcanumTiers = [
+            { minLvl: 11, spellLvl: 6, label: "6th" },
+            { minLvl: 13, spellLvl: 7, label: "7th" },
+            { minLvl: 15, spellLvl: 8, label: "8th" },
+            { minLvl: 17, spellLvl: 9, label: "9th" }
+        ];
+        for (const tier of arcanumTiers) {
+            if (warlockLvl >= tier.minLvl) {
+                sections.push({
+                    id: `warlock-${tier.minLvl}-mystic-arcanum`,
+                    title: `Mystic Arcanum (${tier.label} Level)`,
+                    sourceLabel: `Warlock / Mystic Arcanum (${tier.label} Level)`,
+                    description: `Your patron grants you a magical secret called an arcanum. Choose one ${tier.label}-level Warlock spell as this arcanum. You can cast it once without expending a spell slot per Long Rest.`,
+                    chooseCount: 1,
+                    availableSpells: SPELLS_2024.filter((sp) => sp.level === tier.spellLvl && sp.classes.includes("Warlock")),
+                    ability: "cha"
+                });
+            }
+        }
+
+        // 9. Wizard — Spell Mastery (Level 18+: 1 Level 1 Wizard spell and 1 Level 2 Wizard spell) & Signature Spells (Level 20: 2 Level 3 Wizard spells)
+        const wizardLvl = getClassLevel("wizard");
+        if (wizardLvl >= 18) {
+            sections.push({
+                id: "wizard-18-spell-mastery-1",
+                title: "Spell Mastery — Level 1 Wizard Spell",
+                sourceLabel: "Wizard / Spell Mastery",
+                description: "Choose one Level 1 Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.",
+                chooseCount: 1,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 1 && sp.classes.includes("Wizard")),
+                ability: "int"
+            });
+            sections.push({
+                id: "wizard-18-spell-mastery-2",
+                title: "Spell Mastery — Level 2 Wizard Spell",
+                sourceLabel: "Wizard / Spell Mastery",
+                description: "Choose one Level 2 Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.",
+                chooseCount: 1,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 2 && sp.classes.includes("Wizard")),
+                ability: "int"
+            });
+        }
+        if (wizardLvl >= 20) {
+            sections.push({
+                id: "wizard-20-signature-spells",
+                title: "Signature Spells — Level 3 Wizard Spells",
+                sourceLabel: "Wizard / Signature Spells",
+                description: "Choose two Level 3 Wizard spells in your spellbook as your signature spells. You always have these spells prepared and can cast each of them once at 3rd level without expending a spell slot per Short or Long Rest.",
+                chooseCount: 2,
+                availableSpells: SPELLS_2024.filter((sp) => sp.level === 3 && sp.classes.includes("Wizard")),
+                ability: "int"
+            });
+        }
+
+        // 10. Dynamic progression choices with choiceType === "spell"
+        for (const c of this.state.classes || []) {
+            const clsDef = this.classes.find((x) => x.id === c.classId);
+            const subDef = clsDef?.subclasses?.find((s) => s.id === this.resolveCanonicalSubclassId(c.classId, c.subclassId));
+            const progList = [
+                ...(clsDef?.progression || []).map((p) => ({ ...p, src: clsDef?.name || c.classId })),
+                ...(subDef?.progression || []).map((p) => ({ ...p, src: `${clsDef?.name || c.classId} / ${subDef?.name || c.subclassId}` }))
+            ];
+            for (const pl of progList) {
+                if (pl.level > (c.level || 0)) continue;
+                for (const ch of pl.choices || []) {
+                    if (ch.choiceType === "spell") {
+                        const secId = ch.choiceId || ch.id || `dynamic-spell-${c.classId}-${pl.level}`;
+                        if (sections.some((s) => s.id === secId)) continue;
+                        const optNames = new Set((ch.options || []).map((o: any) => String(o.name || o.id || "").toLowerCase()));
+                        const pool = optNames.size > 0
+                            ? SPELLS_2024.filter((sp) => optNames.has(sp.name.toLowerCase()) || optNames.has(sp.id.toLowerCase()))
+                            : SPELLS_2024;
+                        sections.push({
+                            id: secId,
+                            title: ch.name || "Bonus Spell Selection",
+                            sourceLabel: `${pl.src} / ${ch.name || "Bonus Spell"}`,
+                            description: ch.description || ch.prompt || "Select your bonus spell(s) granted by this progression feature.",
+                            chooseCount: ch.chooseCount || 1,
+                            availableSpells: pool
+                        });
+                    }
+                }
+            }
+        }
+
+        return sections;
+    }
+
     public sanitizeSpellSelections() {
+        this.state.featureSpellChoices = this.state.featureSpellChoices || {};
+        const activeFeatureSections = this.getFeatureSpellChoiceSections();
+        const activeSectionMap = new Map(activeFeatureSections.map((s) => [s.id, s]));
+
+        for (const key of Object.keys(this.state.featureSpellChoices)) {
+            const sec = activeSectionMap.get(key);
+            if (!sec) {
+                delete this.state.featureSpellChoices[key];
+                continue;
+            }
+            const validNames = new Set(sec.availableSpells.map((sp) => sp.name));
+            const current = Array.isArray(this.state.featureSpellChoices[key]) ? this.state.featureSpellChoices[key] : [];
+            this.state.featureSpellChoices[key] = current.filter((name) => validNames.has(name)).slice(0, sec.chooseCount);
+        }
+
         const allowed = this.getAllowedSpellClasses();
         if (allowed.length === 0) {
             this.state.selectedCantrips = [];
@@ -2650,6 +3038,9 @@ export class CharacterCreatorController {
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Fighting Style (Choose 1)</h5>
                         <p class="card-body">${getClsFeatureDesc("Fighting Style", "You have honed your martial prowess and gain a Fighting Style feat of your choice.", 1)}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> If you choose <strong>Blessed Warrior</strong> or <strong>Druidic Warrior</strong>, you can select your granted cantrips in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
                             ${FIGHTING_STYLES.map((fs) => `
                                 <div class="select-card fighting-style-card ${this.state.fightingStyle === fs.id ? "selected" : ""}" data-fighting-style-id="${fs.id}">
@@ -2671,6 +3062,9 @@ export class CharacterCreatorController {
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-sun"></i> Divine Order</h5>
                         <p class="card-body">${getClsFeatureDesc("Divine Order", "You have dedicated yourself to one of the following sacred roles of your choice.", 1)}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> If you choose <strong>Thaumaturge</strong>, you can select your bonus Cleric cantrip in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
                             ${DIVINE_ORDERS.map((ord) => `
                                 <div class="select-card divine-order-card ${this.state.divineOrder === ord.id ? "selected" : ""}" data-divine-order-id="${ord.id}">
@@ -2692,6 +3086,9 @@ export class CharacterCreatorController {
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-leaf"></i> Primal Order</h5>
                         <p class="card-body">${getClsFeatureDesc("Primal Order", "You have dedicated yourself to one of the following sacred roles of your choice.", 1)}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> If you choose <strong>Magician</strong>, you can select your bonus Druid cantrip in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
                             ${PRIMAL_ORDERS.map((ord) => `
                                 <div class="select-card primal-order-card ${this.state.primalOrder === ord.id ? "selected" : ""}" data-primal-order-id="${ord.id}">
@@ -2714,6 +3111,9 @@ export class CharacterCreatorController {
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-eye"></i> Eldritch Invocations (Choose up to ${this.getMaxInvocationsCount()})</h5>
                         <p class="card-body">${getClsFeatureDesc("Eldritch Invocations", "You have unearthed Eldritch Invocations, pieces of forbidden knowledge that imbue you with an abiding magical ability or other lessons.")}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Invocations that grant spell choices (such as <strong>Pact of the Tome</strong>) have a dedicated selection section in <strong>Class &amp; Subclass Progression Spells</strong> on <strong>Step 8: Spells</strong>.
+                        </div>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
                             ${ELDRITCH_INVOCATIONS.filter((inv) => !inv.minLevel || warlockLvl >= inv.minLevel).map((inv) => {
                                 const isSelected = this.state.invocations.includes(inv.id);
@@ -2742,6 +3142,9 @@ export class CharacterCreatorController {
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield"></i> Fighting Style (Choose 1)</h5>
                         <p class="card-body">${getClsFeatureDesc("Fighting Style", "Choose a Fighting Style feat for which you qualify.", 2)}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> If you choose <strong>Blessed Warrior</strong> or <strong>Druidic Warrior</strong>, you can select your granted cantrips in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
                             ${FIGHTING_STYLES.map((fs) => `
                                 <div class="select-card fighting-style-card ${this.state.fightingStyle === fs.id ? "selected" : ""}" data-fighting-style-id="${fs.id}">
@@ -3230,6 +3633,19 @@ export class CharacterCreatorController {
                     </div>
                 `);
             }
+
+            // Bard College of Lore: Magical Discoveries (Level 6)
+            if (cls.id === "bard" && currentSubId === "lore") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-book-sparkles"></i> Magical Discoveries${subLabel} (Choose 2 Spells)</h5>
+                        <p class="card-body">${getSubFeatureDesc("Magical Discoveries", "Learn two spells of your choice from the Cleric, Druid, or Wizard spell list (cantrip or a spell of a level you can cast). You always have the chosen spells prepared.")}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Select your two <strong>Magical Discoveries</strong> spells in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
+                    </div>
+                `);
+            }
         }
 
         // Ranger Hunter: Defensive Tactics (Level 7 in 2024 Ranger progression, also supported on direct Level 6 call)
@@ -3307,6 +3723,9 @@ export class CharacterCreatorController {
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-heart"></i> Additional Fighting Style${subLabel}</h5>
                         <p class="card-body">${getSubFeatureDesc("Additional Fighting Style", "You gain a second Fighting Style feat of your choice.")}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> If you choose <strong>Blessed Warrior</strong> or <strong>Druidic Warrior</strong>, you can select your granted cantrips in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
                         <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
                             ${CHAMPION_ADDITIONAL_FIGHTING_STYLES.map((s) => `
                                 <div class="select-card subclass-feature-card ${currentChoice === s.id ? "selected" : ""}" data-feature-key="fighter-7-champion" data-feature-choice="${s.id}">
@@ -3459,6 +3878,58 @@ export class CharacterCreatorController {
                     </div>
                 `);
             }
+
+            // Bard: Magical Secrets (Level 10)
+            if (cls.id === "bard") {
+                choices.push(`
+                    <div class="level-choice-box">
+                        <h5 class="level-choice-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Magical Secrets (Choose 2 Spells)</h5>
+                        <p class="card-body">${getClsFeatureDesc("Magical Secrets", "Whenever you reach a Bard level that grants prepared spells from this point onward, you can choose your new prepared spells from the Bard, Cleric, Druid, and Wizard spell lists.", 10)}</p>
+                        <div class="level-info-note choice-spells-referral-note">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Select your <strong>Magical Secrets</strong> spells in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // Warlock Mystic Arcanum choices (Levels 11, 13, 15, 17)
+        if (cls.id === "warlock" && (lvl === 11 || lvl === 13 || lvl === 15 || lvl === 17)) {
+            const arcanumLvlMap: Record<number, string> = { 11: "6th", 13: "7th", 15: "8th", 17: "9th" };
+            const sLvlLabel = arcanumLvlMap[lvl];
+            choices.push(`
+                <div class="level-choice-box">
+                    <h5 class="level-choice-title"><i class="fa-solid fa-scroll"></i> Mystic Arcanum (${sLvlLabel} Level)</h5>
+                    <p class="card-body">${getClsFeatureDesc(`Mystic Arcanum (${sLvlLabel} Level)`, `Choose one ${sLvlLabel}-level Warlock spell. You can cast it once per Long Rest without expending a spell slot.`, lvl)}</p>
+                    <div class="level-info-note choice-spells-referral-note">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Select your ${sLvlLabel}-level <strong>Mystic Arcanum</strong> spell in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                    </div>
+                </div>
+            `);
+        }
+
+        // Wizard Spell Mastery (Level 18) & Signature Spells (Level 20)
+        if (cls.id === "wizard" && lvl === 18) {
+            choices.push(`
+                <div class="level-choice-box">
+                    <h5 class="level-choice-title"><i class="fa-solid fa-hat-wizard"></i> Spell Mastery (Choose 1st &amp; 2nd-Level Spells)</h5>
+                    <p class="card-body">${getClsFeatureDesc("Spell Mastery", "Choose one 1st-level and one 2nd-level Wizard spell in your spellbook that have a casting time of an action. You can cast them at their lowest level without expending a spell slot.", 18)}</p>
+                    <div class="level-info-note choice-spells-referral-note">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Select your <strong>Spell Mastery</strong> spells in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                    </div>
+                </div>
+            `);
+        }
+        if (cls.id === "wizard" && lvl === 20) {
+            choices.push(`
+                <div class="level-choice-box">
+                    <h5 class="level-choice-title"><i class="fa-solid fa-signature"></i> Signature Spells (Choose Two 3rd-Level Spells)</h5>
+                    <p class="card-body">${getClsFeatureDesc("Signature Spells", "Choose two 3rd-level Wizard spells in your spellbook. You always have them prepared and can cast each once at 3rd level without a slot per Short or Long Rest.", 20)}</p>
+                    <div class="level-info-note choice-spells-referral-note">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Select your <strong>Signature Spells</strong> in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+                    </div>
+                </div>
+            `);
         }
 
         // Level 13 choices
@@ -3800,6 +4271,7 @@ export class CharacterCreatorController {
             if (lvl === 6) {
                 if (cls.id === "barbarian" && resolvedSubId === "wild-heart" && normLower === "aspect of the beast") return true;
                 if (cls.id === "cleric" && resolvedSubId === "war" && normLower === "war god's blessing") return true;
+                if (cls.id === "bard" && resolvedSubId === "lore" && normLower === "magical discoveries") return true;
             }
             if (lvl === 7) {
                 if (cls.id === "druid" && normLower === "elemental fury") return true;
@@ -3816,6 +4288,10 @@ export class CharacterCreatorController {
                 if (cls.id === "warlock" && resolvedSubId === "fiend" && normLower === "fiendish resilience") return true;
                 if (cls.id === "barbarian" && resolvedSubId === "world-tree" && normLower === "battering roots") return true;
                 if (cls.id === "wizard" && resolvedSubId === "diviner" && normLower === "the third eye") return true;
+                if (cls.id === "bard" && normLower === "magical secrets") return true;
+            }
+            if (lvl === 11 || lvl === 13 || lvl === 15 || lvl === 17) {
+                if (cls.id === "warlock" && (baseLower.startsWith("mystic arcanum") || normLower === "mystic arcanum")) return true;
             }
             if (lvl === 13) {
                 if (cls.id === "barbarian" && normLower === "improved brutal strike") return true;
@@ -3827,6 +4303,12 @@ export class CharacterCreatorController {
             }
             if (lvl === 15) {
                 if (cls.id === "ranger" && resolvedSubId === "hunter" && normLower === "superior hunter's defense") return true;
+            }
+            if (lvl === 18) {
+                if (cls.id === "wizard" && normLower === "spell mastery") return true;
+            }
+            if (lvl === 20) {
+                if (cls.id === "wizard" && normLower === "signature spells") return true;
             }
 
             return false;
@@ -4436,7 +4918,8 @@ export class CharacterCreatorController {
         const maxCantrips = this.getMaxCantrips();
         const maxPrepared = this.getMaxPreparedSpells();
         const maxSpellLevel = this.getMaxSpellLevel();
-        const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0;
+        const featureSpellSections = this.getFeatureSpellChoiceSections();
+        const hasSpellcasting = maxCantrips > 0 || maxPrepared > 0 || featureSpellSections.length > 0;
         const casterStats = this.getSpellcasterStatsList();
 
         if (!hasSpellcasting) {
@@ -4486,7 +4969,7 @@ export class CharacterCreatorController {
                     <div class="spells-header-row">
                         <div>
                             <h3 class="panel-title">${isMulticlass ? `Spells & Magic (${casterStats.map((c) => `${c.className} ${c.level}`).join(" / ")})` : `Spells (${casterStats[0]?.className || cls.name})`}</h3>
-                            <p class="panel-desc">${isMulticlass ? "Multiclass spellcasting: prepare spells individually per class at your class levels, sharing your multiclass spell slots." : `Select cantrips and prepared spells according to your class limits at Level ${this.state.level}.`}</p>
+                            <p class="panel-desc">${isMulticlass ? "Multiclass spellcasting: prepare spells individually per class at your class levels, sharing your multiclass spell slots." : `Select cantrips, prepared spells, and class or subclass progression spells according to your limits at Level ${this.state.level}.`}</p>
                         </div>
                         <div class="spells-actions-row">
                             <button type="button" class="creator-nav-btn secondary-btn auto-spells-btn">
@@ -4511,6 +4994,65 @@ export class CharacterCreatorController {
                         <strong>${slotsSummary}</strong>
                     </div>
                 </div>
+
+                ${featureSpellSections.length > 0 ? `
+                    <div id="feature-spell-choices-section" class="feature-spell-choices-container" style="margin-bottom: 1.25rem;">
+                        <div class="panel-header" style="margin-bottom: 0.75rem;">
+                            <h4 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-book-sparkles"></i> Class & Subclass Progression Spells
+                            </h4>
+                            <p class="panel-desc" style="margin-top: 0.25rem;">
+                                Spells granted by your selected class or subclass progression choices (such as Pact of the Tome, Divine Order, or Magical Secrets). These count as bonus spells and do not consume your standard class cantrip or prepared spell limits.
+                            </p>
+                        </div>
+                        ${featureSpellSections.map((sec) => {
+                            const chosen = this.state.featureSpellChoices[sec.id] || [];
+                            const isOver = chosen.length > sec.chooseCount;
+                            const isMaxed = chosen.length === sec.chooseCount;
+                            return `
+                                <div class="creator-detail-box feature-spell-choice-box" data-feature-section-id="${sec.id}" style="margin-bottom: 1rem;">
+                                    <div class="box-header-with-badge">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                            <h4 style="margin: 0;"><i class="fa-solid fa-wand-magic-sparkles"></i> ${sec.title}</h4>
+                                            <span class="stat-req-pill met">${sec.sourceLabel}</span>
+                                        </div>
+                                        <span class="spell-count-badge ${isOver ? "over-limit" : isMaxed ? "maxed" : "info"}">
+                                            <i class="fa-solid ${isOver ? "fa-triangle-exclamation" : isMaxed ? "fa-check" : "fa-sparkles"}"></i>
+                                            ${chosen.length} / ${sec.chooseCount} Chosen
+                                        </span>
+                                    </div>
+                                    <p class="panel-desc" style="margin: 0.35rem 0 0.75rem;">${sec.description}</p>
+                                    <div class="item-select-list">
+                                        ${sec.availableSpells.map((sp) => {
+                                            const isSelected = chosen.includes(sp.name);
+                                            return `
+                                                <div class="item-check-row feature-spell-row ${isSelected ? "selected" : ""}"
+                                                     data-feature-section-id="${sec.id}"
+                                                     data-spell-name="${sp.name}"
+                                                     data-spell-school="${sp.school}"
+                                                     data-spell-level="${sp.level}">
+                                                    <div class="item-row-left">
+                                                        <div class="item-row-title">
+                                                            <span>${sp.name}</span>
+                                                            <span class="stat-req-pill met">${sp.level === 0 ? "Cantrip" : `Lvl ${sp.level}`}</span>
+                                                            <span class="stat-req-pill">${sp.school}</span>
+                                                            ${sp.classes.map((c) => `<span class="stat-req-pill">${c}</span>`).join(" ")}
+                                                            ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
+                                                            ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain"></i> Conc.</span>' : ""}
+                                                        </div>
+                                                        <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
+                                                        <div class="item-row-desc">${sp.description}</div>
+                                                    </div>
+                                                    <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                                </div>
+                                            `;
+                                        }).join("")}
+                                    </div>
+                                </div>
+                            `;
+                        }).join("")}
+                    </div>
+                ` : ""}
 
                 <div class="creator-detail-box">
                     <div class="box-header-with-badge">
@@ -4776,6 +5318,10 @@ export class CharacterCreatorController {
                             const sp = SPELLS_2024.find((s) => s.name === name);
                             return sp ? `${name} (Lvl ${sp.level})` : name;
                         }).join(", ") || "None"}</strong></div>
+                        ${this.getFeatureSpellChoiceSections().map((sec) => {
+                            const chosen = this.state.featureSpellChoices[sec.id] || [];
+                            return `<div class="review-row"><span class="label">${sec.title} (${chosen.length}/${sec.chooseCount}):</span><strong>${chosen.join(", ") || "None"}</strong></div>`;
+                        }).join("")}
                         ${(() => {
                             const grantedList: string[] = [];
                             for (const c of this.state.classes) {
@@ -5475,7 +6021,7 @@ export class CharacterCreatorController {
             searchInput?.addEventListener("input", (e) => {
                 const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
                 this.spellSearchQuery = q;
-                document.querySelectorAll(".spell1-row").forEach((row) => {
+                document.querySelectorAll(".spell1-row, .feature-spell-row").forEach((row) => {
                     const name = (row.getAttribute("data-spell-name") || "").toLowerCase();
                     const school = (row.getAttribute("data-spell-school") || "").toLowerCase();
                     const desc = (row.querySelector(".item-row-desc")?.textContent || "").toLowerCase();
@@ -5490,6 +6036,14 @@ export class CharacterCreatorController {
                 const smart = this.getSmartAutoFillSpells();
                 this.state.selectedCantrips = smart.cantrips;
                 this.state.selectedSpellsLevel1 = smart.prepared;
+                const usedNames = new Set([...smart.cantrips, ...smart.prepared]);
+                for (const sec of this.getFeatureSpellChoiceSections()) {
+                    const preferred = sec.availableSpells.filter((sp) => !usedNames.has(sp.name));
+                    const pool = preferred.length >= sec.chooseCount ? preferred : sec.availableSpells;
+                    const chosen = pool.slice(0, sec.chooseCount).map((sp) => sp.name);
+                    this.state.featureSpellChoices[sec.id] = chosen;
+                    chosen.forEach((n) => usedNames.add(n));
+                }
                 this.spellsWarningDismissed = false;
                 this.hideAlert();
                 this.renderStep(8);
@@ -5500,9 +6054,34 @@ export class CharacterCreatorController {
             clearBtn?.addEventListener("click", () => {
                 this.state.selectedCantrips = [];
                 this.state.selectedSpellsLevel1 = [];
+                this.state.featureSpellChoices = {};
                 this.spellsWarningDismissed = false;
                 this.hideAlert();
                 this.renderStep(8);
+            });
+
+            // Feature / Progression spell toggles
+            document.querySelectorAll(".feature-spell-row").forEach((row) => {
+                row.addEventListener("click", () => {
+                    const secId = row.getAttribute("data-feature-section-id") || "";
+                    const spName = row.getAttribute("data-spell-name") || "";
+                    if (!secId || !spName) return;
+                    const sec = this.getFeatureSpellChoiceSections().find((s) => s.id === secId);
+                    const maxCount = sec?.chooseCount ?? 1;
+                    const current = Array.isArray(this.state.featureSpellChoices[secId])
+                        ? [...this.state.featureSpellChoices[secId]]
+                        : [];
+                    if (current.includes(spName)) {
+                        this.state.featureSpellChoices[secId] = current.filter((n) => n !== spName);
+                    } else if (current.length < maxCount) {
+                        this.state.featureSpellChoices[secId] = [...current, spName];
+                    } else if (maxCount === 1) {
+                        this.state.featureSpellChoices[secId] = [spName];
+                    }
+                    this.spellsWarningDismissed = false;
+                    this.hideAlert();
+                    this.renderStep(8);
+                });
             });
 
             // Cantrip toggles
@@ -5667,6 +6246,34 @@ export class CharacterCreatorController {
                 }
             }
 
+            // Feature / Progression chosen spells (e.g., Pact of the Tome, Thaumaturge, Magician, Blessed Warrior, Magical Secrets, Mystic Arcanum)
+            const featureSections = this.getFeatureSpellChoiceSections();
+            for (const sec of featureSections) {
+                const chosenNames = this.state.featureSpellChoices[sec.id] || [];
+                for (const spName of chosenNames) {
+                    const spDef = SPELLS_2024.find((s) => s.name.toLowerCase() === spName.toLowerCase());
+                    if (!spDef) continue;
+                    const existing = spellsPayload.find((s) => s.name.toLowerCase() === spDef.name.toLowerCase());
+                    if (!existing) {
+                        spellsPayload.push({
+                            name: spDef.name,
+                            level: spDef.level,
+                            school: spDef.school,
+                            source: sec.sourceLabel,
+                            prepared: true,
+                            alwaysPrepared: true,
+                            castingTime: spDef.castingTime,
+                            range: spDef.range,
+                            duration: spDef.duration,
+                            components: spDef.components,
+                            concentration: spDef.concentration,
+                            ritual: spDef.ritual,
+                            description: spDef.description
+                        });
+                    }
+                }
+            }
+
             // Species and Lineage innate spells
             const selectedLineage = species.lineages?.find((l) => l.id === this.state.lineageId);
             const speciesSpells: Array<{ name: string; level: number }> = [];
@@ -5774,7 +6381,17 @@ export class CharacterCreatorController {
                 }
             }
 
+            const optionToFeatureSectionId: Record<string, string> = {
+                "thaumaturge": "divine-order-thaumaturge",
+                "magician": "primal-order-magician",
+                "blessed-warrior": "fighting-style-blessed-warrior",
+                "druidic-warrior": "fighting-style-druidic-warrior"
+            };
             for (const opt of selectedProgressionOptions) {
+                const mappedSecId = optionToFeatureSectionId[opt.id];
+                if (mappedSecId && (this.state.featureSpellChoices[mappedSecId]?.length ?? 0) > 0) {
+                    continue;
+                }
                 if (Array.isArray(opt.grantedSpells)) {
                     for (const sp of opt.grantedSpells) {
                         const spName = typeof sp === "string" ? sp : (sp.name || sp.spellId);
@@ -6860,7 +7477,11 @@ export class CharacterCreatorController {
             };
 
             for (const opt of selectedProgressionOptions) {
-                applyProgressionChoiceOption(characterPayload, opt, 1);
+                const mappedSecId = optionToFeatureSectionId[opt.id];
+                const optToApply = (mappedSecId && (this.state.featureSpellChoices[mappedSecId]?.length ?? 0) > 0)
+                    ? { ...opt, grantedSpells: [] }
+                    : opt;
+                applyProgressionChoiceOption(characterPayload, optToApply, 1);
             }
 
             return characterPayload;

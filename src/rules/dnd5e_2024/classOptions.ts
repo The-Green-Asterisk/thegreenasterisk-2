@@ -73,8 +73,17 @@ export const FIGHTING_STYLES: FeatureOption[] = [
         name: "Blessed Warrior",
         description: "You learn two Cleric cantrips of your choice (such as Sacred Flame and Guidance). Wisdom/Charisma is your spellcasting ability for them.",
         grantedSpells: [
-            { name: "Sacred Flame", level: 0, alwaysPrepared: true, notes: "Blessed Warrior" },
-            { name: "Guidance", level: 0, alwaysPrepared: true, notes: "Blessed Warrior" }
+            { name: "Sacred Flame", level: 0, source: "Blessed Warrior" },
+            { name: "Guidance", level: 0, source: "Blessed Warrior" }
+        ]
+    },
+    {
+        id: "druidic-warrior",
+        name: "Druidic Warrior",
+        description: "You learn two Druid cantrips of your choice (such as Guidance and Starry Wisp). Wisdom is your spellcasting ability for them.",
+        grantedSpells: [
+            { name: "Guidance", level: 0, source: "Druidic Warrior" },
+            { name: "Starry Wisp", level: 0, source: "Druidic Warrior" }
         ]
     },
     {
@@ -1194,6 +1203,16 @@ export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: FeatureOption[] = [
         id: "two-weapon",
         name: "Two-Weapon Fighting",
         description: "Add ability modifier to the damage of off-hand attacks."
+    },
+    {
+        id: "blessed-warrior",
+        name: "Blessed Warrior",
+        description: "Learn two Cleric cantrips. They count as Paladin spells for you, and Charisma is your spellcasting ability for them."
+    },
+    {
+        id: "druidic-warrior",
+        name: "Druidic Warrior",
+        description: "Learn two Druid cantrips. They count as Ranger spells for you, and Wisdom is your spellcasting ability for them."
     }
 ];
 

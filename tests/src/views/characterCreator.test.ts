@@ -2221,6 +2221,19 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.state.speciesId).toBe("tiefling");
             expect(ctrl.state.lineageId).toBe("infernal");
 
+            // Darvell's Pact of the Tome spell choices should be correctly populated
+            expect(ctrl.state.featureSpellChoices["pact-of-the-tome-cantrips"]).toEqual(
+                expect.arrayContaining(["Eldritch Blast", "Produce Flame", "Ray of Frost"])
+            );
+            expect(ctrl.state.featureSpellChoices["pact-of-the-tome-rituals"]).toEqual(
+                expect.arrayContaining(["Charm Person", "Mirror Image"])
+            );
+
+            const step8Html = ctrl["renderStep8Spells"]();
+            expect(step8Html).toContain('id="feature-spell-choices-section"');
+            expect(step8Html).toContain('data-feature-section-id="pact-of-the-tome-cantrips"');
+            expect(step8Html).toContain('data-feature-section-id="pact-of-the-tome-rituals"');
+
             const step2Html = ctrl["renderStep2Species"]();
             expect(step2Html).toContain('data-lineage-id="infernal"');
             expect(step2Html).toMatch(/class="[^"]*lineage-card[^"]*selected[^"]*"[^>]*data-lineage-id="infernal"/);
@@ -2407,6 +2420,99 @@ describe("CharacterCreatorController", () => {
             expect(gooCards).toHaveLength(1);
             expect(gooCards[0].getAttribute("data-subclass-id")).toBe("great-old-one");
             expect(gooCards[0].classList.contains("selected")).toBe(true);
+        });
+
+        it("renders a referral note in Step 3 choice boxes and a dedicated progression spell selection section in Step 8 (e.g., Pact of the Tome, Thaumaturge, Blessed Warrior, Magical Secrets, Mystic Arcanum)", () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            const root = document.getElementById("creator-step-panels")!;
+
+            // 1. Warlock Level 12 with Pact of the Tome: check Step 3 referral notes on Eldritch Invocations and Mystic Arcanum
+            ctrl.state.classId = "warlock";
+            ctrl.state.level = 12;
+            ctrl.state.subclassId = "great-old-one";
+            ctrl.state.classes = [{ classId: "warlock", level: 12, subclassId: "great-old-one" }];
+            ctrl.state.invocations = ["pact-of-the-tome"];
+            ctrl.renderStep(3);
+
+            const referralNotes = Array.from(root.querySelectorAll(".choice-spells-referral-note"));
+            expect(referralNotes.length).toBeGreaterThanOrEqual(2);
+            expect(referralNotes.some((n) => (n.textContent || "").includes("Pact of the Tome"))).toBe(true);
+            expect(referralNotes.some((n) => (n.textContent || "").includes("Step 8: Spells"))).toBe(true);
+
+            // 2. Render Step 8 (Spells) for Warlock with Pact of the Tome + Level 11 Mystic Arcanum
+            ctrl.renderStep(8);
+            const featureSection = root.querySelector("#feature-spell-choices-section");
+            expect(featureSection).toBeTruthy();
+
+            const tomeCantripsBox = root.querySelector('.feature-spell-choice-box[data-feature-section-id="pact-of-the-tome-cantrips"]');
+            const tomeRitualsBox = root.querySelector('.feature-spell-choice-box[data-feature-section-id="pact-of-the-tome-rituals"]');
+            const arcanum6Box = root.querySelector('.feature-spell-choice-box[data-feature-section-id="warlock-11-mystic-arcanum"]');
+            expect(tomeCantripsBox).toBeTruthy();
+            expect(tomeRitualsBox).toBeTruthy();
+            expect(arcanum6Box).toBeTruthy();
+
+            // Select 3 cantrips from any class (including non-Warlock cantrips like Guidance, Sacred Flame, Starry Wisp)
+            const clickFeatureSpell = (secId: string, spellName: string) => {
+                const row = root.querySelector(`.feature-spell-row[data-feature-section-id="${secId}"][data-spell-name="${spellName}"]`) as HTMLElement | null;
+                expect(row).toBeTruthy();
+                row!.click();
+            };
+
+            clickFeatureSpell("pact-of-the-tome-cantrips", "Guidance");
+            clickFeatureSpell("pact-of-the-tome-cantrips", "Produce Flame");
+            clickFeatureSpell("pact-of-the-tome-cantrips", "Ray of Frost");
+            expect(ctrl.state.featureSpellChoices["pact-of-the-tome-cantrips"]).toEqual([
+                "Guidance",
+                "Produce Flame",
+                "Ray of Frost"
+            ]);
+
+            // Select 2 Level 1 Ritual spells for Pact of the Tome
+            clickFeatureSpell("pact-of-the-tome-rituals", "Detect Magic");
+            clickFeatureSpell("pact-of-the-tome-rituals", "Find Familiar");
+            expect(ctrl.state.featureSpellChoices["pact-of-the-tome-rituals"]).toEqual([
+                "Detect Magic",
+                "Find Familiar"
+            ]);
+
+            // Verify buildPayload includes the chosen progression spells with their sourceLabel
+            const payload = ctrl.buildPayload();
+            const guidanceSpell = payload.spells.find((s: any) => s.name === "Guidance");
+            expect(guidanceSpell).toBeDefined();
+            expect(guidanceSpell.source).toBe("Warlock / Pact of the Tome");
+            expect(guidanceSpell.alwaysPrepared).toBe(true);
+
+            const findFamiliarSpell = payload.spells.find((s: any) => s.name === "Find Familiar");
+            expect(findFamiliarSpell).toBeDefined();
+            expect(findFamiliarSpell.source).toBe("Warlock / Pact of the Tome");
+            expect(findFamiliarSpell.ritual).toBe(true);
+
+            // 3. Fighter Level 1 (non-spellcaster class) with Blessed Warrior Fighting Style gets access to Step 8 progression spell picker
+            ctrl.state.classId = "fighter";
+            ctrl.state.level = 1;
+            ctrl.state.subclassId = "";
+            ctrl.state.classes = [{ classId: "fighter", level: 1, subclassId: "" }];
+            ctrl.state.fightingStyle = "blessed-warrior";
+            ctrl.state.invocations = [];
+            ctrl.state.featureSpellChoices = {};
+
+            ctrl.renderStep(3);
+            expect(root.querySelector(".choice-spells-referral-note")?.textContent).toContain("Blessed Warrior");
+
+            ctrl.renderStep(8);
+            const blessedWarriorBox = root.querySelector('.feature-spell-choice-box[data-feature-section-id="fighting-style-blessed-warrior"]');
+            expect(blessedWarriorBox).toBeTruthy();
+            clickFeatureSpell("fighting-style-blessed-warrior", "Thaumaturgy");
+            clickFeatureSpell("fighting-style-blessed-warrior", "Toll the Dead");
+            expect(ctrl.state.featureSpellChoices["fighting-style-blessed-warrior"]).toEqual([
+                "Thaumaturgy",
+                "Toll the Dead"
+            ]);
+
+            const fighterPayload = ctrl.buildPayload();
+            expect(fighterPayload.spells.map((s: any) => s.name)).toContain("Thaumaturgy");
+            expect(fighterPayload.spells.map((s: any) => s.name)).toContain("Toll the Dead");
+            expect(fighterPayload.spells.map((s: any) => s.name)).not.toContain("Sacred Flame");
         });
     });
 });

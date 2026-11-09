@@ -648,6 +648,62 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         ritual: false,
         description: "A wave of thunderous force sweeps out from you. Each creature in a 15-foot cube originating from you must make a Constitution saving throw. On a failed save, a creature takes 2d8 Thunder damage and is pushed 10 feet away."
     },
+    {
+        id: "comprehend-languages",
+        name: "Comprehend Languages",
+        level: 1,
+        school: "Divination",
+        classes: ["Bard", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "Self",
+        components: "V, S, M",
+        duration: "1 hour",
+        concentration: false,
+        ritual: true,
+        description: "For the duration, you understand the literal meaning of any spoken or signed language that you hear or see, and any written language that you touch."
+    },
+    {
+        id: "identify",
+        name: "Identify",
+        level: 1,
+        school: "Divination",
+        classes: ["Bard", "Wizard"],
+        castingTime: "1 Minute",
+        range: "Touch",
+        components: "V, S, M",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: true,
+        description: "You choose one object that you must touch throughout the casting of the spell. If it is a magic item or some other magic-imbued object, you learn its properties and how to use them."
+    },
+    {
+        id: "speak-with-animals",
+        name: "Speak with Animals",
+        level: 1,
+        school: "Divination",
+        classes: ["Bard", "Druid", "Ranger", "Warlock"],
+        castingTime: "1 Action",
+        range: "Self",
+        components: "V, S",
+        duration: "10 minutes",
+        concentration: false,
+        ritual: true,
+        description: "You gain the ability to comprehend and verbally communicate with beasts for the duration."
+    },
+    {
+        id: "unseen-servant",
+        name: "Unseen Servant",
+        level: 1,
+        school: "Conjuration",
+        classes: ["Bard", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V, S, M",
+        duration: "1 hour",
+        concentration: false,
+        ritual: true,
+        description: "This spell creates an invisible, mindless, shapeless, Medium force that performs simple tasks at your command until the spell ends."
+    },
 
     // 2nd-Level Spells
     {
