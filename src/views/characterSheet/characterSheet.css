@@ -262,6 +262,29 @@ el-character-sheet.is-edit-mode .clickable-item-card {
     color: #fca5a5;
 }
 
+.status-msg.warning {
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fcd34d;
+}
+
+.status-dismiss-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 24px;
+    min-height: 24px;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.status-dismiss-btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
 .saved-characters-panel {
     background: var(--surface);
     border: 1px solid var(--border);

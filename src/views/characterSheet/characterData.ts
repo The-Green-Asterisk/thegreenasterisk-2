@@ -172,6 +172,11 @@ export interface CharacterData {
     subtitle: string;
     level: number;
     classes: Array<{ name: string; level: number; subclass?: string }>;
+    /**
+     * Import-only: spells D&D Beyond lists more than once where at least one copy is the player's pick, with where each copy comes from. wastedPicks counts regular
+     * picks of a spell a feature already keeps always prepared.
+     */
+    duplicateSpells?: Array<{ name: string; copies: string[]; wastedPicks: number }>;
     race: string;
     species?: string;
     lineage?: string;

@@ -48,6 +48,13 @@ export function renderLoaderBar(): string {
                     <span>Prefer 2024 rules sources</span>
                 </label>
                 <div id="character-status-message" class="status-msg hidden" role="alert"></div>
+                <div id="character-import-warning" class="status-msg warning hidden" role="alert">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                    <span id="character-import-warning-text"></span>
+                    <button type="button" id="character-import-warning-dismiss" class="status-dismiss-btn" aria-label="Dismiss warning">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
         </section>
     `;

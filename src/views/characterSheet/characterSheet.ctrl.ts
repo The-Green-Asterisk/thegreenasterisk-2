@@ -8,6 +8,7 @@ import { renderAbilityCards } from "./components/abilities";
 import { renderSkills } from "./components/skills";
 import { renderWeapons } from "./components/weapons";
 import { renderActions } from "./components/actions";
+import { describeDuplicateSpells } from "./components/spells";
 import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
 import {
     CharacterSheetContext,
@@ -55,6 +56,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
     const dynamicContainer = sheet.querySelector<HTMLElement>("#character-sheet-dynamic-content");
     const statusMsg = sheet.querySelector<HTMLElement>("#character-status-message");
+    const importWarning = sheet.querySelector<HTMLElement>("#character-import-warning");
+    const importWarningText = sheet.querySelector<HTMLElement>("#character-import-warning-text");
+    sheet.querySelector<HTMLButtonElement>("#character-import-warning-dismiss")?.addEventListener("click", () => clearImportWarning());
     const dndBeyondNote = sheet.querySelector<HTMLElement>("#dnd-beyond-note");
     const idInput = sheet.querySelector<HTMLInputElement>("#dndbeyond-id-input");
     const loadBtn = sheet.querySelector<HTMLButtonElement>("#load-character-btn");
@@ -97,6 +101,25 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (!statusMsg) return;
             statusMsg.className = "status-msg hidden";
         }, 7000);
+    }
+
+    function clearImportWarning() {
+        importWarning?.classList.add("hidden");
+        if (importWarningText) importWarningText.textContent = "";
+    }
+
+    /**
+     * Stays up until dismissed or the next load: names spells the player picked that D&D Beyond also lists elsewhere, so the extra
+     * copies can be fixed there.
+     */
+    function showImportWarning(character: CharacterData) {
+        const message = describeDuplicateSpells(character);
+        if (!message || !importWarning || !importWarningText) {
+            clearImportWarning();
+            return;
+        }
+        importWarningText.textContent = message;
+        importWarning.classList.remove("hidden");
     }
 
     function syncDeathSavesDisplay() {
@@ -604,6 +627,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     }
 
     async function loadSavedCharacterRequest(query: string) {
+        clearImportWarning();
         showStatus("Loading saved character...");
         try {
             const response = await getData<{
@@ -1183,6 +1207,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             loadBtn.disabled = true;
             loadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
         }
+        clearImportWarning();
         showStatus(`Fetching D&D Beyond character #${extractedId}...`);
 
         const currentActiveId = activeCharacter
@@ -1208,6 +1233,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             currentEquipOverrides = [];
             const parsed = parseDndBeyondCharacter(rawData, trimmed);
             ensureBaseScoresOnCharacter(parsed, rawData);
+            showImportWarning(parsed);
 
             if (isSameCharacter && activeCharacter?.lockedFields) {
                 applyLockedFieldsToRefreshedCharacter(parsed, activeCharacter);

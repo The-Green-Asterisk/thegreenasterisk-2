@@ -1340,6 +1340,8 @@ export function parseDndBeyondCharacter(
 
     // 9. Spells Collection
     const spellsMap = new Map<string, SpellDefinition>();
+    type SpellCopy = { kind: "pick" | "always" | "granted"; source: string };
+    const spellCopies = new Map<string, { name: string; copies: SpellCopy[] }>();
 
     function addSpell(s: any, sourceName: string, isFromClassSpells: boolean = false) {
         const def = s.definition;
@@ -1411,6 +1413,16 @@ export function parseDndBeyondCharacter(
             alwaysPrepared: isAlwaysPrepared ? true : undefined
         };
 
+        // Track every copy D&D Beyond lists, by where it came from, to report duplicates on import; and whether any
+        // copy is explicitly always prepared, so a regular pick of that spell never counts against prepared spells
+        const nameKey = def.name.toLowerCase();
+        const copies = spellCopies.get(nameKey) || { name: def.name, copies: [] as SpellCopy[] };
+        copies.copies.push({
+            kind: s.alwaysPrepared === true ? "always" : (isFromClassSpells && s.countsAsKnownSpell !== false ? "pick" : "granted"),
+            source: sourceName
+        });
+        spellCopies.set(nameKey, copies);
+
         const existing = spellsMap.get(def.name.toLowerCase());
         if (existing) {
             if (isFromClassSpells) {
@@ -1452,6 +1464,32 @@ export function parseDndBeyondCharacter(
             addSpell(s, source, false);
         });
     });
+
+    // A spell any feature keeps always prepared never counts against prepared spells, even when the character also
+    // picked it as a regular spell. Duplicates that include one of the player's picks are reported, to fix on D&D Beyond.
+    const duplicateSpells: NonNullable<CharacterData["duplicateSpells"]> = [];
+    spellCopies.forEach(({ name, copies }, nameKey) => {
+        const hasAlways = copies.some(c => c.kind === "always");
+        const kept = spellsMap.get(nameKey);
+        if (kept && hasAlways) kept.alwaysPrepared = true;
+        // Only duplicates the player can fix: at least one copy is a spell they picked. Extra copies D&D Beyond adds
+        // for features (a free daily cast, Mantle of Majesty's Command) aren't reported.
+        if (copies.length < 2 || !copies.some(c => c.kind === "pick")) return;
+
+        const labelCounts = new Map<string, number>();
+        copies.forEach(c => {
+            const label = c.kind === "pick"
+                ? `prepared as a ${c.source} spell`
+                : c.kind === "always" ? `always prepared by ${c.source}` : `granted by ${c.source}`;
+            labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+        });
+        duplicateSpells.push({
+            name,
+            copies: Array.from(labelCounts.entries()).map(([label, n]) => (n > 1 ? `${label} (${n} times)` : label)),
+            wastedPicks: hasAlways ? copies.filter(c => c.kind === "pick").length : 0
+        });
+    });
+    duplicateSpells.sort((a, b) => a.name.localeCompare(b.name));
 
     const spellsList = Array.from(spellsMap.values()).sort((a, b) => {
         if (a.level !== b.level) return a.level - b.level;
@@ -2469,7 +2507,8 @@ export function parseDndBeyondCharacter(
                 new Set(allMods.filter(m => m.type === "language").map(m => m.friendlySubtypeName || m.subType))
             )
         },
-        spells: spellsList
+        spells: spellsList,
+        duplicateSpells: duplicateSpells.length > 0 ? duplicateSpells : undefined
     };
 
     applyGrantedWeapons(result);

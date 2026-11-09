@@ -293,6 +293,22 @@ export function describePreparedByClass(limits: ReturnType<typeof getCharacterSp
     return parts.join(" • ");
 }
 
+/**
+ * "2 spells are duplicated in Darvell's spell list: …" for a D&D Beyond import, or "" when no picked spell is listed twice.
+ */
+export function describeDuplicateSpells(data: Pick<CharacterData, "name" | "duplicateSpells">): string {
+    const dupes = data.duplicateSpells || [];
+    if (dupes.length === 0) return "";
+    const name = (data.name || "This character").trim();
+    const possessive = /s$/i.test(name) ? `${name}'` : `${name}'s`;
+    const one = dupes.length === 1;
+    const details = dupes.map(d => `${d.name} (${d.copies.join("; ")})`).join(", ");
+    const wasted = dupes.reduce((sum, d) => sum + d.wastedPicks, 0);
+    const freed = wasted === 0 ? "" : ` That frees up ${wasted === 1 ? "a prepared spell" : `${wasted} prepared spells`}.`;
+    return `${dupes.length} ${one ? "spell is" : "spells are"} duplicated in ${possessive} spell list: ${details}. ` +
+        `Remove the extra ${dupes.length === 1 && dupes[0].copies.length <= 2 ? "copy" : "copies"} on D&D Beyond.${freed}`;
+}
+
 export function renderSpellCard(spell: SpellDefinition): string {
     const levelText = spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`;
     const concBadge = spell.concentration ? '<span class="badge badge-conc" title="Concentration">Conc</span>' : '';

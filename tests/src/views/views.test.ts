@@ -925,6 +925,55 @@ describe('Frontend View Templates', () => {
         expect(renderSpellCard(base)).not.toContain('Magical Secrets');
     });
 
+    it('does not count a spell picked as a regular spell when a feature already keeps it prepared, and reports duplicates', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { getCharacterSpellLevelLimits, describeDuplicateSpells } = await import('../../../src/views/characterSheet/components/spells');
+        const def = (name: string, level: number) => ({ name, level, school: 'Transmutation', description: `<p>${name}</p>` });
+        const charData = parseDndBeyondCharacter({
+            id: 4242,
+            name: 'Darvell',
+            classes: [{ id: 7, level: 9, definition: { id: 2190885, name: 'Warlock', hitDice: 8 }, subclassDefinition: { id: 99, name: 'Great Old One Patron', classFeatures: [{ id: 555, name: 'Great Old One Spells' }] } }],
+            stats: [{ id: 1, value: 10 }, { id: 2, value: 10 }, { id: 3, value: 10 }, { id: 4, value: 10 }, { id: 5, value: 10 }, { id: 6, value: 16 }],
+            modifiers: {},
+            inventory: [],
+            classSpells: [{ characterClassId: 7, spells: [
+                { definition: def('Telekinesis', 5), countsAsKnownSpell: true, alwaysPrepared: false, spellListId: null },
+                { definition: def('Misty Step', 2), countsAsKnownSpell: true, alwaysPrepared: false, spellListId: null }
+            ] }],
+            spells: { class: [
+                { definition: def('Telekinesis', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: true },
+                { definition: def('Speak with Dead', 3), componentId: 777, countsAsKnownSpell: false, alwaysPrepared: false },
+                // Feature-only duplicate (free daily cast plus slot casting): not the player's pick, so not reported
+                { definition: def('Contact Other Plane', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: false },
+                { definition: def('Contact Other Plane', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: false }
+            ] }
+        });
+
+        expect(charData.spells.find(s => s.name === 'Telekinesis')).toMatchObject({ source: 'Warlock', alwaysPrepared: true });
+        expect(charData.duplicateSpells).toEqual([
+            { name: 'Telekinesis', copies: ['prepared as a Warlock spell', 'always prepared by Great Old One Patron'], wastedPicks: 1 }
+        ]);
+        const warlock = getCharacterSpellLevelLimits(charData).byClass.find(c => c.name === 'Warlock')!;
+        expect(warlock.currentPrepared).toBe(1);
+
+        expect(describeDuplicateSpells(charData)).toBe(
+            "1 spell is duplicated in Darvell's spell list: Telekinesis (prepared as a Warlock spell; always prepared by Great Old One Patron). " +
+            "Remove the extra copy on D&D Beyond. That frees up a prepared spell."
+        );
+        // Any duplicate counts, not just picks of an always-prepared spell
+        expect(describeDuplicateSpells({
+            name: 'Ulfgar Moss',
+            duplicateSpells: [
+                { name: 'Darkness', copies: ['granted by Race (2 times)'], wastedPicks: 0 },
+                { name: 'Shield', copies: ['prepared as a Sorcerer spell', 'prepared as a Wizard spell'], wastedPicks: 0 }
+            ]
+        })).toBe(
+            "2 spells are duplicated in Ulfgar Moss' spell list: Darkness (granted by Race (2 times)), Shield (prepared as a Sorcerer spell; prepared as a Wizard spell). " +
+            "Remove the extra copies on D&D Beyond."
+        );
+        expect(describeDuplicateSpells({ name: 'Nobody', duplicateSpells: undefined })).toBe('');
+    });
+
     it('does not give non-casters a cantrip allotment', async () => {
         const { getCharacterSpellLevelLimits } = await import('../../../src/views/characterSheet/components/spells');
         const limits = getCharacterSpellLevelLimits({
