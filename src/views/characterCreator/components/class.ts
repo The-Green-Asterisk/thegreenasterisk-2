@@ -1638,10 +1638,11 @@ import { CharacterCreatorContext } from "../controllers/context";
             }
 
             const choicesHtml = renderLevelChoices(ctx, cls, lvl, classIdx, resolvedSubId, isUnlocked);
+            const isCollapsed = ctx.collapsedProgressionLevels?.has(`${classIdx}-${lvl}`);
 
             const boxHtml = `
-                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}" data-class-index="${classIdx}" data-level="${lvl}">
-                    <div class="level-card-header">
+                <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}${isCollapsed ? " is-collapsed" : ""}" data-class-index="${classIdx}" data-level="${lvl}">
+                    <div class="level-card-header" role="button" tabindex="0" title="Click to ${isCollapsed ? "expand" : "collapse"} Level ${lvl} details">
                         <div class="level-header-title">
                             <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" role="button" tabindex="0" title="${isUnlocked ? (lvl === charLevel ? `Click to lock ${cls.name} Level ${lvl}` : `Click to set ${cls.name} to Level ${lvl}`) : `Click to unlock ${cls.name} Level ${lvl}`}" data-class-index="${classIdx}" data-level="${lvl}">
                                 ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Level ${lvl}
@@ -1654,24 +1655,29 @@ import { CharacterCreatorContext } from "../controllers/context";
                             <span class="progression-status-pill ${isUnlocked ? "status-unlocked" : "status-locked"}">
                                 ${isUnlocked ? `<i class="fa-solid fa-circle-check"></i> Active` : `<i class="fa-solid fa-lock"></i> Click badge to unlock`}
                             </span>
+                            <button type="button" class="level-collapse-btn" aria-label="${isCollapsed ? "Expand" : "Collapse"} Level ${lvl}" aria-expanded="${!isCollapsed}" data-class-index="${classIdx}" data-level="${lvl}">
+                                <i class="fa-solid fa-chevron-down level-collapse-icon"></i>
+                            </button>
                         </div>
                     </div>
 
-                    ${featuresAtLvl.length > 0 ? `
-                        <div class="level-abilities-grid">
-                            ${featuresAtLvl.map((f) => `
-                                <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
-                                    <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
-                                        ${getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature), Boolean((f as any).isGrantedSpell))}
+                    <div class="level-progression-body${isCollapsed ? " is-collapsed" : ""}"${isCollapsed ? ' style="display: none;"' : ""}>
+                        ${featuresAtLvl.length > 0 ? `
+                            <div class="level-abilities-grid">
+                                ${featuresAtLvl.map((f) => `
+                                    <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
+                                        <div class="card-title-row">
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
+                                            ${getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature), Boolean((f as any).isGrantedSpell))}
+                                        </div>
+                                        <p class="card-body">${f.description}</p>
                                     </div>
-                                    <p class="card-body">${f.description}</p>
-                                </div>
-                            `).join("")}
-                        </div>
-                    ` : ""}
+                                `).join("")}
+                            </div>
+                        ` : ""}
 
-                    ${choicesHtml}
+                        ${choicesHtml}
+                    </div>
                 </div>
             `;
 
@@ -1686,8 +1692,16 @@ import { CharacterCreatorContext } from "../controllers/context";
                             <i class="fa-solid fa-layer-group"></i> ${cls.name} Level Progression (Levels 1–20)
                         </h4>
                         <p class="card-body" style="margin: 0.25rem 0 0;">
-                            New abilities, features, and choices gained at each level for the ${cls.name} class. Click a level badge to unlock or set your level in this class. Currently Level ${charLevel}.
+                            New abilities, features, and choices gained at each level for the ${cls.name} class. Click a level badge to unlock or set your level in this class. Currently Level ${charLevel}. Click any level header to collapse or expand it.
                         </p>
+                    </div>
+                    <div class="progression-header-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                        <button type="button" class="btn btn-secondary btn-sm progression-toggle-all-btn" data-action="collapse-all" data-class-index="${classIdx}">
+                            <i class="fa-solid fa-compress"></i> Collapse All
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm progression-toggle-all-btn" data-action="expand-all" data-class-index="${classIdx}">
+                            <i class="fa-solid fa-expand"></i> Expand All
+                        </button>
                     </div>
                 </div>
             </div>

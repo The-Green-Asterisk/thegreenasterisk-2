@@ -705,6 +705,64 @@ describe("CharacterCreatorController", () => {
         expect(container.querySelector(".progression-timeline")).toBeNull();
     });
 
+    it("makes each level progression collapsible and supports toggle all", () => {
+        const ctrl = new CharacterCreatorController();
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+
+        ctrl.state.classId = "fighter";
+        ctrl.state.level = 3;
+        ctrl.syncStateClassProperties();
+        ctrl.renderStep(3);
+
+        const container = document.getElementById("creator-step-panels")!;
+        const lvl1Box = container.querySelector('.level-progression-box[data-level="1"]') as HTMLElement;
+        const lvl1Header = lvl1Box.querySelector(".level-card-header") as HTMLElement;
+        const lvl1Body = lvl1Box.querySelector(".level-progression-body") as HTMLElement;
+        const lvl1CollapseBtn = lvl1Box.querySelector(".level-collapse-btn") as HTMLElement;
+
+        expect(lvl1Box).not.toBeNull();
+        expect(lvl1Header).not.toBeNull();
+        expect(lvl1Body).not.toBeNull();
+        expect(lvl1CollapseBtn).not.toBeNull();
+        expect(lvl1Box.classList.contains("is-collapsed")).toBe(false);
+
+        // Click header to collapse
+        lvl1Header.click();
+        expect(lvl1Box.classList.contains("is-collapsed")).toBe(true);
+        expect(lvl1Body.style.display).toBe("none");
+        expect(lvl1CollapseBtn.getAttribute("aria-expanded")).toBe("false");
+        expect(ctrl.collapsedProgressionLevels.has("0-1")).toBe(true);
+
+        // Click header again to expand
+        lvl1Header.click();
+        expect(lvl1Box.classList.contains("is-collapsed")).toBe(false);
+        expect(lvl1Body.style.display).toBe("");
+        expect(lvl1CollapseBtn.getAttribute("aria-expanded")).toBe("true");
+        expect(ctrl.collapsedProgressionLevels.has("0-1")).toBe(false);
+
+        // Clicking the badge does NOT collapse the box
+        const lvl1Badge = lvl1Box.querySelector('.progression-lvl-badge[data-level="1"]') as HTMLElement;
+        lvl1Badge.click();
+        expect(lvl1Box.classList.contains("is-collapsed")).toBe(false);
+
+        // Collapse All button collapses all 20 levels
+        const collapseAllBtn = container.querySelector('.progression-toggle-all-btn[data-action="collapse-all"]') as HTMLElement;
+        expect(collapseAllBtn).not.toBeNull();
+        collapseAllBtn.click();
+
+        const allBoxes = container.querySelectorAll(".level-progression-box");
+        expect(Array.from(allBoxes).every((b) => b.classList.contains("is-collapsed"))).toBe(true);
+        expect(ctrl.collapsedProgressionLevels.size).toBe(20);
+
+        // Expand All button expands all levels
+        const expandAllBtn = container.querySelector('.progression-toggle-all-btn[data-action="expand-all"]') as HTMLElement;
+        expect(expandAllBtn).not.toBeNull();
+        expandAllBtn.click();
+
+        expect(Array.from(allBoxes).every((b) => !b.classList.contains("is-collapsed"))).toBe(true);
+        expect(ctrl.collapsedProgressionLevels.size).toBe(0);
+    });
+
     it("unlocks levels by clicking the progression-lvl-badge and supports adding multiclass with navigation buttons", () => {
         const ctrl = new CharacterCreatorController();
         document.body.innerHTML = '<div id="creator-step-panels"></div>';

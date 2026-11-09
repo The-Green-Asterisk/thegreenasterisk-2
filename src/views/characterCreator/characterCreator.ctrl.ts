@@ -132,6 +132,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public activeSpellClassFilter: string = "all";
     public spellSearchQuery: string = "";
     public progressionExpanded: boolean = false;
+    public collapsedProgressionLevels: Set<string> = new Set<string>();
     public progressionFilter: "all" | "unlocked" = "all";
     public spellsWarningDismissed: boolean = false;
 

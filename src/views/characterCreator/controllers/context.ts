@@ -22,6 +22,7 @@ export interface CharacterCreatorContext {
     activeSpellClassFilter: string;
     spellSearchQuery: string;
     progressionExpanded: boolean;
+    collapsedProgressionLevels: Set<string>;
     progressionFilter: "all" | "unlocked";
     spellsWarningDismissed: boolean;
 

@@ -1678,7 +1678,7 @@ el-character-creator,
 .level-progression-box.locked .skill-checkbox-card,
 .level-progression-box.locked select,
 .level-progression-box.locked input,
-.level-progression-box.locked button:not(.progression-lvl-badge),
+.level-progression-box.locked button:not(.progression-lvl-badge):not(.level-collapse-btn),
 .select-card.disabled,
 .skill-checkbox-card.disabled {
     pointer-events: none !important;
@@ -2014,8 +2014,69 @@ el-character-creator,
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.75rem;
-    padding-bottom: 0.75rem;
+    padding: 0.25rem 0.35rem 0.75rem;
     border-bottom: 1px solid var(--border-soft);
+    cursor: pointer;
+    user-select: none;
+    border-radius: var(--radius-sm);
+    transition: background-color 0.15s ease, padding 0.15s ease;
+}
+
+.level-card-header:hover {
+    background-color: var(--surface-hover, rgba(255, 255, 255, 0.03));
+}
+
+.level-collapse-btn {
+    background: transparent;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s ease;
+    pointer-events: auto !important;
+}
+
+.level-card-header:hover .level-collapse-btn,
+.level-collapse-btn:hover {
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.level-collapse-icon {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+}
+
+.level-progression-box.is-collapsed .level-collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.level-progression-box.is-collapsed {
+    padding-bottom: 0.85rem;
+    gap: 0;
+}
+
+.level-progression-box.is-collapsed .level-card-header {
+    border-bottom: none;
+    padding-bottom: 0.25rem;
+}
+
+.level-progression-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.level-progression-box.is-collapsed .level-progression-body {
+    display: none;
 }
 
 .level-header-title {

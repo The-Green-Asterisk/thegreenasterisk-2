@@ -49,6 +49,78 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
+    // Collapsible Level Progression
+    const toggleBoxCollapse = (box: HTMLElement) => {
+        const cIdx = box.getAttribute("data-class-index") || "0";
+        const lvl = box.getAttribute("data-level") || "1";
+        const key = `${cIdx}-${lvl}`;
+        const isCollapsed = box.classList.toggle("is-collapsed");
+        if (isCollapsed) {
+            ctx.collapsedProgressionLevels.add(key);
+        } else {
+            ctx.collapsedProgressionLevels.delete(key);
+        }
+        const body = box.querySelector(".level-progression-body") as HTMLElement | null;
+        if (body) {
+            body.style.display = isCollapsed ? "none" : "";
+        }
+        const btn = box.querySelector(".level-collapse-btn") as HTMLElement | null;
+        if (btn) {
+            btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+        }
+        const header = box.querySelector(".level-card-header") as HTMLElement | null;
+        if (header) {
+            header.setAttribute("title", `Click to ${isCollapsed ? "expand" : "collapse"} Level ${lvl} details`);
+        }
+    };
+
+    document.querySelectorAll(".level-card-header").forEach((header) => {
+        header.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest(".progression-lvl-badge")) return;
+            const box = header.closest(".level-progression-box") as HTMLElement | null;
+            if (box) toggleBoxCollapse(box);
+        });
+        header.addEventListener("keydown", (e: any) => {
+            if (e.key === "Enter" || e.key === " ") {
+                const target = e.target as HTMLElement;
+                if (target.closest(".progression-lvl-badge")) return;
+                e.preventDefault();
+                const box = header.closest(".level-progression-box") as HTMLElement | null;
+                if (box) toggleBoxCollapse(box);
+            }
+        });
+    });
+
+    document.querySelectorAll(".progression-toggle-all-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const action = btn.getAttribute("data-action");
+            const cIdx = btn.getAttribute("data-class-index") || "0";
+            const boxes = Array.from(document.querySelectorAll(`.level-progression-box[data-class-index="${cIdx}"]`)) as HTMLElement[];
+            if (action === "collapse-all") {
+                boxes.forEach((box) => {
+                    const lvl = box.getAttribute("data-level") || "1";
+                    ctx.collapsedProgressionLevels.add(`${cIdx}-${lvl}`);
+                    box.classList.add("is-collapsed");
+                    const body = box.querySelector(".level-progression-body") as HTMLElement | null;
+                    if (body) body.style.display = "none";
+                    const collapseBtn = box.querySelector(".level-collapse-btn") as HTMLElement | null;
+                    if (collapseBtn) collapseBtn.setAttribute("aria-expanded", "false");
+                });
+            } else if (action === "expand-all") {
+                boxes.forEach((box) => {
+                    const lvl = box.getAttribute("data-level") || "1";
+                    ctx.collapsedProgressionLevels.delete(`${cIdx}-${lvl}`);
+                    box.classList.remove("is-collapsed");
+                    const body = box.querySelector(".level-progression-body") as HTMLElement | null;
+                    if (body) body.style.display = "";
+                    const collapseBtn = box.querySelector(".level-collapse-btn") as HTMLElement | null;
+                    if (collapseBtn) collapseBtn.setAttribute("aria-expanded", "true");
+                });
+            }
+        });
+    });
+
     document.querySelectorAll(".progression-lvl-badge").forEach((badge) => {
         badge.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -64,6 +136,8 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                     ctx.state.level = targetLvl;
                 }
                 ctx.state.level = ctx.getTotalLevel();
+                // Ensure the clicked level is expanded so user sees its features
+                ctx.collapsedProgressionLevels.delete(`${cIdx}-${targetLvl}`);
                 ctx.syncStateClassProperties();
                 ctx.sanitizeSpellSelections();
                 ctx.updateLiveSummary();
