@@ -338,6 +338,76 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         ritual: false,
         description: "You unleash a string of insults laced with subtle enchantments at a creature within range. If the target can hear you, it must succeed on a Wisdom saving throw or take 1d4 Psychic damage and have Disadvantage on its next attack roll before the end of its next turn."
     },
+    {
+        id: "infestation",
+        name: "Infestation",
+        level: 0,
+        school: "Conjuration",
+        classes: ["Druid", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "30 feet",
+        components: "V, S, M",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "You cause a cloud of mites, fleas, and other parasites to appear momentarily on one creature you can see within range. The target must succeed on a Constitution saving throw, or it takes 1d6 Poison damage and moves 5 feet in a random direction (scales by level)."
+    },
+    {
+        id: "sword-burst",
+        name: "Sword Burst",
+        level: 0,
+        school: "Conjuration",
+        classes: ["Artificer", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "5 feet",
+        components: "V",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "You create a momentary circle of spectral blades that sweep around you. All other creatures within 5 feet of you must succeed on a Dexterity saving throw or take 1d6 Force damage (scales by level)."
+    },
+    {
+        id: "friends",
+        name: "Friends",
+        level: 0,
+        school: "Enchantment",
+        classes: ["Bard", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "Self",
+        components: "S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you. When the spell ends, the creature realizes that you used magic to influence its mood and becomes hostile toward you."
+    },
+    {
+        id: "mind-sliver",
+        name: "Mind Sliver",
+        level: 0,
+        school: "Enchantment",
+        classes: ["Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V",
+        duration: "1 round",
+        concentration: false,
+        ritual: false,
+        description: "You drive a disorienting spike of psychic energy into the mind of one creature you can see within range. The target must succeed on an Intelligence saving throw or take 1d6 Psychic damage and subtract 1d4 from the next saving throw it makes before the end of your next turn (scales by level)."
+    },
+    {
+        id: "lightning-lure",
+        name: "Lightning Lure",
+        level: 0,
+        school: "Evocation",
+        classes: ["Artificer", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "15 feet",
+        components: "V",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "You create a lash of lightning energy that strikes at one creature of your choice that you can see within 15 feet of you. The target must succeed on a Strength saving throw or be pulled up to 10 feet in a straight line toward you and then take 1d8 Lightning damage if it is within 5 feet of you (scales by level)."
+    },
 
     // 1st-Level Spells
     {
@@ -718,6 +788,76 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         ritual: true,
         description: "This spell creates an invisible, mindless, shapeless, Medium force that performs simple tasks at your command until the spell ends."
     },
+    {
+        id: "arms-of-hadar",
+        name: "Arms of Hadar",
+        level: 1,
+        school: "Conjuration",
+        classes: ["Warlock"],
+        castingTime: "1 Action",
+        range: "Self (10-foot radius)",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "Tendrils of dark energy erupt from you and batter all creatures within 10 feet of you. Each creature must make a Strength saving throw, taking 2d6 Necrotic damage and losing reactions until its next turn on a failed save, or half damage on a success."
+    },
+    {
+        id: "command",
+        name: "Command",
+        level: 1,
+        school: "Enchantment",
+        classes: ["Bard", "Cleric", "Paladin"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V",
+        duration: "1 round",
+        concentration: false,
+        ritual: false,
+        description: "You speak a one-word command to a creature you can see within range. The target must succeed on a Wisdom saving throw or follow the command on its next turn."
+    },
+    {
+        id: "tashas-hideous-laughter",
+        name: "Tasha's Hideous Laughter",
+        level: 1,
+        school: "Enchantment",
+        classes: ["Bard", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "30 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "A creature of your choice within range perceives everything as humorously comical and must succeed on a Wisdom saving throw or fall Prone, becoming Incapacitated with laughter for the duration."
+    },
+    {
+        id: "witch-bolt",
+        name: "Witch Bolt",
+        level: 1,
+        school: "Evocation",
+        classes: ["Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "30 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "A beam of crackling blue energy lances out toward a creature within range. Make a ranged spell attack. On a hit, the target takes 2d12 Lightning damage, and on each of your turns for the duration, you can use your action to deal 1d12 Lightning damage automatically."
+    },
+    {
+        id: "cause-fear",
+        name: "Cause Fear",
+        level: 1,
+        school: "Necromancy",
+        classes: ["Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "You awaken the sense of mortality in one creature you can see within range. A Construct or an Undead is immune to this effect. The target must succeed on a Wisdom saving throw or become Frightened of you until the spell ends."
+    },
 
     // 2nd-Level Spells
     {
@@ -1000,6 +1140,76 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         ritual: false,
         description: "You conjure a mass of thick, sticky webbing at a point within range. The webs fill a 20-foot cube and cause creatures that enter or start their turns in them to make a Dexterity save or be Restrained."
     },
+    {
+        id: "cloud-of-daggers",
+        name: "Cloud of Daggers",
+        level: 2,
+        school: "Conjuration",
+        classes: ["Bard", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "You conjure spinning daggers in a 5-foot Cube centered on a point within range. Each creature in that area takes 4d4 Slashing damage when the spell is cast, enters the area, or ends its turn there. You can move the cube up to 30 feet as an action on later turns."
+    },
+    {
+        id: "crown-of-madness",
+        name: "Crown of Madness",
+        level: 2,
+        school: "Enchantment",
+        classes: ["Bard", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "120 feet",
+        components: "V, S",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "One creature that you can see within range must succeed on a Wisdom saving throw or have the Charmed condition for the duration. A spectral crown appears on its head, and it must make a melee attack against a creature of your choice on each of its turns."
+    },
+    {
+        id: "shadow-blade",
+        name: "Shadow Blade",
+        level: 2,
+        school: "Illusion",
+        classes: ["Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Bonus Action",
+        range: "Self",
+        components: "V, S",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "You weave threads of shadow to create a sword of solidified gloom in your hand. It counts as a simple melee weapon with Finesse, Light, and Thrown (20/60) that deals 2d8 Psychic damage, attacking with Advantage in Dim Light or Darkness."
+    },
+    {
+        id: "enthrall",
+        name: "Enthrall",
+        level: 2,
+        school: "Enchantment",
+        classes: ["Bard", "Warlock"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V, S",
+        duration: "1 minute",
+        concentration: false,
+        ritual: false,
+        description: "You weave a distracting string of words, causing creatures of your choice that you can see within range to make a Wisdom saving throw. Any creature that fails has disadvantage on Wisdom (Perception) checks made to perceive any creature other than you until the spell ends or until the target can no longer hear you."
+    },
+    {
+        id: "mind-spike",
+        name: "Mind Spike",
+        level: 2,
+        school: "Divination",
+        classes: ["Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "S",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "You reach into the mind of one creature to deal 3d8 Psychic damage on a failed Wisdom saving throw, or half as much on a success. On a failed save, you also always know the target's location until the spell ends, but only while both of you are on the same plane of existence."
+    },
 
     // 3rd-Level Spells
     {
@@ -1198,6 +1408,48 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         ritual: false,
         description: "Spirits flit around you in a 15-foot emanation. An affected creature's speed is halved in the area, and when it enters or ends its turn there, it makes a Wisdom save, taking 3d8 Radiant or Necrotic damage on a failure."
     },
+    {
+        id: "magic-circle",
+        name: "Magic Circle",
+        level: 3,
+        school: "Abjuration",
+        classes: ["Cleric", "Paladin", "Warlock", "Wizard"],
+        castingTime: "1 Minute",
+        range: "10 feet",
+        components: "V, S, M",
+        duration: "1 hour",
+        concentration: false,
+        ritual: false,
+        description: "You create a 10-foot-radius, 20-foot-tall Cylinder of magical energy to protect against Celestials, Elementals, Fey, Fiends, or Undead, preventing them from willingly entering or charming/frightening targets within."
+    },
+    {
+        id: "major-image",
+        name: "Major Image",
+        level: 3,
+        school: "Illusion",
+        classes: ["Bard", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "120 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 10 minutes",
+        concentration: true,
+        ritual: false,
+        description: "You create the image of an object, a creature, or some other visible phenomenon no larger than a 20-foot Cube, complete with sounds, smells, and temperature appropriate to the illusion."
+    },
+    {
+        id: "speak-with-dead",
+        name: "Speak with Dead",
+        level: 3,
+        school: "Necromancy",
+        classes: ["Bard", "Cleric"],
+        castingTime: "1 Action",
+        range: "10 feet",
+        components: "V, S, M",
+        duration: "10 minutes",
+        concentration: false,
+        ritual: false,
+        description: "You grant the semblance of life to a corpse of your choice within range, allowing it to answer up to five questions you pose."
+    },
 
     // 4th-Level Spells
     {
@@ -1283,6 +1535,20 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         concentration: true,
         ritual: false,
         description: "You create a wall of fire on a solid surface within range. The wall can be up to 60 feet long, 20 feet high, and 1 foot thick. Creatures entering or ending their turn within 10 feet of its chosen side take 5d8 Fire damage."
+    },
+    {
+        id: "doomtide",
+        name: "Doomtide",
+        level: 4,
+        school: "Illusion",
+        classes: ["Warlock"],
+        castingTime: "1 Action",
+        range: "80 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "You summon a cloud of black, illusory mist in an 80-foot sphere centered on yourself. The mist fills the area and spreads around corners, heavily obscuring the area. The mist lasts for the duration or until a wind of moderate or greater speed (at least 10 miles per hour) disperses it."
     },
 
     // 5th-Level Spells
@@ -1383,6 +1649,76 @@ export const SPELLS_2024: RuleSpellDefinition[] = [
         concentration: true,
         ritual: false,
         description: "An invisible wall of force springs into existence at a point you choose within range. The wall appears in any orientation you choose as a flat wall, dome, or sphere. Nothing can physically pass through it, and it is immune to all damage."
+    },
+    {
+        id: "yolandes-regal-presence",
+        name: "Yolande's Regal Presence",
+        level: 5,
+        school: "Enchantment",
+        classes: ["Bard"],
+        castingTime: "1 Action",
+        range: "Self",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "You cloak yourself in an aura of majesty in a 10-foot emanation. Each creature of your choice that starts its turn in the aura must make a Wisdom saving throw or take 4d6 Psychic damage and have the Prone condition. As a Bonus Action, you can push a creature in the aura 10 feet away."
+    },
+    {
+        id: "synaptic-static",
+        name: "Synaptic Static",
+        level: 5,
+        school: "Enchantment",
+        classes: ["Bard", "Sorcerer", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "120 feet",
+        components: "V, S",
+        duration: "Instantaneous",
+        concentration: false,
+        ritual: false,
+        description: "You cause psychic energy to erupt at a point within range. Each creature in a 20-foot-radius sphere must make an Intelligence saving throw. On a failed save, a creature takes 8d6 Psychic damage and subtracts 1d6 from all attack rolls, ability checks, and Concentration saves for 1 minute."
+    },
+    {
+        id: "summon-dragon",
+        name: "Summon Dragon",
+        level: 5,
+        school: "Conjuration",
+        classes: ["Bard", "Druid", "Sorcerer", "Wizard"],
+        castingTime: "1 Action",
+        range: "90 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "You call forth a draconic spirit. It manifests in an unoccupied space that you can see within range. This corporeal form uses the Draconic Spirit stat block. The creature is an ally to you and your companions and obeys your verbal commands in combat."
+    },
+    {
+        id: "telekinesis",
+        name: "Telekinesis",
+        level: 5,
+        school: "Transmutation",
+        classes: ["Bard", "Sorcerer", "Wizard"],
+        castingTime: "1 Action",
+        range: "60 feet",
+        components: "V, S",
+        duration: "Concentration, up to 10 minutes",
+        concentration: true,
+        ritual: false,
+        description: "You gain the ability to move or manipulate creatures or objects by thought. When you cast the spell, and as an action on each subsequent turn before the spell ends, you can direct your telekinetic will toward one creature or object that you can see within range."
+    },
+    {
+        id: "mislead",
+        name: "Mislead",
+        level: 5,
+        school: "Illusion",
+        classes: ["Bard", "Warlock", "Wizard"],
+        castingTime: "1 Action",
+        range: "Self",
+        components: "S",
+        duration: "Concentration, up to 1 hour",
+        concentration: true,
+        ritual: false,
+        description: "You become Invisible at the same time that an illusory double of you appears where you are standing. As an action, you can move the illusory double up to twice your speed and make it gesture, speak, and behave in whatever way you choose."
     },
 
     // 6th-Level Spells

@@ -6,11 +6,12 @@ import { renderFeatures } from "./features";
 import { renderHeroSection } from "./hero";
 import { renderSpellSlotsAndResources } from "./resources";
 import { renderSkills } from "./skills";
-import { renderSpellsByLevel } from "./spells";
+import { getCharacterSpellLevelLimits, renderSpellsByLevel } from "./spells";
 import { renderSavingThrowNotes, renderVitalsSection } from "./vitals";
 import { renderWeapons } from "./weapons";
 
 export function renderSheetContent(data: CharacterData): string {
+    const limits = getCharacterSpellLevelLimits(data);
     const spellsList = data.spells || [];
     const cantripsCount = spellsList.filter(s => s.level === 0).length;
     const lvl1Count = spellsList.filter(s => s.level === 1).length;
@@ -106,6 +107,11 @@ export function renderSheetContent(data: CharacterData): string {
                         <button class="filter-chip" data-filter="ritual">Rituals</button>
                     </div>
                     <div class="spell-header-actions">
+                        ${limits.maxPrepared > 0 ? `
+                            <div class="spell-pool-badge ${limits.isPreparedOverLimit ? 'over-limit' : ''}" title="Prepared Spells (Levels 1+): ${limits.currentPrepared} prepared / ${limits.maxPrepared} allowed across all spell levels">
+                                <i class="fa-solid fa-book-bookmark"></i> Prepared: <strong>${limits.currentPrepared}/${limits.maxPrepared}</strong>
+                            </div>
+                        ` : ''}
                         <button class="manage-spells-btn" id="open-manage-spells-btn" title="Search database spells and manage character spell list by level">
                             <i class="fa-solid fa-book-bookmark"></i> Manage Spells
                         </button>

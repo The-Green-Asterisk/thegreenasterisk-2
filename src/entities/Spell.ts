@@ -12,6 +12,7 @@ export default class Spell {
     concentration!: boolean;
     ritual!: boolean;
     description!: string;
+    classes?: string;
     imageUrl?: string;
     dndBeyondId?: number;
     isCustom!: boolean;

@@ -3,6 +3,7 @@ import cache from "../cache";
 import AppDataSource from "../services/database";
 import { Spell } from "../services/database/entity/Spell";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
+import { SEED_SPELLS } from "../services/database/spellsSeed";
 import BaseController from "./baseController";
 
 function slugify(text: string): string {
@@ -90,6 +91,9 @@ export default class SpellController extends BaseController {
                     const duration = String(rawSpell.duration || "Instantaneous").slice(0, 100);
                     const components = String(rawSpell.components || "V, S");
                     const imageUrl = rawSpell.imageUrl ? String(rawSpell.imageUrl).slice(0, 500) : undefined;
+                    const classesVal = Array.isArray(rawSpell.classes)
+                        ? JSON.stringify(rawSpell.classes)
+                        : (typeof rawSpell.classes === "string" ? rawSpell.classes : undefined);
 
                     if (!existing) {
                         const created = spellRepo.create({
@@ -105,6 +109,7 @@ export default class SpellController extends BaseController {
                             concentration: !!rawSpell.concentration,
                             ritual: !!rawSpell.ritual,
                             description: finalDescription,
+                            classes: classesVal,
                             imageUrl,
                             dndBeyondId,
                             isCustom: false
@@ -120,6 +125,10 @@ export default class SpellController extends BaseController {
                             continue;
                         }
 
+                        if (classesVal && !existing.classes) {
+                            existing.classes = classesVal;
+                        }
+
                         if (existingIsLegacy || !existing.description || existing.description === "<p>No description provided.</p>") {
                             // Prefer the definition from the character pull over free online sources, or upgrade legacy to 2024
                             existing.name = name;
@@ -133,6 +142,7 @@ export default class SpellController extends BaseController {
                             existing.concentration = !!rawSpell.concentration;
                             existing.ritual = !!rawSpell.ritual;
                             existing.description = finalDescription;
+                            if (classesVal) existing.classes = classesVal;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
 
@@ -140,6 +150,8 @@ export default class SpellController extends BaseController {
                             cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                             cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                             savedCount++;
+                        } else if (classesVal && !existing.classes) {
+                            await spellRepo.save(existing);
                         }
                     }
                 } catch (spellErr) {
@@ -151,6 +163,148 @@ export default class SpellController extends BaseController {
         }
 
         return savedCount;
+    }
+
+    public static async seedDefaultSpellsIfEmpty(): Promise<void> {
+        if (!AppDataSource.isInitialized) return;
+        try {
+            const spellRepo = AppDataSource.getRepository(Spell);
+            const count = await spellRepo.count();
+            if (count >= SEED_SPELLS.length) return;
+
+            for (const sp of SEED_SPELLS) {
+                const slug = (sp.id || slugify(sp.name)).slice(0, 255);
+                let existing = await spellRepo.findOne({ where: { slug } });
+                const classesJson = JSON.stringify(sp.classes || []);
+                if (!existing) {
+                    const created = spellRepo.create({
+                        slug,
+                        name: sp.name,
+                        level: sp.level,
+                        school: sp.school,
+                        source: "2024 Core Rules",
+                        castingTime: sp.castingTime,
+                        range: sp.range,
+                        duration: sp.duration,
+                        components: sp.components,
+                        concentration: !!sp.concentration,
+                        ritual: !!sp.ritual,
+                        description: sp.description,
+                        classes: classesJson,
+                        isCustom: false
+                    });
+                    await spellRepo.save(created);
+                } else if (!existing.classes) {
+                    existing.classes = classesJson;
+                    await spellRepo.save(existing);
+                }
+            }
+        } catch (err) {
+            console.warn("Could not seed default spells:", err);
+        }
+    }
+
+    public static async upsertSpellsFromDndBeyond(rawCharacter: any): Promise<number> {
+        if (!rawCharacter || typeof rawCharacter !== "object") return 0;
+        const spellsToUpsert: any[] = [];
+        const classes = Array.isArray(rawCharacter.classes) ? rawCharacter.classes : [];
+
+        // 1. Class spells
+        if (Array.isArray(rawCharacter.classSpells)) {
+            for (const cs of rawCharacter.classSpells) {
+                const classObj = classes.find((c: any) => c.id === cs.characterClassId);
+                const className = classObj?.definition?.name || "Class";
+                for (const s of (cs.spells || [])) {
+                    if (s.definition) {
+                        spellsToUpsert.push({
+                            ...s.definition,
+                            classes: [className],
+                            source: className
+                        });
+                    }
+                }
+            }
+        }
+
+        // 2. Feature / race / feat / item spells
+        if (rawCharacter.spells && typeof rawCharacter.spells === "object") {
+            for (const [key, list] of Object.entries(rawCharacter.spells)) {
+                if (Array.isArray(list)) {
+                    for (const s of list as any[]) {
+                        if (s.definition) {
+                            spellsToUpsert.push({
+                                ...s.definition,
+                                source: key
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if (spellsToUpsert.length === 0) return 0;
+        return this.upsertSpellsFromCharacter(spellsToUpsert);
+    }
+
+    public static async getSpells(_req: http.IncomingMessage, _res: http.ServerResponse) {
+        if (!AppDataSource.isInitialized) {
+            return {
+                response: JSON.stringify({ spells: SEED_SPELLS }),
+                header: "application/json",
+                status: 200
+            };
+        }
+        try {
+            await this.seedDefaultSpellsIfEmpty();
+            const spellRepo = AppDataSource.getRepository(Spell);
+            const dbSpells = await spellRepo.find({
+                order: {
+                    level: "ASC",
+                    name: "ASC"
+                }
+            });
+            const mapped = dbSpells.map((s) => {
+                let classes: string[] = [];
+                if (s.classes) {
+                    try {
+                        const parsed = JSON.parse(s.classes);
+                        if (Array.isArray(parsed)) classes = parsed;
+                        else if (typeof s.classes === "string") classes = s.classes.split(",").map((c: string) => c.trim()).filter(Boolean);
+                    } catch {
+                        classes = String(s.classes).split(",").map((c: string) => c.trim()).filter(Boolean);
+                    }
+                }
+                return {
+                    id: s.slug || String(s.id),
+                    slug: s.slug,
+                    name: s.name,
+                    level: Number(s.level) || 0,
+                    school: s.school,
+                    classes,
+                    castingTime: s.castingTime,
+                    range: s.range,
+                    duration: s.duration,
+                    components: s.components || "V, S",
+                    concentration: Boolean(s.concentration),
+                    ritual: Boolean(s.ritual),
+                    description: s.description,
+                    imageUrl: s.imageUrl,
+                    source: s.source
+                };
+            });
+            return {
+                response: JSON.stringify({ spells: mapped }),
+                header: "application/json",
+                status: 200
+            };
+        } catch (error) {
+            console.error("Error fetching database spells:", error);
+            return {
+                response: JSON.stringify({ spells: SEED_SPELLS }),
+                header: "application/json",
+                status: 200
+            };
+        }
     }
 
     public static async syncCharacterSpells(req: http.IncomingMessage, _res: http.ServerResponse) {
@@ -189,6 +343,7 @@ export default class SpellController extends BaseController {
         }
 
         try {
+            await this.seedDefaultSpellsIfEmpty();
             const spellRepo = AppDataSource.getRepository(Spell);
             const allSpells = await spellRepo.find({
                 order: {
@@ -263,6 +418,7 @@ export default class SpellController extends BaseController {
         // STEP 1: Check Local Database
         try {
             if (AppDataSource.isInitialized) {
+                await this.seedDefaultSpellsIfEmpty();
                 const spellRepo = AppDataSource.getRepository(Spell);
                 let dbSpell: Spell | null = null;
                 if (slug) {

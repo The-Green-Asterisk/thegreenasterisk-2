@@ -228,4 +228,104 @@ describe('SpellController', () => {
             expect(existingLegacySpell.description).not.toContain('<strong class="legacy-badge">[Legacy]</strong>');
         });
     });
+
+    describe('getSpells', () => {
+        it('returns all spells from database when initialized', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const mockSpells = [
+                { id: 1, name: 'Acid Splash', level: 0, school: 'Evocation' },
+                { id: 2, name: 'Fireball', level: 3, school: 'Evocation' }
+            ];
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                find: vi.fn().mockResolvedValue(mockSpells),
+                count: vi.fn().mockResolvedValue(200),
+                findOne: vi.fn().mockResolvedValue(null)
+            } as any);
+
+            const result = await SpellController.getSpells(
+                { url: '/data/get-spells', method: 'GET' } as http.IncomingMessage,
+                mockRes as http.ServerResponse
+            );
+
+            expect(result.status).toBe(200);
+            const parsed = JSON.parse(result.response);
+            expect(parsed.spells).toHaveLength(2);
+            expect(parsed.spells[0].name).toBe('Acid Splash');
+        });
+
+        it('falls back to seed spells when DB is uninitialized', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: false, configurable: true });
+
+            const result = await SpellController.getSpells(
+                { url: '/data/get-spells', method: 'GET' } as http.IncomingMessage,
+                mockRes as http.ServerResponse
+            );
+
+            expect(result.status).toBe(200);
+            const parsed = JSON.parse(result.response);
+            expect(parsed.spells.length).toBeGreaterThan(100);
+            expect(parsed.spells.some((s: any) => s.name === 'Fireball')).toBe(true);
+        });
+    });
+
+    describe('seedDefaultSpellsIfEmpty', () => {
+        it('seeds 2024 spells when table is empty', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const mockSave = vi.fn().mockImplementation(async (entities) => entities);
+            const mockCreate = vi.fn().mockImplementation((entity) => entity);
+            const mockFindOne = vi.fn().mockResolvedValue(null);
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                count: vi.fn().mockResolvedValue(0),
+                findOne: mockFindOne,
+                create: mockCreate,
+                save: mockSave
+            } as any);
+
+            await SpellController.seedDefaultSpellsIfEmpty();
+            expect(mockSave).toHaveBeenCalled();
+        });
+    });
+
+    describe('upsertSpellsFromDndBeyond', () => {
+        it('extracts classSpells and custom spells from raw D&D Beyond payload', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const mockSave = vi.fn().mockImplementation(async (entities) => entities);
+            const mockFindOne = vi.fn().mockResolvedValue(null);
+            const mockCreate = vi.fn().mockImplementation((entity) => entity);
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                findOne: mockFindOne,
+                create: mockCreate,
+                save: mockSave
+            } as any);
+
+            const rawCharacter = {
+                classSpells: [
+                    {
+                        characterClassId: 101,
+                        spells: [
+                            {
+                                definition: {
+                                    id: 9999,
+                                    name: 'Emergence Blast',
+                                    level: 2,
+                                    school: 'Evocation',
+                                    description: 'A powerful surge of green energy.'
+                                }
+                            }
+                        ]
+                    }
+                ],
+                classes: [
+                    {
+                        id: 101,
+                        definition: { name: 'Sorcerer' }
+                    }
+                ]
+            };
+
+            const count = await SpellController.upsertSpellsFromDndBeyond(rawCharacter);
+            expect(count).toBe(1);
+            expect(mockSave).toHaveBeenCalled();
+        });
+    });
 });

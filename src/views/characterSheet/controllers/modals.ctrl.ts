@@ -1,5 +1,6 @@
 import { getData, postData } from "@services/request";
-import { ConditionDefinition, DEFAULT_DND55_CONDITIONS, darvellData, SpellDefinition } from "../characterData";
+import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
+import { renderEquipment } from "../components/equipment";
 import {
     findStandardActionDefinition,
     linkifyConditionAndSpellTags,
@@ -7,12 +8,11 @@ import {
 } from "../components/markupLinks";
 import { getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
 import { renderWeapons } from "../components/weapons";
-import { renderEquipment } from "../components/equipment";
+import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
+import { initEquipmentController } from "./equipment.ctrl";
 import { initSpellsController } from "./spells.ctrl";
 import { initWeaponsController } from "./weapons.ctrl";
-import { initEquipmentController } from "./equipment.ctrl";
-import { isMundaneEquipment } from "../services/magicItemBonuses";
 
 export function initModalsController(ctx: CharacterSheetContext) {
     const sheet = ctx.sheet;
@@ -479,15 +479,24 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter || !manageSpellsCurrentLevels) return;
 
-        const { availableLevels, allowedByLevel, currentByLevel } = getCharacterSpellLevelLimits(activeCharacter);
+        const limits = getCharacterSpellLevelLimits(activeCharacter);
+        const { availableLevels, allowedByLevel, currentByLevel } = limits;
 
         if (manageSpellsTotalBadge) {
-            manageSpellsTotalBadge.textContent = `${activeCharacter.spells.length} Spells on Sheet`;
+            if (limits.maxPrepared > 0) {
+                manageSpellsTotalBadge.textContent = `Cantrips: ${limits.currentCantrips}/${limits.maxCantrips} • Prepared: ${limits.currentPrepared}/${limits.maxPrepared} (${activeCharacter.spells.length} Spells on Sheet)`;
+            } else {
+                manageSpellsTotalBadge.textContent = `${activeCharacter.spells.length} Spells on Sheet`;
+            }
         }
 
         manageSpellsCurrentLevels.innerHTML = availableLevels
             .map(lvl => {
                 const levelSpells = currentByLevel[lvl] || [];
+                const isCantrip = lvl === 0;
+                const hasExplicitLimit =
+                    activeCharacter.allowedSpellsByLevel?.[lvl] !== undefined ||
+                    (activeCharacter.trackingState as any)?.allowedSpellsByLevel?.[lvl] !== undefined;
                 const allowed = allowedByLevel[lvl] ?? levelSpells.length;
                 const isOverLimit = levelSpells.length > allowed;
                 const isAtLimit = levelSpells.length === allowed && allowed > 0;
@@ -510,17 +519,23 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     </ul>`
                     : `<div class="manage-empty-level-note">No ${spellLevelLabel(lvl).toLowerCase()} added yet.</div>`;
 
+                const controlsHtml = isCantrip || hasExplicitLimit
+                    ? `<div class="manage-level-allowance-controls">
+                        <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="-1" title="Decrease allowed spells for ${spellLevelLabel(lvl)}" aria-label="Decrease allowed spells for ${spellLevelLabel(lvl)}">&minus;</button>
+                        <span class="manage-level-ratio ${isOverLimit ? 'over-limit' : isAtLimit ? 'at-limit' : ''}" data-level-ratio="${lvl}" title="${levelSpells.length} spells currently on sheet / ${allowed} spells allowed for ${spellLevelLabel(lvl)}">
+                            ${levelSpells.length}/${allowed}
+                        </span>
+                        <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="1" title="Increase allowed spells for ${spellLevelLabel(lvl)}" aria-label="Increase allowed spells for ${spellLevelLabel(lvl)}">+</button>
+                    </div>`
+                    : `<span class="manage-level-count-badge" data-level-ratio="${lvl}" title="${levelSpells.length} spells on sheet for ${spellLevelLabel(lvl)}">
+                        ${levelSpells.length} Spells
+                    </span>`;
+
                 return `
                     <div class="manage-level-group" data-manage-spell-level="${lvl}">
                         <div class="manage-level-header">
                             <span class="manage-level-title">${spellLevelLabel(lvl)}</span>
-                            <div class="manage-level-allowance-controls">
-                                <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="-1" title="Decrease allowed spells for ${spellLevelLabel(lvl)}" aria-label="Decrease allowed spells for ${spellLevelLabel(lvl)}">&minus;</button>
-                                <span class="manage-level-ratio ${isOverLimit ? 'over-limit' : isAtLimit ? 'at-limit' : ''}" data-level-ratio="${lvl}" title="${levelSpells.length} spells currently on sheet / ${allowed} spells allowed for ${spellLevelLabel(lvl)}">
-                                    ${levelSpells.length}/${allowed}
-                                </span>
-                                <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="1" title="Increase allowed spells for ${spellLevelLabel(lvl)}" aria-label="Increase allowed spells for ${spellLevelLabel(lvl)}">+</button>
-                            </div>
+                            ${controlsHtml}
                         </div>
                         ${spellsListHtml}
                     </div>
@@ -860,8 +875,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const weaponsHtml = weapons.length > 0
             ? `<ul class="manage-abbrev-spell-list">
                 ${weapons.map((w, idx) => {
-                    const isMagic = isMundaneEquipment(w.name) ? false : !!w.isMagic;
-                    return `
+                const isMagic = isMundaneEquipment(w.name) ? false : !!w.isMagic;
+                return `
                     <li class="manage-abbrev-spell-row" data-current-weapon-idx="${idx}">
                         <div class="manage-abbrev-spell-main" data-preview-weapon-name="${encodeURIComponent(w.name)}" title="Click to view weapon details">
                             <span class="manage-abbrev-spell-name">${w.name}</span>
@@ -873,15 +888,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </li>
-                `;}).join("")}
+                `;
+            }).join("")}
             </ul>`
             : `<div class="manage-empty-level-note">No weapons added yet.</div>`;
 
         const equipmentHtml = equipment.length > 0
             ? `<ul class="manage-abbrev-spell-list">
                 ${equipment.map((e, idx) => {
-                    const isMagic = isMundaneEquipment(e.name) ? false : !!e.isMagic;
-                    return `
+                const isMagic = isMundaneEquipment(e.name) ? false : !!e.isMagic;
+                return `
                     <li class="manage-abbrev-spell-row" data-current-equipment-idx="${idx}">
                         <div class="manage-abbrev-spell-main" data-preview-equipment-name="${encodeURIComponent(e.name)}" data-preview-equipment-type="${encodeURIComponent(e.type || 'Equipment')}" title="Click to view item details">
                             <span class="manage-abbrev-spell-name">${e.name}</span>
@@ -893,7 +909,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </li>
-                `;}).join("")}
+                `;
+            }).join("")}
             </ul>`
             : `<div class="manage-empty-level-note">No equipment added yet.</div>`;
 
@@ -1752,9 +1769,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalActionNotes) {
             const descHtml = stdAction?.description
                 ? linkifyConditionAndSpellTags(stdAction.description, {
-                      character: activeCharacter,
-                      entityName: displayName
-                  })
+                    character: activeCharacter,
+                    entityName: displayName
+                })
                 : `<p>Standard D&amp;D 5.5 (2024) action rule for <strong>${displayName}</strong>.</p>`;
             const isDndBeyond = activeCharacter?.source === "dndbeyond";
             const externalLinkHtml = isDndBeyond

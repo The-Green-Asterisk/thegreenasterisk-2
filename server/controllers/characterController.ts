@@ -1,22 +1,22 @@
 import http from "http";
 import AppDataSource from "services/database";
-import CharacterEquipState from "services/database/entity/CharacterEquipState";
-import SavedCharacter from "services/database/entity/SavedCharacter";
-import CharacterVitals from "services/database/entity/CharacterVitals";
-import CharacterClass from "services/database/entity/CharacterClass";
 import CharacterAbility from "services/database/entity/CharacterAbility";
-import CharacterSkill from "services/database/entity/CharacterSkill";
-import CharacterInventoryItem from "services/database/entity/CharacterInventoryItem";
-import CharacterSpell from "services/database/entity/CharacterSpell";
+import CharacterClass from "services/database/entity/CharacterClass";
+import CharacterEquipState from "services/database/entity/CharacterEquipState";
 import CharacterFeature from "services/database/entity/CharacterFeature";
-import CharacterResource from "services/database/entity/CharacterResource";
 import CharacterFeatureDecision from "services/database/entity/CharacterFeatureDecision";
+import CharacterInventoryItem from "services/database/entity/CharacterInventoryItem";
+import CharacterResource from "services/database/entity/CharacterResource";
+import CharacterSkill from "services/database/entity/CharacterSkill";
+import CharacterSpell from "services/database/entity/CharacterSpell";
+import CharacterVitals from "services/database/entity/CharacterVitals";
+import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
 import BaseController from "./baseController";
-import SessionController, { ReqAndUser } from "./sessionController";
-import SpellController from "./spellController";
 import ItemController from "./itemController";
 import RulesController from "./rulesController";
+import SessionController, { ReqAndUser } from "./sessionController";
+import SpellController from "./spellController";
 
 export default class CharacterController extends BaseController {
     public static async getDndBeyondCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -55,7 +55,10 @@ export default class CharacterController extends BaseController {
                 void RulesController.upsertRulesFromDndBeyond(charData).catch(err => {
                     console.warn("Could not upsert rules from cached D&D Beyond character load:", err);
                 });
-            } catch {}
+                void SpellController.upsertSpellsFromDndBeyond(charData).catch(err => {
+                    console.warn("Could not upsert spells from cached D&D Beyond character load:", err);
+                });
+            } catch { }
 
             return {
                 response: cached,
@@ -85,10 +88,11 @@ export default class CharacterController extends BaseController {
             const data = await response.json();
             const payload = JSON.stringify(data);
 
-            // Dynamically capture rules (classes, subclasses, species, backgrounds, feats) from D&D Beyond loads
+            // Dynamically capture rules (classes, subclasses, species, backgrounds, feats, spells) from D&D Beyond loads
             try {
                 const charData = (data as any)?.data || data;
                 await RulesController.upsertRulesFromDndBeyond(charData);
+                await SpellController.upsertSpellsFromDndBeyond(charData);
             } catch (ruleErr) {
                 console.warn("Could not upsert rules from D&D Beyond character load:", ruleErr);
             }
@@ -1297,8 +1301,8 @@ export default class CharacterController extends BaseController {
                 type: castLower.includes("bonus")
                     ? "Bonus Action"
                     : castLower.includes("reaction")
-                      ? "Reaction"
-                      : "Action",
+                        ? "Reaction"
+                        : "Action",
                 rangeOrReach: sp.range || "Self",
                 hitOrDc,
                 damageOrEffect,

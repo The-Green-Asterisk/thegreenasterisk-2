@@ -1,3 +1,4 @@
+import { CLASSES_2024 } from "../../../rules/dnd5e_2024/classes";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -6,10 +7,101 @@ export function spellLevelLabel(level: number): string {
     return `${level}${suffix}-Level Spells`;
 }
 
+export function isCharacterSpeciesSpell(spell: SpellDefinition): boolean {
+    const src = (spell.source || "").toLowerCase();
+    return (
+        src.includes("species") ||
+        src.includes("race") ||
+        src.includes("tiefling") ||
+        src.includes("aasimar") ||
+        src.includes("elf") ||
+        src.includes("gnome")
+    );
+}
+
+export function isCharacterBonusSpell(spell: SpellDefinition): boolean {
+    const src = (spell.source || "").toLowerCase();
+    return (
+        isCharacterSpeciesSpell(spell) ||
+        src.includes("pact of the tome")
+    );
+}
+
+export function getCharacterPreparedSpellsLimit(data: CharacterData): number {
+    if (typeof data.creatorState?.maxPrepared === "number" && data.creatorState.maxPrepared > 0) {
+        return data.creatorState.maxPrepared;
+    }
+    const tracking = data.trackingState as any;
+    if (typeof tracking?.maxPrepared === "number" && tracking.maxPrepared > 0) {
+        return tracking.maxPrepared;
+    }
+
+    let total = 0;
+    const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
+
+    (data.classes || []).forEach(c => {
+        const name = (c.name || "").toLowerCase();
+        const sub = (c.subclass || "").toLowerCase();
+        const lvl = Math.max(1, Math.min(20, Number(c.level) || 1));
+        const lvlIdx = lvl - 1;
+
+        const clsDef = CLASSES_2024.find(cd => cd.id === name || cd.name.toLowerCase() === name);
+        if (clsDef?.spellcasting?.preparedSpellsByLevel?.[lvlIdx]) {
+            total += clsDef.spellcasting.preparedSpellsByLevel[lvlIdx];
+            return;
+        }
+
+        if (name === "fighter" && sub.includes("eldritch knight") && lvl >= 3) {
+            total += thirdCasterSpells[lvlIdx] || 0;
+            return;
+        }
+        if (name === "rogue" && sub.includes("arcane trickster") && lvl >= 3) {
+            total += thirdCasterSpells[lvlIdx] || 0;
+            return;
+        }
+
+        // Fallback for custom / 2014 classes
+        const abilityScore = (abbr: string) => data.abilities?.find(a => a.abbr.toUpperCase() === abbr)?.score ?? 10;
+        const abilityMod = (abbr: string) => Math.floor((abilityScore(abbr) - 10) / 2);
+
+        if (name === "wizard") {
+            total += Math.max(1, lvl + Math.max(0, abilityMod("INT")));
+        } else if (name === "cleric" || name === "druid") {
+            total += Math.max(1, lvl + Math.max(0, abilityMod("WIS")));
+        } else if (name === "paladin") {
+            total += Math.max(1, Math.floor(lvl / 2) + Math.max(0, abilityMod("CHA")));
+        } else if (name === "bard") {
+            const bardSpellsKnown = [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22];
+            total += bardSpellsKnown[lvlIdx] || 4;
+        } else if (name === "sorcerer") {
+            const sorcSpellsKnown = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15];
+            total += sorcSpellsKnown[lvlIdx] || 2;
+        } else if (name === "warlock") {
+            const warlockSpellsKnown = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
+            total += warlockSpellsKnown[lvlIdx] || 2;
+        } else if (name === "ranger") {
+            const rangerSpellsKnown = [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11];
+            total += rangerSpellsKnown[lvlIdx] || 0;
+        }
+    });
+
+    if ((data.features || []).some(f => f.name.toLowerCase().includes("magic initiate"))) {
+        total += 1;
+    }
+
+    return total;
+}
+
 export function getCharacterSpellLevelLimits(data: CharacterData): {
     availableLevels: number[];
     allowedByLevel: Record<number, number>;
     currentByLevel: Record<number, SpellDefinition[]>;
+    maxCantrips: number;
+    currentCantrips: number;
+    maxPrepared: number;
+    currentPrepared: number;
+    isPreparedOverLimit: boolean;
+    isCantripsOverLimit: boolean;
 } {
     const currentByLevel: Record<number, SpellDefinition[]> = {};
     for (let lvl = 0; lvl <= 9; lvl++) {
@@ -67,23 +159,31 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
         defaultCantripsAllowed += 3;
     }
 
+    // Add species/racial bonus cantrips (e.g. Tiefling Thaumaturgy/Fire Bolt, Elf, etc.)
+    const speciesCantripsCount = (data.spells || []).filter(s => (Number(s.level) || 0) === 0 && isCharacterSpeciesSpell(s)).length;
+    defaultCantripsAllowed += speciesCantripsCount;
+
+    const maxCantrips = Math.max(defaultCantripsAllowed, 2);
+    const maxPrepared = getCharacterPreparedSpellsLimit(data);
+    const currentCantrips = currentByLevel[0]?.length || 0;
+    const currentPrepared = (data.spells || []).filter(s => (Number(s.level) || 0) > 0 && !isCharacterBonusSpell(s)).length;
+
     availableLevels.forEach(lvl => {
         if (explicitAllowed[lvl] !== undefined && explicitAllowed[lvl] >= 0) {
             allowedByLevel[lvl] = Number(explicitAllowed[lvl]);
             return;
         }
 
-        const currentCount = currentByLevel[lvl]?.length || 0;
         if (lvl === 0) {
-            allowedByLevel[0] = Math.max(defaultCantripsAllowed, 2);
+            allowedByLevel[0] = maxCantrips;
         } else {
             const standardSlots = data.spellSlots?.[`level${lvl}`]?.total || 0;
             const pactSlots =
                 data.spellSlots?.pact?.level === lvl
                     ? data.spellSlots.pact.total || 0
                     : (data.spellSlots?.pact?.level || 0) > lvl
-                      ? 2
-                      : 0;
+                        ? 2
+                        : 0;
             allowedByLevel[lvl] = Math.max(standardSlots + pactSlots, 1);
         }
     });
@@ -91,7 +191,13 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
     return {
         availableLevels,
         allowedByLevel,
-        currentByLevel
+        currentByLevel,
+        maxCantrips,
+        currentCantrips,
+        maxPrepared,
+        currentPrepared,
+        isPreparedOverLimit: maxPrepared > 0 && currentPrepared > maxPrepared,
+        isCantripsOverLimit: maxCantrips > 0 && currentCantrips > maxCantrips
     };
 }
 
@@ -185,8 +291,24 @@ export function renderSpellsByLevel(
     return Array.from(grouped.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([level, levelSpells]) => {
-            const allowedCount = limits?.allowedByLevel[level] ?? levelSpells.length;
-            const isOverLimit = levelSpells.length > allowedCount;
+            const isCantrip = level === 0;
+            const explicitAllowed = limits?.allowedByLevel[level];
+            const hasUserConfiguredLimit =
+                characterData?.allowedSpellsByLevel?.[level] !== undefined ||
+                (characterData?.trackingState as any)?.allowedSpellsByLevel?.[level] !== undefined;
+
+            let countBadgeHtml = "";
+            if (isCantrip) {
+                const maxC = limits?.maxCantrips ?? (explicitAllowed ?? levelSpells.length);
+                const isOver = maxC > 0 && levelSpells.length > maxC;
+                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="Cantrips: ${levelSpells.length} current / ${maxC} allowed">${levelSpells.length}/${maxC}</span>`;
+            } else if (hasUserConfiguredLimit && explicitAllowed !== undefined && explicitAllowed >= 0) {
+                const isOver = levelSpells.length > explicitAllowed;
+                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="${spellLevelLabel(level)}: ${levelSpells.length} current / ${explicitAllowed} allowed">${levelSpells.length}/${explicitAllowed}</span>`;
+            } else {
+                countBadgeHtml = `<span class="spells-level-count" title="${levelSpells.length} spells for ${spellLevelLabel(level)}">${levelSpells.length}</span>`;
+            }
+
             return `
             <section class="spells-level-section" data-spell-level="${level}">
                 <header class="spells-level-header">
@@ -194,7 +316,7 @@ export function renderSpellsByLevel(
                         <h4>${spellLevelLabel(level)}</h4>
                         ${renderLevelSlotMarkers(level, spellSlots)}
                     </div>
-                    <span class="spells-level-count ${isOverLimit ? 'over-limit' : ''}" title="Spells for ${spellLevelLabel(level)}: ${levelSpells.length} current / ${allowedCount} allowed">${levelSpells.length}/${allowedCount}</span>
+                    ${countBadgeHtml}
                 </header>
                 <div class="spells-grid level-spells-grid">
                     ${levelSpells.map(renderSpellCard).join('')}

@@ -1,8 +1,7 @@
 import {
     AbilityName,
-    CLASS_SPELL_PRIORITIES,
     CLASSES_2024,
-    ClassDefinition,
+    CLASS_SPELL_PRIORITIES,
     MulticlassCasterClassInfo,
     RuleSpellDefinition,
     SPELLS_2024,
@@ -11,6 +10,10 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { FeatureSpellChoiceSection } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
+
+function getAllSpells(ctx: CharacterCreatorContext): RuleSpellDefinition[] {
+    return (ctx.spells && ctx.spells.length > 0) ? ctx.spells : SPELLS_2024;
+}
 
 export function getSpellcasterInfos(ctx: CharacterCreatorContext): MulticlassCasterClassInfo[] {
     ctx.syncStateClassProperties();
@@ -125,10 +128,10 @@ export function getAvailableSpells(ctx: CharacterCreatorContext): {
     const miClass = ctx.state.originFeatId === "magic-initiate-cleric"
         ? "Cleric"
         : ctx.state.originFeatId === "magic-initiate-druid"
-          ? "Druid"
-          : ctx.state.originFeatId === "magic-initiate-wizard"
-            ? "Wizard"
-            : "";
+            ? "Druid"
+            : ctx.state.originFeatId === "magic-initiate-wizard"
+                ? "Wizard"
+                : "";
 
     // Base caster classes that provide cantrips (unless an expanded spell list explicitly enables cantrips)
     const cantripClasses: string[] = [];
@@ -157,12 +160,14 @@ export function getAvailableSpells(ctx: CharacterCreatorContext): {
         cantripClasses.push(miClass);
     }
 
-    const cantrips = SPELLS_2024.filter((sp) => {
+    const allSpells = getAllSpells(ctx);
+
+    const cantrips = allSpells.filter((sp) => {
         if (sp.level !== 0) return false;
         return sp.classes.some((c) => cantripClasses.includes(c));
     });
 
-    const leveledSpells = SPELLS_2024.filter((sp) => {
+    const leveledSpells = allSpells.filter((sp) => {
         if (sp.level < 1) return false;
         // D&D 2024 Multiclassing: prepare spells individually per class, up to that class's max spell level
         const canPrepareFromClass = infos.some((info) => {
@@ -220,6 +225,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
     };
 
     const sections: FeatureSpellChoiceSection[] = [];
+    const allSpells = getAllSpells(ctx);
 
     // 1. Warlock — Pact of the Tome (3 cantrips from any class + 2 Level 1 Ritual spells from any class)
     if (getClassLevel("warlock") >= 1 && Array.isArray(ctx.state.invocations) && ctx.state.invocations.includes("pact-of-the-tome")) {
@@ -229,11 +235,11 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Warlock / Pact of the Tome",
             description: "While the Book of Shadows is on your person, you have three chosen cantrips prepared from any class's spell list, and they function as Warlock spells for you.",
             chooseCount: 3,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 0),
+            availableSpells: allSpells.filter((sp) => sp.level === 0),
             ability: "cha"
         });
         const currentTomeRitualNames = new Set(ctx.state.featureSpellChoices?.["pact-of-the-tome-rituals"] || []);
-        const availableRituals = SPELLS_2024.filter((sp) =>
+        const availableRituals = allSpells.filter((sp) =>
             (sp.level === 1) ||
             sp.ritual ||
             sp.name === "Mirror Image" ||
@@ -258,7 +264,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Cleric / Divine Order (Thaumaturge)",
             description: "You know one extra cantrip of your choice from the Cleric spell list.",
             chooseCount: 1,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
+            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
             ability: "wis"
         });
     }
@@ -271,7 +277,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Druid / Primal Order (Magician)",
             description: "You know one extra cantrip of your choice from the Druid spell list.",
             chooseCount: 1,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
+            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
             ability: "wis"
         });
     }
@@ -289,7 +295,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Fighting Style (Blessed Warrior)",
             description: "You learn two Cleric cantrips of your choice. They count as class spells for you, and Charisma is your spellcasting ability for them.",
             chooseCount: 2,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
+            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
             ability: "cha"
         });
     }
@@ -305,7 +311,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Fighting Style (Druidic Warrior)",
             description: "You learn two Druid cantrips of your choice. They count as class spells for you, and Wisdom is your spellcasting ability for them.",
             chooseCount: 2,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
+            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
             ability: "wis"
         });
     }
@@ -320,7 +326,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Bard / Magical Discoveries",
             description: "You learn two spells of your choice from the Cleric, Druid, or Wizard spell list (cantrip or a spell of a level you can cast). You always have the chosen spells prepared.",
             chooseCount: 2,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level <= bardMaxSpellLvl && sp.classes.some((c) => c === "Cleric" || c === "Druid" || c === "Wizard")),
+            availableSpells: allSpells.filter((sp) => sp.level <= bardMaxSpellLvl && sp.classes.some((c) => c === "Cleric" || c === "Druid" || c === "Wizard")),
             ability: "cha"
         });
     }
@@ -341,7 +347,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
                 sourceLabel: `Warlock / Mystic Arcanum (${tier.label} Level)`,
                 description: `Your patron grants you a magical secret called an arcanum. Choose one ${tier.label}-level Warlock spell as this arcanum. You can cast it once without expending a spell slot per Long Rest.`,
                 chooseCount: 1,
-                availableSpells: SPELLS_2024.filter((sp) => sp.level === tier.spellLvl && sp.classes.includes("Warlock")),
+                availableSpells: allSpells.filter((sp) => sp.level === tier.spellLvl && sp.classes.includes("Warlock")),
                 ability: "cha"
             });
         }
@@ -356,7 +362,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Wizard / Spell Mastery",
             description: "Choose one Level 1 Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.",
             chooseCount: 1,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 1 && sp.classes.includes("Wizard")),
+            availableSpells: allSpells.filter((sp) => sp.level === 1 && sp.classes.includes("Wizard")),
             ability: "int"
         });
         sections.push({
@@ -365,7 +371,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Wizard / Spell Mastery",
             description: "Choose one Level 2 Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.",
             chooseCount: 1,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 2 && sp.classes.includes("Wizard")),
+            availableSpells: allSpells.filter((sp) => sp.level === 2 && sp.classes.includes("Wizard")),
             ability: "int"
         });
     }
@@ -376,7 +382,7 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
             sourceLabel: "Wizard / Signature Spells",
             description: "Choose two Level 3 Wizard spells in your spellbook as your signature spells. You always have these spells prepared and can cast each of them once at 3rd level without expending a spell slot per Short or Long Rest.",
             chooseCount: 2,
-            availableSpells: SPELLS_2024.filter((sp) => sp.level === 3 && sp.classes.includes("Wizard")),
+            availableSpells: allSpells.filter((sp) => sp.level === 3 && sp.classes.includes("Wizard")),
             ability: "int"
         });
     }
@@ -397,8 +403,8 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
                     if (sections.some((s) => s.id === secId)) continue;
                     const optNames = new Set((ch.options || []).map((o: any) => String(o.name || o.id || "").toLowerCase()));
                     const pool = optNames.size > 0
-                        ? SPELLS_2024.filter((sp) => optNames.has(sp.name.toLowerCase()) || optNames.has(sp.id.toLowerCase()))
-                        : SPELLS_2024;
+                        ? allSpells.filter((sp) => optNames.has(sp.name.toLowerCase()) || optNames.has(sp.id.toLowerCase()))
+                        : allSpells;
                     sections.push({
                         id: secId,
                         title: ch.name || "Bonus Spell Selection",
@@ -423,13 +429,15 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
  */
 export function getProgressionGrantedSpellNames(ctx: CharacterCreatorContext): Set<string> {
     const names = new Set<string>();
+    const allSpells = getAllSpells(ctx);
     for (const list of Object.values(ctx.state.featureSpellChoices || {})) {
         if (Array.isArray(list)) list.forEach((n) => names.add(String(n).toLowerCase()));
     }
     const addGranted = (sp: any) => {
         const raw = typeof sp === "string" ? sp : (sp?.name || sp?.spellId || "");
         if (!raw) return;
-        const def = SPELLS_2024.find((s) => s.name.toLowerCase() === String(raw).toLowerCase() || s.id.toLowerCase() === String(raw).toLowerCase());
+        const rawLower = String(raw).toLowerCase();
+        const def = (ctx.getSpell ? ctx.getSpell(raw) : undefined) || allSpells.find((s) => s.name.toLowerCase() === rawLower || s.id.toLowerCase() === rawLower);
         names.add((def ? def.name : String(raw)).toLowerCase());
     };
     for (const c of ctx.state.classes || []) {

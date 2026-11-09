@@ -779,6 +779,34 @@ describe('Frontend View Templates', () => {
         expect(modalsHtml).toContain('id="manage-spells-current-levels"');
     });
 
+    it('manages leveled spells as a shared pool across all spell levels on character sheet without artificial per-level slot limits', async () => {
+        const { getCharacterSpellLevelLimits, renderSpellsByLevel } = await import('../../../src/views/characterSheet/components/spells');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        const limits = getCharacterSpellLevelLimits(darvellData);
+
+        // Darvell is Bard 6 / Warlock 6: Bard prepares 10 spells, Warlock prepares 7 spells -> Total pool: 17
+        expect(limits.maxPrepared).toBe(17);
+        // Darvell has 17 prepared class spells (excluding species Hellish Rebuke/Darkness and Tome rituals Charm Person/Mirror Image)
+        expect(limits.currentPrepared).toBe(17);
+        expect(limits.isPreparedOverLimit).toBe(false);
+
+        // Cantrips have an allotment (Bard 3 + Warlock 3 + Tome 3 + Tiefling 2 = 11)
+        expect(limits.maxCantrips).toBe(11);
+        expect(limits.currentCantrips).toBe(11);
+        expect(limits.isCantripsOverLimit).toBe(false);
+
+        // Spells HTML should NOT show "8/4" or "over-limit" for 1st-level spells (he has 8 1st-level spells on sheet with 4 slots)
+        const spellsHtml = renderSpellsByLevel(darvellData.spells, darvellData.spellSlots, darvellData);
+        expect(spellsHtml).not.toContain('8/4');
+        expect(spellsHtml).not.toContain('over-limit');
+
+        // Dynamic sheet content renders the prepared spells pool badge
+        const sheetHtml = renderSheetContent(darvellData);
+        expect(sheetHtml).toContain('Prepared: <strong>17/17</strong>');
+    });
+
     it('renders feat and trait decision dropdowns and updates character stats when choices change', async () => {
         const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
         const { renderFeatures } = await import('../../../src/views/characterSheet/components/features');

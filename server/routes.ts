@@ -316,6 +316,11 @@ export default class Routes {
     }
 
     @Method('GET')
+    private ['/get-spells'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return SpellController.getSpells(req, res);
+    }
+
+    @Method('GET')
     private ['/search-spells'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return SpellController.searchSpells(req, res);
     }

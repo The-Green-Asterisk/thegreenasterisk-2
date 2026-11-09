@@ -8,6 +8,7 @@ import RuleClass from "../../server/services/database/entity/RuleClass";
 import RuleFeat from "../../server/services/database/entity/RuleFeat";
 import RuleSpecies from "../../server/services/database/entity/RuleSpecies";
 import RuleSubclass from "../../server/services/database/entity/RuleSubclass";
+import { Spell } from "../../server/services/database/entity/Spell";
 
 describe("RulesController", () => {
     let mockReq: Partial<http.IncomingMessage>;
@@ -147,11 +148,18 @@ describe("RulesController", () => {
                 ])
             };
 
+            const mockSpellRepo = {
+                count: vi.fn().mockResolvedValue(141),
+                find: vi.fn().mockResolvedValue([]),
+                findOne: vi.fn().mockResolvedValue(null)
+            };
+
             vi.spyOn(AppDataSource, "getRepository").mockImplementation((entity: any) => {
                 if (entity === RuleClass) return mockClassRepo as any;
                 if (entity === RuleSpecies) return mockSpeciesRepo as any;
                 if (entity === RuleBackground) return mockBgRepo as any;
                 if (entity === RuleFeat) return mockFeatRepo as any;
+                if (entity === Spell) return mockSpellRepo as any;
                 return {} as any;
             });
 
@@ -167,6 +175,7 @@ describe("RulesController", () => {
             expect(data.backgrounds[0].name).toBe("Soldier");
             expect(data.originFeats.find((f: any) => f.id === "alert")).toBeDefined();
             expect(data.generalFeats.find((f: any) => f.id === "heavy-armor-master")).toBeDefined();
+            expect(data.spells).toBeDefined();
         });
     });
 

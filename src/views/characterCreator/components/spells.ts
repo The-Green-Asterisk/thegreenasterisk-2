@@ -99,10 +99,10 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                         </p>
                     </div>
                     ${featureSpellSections.map((sec) => {
-                        const chosen = ctx.state.featureSpellChoices[sec.id] || [];
-                        const isOver = chosen.length > sec.chooseCount;
-                        const isMaxed = chosen.length === sec.chooseCount;
-                        return `
+        const chosen = ctx.state.featureSpellChoices[sec.id] || [];
+        const isOver = chosen.length > sec.chooseCount;
+        const isMaxed = chosen.length === sec.chooseCount;
+        return `
                             <div class="creator-detail-box feature-spell-choice-box" data-feature-section-id="${sec.id}" style="margin-bottom: 1rem;">
                                 <div class="box-header-with-badge">
                                     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -117,8 +117,8 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                 <p class="panel-desc" style="margin: 0.35rem 0 0.75rem;">${sec.description}</p>
                                 <div class="item-select-list">
                                     ${sec.availableSpells.map((sp) => {
-                                        const isSelected = chosen.includes(sp.name);
-                                        return `
+            const isSelected = chosen.includes(sp.name);
+            return `
                                             <div class="item-check-row feature-spell-row ${isSelected ? "selected" : ""}"
                                                  data-feature-section-id="${sec.id}"
                                                  data-spell-name="${sp.name}"
@@ -139,11 +139,11 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                                 <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                             </div>
                                         `;
-                                    }).join("")}
+        }).join("")}
                                 </div>
                             </div>
                         `;
-                    }).join("")}
+    }).join("")}
                 </div>
             ` : ""}
 
@@ -170,10 +170,10 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                 ` : `
                     <div class="item-select-list">
                         ${displayedCantrips.map((sp) => {
-                            const isGranted = grantedNames.has(sp.name.toLowerCase());
-                            const isSelected = isGranted || ctx.state.selectedCantrips.includes(sp.name);
-                            const sourceBadges = sp.classes.filter((c) => casterStats.some((cs: any) => cs.className === c));
-                            return `
+        const isGranted = grantedNames.has(sp.name.toLowerCase());
+        const isSelected = isGranted || ctx.state.selectedCantrips.includes(sp.name);
+        const sourceBadges = sp.classes.filter((c) => casterStats.some((cs: any) => cs.className === c));
+        return `
                                 <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""} ${isGranted ? "progression-granted" : ""}" 
                                      data-spell-name="${sp.name}"${isGranted ? ' data-granted="true" aria-disabled="true"' : ""}>
                                     <div class="item-row-left">
@@ -188,7 +188,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                     <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                 </div>
                             `;
-                        }).join("")}
+    }).join("")}
                     </div>
                 `}
             </div>
@@ -225,13 +225,13 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                     All Classes (${available.leveledSpells.length})
                                 </button>
                                 ${casterStats.map((cs: any) => {
-                                    const classCount = available.leveledSpells.filter((s) => s.classes.includes(cs.className)).length;
-                                    return `
+        const classCount = available.leveledSpells.filter((s) => s.classes.includes(cs.className)).length;
+        return `
                                         <button type="button" class="creator-nav-btn secondary-btn spell-class-tab-btn ${ctx.activeSpellClassFilter === cs.className ? "active" : ""}" data-class="${cs.className}" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
                                             ${cs.className} (Lvl ${cs.level} • Max Lvl ${cs.maxSpellLevel}) [${classCount}]
                                         </button>
                                     `;
-                                }).join("")}
+    }).join("")}
                             </div>
                         ` : ""}
                         ${maxSpellLevel > 1 ? `
@@ -240,28 +240,28 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                     All Levels (${leveledByClass.length})
                                 </button>
                                 ${Array.from({ length: maxSpellLevel }, (_, i) => i + 1).map((lvl) => {
-                                    const count = leveledByClass.filter((s) => s.level === lvl).length;
-                                    if (count === 0) return "";
-                                    const prepCount = ctx.state.selectedSpellsLevel1.filter((name) => {
-                                        const s = SPELLS_2024.find((sp) => sp.name === name);
-                                        return s?.level === lvl;
-                                    }).length;
-                                    return `
+        const count = leveledByClass.filter((s) => s.level === lvl).length;
+        if (count === 0) return "";
+        const prepCount = ctx.state.selectedSpellsLevel1.filter((name) => {
+            const s = (ctx.getSpell ? ctx.getSpell(name) : undefined) || SPELLS_2024.find((sp) => sp.name === name);
+            return s?.level === lvl;
+        }).length;
+        return `
                                         <button type="button" class="spell-tab-btn ${ctx.activeSpellLevelFilter === lvl ? "active" : ""}" data-level="${lvl}">
                                             Lvl ${lvl} (${prepCount > 0 ? `${prepCount}/` : ""}${count})
                                         </button>
                                     `;
-                                }).join("")}
+    }).join("")}
                             </div>
                         ` : ""}
                     </div>
 
                     <div class="item-select-list">
                         ${displayedLeveled.map((sp) => {
-                            const isGranted = grantedNames.has(sp.name.toLowerCase());
-                            const isSelected = isGranted || ctx.state.selectedSpellsLevel1.includes(sp.name);
-                            const sourceBadges = sp.classes.filter((c) => casterStats.some((cs: any) => cs.className === c));
-                            return `
+        const isGranted = grantedNames.has(sp.name.toLowerCase());
+        const isSelected = isGranted || ctx.state.selectedSpellsLevel1.includes(sp.name);
+        const sourceBadges = sp.classes.filter((c) => casterStats.some((cs: any) => cs.className === c));
+        return `
                                 <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isGranted ? "progression-granted" : ""}" 
                                      data-spell-name="${sp.name}"
                                      data-spell-school="${sp.school}"
@@ -282,7 +282,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                     <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                 </div>
                             `;
-                        }).join("")}
+    }).join("")}
                     </div>
                 `}
             </div>

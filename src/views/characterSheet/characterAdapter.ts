@@ -892,9 +892,9 @@ export function parseDndBeyondCharacter(
             const statId = Number(m.statId);
             const statMod =
                 !Number.isNaN(statId) &&
-                statId > 0 &&
-                abilityModsById[statId] !== undefined &&
-                bestCandidate.statIdUsed !== statId
+                    statId > 0 &&
+                    abilityModsById[statId] !== undefined &&
+                    bestCandidate.statIdUsed !== statId
                     ? abilityModsById[statId]
                     : 0;
             unarmoredBonus += flatVal + statMod;
@@ -920,8 +920,8 @@ export function parseDndBeyondCharacter(
     const dualWieldAcBonus =
         equippedMeleeWeaponsCount >= 2
             ? allMods
-                  .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "dual-wield-armor-class")
-                  .reduce((sum, m) => sum + (getModFlatValue(m) || 1), 0)
+                .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "dual-wield-armor-class")
+                .reduce((sum, m) => sum + (getModFlatValue(m) || 1), 0)
             : 0;
 
     let armorClass = baseArmorClass + shieldBonus + globalAcBonus + dualWieldAcBonus;
@@ -1328,7 +1328,7 @@ export function parseDndBeyondCharacter(
     // 9. Spells Collection
     const spellsMap = new Map<string, SpellDefinition>();
 
-    function addSpell(s: any, sourceName: string) {
+    function addSpell(s: any, sourceName: string, isFromClassSpells: boolean = false) {
         const def = s.definition;
         if (!def || !def.name) return;
 
@@ -1377,6 +1377,9 @@ export function parseDndBeyondCharacter(
             ? `${sourceName} [Legacy]`
             : sourceName;
 
+        const isAlwaysPrepared = s.alwaysPrepared === true ||
+            (!isFromClassSpells && s.countsAsKnownSpell === false);
+
         const spellDef: SpellDefinition = {
             id: def.id,
             name: def.name,
@@ -1391,8 +1394,17 @@ export function parseDndBeyondCharacter(
             ritual: !!def.ritual,
             description: def.description || def.snippet || "<p>No description provided.</p>",
             imageUrl: def.avatarUrl || def.largeAvatarUrl || undefined,
-            isLegacy: isLegacy || undefined
+            isLegacy: isLegacy || undefined,
+            alwaysPrepared: isAlwaysPrepared ? true : undefined
         };
+
+        const existing = spellsMap.get(def.name.toLowerCase());
+        if (existing) {
+            if (isFromClassSpells) {
+                spellsMap.set(def.name.toLowerCase(), spellDef);
+            }
+            return;
+        }
 
         spellsMap.set(def.name.toLowerCase(), spellDef);
     }
@@ -1401,7 +1413,7 @@ export function parseDndBeyondCharacter(
         raw.classSpells.forEach((cs: any) => {
             const classObj = raw.classes?.find((c: any) => c.id === cs.characterClassId);
             const className = classObj?.definition?.name || "Class";
-            (cs.spells || []).forEach((s: any) => addSpell(s, className));
+            (cs.spells || []).forEach((s: any) => addSpell(s, className, true));
         });
     }
 
@@ -1411,7 +1423,7 @@ export function parseDndBeyondCharacter(
             if (key === "class" && s.componentId && componentClassSourceMap.has(Number(s.componentId))) {
                 source = componentClassSourceMap.get(Number(s.componentId))!;
             }
-            addSpell(s, source);
+            addSpell(s, source, false);
         });
     });
 
@@ -1443,8 +1455,8 @@ export function parseDndBeyondCharacter(
                 type: spell.castingTime.toLowerCase().includes("bonus")
                     ? "Bonus Action"
                     : spell.castingTime.toLowerCase().includes("reaction")
-                      ? "Reaction"
-                      : "Action",
+                        ? "Reaction"
+                        : "Action",
                 rangeOrReach: spell.range,
                 hitOrDc,
                 damageOrEffect,
@@ -1584,12 +1596,12 @@ export function parseDndBeyondCharacter(
         const qualifiesForDueling = !isRanged && !isTwoHanded && (!isEquipped || totalEquippedWeaponsCount <= 1);
         const duelingModBonus = qualifiesForDueling
             ? allMods
-                  .filter(
-                      m =>
-                          (m.type === "bonus" || m.type === "damage") &&
-                          (m.subType === "one-handed-melee-attacks" || m.subType === "melee-weapon-damage")
-                  )
-                  .reduce((sum, m) => sum + getModFlatValue(m), 0)
+                .filter(
+                    m =>
+                        (m.type === "bonus" || m.type === "damage") &&
+                        (m.subType === "one-handed-melee-attacks" || m.subType === "melee-weapon-damage")
+                )
+                .reduce((sum, m) => sum + getModFlatValue(m), 0)
             : 0;
         const duelingFallback =
             qualifiesForDueling && duelingModBonus === 0 && hasClassFeatureOrOption("Dueling") ? 2 : 0;
@@ -1597,8 +1609,8 @@ export function parseDndBeyondCharacter(
         // Thrown Weapon Fighting bonus
         const thrownModBonus = isThrown
             ? allMods
-                  .filter(m => (m.type === "bonus" || m.type === "damage") && m.subType === "thrown-weapon-damage")
-                  .reduce((sum, m) => sum + getModFlatValue(m), 0)
+                .filter(m => (m.type === "bonus" || m.type === "damage") && m.subType === "thrown-weapon-damage")
+                .reduce((sum, m) => sum + getModFlatValue(m), 0)
             : 0;
         const thrownStyleFallback =
             isThrown && thrownModBonus === 0 && hasClassFeatureOrOption("Thrown Weapon Fighting") ? 2 : 0;
@@ -1728,10 +1740,10 @@ export function parseDndBeyondCharacter(
                 a.activation?.activationType === 3
                     ? "Bonus Action"
                     : a.activation?.activationType === 4
-                      ? "Reaction"
-                      : a.activation?.activationType === 1 || a.activation?.activationType === 8
-                        ? "Action"
-                        : "Action";
+                        ? "Reaction"
+                        : a.activation?.activationType === 1 || a.activation?.activationType === 8
+                            ? "Action"
+                            : "Action";
             const actionSource = (defaultSource === "Class Feature" && a.componentId && componentClassSourceMap.has(Number(a.componentId)))
                 ? componentClassSourceMap.get(Number(a.componentId))!
                 : defaultSource;
@@ -2091,12 +2103,12 @@ export function parseDndBeyondCharacter(
         const fallbackUses = druid.level >= 20
             ? 99
             : is2024Druid || druid.level >= 6
-              ? druid.level >= 17
-                  ? 4
-                  : druid.level >= 6
-                    ? 3
-                    : 2
-              : 2;
+                ? druid.level >= 17
+                    ? 4
+                    : druid.level >= 6
+                        ? 3
+                        : 2
+                : 2;
 
         const totalUses = actionUses ?? fallbackUses;
 
@@ -2603,7 +2615,7 @@ export function applyLockedFieldsToRefreshedCharacter(
         if (target.vitals?.spellcastingAbility) {
             const spellAb = target.abilities.find(
                 a => a.name.toLowerCase() === target.vitals.spellcastingAbility.toLowerCase() ||
-                     a.abbr.toLowerCase() === target.vitals.spellcastingAbility.toLowerCase()
+                    a.abbr.toLowerCase() === target.vitals.spellcastingAbility.toLowerCase()
             );
             if (spellAb) {
                 target.vitals.spellSaveDc = 8 + target.vitals.proficiencyBonus + spellAb.modifier;
@@ -2738,10 +2750,10 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
             (druidClass.level >= 20
                 ? 99
                 : druidClass.level >= 17
-                  ? 4
-                  : druidClass.level >= 6
-                    ? 3
-                    : 2);
+                    ? 4
+                    : druidClass.level >= 6
+                        ? 3
+                        : 2);
 
         const existingWs = character.classResources.find(r => r?.name?.toLowerCase() === "wild shape");
         if (existingWs) {

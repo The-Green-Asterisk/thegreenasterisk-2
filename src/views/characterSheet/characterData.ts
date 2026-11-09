@@ -13,6 +13,7 @@ export interface SpellDefinition {
     description: string;
     imageUrl?: string;
     isLegacy?: boolean;
+    alwaysPrepared?: boolean;
 }
 
 export interface AbilityScore {

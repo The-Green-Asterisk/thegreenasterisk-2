@@ -17,6 +17,8 @@ export interface CharacterCreatorContext {
     backgrounds: BackgroundDefinition[];
     originFeats: OriginFeatDefinition[];
     generalFeats: GeneralFeatDefinition[];
+    spells: RuleSpellDefinition[];
+    getSpell: (nameOrId: string) => RuleSpellDefinition | undefined;
 
     activeSpellLevelFilter: number | "all";
     activeSpellClassFilter: string;

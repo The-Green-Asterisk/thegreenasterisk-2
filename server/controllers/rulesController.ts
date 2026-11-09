@@ -6,6 +6,8 @@ import RuleClass from "../services/database/entity/RuleClass";
 import RuleFeat from "../services/database/entity/RuleFeat";
 import RuleSpecies from "../services/database/entity/RuleSpecies";
 import RuleSubclass from "../services/database/entity/RuleSubclass";
+import { Spell } from "../services/database/entity/Spell";
+import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import {
     CLASS_SCALING_TRAITS_2024,
     MULTICLASS_DATA_2024,
@@ -19,8 +21,9 @@ import {
     SEED_ORIGIN_FEATS,
     SEED_SPECIES
 } from "../services/database/rulesSeed";
-import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
+import { SEED_SPELLS } from "../services/database/spellsSeed";
 import BaseController from "./baseController";
+import SpellController from "./spellController";
 
 function slugify(text: string): string {
     return text
@@ -508,6 +511,8 @@ export default class RulesController extends BaseController {
                 }));
                 await featRepo.save([...originEntities, ...generalEntities]);
             }
+
+            await SpellController.seedDefaultSpellsIfEmpty();
         } catch (err) {
             console.warn("Rules auto-seed check encountered an issue:", err);
         }
@@ -556,7 +561,8 @@ export default class RulesController extends BaseController {
                 species: SEED_SPECIES,
                 backgrounds: SEED_BACKGROUNDS,
                 originFeats: SEED_ORIGIN_FEATS,
-                generalFeats: SEED_GENERAL_FEATS
+                generalFeats: SEED_GENERAL_FEATS,
+                spells: SEED_SPELLS
             });
             return {
                 response: fallback,
@@ -657,7 +663,7 @@ export default class RulesController extends BaseController {
                             const subKey = normalizeSubclassKey(canonicalId || canonicalName);
                             const matchedLSub = loadedSubclasses.find(
                                 (ls) => (ls.classSlug === rc.slug || ls.classId === rc.id) &&
-                                        (ls.slug === canonicalId || ls.id === canonicalId || ls.name.toLowerCase() === canonicalName?.toLowerCase() || normalizeSubclassKey(ls.slug || ls.name) === subKey)
+                                    (ls.slug === canonicalId || ls.id === canonicalId || ls.name.toLowerCase() === canonicalName?.toLowerCase() || normalizeSubclassKey(ls.slug || ls.name) === subKey)
                             );
                             const subProg = (matchedLSub && matchedLSub.progression && matchedLSub.progression.length > 0)
                                 ? matchedLSub.progression
@@ -691,7 +697,7 @@ export default class RulesController extends BaseController {
                             seenSubKeys.add(ssKey);
                             const matchedLSub = loadedSubclasses.find(
                                 (ls) => (ls.classSlug === rc.slug || ls.classId === rc.id) &&
-                                        (ls.slug === ss.id || ls.id === ss.id || ls.name.toLowerCase() === ss.name?.toLowerCase() || normalizeSubclassKey(ls.slug || ls.name) === ssKey)
+                                    (ls.slug === ss.id || ls.id === ss.id || ls.name.toLowerCase() === ss.name?.toLowerCase() || normalizeSubclassKey(ls.slug || ls.name) === ssKey)
                             );
                             const subProg = (matchedLSub && matchedLSub.progression && matchedLSub.progression.length > 0)
                                 ? matchedLSub.progression
@@ -798,13 +804,22 @@ export default class RulesController extends BaseController {
                 ? loadedSubclasses
                 : classes.flatMap((c) => (c.subclasses || []).map((s: any) => ({ ...s, classSlug: c.id })));
 
+            let dbSpells: any[] = [];
+            try {
+                const spellRepo = AppDataSource.getRepository(Spell);
+                dbSpells = await spellRepo.find({ order: { level: "ASC", name: "ASC" } });
+            } catch (err: any) {
+                console.warn("Could not load spells from DB for rules:", err?.message || err);
+            }
+
             const payload = JSON.stringify({
                 classes: classes.length > 0 ? classes : SEED_CLASSES,
                 subclasses: allSubclasses,
                 species: species.length > 0 ? species : SEED_SPECIES,
                 backgrounds: backgrounds.length > 0 ? backgrounds : SEED_BACKGROUNDS,
                 originFeats: originFeats.length > 0 ? originFeats : SEED_ORIGIN_FEATS,
-                generalFeats: generalFeats.length > 0 ? generalFeats : SEED_GENERAL_FEATS
+                generalFeats: generalFeats.length > 0 ? generalFeats : SEED_GENERAL_FEATS,
+                spells: dbSpells.length > 0 ? dbSpells : SEED_SPELLS
             });
 
             // Cache rules in memory for 10 minutes
@@ -834,7 +849,8 @@ export default class RulesController extends BaseController {
                 species: SEED_SPECIES,
                 backgrounds: SEED_BACKGROUNDS,
                 originFeats: SEED_ORIGIN_FEATS,
-                generalFeats: SEED_GENERAL_FEATS
+                generalFeats: SEED_GENERAL_FEATS,
+                spells: SEED_SPELLS
             });
             return {
                 response: fallback,

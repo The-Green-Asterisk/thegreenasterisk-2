@@ -1,10 +1,10 @@
 import { getData } from "@services/request";
 import {
     AbilityName,
-    BACKGROUNDS_2024,
     BackgroundDefinition,
-    CLASSES_2024,
+    BACKGROUNDS_2024,
     ClassDefinition,
+    CLASSES_2024,
     ELDRITCH_INVOCATIONS,
     GENERAL_FEATS_2024,
     GeneralFeatDefinition,
@@ -13,7 +13,8 @@ import {
     OriginFeatDefinition,
     RuleSpellDefinition,
     SPECIES_2024,
-    SpeciesDefinition
+    SpeciesDefinition,
+    SPELLS_2024
 } from "../../rules/dnd5e_2024";
 import {
     ALL_SKILLS,
@@ -127,6 +128,49 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public backgrounds: BackgroundDefinition[] = [...BACKGROUNDS_2024];
     public originFeats: OriginFeatDefinition[] = [...ORIGIN_FEATS_2024];
     public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
+    public spells: RuleSpellDefinition[] = [...SPELLS_2024];
+
+    public getSpell(nameOrId: string): RuleSpellDefinition | undefined {
+        if (!nameOrId) return undefined;
+        const norm = nameOrId.toLowerCase().trim();
+        return (this.spells || SPELLS_2024).find((s) => s.name.toLowerCase() === norm || s.id.toLowerCase() === norm);
+    }
+
+    private mapRawSpells(rawList: any[]): RuleSpellDefinition[] {
+        return rawList.map((s: any) => {
+            let classes: string[] = [];
+            if (Array.isArray(s.classes)) {
+                classes = s.classes;
+            } else if (typeof s.classes === "string") {
+                const trimmed = s.classes.trim();
+                if (trimmed.startsWith("[")) {
+                    try { classes = JSON.parse(trimmed); } catch { classes = []; }
+                } else if (trimmed) {
+                    classes = trimmed.split(",").map((c: string) => c.trim()).filter(Boolean);
+                }
+            }
+            let components: string = "V, S";
+            if (Array.isArray(s.components)) {
+                components = s.components.join(", ");
+            } else if (s.components) {
+                components = String(s.components);
+            }
+            return {
+                id: s.slug || String(s.id),
+                name: s.name,
+                level: Number(s.level) || 0,
+                school: s.school || "Evocation",
+                castingTime: s.castingTime || "1 action",
+                range: s.range || "Self",
+                duration: s.duration || "Instantaneous",
+                components,
+                concentration: Boolean(s.concentration),
+                ritual: Boolean(s.ritual),
+                description: s.description || "",
+                classes
+            };
+        });
+    }
 
     public activeSpellLevelFilter: number | "all" = "all";
     public activeSpellClassFilter: string = "all";
@@ -222,10 +266,24 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                 if (Array.isArray(rules.backgrounds) && rules.backgrounds.length > 0) this.backgrounds = rules.backgrounds;
                 if (Array.isArray(rules.originFeats) && rules.originFeats.length > 0) this.originFeats = rules.originFeats;
                 if (Array.isArray(rules.generalFeats) && rules.generalFeats.length > 0) this.generalFeats = rules.generalFeats;
+                if (Array.isArray(rules.spells) && rules.spells.length > 0) {
+                    this.spells = this.mapRawSpells(rules.spells);
+                }
             }
         } catch (e) {
             console.warn("Using offline / fallback rules:", e);
         }
+
+        try {
+            const dbSpells = await getData<any>("/get-spells");
+            const spellList = Array.isArray(dbSpells) ? dbSpells : (Array.isArray(dbSpells?.spells) ? dbSpells.spells : []);
+            if (spellList.length > 0) {
+                this.spells = this.mapRawSpells(spellList);
+            }
+        } catch (e) {
+            console.warn("Using offline / fallback spells dictionary:", e);
+        }
+
         const targetId = query?.id || query?.savedId || query?.characterId || query?.siteCharacterId;
         if (targetId) {
             await this.loadCharacter(targetId);

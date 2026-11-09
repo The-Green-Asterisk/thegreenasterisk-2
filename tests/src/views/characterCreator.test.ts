@@ -1705,7 +1705,7 @@ describe("CharacterCreatorController", () => {
             height: 1100,
             x: 0,
             y: 100,
-            toJSON: () => {}
+            toJSON: () => { }
         });
         ctrl.updateMulticlassBarPositions();
         expect(bottomBar.classList.contains("docked")).toBe(false);
@@ -1721,7 +1721,7 @@ describe("CharacterCreatorController", () => {
             height: 1100,
             x: 0,
             y: -350,
-            toJSON: () => {}
+            toJSON: () => { }
         });
         ctrl.updateMulticlassBarPositions();
         expect(bottomBar.classList.contains("docked")).toBe(true);
@@ -2286,6 +2286,10 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.state.featureSpellChoices["pact-of-the-tome-rituals"]).toEqual(
                 expect.arrayContaining(["Charm Person", "Mirror Image"])
             );
+
+            // Darvell's prepared spells should match his full allotment (17/17: Bard 6 gives 10 + Warlock 6 gives 7)
+            expect(ctrl.getMaxPreparedSpells()).toBe(17);
+            expect(ctrl.state.selectedSpellsLevel1.length).toBe(17);
 
             const step8Html = ctrl["renderStep8Spells"]();
             expect(step8Html).toContain('id="feature-spell-choices-section"');
