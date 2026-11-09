@@ -2313,5 +2313,59 @@ describe("CharacterCreatorController", () => {
             const step3Html = ctrl["renderStep3Class"]();
             expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="whispers-of-the-grave"/);
         });
+
+        it("places feature descriptions inside level-choice-box under level-choice-title and avoids duplicate ability-feature-cards across all classes and subclasses", () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            const root = document.getElementById("creator-step-panels")!;
+            ctrl.state.level = 20;
+
+            // 1. Specifically check Warlock: 0 ability-feature-card divs for Eldritch Invocations, 1 level-choice-box with description under level-choice-title
+            ctrl.state.classId = "warlock";
+            ctrl.state.subclassId = "fiend";
+            ctrl.renderStep(3);
+
+            const warlockAbilityCards = Array.from(root.querySelectorAll(".ability-feature-card .card-title")).map((el) => el.textContent?.trim() || "");
+            expect(warlockAbilityCards.filter((t) => t.toLowerCase().includes("eldritch invocation"))).toHaveLength(0);
+            expect(warlockAbilityCards.filter((t) => t.toLowerCase().includes("fiendish resilience"))).toHaveLength(0);
+
+            const warlockChoiceBoxes = Array.from(root.querySelectorAll(".level-choice-box"));
+            const invocationChoiceBoxes = warlockChoiceBoxes.filter((box) =>
+                box.querySelector(".level-choice-title")?.textContent?.includes("Eldritch Invocations")
+            );
+            expect(invocationChoiceBoxes).toHaveLength(1);
+            const invTitle = invocationChoiceBoxes[0].querySelector(".level-choice-title");
+            const invDesc = invTitle?.nextElementSibling;
+            expect(invDesc?.tagName.toLowerCase()).toBe("p");
+            expect(invDesc?.classList.contains("card-body")).toBe(true);
+            expect(invDesc?.textContent).toContain("Eldritch Invocations");
+
+            // 2. Specifically check Sorcerer: 0 ability-feature-card divs for Metamagic, 1 level-choice-box with description under level-choice-title
+            ctrl.state.classId = "sorcerer";
+            ctrl.state.subclassId = "draconic";
+            ctrl.renderStep(3);
+
+            const sorcererAbilityCards = Array.from(root.querySelectorAll(".ability-feature-card .card-title")).map((el) => el.textContent?.trim() || "");
+            expect(sorcererAbilityCards.filter((t) => t.toLowerCase().includes("metamagic"))).toHaveLength(0);
+            expect(sorcererAbilityCards.filter((t) => t.toLowerCase().includes("draconic ancestor"))).toHaveLength(0);
+
+            // 3. Check across all 12 classes and 48 subclasses that every .level-choice-box has a p.card-body directly beneath h5.level-choice-title
+            for (const cls of ctrl.classes) {
+                ctrl.state.classId = cls.id;
+                for (const sub of cls.subclasses) {
+                    ctrl.state.subclassId = sub.id;
+                    ctrl.renderStep(3);
+                    const choiceBoxes = Array.from(root.querySelectorAll(".level-choice-box"));
+                    expect(choiceBoxes.length).toBeGreaterThan(0);
+                    for (const box of choiceBoxes) {
+                        const titleEl = box.querySelector(".level-choice-title");
+                        expect(titleEl).toBeTruthy();
+                        const bodyEl = titleEl?.nextElementSibling as HTMLElement | null;
+                        expect(bodyEl?.tagName.toLowerCase()).toBe("p");
+                        expect(bodyEl?.classList.contains("card-body")).toBe(true);
+                        expect((bodyEl?.textContent || "").trim().length).toBeGreaterThan(10);
+                    }
+                }
+            }
+        });
     });
 });

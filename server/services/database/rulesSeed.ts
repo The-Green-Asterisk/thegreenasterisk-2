@@ -4410,7 +4410,7 @@ export const SEED_CLASSES = [
             {
                 "level": 2,
                 "name": "Metamagic",
-                "description": "Choose 2 Metamagic options: Quickened Spell, Twinned Spell, Subtle Spell, Heightened Spell, Empowered Spell, etc."
+                "description": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two Metamagic options of your choice, and you learn additional Metamagic options at Sorcerer levels 10 and 17. You can use only one Metamagic option on a spell when you cast it, unless the option says otherwise."
             },
             {
                 "level": 3,
@@ -4448,11 +4448,6 @@ export const SEED_CLASSES = [
                 "description": "You gain access to 5th-level spell slots."
             },
             {
-                "level": 10,
-                "name": "Metamagic (Additional Option)",
-                "description": "Gain 1 additional Metamagic option of your choice."
-            },
-            {
                 "level": 11,
                 "name": "6th-Level Spells",
                 "description": "You gain access to 6th-level spell slots."
@@ -4481,11 +4476,6 @@ export const SEED_CLASSES = [
                 "level": 16,
                 "name": "Ability Score Improvement",
                 "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
-            },
-            {
-                "level": 17,
-                "name": "Metamagic (Additional Option)",
-                "description": "Gain 1 additional Metamagic option of your choice."
             },
             {
                 "level": 17,
@@ -4968,18 +4958,13 @@ export const SEED_CLASSES = [
         "features": [
             {
                 "level": 1,
-                "name": "Eldritch Invocations (1 Invocation)",
-                "description": "Gain 1 Eldritch Invocation at level 1 (e.g. Pact of the Blade, Pact of the Tome, Pact of the Chain, Agonizing Blast, Armor of Shadows)."
+                "name": "Eldritch Invocations",
+                "description": "You have unearthed Eldritch Invocations, pieces of forbidden knowledge that imbue you with an abiding magical ability or other lessons. You gain one invocation of your choice, such as Pact of the Tome. As you gain Warlock levels, you learn additional invocations of your choice (2 at level 2, 3 at level 5, 4 at level 7, 5 at level 9, 6 at level 12, 7 at level 15, and 8 at level 18). Whenever you gain a Warlock level, you can replace one of your invocations with another invocation for which you qualify."
             },
             {
                 "level": 1,
                 "name": "Pact Magic",
                 "description": "Cast warlock spells using Charisma. All spell slots are of the highest unlocked level and recharge on a Short or Long Rest."
-            },
-            {
-                "level": 2,
-                "name": "Eldritch Invocations (2 Invocations)",
-                "description": "You gain a second Eldritch Invocation."
             },
             {
                 "level": 2,
@@ -4998,11 +4983,6 @@ export const SEED_CLASSES = [
             },
             {
                 "level": 5,
-                "name": "Eldritch Invocations (3 Invocations)",
-                "description": "You gain a third Eldritch Invocation."
-            },
-            {
-                "level": 5,
                 "name": "3rd-Level Pact Slots",
                 "description": "Your pact spell slots upgrade to 3rd level."
             },
@@ -5010,11 +4990,6 @@ export const SEED_CLASSES = [
                 "level": 6,
                 "name": "Subclass Feature",
                 "description": "Gain a feature granted by your chosen Otherworldly Patron."
-            },
-            {
-                "level": 7,
-                "name": "Eldritch Invocations (4 Invocations)",
-                "description": "You gain a fourth Eldritch Invocation."
             },
             {
                 "level": 7,
@@ -5030,11 +5005,6 @@ export const SEED_CLASSES = [
                 "level": 9,
                 "name": "Contact Patron",
                 "description": "Cast Contact Other Plane without expending a spell slot or failing the Intelligence saving throw once per Long Rest."
-            },
-            {
-                "level": 9,
-                "name": "Eldritch Invocations (5 Invocations)",
-                "description": "You gain a fifth Eldritch Invocation."
             },
             {
                 "level": 9,
@@ -5062,11 +5032,6 @@ export const SEED_CLASSES = [
                 "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
             },
             {
-                "level": 12,
-                "name": "Eldritch Invocations (6 Invocations)",
-                "description": "You gain a sixth Eldritch Invocation."
-            },
-            {
                 "level": 13,
                 "name": "Mystic Arcanum (7th Level)",
                 "description": "Choose one 7th-level Warlock spell. You can cast it once per Long Rest without expending a spell slot."
@@ -5082,11 +5047,6 @@ export const SEED_CLASSES = [
                 "description": "Choose one 8th-level Warlock spell. You can cast it once per Long Rest without expending a spell slot."
             },
             {
-                "level": 15,
-                "name": "Eldritch Invocations (7 Invocations)",
-                "description": "You gain a seventh Eldritch Invocation."
-            },
-            {
                 "level": 16,
                 "name": "Ability Score Improvement",
                 "description": "Gain the Ability Score Improvement feat or another feat for which you qualify."
@@ -5100,11 +5060,6 @@ export const SEED_CLASSES = [
                 "level": 17,
                 "name": "4th Pact Spell Slot",
                 "description": "You gain a fourth pact magic spell slot."
-            },
-            {
-                "level": 18,
-                "name": "Eldritch Invocations (8 Invocations)",
-                "description": "You gain an eighth Eldritch Invocation."
             },
             {
                 "level": 19,

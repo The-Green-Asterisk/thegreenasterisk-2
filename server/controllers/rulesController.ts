@@ -176,7 +176,7 @@ export default class RulesController extends BaseController {
                             const cfNorm = cfLower.replace(/\s*\([^)]+\)\s*$/, "");
                             return cfLower === sfLower || (cfNorm && sfNorm && cfNorm === sfNorm);
                         });
-                        return existingDdb || sf;
+                        return existingDdb ? { ...sf, ...existingDdb, level: sf.level, name: sf.name } : sf;
                     });
                     for (const cf of cleanCurrentFeatures) {
                         const cCls = getCanonicalClassForFeature(cf.name);
