@@ -148,7 +148,8 @@ export type ModifierType =
     | "grant_spell"      // Grants a specific spell or cantrip
     | "grant_feature"    // Grants a specific feature or trait
     | "multiplier"       // Multiplies a value (e.g. 2x carrying capacity)
-    | "half_proficiency"; // Adds half the Proficiency Bonus, rounded down (e.g. Jack of All Trades)
+    | "half_proficiency" // Adds half the Proficiency Bonus, rounded down (e.g. Jack of All Trades)
+    | "unarmored_ac";    // Base AC 10 + the listed abilities' modifiers while not wearing armor
 
 export interface StatModifier {
     target: ModifierTarget | string;
@@ -156,6 +157,11 @@ export interface StatModifier {
     value?: number | string;
     abilitySource?: AbilityName;
     minimum?: number;              // floor for ability_mod (e.g. Thaumaturge: Wisdom modifier, minimum +1)
+    valueByLevel?: number[];       // value by the granting class's level (index = level), e.g. Unarmored Movement
+    perClassLevel?: number;        // value × the granting class's level, e.g. Draconic Resilience HP
+    abilities?: AbilityName[];     // unarmored_ac: abilities whose modifiers add to 10
+    allowsShield?: boolean;        // unarmored_ac: still applies while holding a shield
+    requires?: "no-armor" | "no-heavy-armor" | "no-armor-or-shield"; // only applies in this armor state
     condition?: string;
     description?: string;
 }

@@ -2143,6 +2143,7 @@ export const SEED_CLASSES = [
                 "id": "battle-master",
                 "name": "Battle Master",
                 "description": "Maneuvers and Superiority Dice (d8s) to trip, disarm, or rally allies.",
+                "scalingTraits": { "maneuversByLevel": [0, 0, 0, 3, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 7, 9, 9, 9, 9, 9, 9] },
                 "features": [
                     {
                         "level": 3,

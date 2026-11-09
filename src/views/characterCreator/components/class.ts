@@ -26,7 +26,6 @@ import {
     IMPROVED_BRUTAL_STRIKE_OPTIONS,
     METAMAGIC_OPTIONS,
     MOON_CIRCLE_FORMS_STRIKES,
-    MULTICLASS_PREREQUISITES_2024,
     OPEN_HAND_TECHNIQUES,
     PRIMAL_COMPANION_TYPES,
     PRIMAL_ORDERS,
@@ -95,7 +94,7 @@ export function renderStep3Class(ctx: CharacterCreatorContext): string {
                             badgeHtml = `<div class="class-prereq-badge met"><i class="fa-solid fa-circle-check"></i> Prereq Met: ${check.prereqLabel}</div>`;
                         }
                     } else {
-                        const prereq = MULTICLASS_PREREQUISITES_2024[c.id.toLowerCase()];
+                        const prereq = c.multiclassing?.prerequisites;
                         if (prereq) {
                             badgeHtml = `<div class="class-prereq-badge info"><i class="fa-solid fa-circle-info"></i> Multiclass: ${prereq.label}</div>`;
                         }

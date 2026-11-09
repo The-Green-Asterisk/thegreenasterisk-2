@@ -64,6 +64,7 @@ import {
 import * as persistService from "./services/persistence";
 import * as rulesCalc from "./services/rulesCalculations";
 import * as skillRules from "./services/skillRules";
+import { hasUnlockedProgressionChoice } from "./services/progressionModifiers";
 import * as spellCalc from "./services/spellReconciliation";
 
 export { ALL_SKILLS, AsiChoice, CharacterClassChoice, CreatorState, FeatureSpellChoiceSection };
@@ -445,41 +446,28 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             }
         }
 
-        // 2. Fighting Style:
-        const hasFightingStyle = this.state.classes.some((c) => {
-            if (c.classId === "fighter" && (c.level || 1) >= 1) return true;
-            if (c.classId === "paladin" && (c.level || 1) >= 2) return true;
-            if (c.classId === "ranger" && (c.level || 1) >= 2) return true;
-            return false;
-        });
-        if (!hasFightingStyle) {
+        // 2–4. Choices kept in their own state fields only apply while a class's progression offers them
+        if (!hasUnlockedProgressionChoice(this, "fighting-style")) {
             this.state.fightingStyle = "";
         }
-
-        // 3. Divine Order: Requires Cleric (lvl >= 1)
-        const hasCleric = this.state.classes.some((c) => c.classId === "cleric" && (c.level || 1) >= 1);
-        if (!hasCleric) {
+        if (!hasUnlockedProgressionChoice(this, "divine-order")) {
             this.state.divineOrder = "";
         }
-
-        // 4. Primal Order: Requires Druid (lvl >= 1)
-        const hasDruid = this.state.classes.some((c) => c.classId === "druid" && (c.level || 1) >= 1);
-        if (!hasDruid) {
+        if (!hasUnlockedProgressionChoice(this, "primal-order")) {
             this.state.primalOrder = "";
         }
 
-        // 5. Metamagic: Requires Sorcerer (lvl >= 2)
-        const maxMetamagic = this.getMaxMetamagicCount();
+        // 5. Metamagic (scalingTraits.metamagicByLevel)
+        const maxMetamagic = rulesCalc.getMaxMetamagicCount(this);
         if (maxMetamagic <= 0) {
             this.state.metamagic = [];
         } else if (this.state.metamagic && this.state.metamagic.length > maxMetamagic) {
             this.state.metamagic = this.state.metamagic.slice(0, maxMetamagic);
         }
 
-        // 6. Invocations: Requires Warlock (lvl >= 1)
-        const warlock = this.state.classes.find((c) => c.classId === "warlock");
-        const warlockLvl = warlock ? (warlock.level || 1) : 0;
-        const maxInvocations = this.getMaxInvocationsCount();
+        // 6. Invocations (scalingTraits.invocationsByLevel), checked against that class's level
+        const warlockLvl = rulesCalc.getScalingTraitClassLevel(this, "invocationsByLevel");
+        const maxInvocations = rulesCalc.getMaxInvocationsCount(this);
         if (warlockLvl <= 0 || maxInvocations <= 0) {
             this.state.invocations = [];
         } else if (this.state.invocations) {
@@ -492,8 +480,8 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             }
         }
 
-        // 7. Battle Master Maneuvers: Requires Fighter Battle Master (lvl >= 3)
-        const maxManeuvers = this.getMaxManeuversCount();
+        // 7. Maneuvers (subclass scalingTraits.maneuversByLevel)
+        const maxManeuvers = rulesCalc.getMaxManeuversCount(this);
         if (maxManeuvers <= 0) {
             this.state.maneuvers = [];
         } else if (this.state.maneuvers && this.state.maneuvers.length > maxManeuvers) {
@@ -501,7 +489,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         }
 
         // 8. Weapon Masteries:
-        const maxWM = this.getMaxWeaponMasteriesCount();
+        const maxWM = rulesCalc.getMaxWeaponMasteriesCount(this);
         if (this.state.weaponMasteries && this.state.weaponMasteries.length > maxWM) {
             this.state.weaponMasteries = this.state.weaponMasteries.slice(0, maxWM);
         }
@@ -609,6 +597,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public getArmorClass(): number {
+        this.syncStateClassProperties();
         return rulesCalc.getArmorClass(this);
     }
 
@@ -617,14 +606,17 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public getSpeed(): number {
+        this.syncStateClassProperties();
         return rulesCalc.getSpeed(this);
     }
 
     public getSpecialSpeeds(): string[] {
+        this.syncStateClassProperties();
         return rulesCalc.getSpecialSpeeds(this);
     }
 
     public getSpeedDisplay(): string {
+        this.syncStateClassProperties();
         return rulesCalc.getSpeedDisplay(this);
     }
 
@@ -736,18 +728,22 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public getMaxWeaponMasteriesCount(): number {
+        this.syncStateClassProperties();
         return rulesCalc.getMaxWeaponMasteriesCount(this);
     }
 
     public getMaxMetamagicCount(): number {
+        this.syncStateClassProperties();
         return rulesCalc.getMaxMetamagicCount(this);
     }
 
     public getMaxInvocationsCount(): number {
+        this.syncStateClassProperties();
         return rulesCalc.getMaxInvocationsCount(this);
     }
 
     public getMaxManeuversCount(): number {
+        this.syncStateClassProperties();
         return rulesCalc.getMaxManeuversCount(this);
     }
 

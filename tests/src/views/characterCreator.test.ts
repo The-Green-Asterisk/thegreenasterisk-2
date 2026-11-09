@@ -812,10 +812,11 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.getMaxMetamagicCount()).toBe(0);
         ctrl.state.level = 2;
         expect(ctrl.getMaxMetamagicCount()).toBe(2);
+        // 2024: two more at 10 and at 17
         ctrl.state.level = 10;
-        expect(ctrl.getMaxMetamagicCount()).toBe(3);
-        ctrl.state.level = 17;
         expect(ctrl.getMaxMetamagicCount()).toBe(4);
+        ctrl.state.level = 17;
+        expect(ctrl.getMaxMetamagicCount()).toBe(6);
 
         // Eldritch Invocations (Warlock)
         ctrl.state.classId = "warlock";
@@ -830,12 +831,10 @@ describe("CharacterCreatorController", () => {
         ctrl.state.level = 18;
         expect(ctrl.getMaxInvocationsCount()).toBe(10);
 
-        // Battle Master Maneuvers (Fighter)
+        // Battle Master Maneuvers (Fighter; the subclass unlocks at 3)
         ctrl.state.classId = "fighter";
-        ctrl.state.subclassId = "battle-master";
-        ctrl.state.level = 1;
-        expect(ctrl.getMaxManeuversCount()).toBe(0);
         ctrl.state.level = 3;
+        ctrl.state.subclassId = "battle-master";
         expect(ctrl.getMaxManeuversCount()).toBe(3);
         ctrl.state.level = 7;
         expect(ctrl.getMaxManeuversCount()).toBe(5);
@@ -1266,26 +1265,76 @@ describe("CharacterCreatorController", () => {
         expect(clericLvl7).toContain("Potent Spellcasting");
     });
 
+    it("applies class features from the class rules: unarmored defense and movement, Roving, weapon and armor training", () => {
+        const setClass = (classId: string, level: number, subclassId = "") => {
+            ctrl.state.classId = classId;
+            ctrl.state.level = level;
+            ctrl.state.subclassId = subclassId;
+            ctrl.state.classes = [{ classId, level, subclassId }];
+            ctrl.syncStateClassProperties();
+        };
+        ctrl.state.speciesId = "human";
+        ctrl.state.selectedArmor = "None";
+        ctrl.state.hasShield = false;
+        ctrl.state.baseAbilities = { str: 10, dex: 14, con: 14, int: 10, wis: 14, cha: 10 };
+        ctrl.state.backgroundOption = "three-ones";
+        ctrl.state.bgStatA = "int";
+        ctrl.state.bgStatB = "int";
+        ctrl.state.bgStatC = "int";
+        ctrl.state.asiChoices = {};
+
+        // Monk 2: Unarmored Movement +10 and AC 10 + DEX + WIS, both lost with a shield
+        setClass("monk", 2);
+        expect(ctrl.getSpeed()).toBe(40);
+        expect(ctrl.getArmorClass()).toBe(14);
+        ctrl.state.hasShield = true;
+        expect(ctrl.getSpeed()).toBe(30);
+        expect(ctrl.getArmorClass()).toBe(10 + 2 + 2); // DEX only, + shield
+        // Barbarian keeps Unarmored Defense with a shield
+        setClass("barbarian", 1);
+        expect(ctrl.getArmorClass()).toBe(10 + 2 + 2 + 2);
+        ctrl.state.hasShield = false;
+
+        // Ranger 6: Roving +10, climb and swim
+        setClass("ranger", 6);
+        expect(ctrl.getSpeed()).toBe(40);
+        expect(ctrl.getSpecialSpeeds()).toEqual(["Climb 40 ft.", "Swim 40 ft."]);
+
+        // Rogue: martial weapons with Finesse or Light only; Monk: Light only
+        setClass("rogue", 1);
+        expect(ctrl.isProficientWithWeapon("Rapier")).toBe(true);
+        expect(ctrl.isProficientWithWeapon("Longsword")).toBe(false);
+        setClass("monk", 1);
+        expect(ctrl.isProficientWithWeapon("Scimitar")).toBe(true);
+        expect(ctrl.isProficientWithWeapon("Rapier")).toBe(false);
+
+        // Cleric Divine Order Protector: Heavy armor and Martial weapons
+        setClass("cleric", 1);
+        ctrl.state.divineOrder = "protector";
+        expect(ctrl.getAllArmorProficiencies()).toContain("Heavy Armor");
+        expect(ctrl.getAllWeaponProficiencies()).toContain("Martial Weapons");
+        ctrl.state.divineOrder = "thaumaturge";
+        expect(ctrl.getAllArmorProficiencies()).not.toContain("Heavy Armor");
+    });
+
     it("factors class and subclass features into AC, HP, and special speeds", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
 
-        // 1. Moon Druid AC at level 6+ (Improved Circle Forms: 13 + Wis when unarmored)
+        // 1. Moon Druid: Circle Forms (13 + WIS) is Wild Shape AC only, so normal unarmored AC is 10 + DEX
         ctrl.state.classId = "druid";
         ctrl.state.subclassId = "moon";
         ctrl.state.level = 6;
         ctrl.state.selectedArmor = "None";
         ctrl.state.hasShield = false;
-        ctrl.state.baseAbilities.dex = 12; // +1 mod (normal unarmored AC would be 10 + 1 = 11)
-        ctrl.state.baseAbilities.wis = 16; // +3 mod
+        ctrl.state.baseAbilities.dex = 12; // +1
+        ctrl.state.baseAbilities.wis = 16;
         ctrl.state.bgStatA = "wis";
         ctrl.state.bgStatB = "con";
-        ctrl.state.backgroundOption = "two-and-one"; // Wis becomes 18 (+4 mod)
-        // 13 + 4 = 17 AC
-        expect(ctrl.getArmorClass()).toBe(17);
-
-        // With shield: 17 + 2 = 19 AC
+        ctrl.state.backgroundOption = "two-and-one";
+        expect(ctrl.getArmorClass()).toBe(11);
         ctrl.state.hasShield = true;
-        expect(ctrl.getArmorClass()).toBe(19);
+        expect(ctrl.getArmorClass()).toBe(13);
 
         // 2. Sea Druid Swim Speed at level 6+ (Aquatic Affinity)
         ctrl.state.subclassId = "sea";

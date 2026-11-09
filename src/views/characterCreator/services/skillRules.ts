@@ -1,6 +1,7 @@
-import { ProgressionChoice, ProgressionLevel, StatModifier } from "../../../rules/dnd5e_2024";
-import { ALL_SKILLS, CreatorState } from "../characterCreator.types";
+import { StatModifier } from "../../../rules/dnd5e_2024";
+import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
+import { getProgressionModifiers } from "./progressionModifiers";
 import { getAsiSlots } from "./rulesCalculations";
 
 const ALL_SKILL_NAMES = ALL_SKILLS.map((s) => s.name);
@@ -51,58 +52,18 @@ export function getClassSkillSources(ctx: CharacterCreatorContext): SkillSource[
     return sources;
 }
 
-// Older creator state keeps a few progression choices in their own fields rather than subclassFeatureChoices
-const CHOICE_STATE_FIELDS: Record<string, keyof CreatorState> = {
-    "divine-order": "divineOrder",
-    "primal-order": "primalOrder",
-    "fighting-style": "fightingStyle"
-};
-
-function chosenOptionId(ctx: CharacterCreatorContext, classId: string, level: number, choice: ProgressionChoice): string | undefined {
-    const stored = ctx.state.subclassFeatureChoices || {};
-    for (const key of [`${classId}-${level}-${choice.id}`, choice.choiceId, choice.id]) {
-        if (key && stored[key]) return stored[key];
-    }
-    const field = CHOICE_STATE_FIELDS[choice.id] || (choice.choiceId ? CHOICE_STATE_FIELDS[choice.choiceId] : undefined);
-    const value = field ? ctx.state[field] : undefined;
-    return typeof value === "string" && value ? value : undefined;
-}
-
 /**
- * Every skill modifier the character's class and subclass progressions grant up to each class's level: from features
- * (e.g. Jack of All Trades) and from the options chosen in progression choices (e.g. Thaumaturge, Wizard Scholar).
+ * Skill modifiers (targets "skills.<name>" or "skills.unproficient") from the character's class and subclass
+ * progressions, with what granted each.
  */
 export function getProgressionSkillModifiers(ctx: CharacterCreatorContext): ProgressionSkillModifier[] {
     const result: ProgressionSkillModifier[] = [];
-    const collect = (mods: StatModifier[] | undefined, source: string) => {
-        for (const m of mods || []) {
-            const target = String(m.target || "");
-            if (!target.startsWith("skills.")) continue;
-            const key = target.slice("skills.".length).toLowerCase().replace(/[-_]/g, " ");
-            const skill = key === "unproficient" ? "unproficient" : ALL_SKILL_NAMES.find((n) => n.toLowerCase() === key);
-            if (skill) result.push({ ...m, skill, source });
-        }
-    };
-    for (const cc of ctx.state.classes || []) {
-        const cls = ctx.classes.find((c) => c.id === cc.classId);
-        if (!cls) continue;
-        const subId = ctx.resolveCanonicalSubclassId(cc.classId, cc.subclassId);
-        const sub = cls.subclasses?.find((s) => s.id === subId);
-        const progressions: Array<{ levels: ProgressionLevel[]; label: string }> = [
-            { levels: cls.progression || [], label: cls.name },
-            { levels: sub?.progression || [], label: sub?.name || cls.name }
-        ];
-        for (const { levels } of progressions) {
-            for (const pl of levels) {
-                if (pl.level > (cc.level || 0)) continue;
-                for (const f of pl.features || []) collect(f.modifiers, f.name);
-                for (const choice of pl.choices || []) {
-                    const optId = chosenOptionId(ctx, cc.classId, pl.level, choice);
-                    const opt = choice.options?.find((o) => o.id === optId);
-                    if (opt) collect(opt.modifiers, opt.name === choice.name ? opt.name : `${choice.name}: ${opt.name}`);
-                }
-            }
-        }
+    for (const m of getProgressionModifiers(ctx)) {
+        const target = String(m.target || "");
+        if (!target.startsWith("skills.")) continue;
+        const key = target.slice("skills.".length).toLowerCase().replace(/[-_]/g, " ");
+        const skill = key === "unproficient" ? "unproficient" : ALL_SKILL_NAMES.find((n) => n.toLowerCase() === key);
+        if (skill) result.push({ ...m, skill, source: m.source });
     }
     return result;
 }

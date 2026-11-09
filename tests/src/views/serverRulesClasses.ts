@@ -25,7 +25,9 @@ export function serverRulesClasses(): ClassDefinition[] {
                 return {
                     ...s,
                     spellcastingOverride: seedSub?.spellcastingOverride,
-                    progression: s.progression && s.progression.length > 0 ? s.progression : (buildSubclassProgression(cls.id, s as any) as any)
+                    scalingTraits: seedSub?.scalingTraits,
+                    // As served: rule_subclasses.progressionJson, built from the seed subclass
+                    progression: buildSubclassProgression(cls.id, (seedSub || s) as any) as any
                 };
             })
         };

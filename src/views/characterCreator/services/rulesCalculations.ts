@@ -2,11 +2,11 @@ import {
     AbilityName,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
-    MULTICLASS_PROFICIENCIES_2024,
     checkClassPrerequisite
 } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS, AsiChoice, AsiSlot } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
+import { armorRequirementMet, getProgressionModifiers, modifierNumber } from "./progressionModifiers";
 
 export const STANDARD_ARRAY: number[] = [15, 14, 13, 12, 10, 8];
 
@@ -139,116 +139,58 @@ export function ensureAsiChoices(ctx: CharacterCreatorContext): void {
     }
 }
 
+/** Weapon Mastery picks: each class's scalingTraits.weaponMasteriesByLevel (or a flat weaponMasteryCount). */
 export function getMaxWeaponMasteriesCount(ctx: CharacterCreatorContext): number {
+    // No class sync here: the class sync's own cleanup calls this
     let count = 0;
-    if (Array.isArray(ctx.state.classes) && ctx.state.classes.length > 0) {
-        for (const c of ctx.state.classes) {
-            const cls = ctx.classes.find((x) => x.id === c.classId);
-            if (!cls || c.level < 1) continue;
-            let mCount = 0;
-            if (cls.scalingTraits?.weaponMasteriesByLevel) {
-                mCount = cls.scalingTraits.weaponMasteriesByLevel[c.level] || 0;
-            } else if (cls.weaponMasteryByLevel) {
-                mCount = cls.weaponMasteryByLevel[c.level] || 0;
-            } else if (cls.weaponMasteryCount) {
-                mCount = cls.weaponMasteryCount;
-                if (cls.id === "fighter") {
-                    if (c.level >= 16) mCount = 6;
-                    else if (c.level >= 10) mCount = 5;
-                    else if (c.level >= 4) mCount = 4;
-                    else mCount = 3;
-                } else if (cls.id === "barbarian") {
-                    if (c.level >= 10) mCount = 4;
-                    else if (c.level >= 4) mCount = 3;
-                    else mCount = 2;
-                }
-            }
-            count += mCount;
-        }
-    }
-    if (count === 0) {
-        const primaryCls = ctx.classes.find((x) => x.id === ctx.state.classId);
-        if (primaryCls) {
-            const lvl = ctx.state.level || 1;
-            if (primaryCls.scalingTraits?.weaponMasteriesByLevel) {
-                count = primaryCls.scalingTraits.weaponMasteriesByLevel[lvl] || 0;
-            } else if (primaryCls.weaponMasteryByLevel) {
-                count = primaryCls.weaponMasteryByLevel[lvl] || 0;
-            } else if (primaryCls.weaponMasteryCount) {
-                let mCount = primaryCls.weaponMasteryCount;
-                if (primaryCls.id === "fighter") {
-                    if (lvl >= 16) mCount = 6;
-                    else if (lvl >= 10) mCount = 5;
-                    else if (lvl >= 4) mCount = 4;
-                    else mCount = 3;
-                } else if (primaryCls.id === "barbarian") {
-                    if (lvl >= 10) mCount = 4;
-                    else if (lvl >= 4) mCount = 3;
-                    else mCount = 2;
-                }
-                count = mCount;
-            }
+    for (const c of ctx.state.classes || []) {
+        const cls = ctx.classes.find((x) => x.id === c.classId);
+        if (!cls || c.level < 1) continue;
+        if (cls.scalingTraits?.weaponMasteriesByLevel) {
+            count += cls.scalingTraits.weaponMasteriesByLevel[c.level] || 0;
+        } else if (cls.weaponMasteryByLevel) {
+            count += cls.weaponMasteryByLevel[c.level] || 0;
+        } else {
+            count += cls.weaponMasteryCount || 0;
         }
     }
     return count;
 }
 
-export function getMaxMetamagicCount(ctx: CharacterCreatorContext): number {
-    for (const c of (ctx.state.classes || [])) {
+/** A class- or subclass-level table from scalingTraits (e.g. metamagicByLevel), at that class's level. */
+function scalingTraitCount(ctx: CharacterCreatorContext, key: string): number {
+    // No class sync here: the class sync's own cleanup calls this
+    let count = 0;
+    for (const c of ctx.state.classes || []) {
         const cls = ctx.classes.find((x) => x.id === c.classId);
-        if (cls?.scalingTraits?.metamagicByLevel) {
-            return cls.scalingTraits.metamagicByLevel[c.level] || 0;
+        const sub = cls?.subclasses?.find((s) => s.id === ctx.resolveCanonicalSubclassId(c.classId, c.subclassId));
+        for (const table of [cls?.scalingTraits?.[key], (sub as any)?.scalingTraits?.[key]]) {
+            if (Array.isArray(table)) count += table[Math.min(c.level, table.length - 1)] || 0;
         }
     }
-    const isSorc = ctx.state.classId === "sorcerer" || ctx.state.classes?.some((c) => c.classId === "sorcerer");
-    if (!isSorc) return 0;
-    const sorcClass = ctx.state.classes?.find((c) => c.classId === "sorcerer");
-    const lvl = ctx.state.classId === "sorcerer" ? (ctx.state.level || 0) : (sorcClass?.level || 0);
-    if (lvl < 2) return 0;
-    if (lvl >= 17) return 4;
-    if (lvl >= 10) return 3;
-    return 2;
+    return count;
+}
+
+/** The level of the class (or subclass) whose scalingTraits define this table, e.g. the Warlock level for invocations. */
+export function getScalingTraitClassLevel(ctx: CharacterCreatorContext, key: string): number {
+    for (const c of ctx.state.classes || []) {
+        const cls = ctx.classes.find((x) => x.id === c.classId);
+        const sub = cls?.subclasses?.find((s) => s.id === ctx.resolveCanonicalSubclassId(c.classId, c.subclassId));
+        if (cls?.scalingTraits?.[key] || (sub as any)?.scalingTraits?.[key]) return c.level || 0;
+    }
+    return 0;
+}
+
+export function getMaxMetamagicCount(ctx: CharacterCreatorContext): number {
+    return scalingTraitCount(ctx, "metamagicByLevel");
 }
 
 export function getMaxInvocationsCount(ctx: CharacterCreatorContext): number {
-    for (const c of (ctx.state.classes || [])) {
-        const cls = ctx.classes.find((x) => x.id === c.classId);
-        if (cls?.scalingTraits?.invocationsByLevel) {
-            return cls.scalingTraits.invocationsByLevel[c.level] || 0;
-        }
-    }
-    const isWarlock = ctx.state.classId === "warlock" || ctx.state.classes?.some((c) => c.classId === "warlock");
-    if (!isWarlock) return 0;
-    const warlockClass = ctx.state.classes?.find((c) => c.classId === "warlock");
-    const lvl = ctx.state.classId === "warlock" ? (ctx.state.level || 0) : (warlockClass?.level || 0);
-    if (lvl < 1) return 0;
-    if (lvl >= 18) return 10;
-    if (lvl >= 15) return 9;
-    if (lvl >= 12) return 8;
-    if (lvl >= 9) return 7;
-    if (lvl >= 7) return 6;
-    if (lvl >= 5) return 5;
-    if (lvl >= 2) return 3;
-    return 1;
+    return scalingTraitCount(ctx, "invocationsByLevel");
 }
 
 export function getMaxManeuversCount(ctx: CharacterCreatorContext): number {
-    for (const c of (ctx.state.classes || [])) {
-        const cls = ctx.classes.find((x) => x.id === c.classId);
-        const sub = cls?.subclasses?.find((s) => s.id === c.subclassId);
-        if ((sub as any)?.scalingTraits?.maneuversByLevel) {
-            return (sub as any).scalingTraits.maneuversByLevel[c.level] || 0;
-        }
-    }
-    const isBattleMaster = ctx.state.subclassId === "battle-master" || ctx.state.classes?.some((c) => c.classId === "fighter" && c.subclassId === "battle-master");
-    if (!isBattleMaster) return 0;
-    const fighterClass = ctx.state.classes?.find((c) => c.classId === "fighter");
-    const lvl = ctx.state.classId === "fighter" ? (ctx.state.level || 0) : (fighterClass?.level || 0);
-    if (lvl < 3) return 0;
-    if (lvl >= 15) return 9;
-    if (lvl >= 10) return 7;
-    if (lvl >= 7) return 5;
-    return 3;
+    return scalingTraitCount(ctx, "maneuversByLevel");
 }
 
 export function getEffectiveAbilityScore(ctx: CharacterCreatorContext, stat: AbilityName): number {
@@ -288,9 +230,7 @@ export function getAbilityModifier(ctx: CharacterCreatorContext, stat: AbilityNa
 export function getMaxHp(ctx: CharacterCreatorContext): number {
     ctx.syncStateClassProperties();
     const conMod = getAbilityModifier(ctx, "con");
-    const classChoices = (ctx.state.classes && ctx.state.classes.length > 0)
-        ? ctx.state.classes
-        : [{ classId: ctx.state.classId || "fighter", level: ctx.state.level || 1 }];
+    const classChoices = ctx.state.classes || [];
 
     let hp = 0;
     classChoices.forEach((choice, idx) => {
@@ -322,10 +262,9 @@ export function getMaxHp(ctx: CharacterCreatorContext): number {
         hp += totalLevel;
     }
 
-    // Draconic Sorcerer (+1 HP per level starting at level 3)
-    const sorcererChoice = classChoices.find((c) => c.classId === "sorcerer");
-    if (sorcererChoice && (sorcererChoice.subclassId === "draconic" || ctx.state.subclassId === "draconic") && sorcererChoice.level >= 3) {
-        hp += sorcererChoice.level;
+    // Class and subclass features (e.g. Draconic Resilience: +1 HP per Sorcerer level)
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target === "vitals.maxHp" && m.type === "bonus") hp += modifierNumber(m);
     }
 
     return Math.max(1, hp);
@@ -345,15 +284,11 @@ export function getArmorClass(ctx: CharacterCreatorContext): number {
             ac = armor.baseAc;
         }
     } else {
-        // Unarmored Defense for Barbarian or Monk
-        if (ctx.state.classId === "barbarian") {
-            ac = 10 + dexMod + getAbilityModifier(ctx, "con");
-        } else if (ctx.state.classId === "monk") {
-            ac = 10 + dexMod + getAbilityModifier(ctx, "wis");
-        } else if (ctx.state.classId === "sorcerer" && ctx.state.subclassId === "draconic" && ctx.state.level >= 3) {
-            ac = 10 + dexMod + getAbilityModifier(ctx, "cha");
-        } else if (ctx.state.classId === "druid" && ctx.state.subclassId === "moon" && ctx.state.level >= 6) {
-            ac = Math.max(ac, 13 + getAbilityModifier(ctx, "wis"));
+        // Unarmored Defense and similar class features: 10 + the listed abilities' modifiers
+        for (const m of getProgressionModifiers(ctx)) {
+            if (m.target !== "vitals.ac" || m.type !== "unarmored_ac" || !Array.isArray(m.abilities)) continue;
+            if (ctx.state.hasShield && m.allowsShield === false) continue;
+            ac = Math.max(ac, 10 + m.abilities.reduce((sum, ab) => sum + getAbilityModifier(ctx, ab), 0));
         }
     }
 
@@ -379,12 +314,12 @@ export function getSpeed(ctx: CharacterCreatorContext): number {
     if (ctx.state.speciesId === "elf" && ctx.state.lineageId === "wood-elf") {
         speed += 5;
     }
-    if ((ctx.state.classId === "barbarian" || ctx.state.classId === "monk") && ctx.state.level >= 5) {
-        speed += 10;
-    }
-    // Ranger Roving (Level 6+)
-    if (ctx.state.classId === "ranger" && ctx.state.level >= 6) {
-        speed += 10;
+    // Class and subclass features (e.g. Fast Movement, Unarmored Movement, Roving), when their armor condition is met
+    const armorCategory = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor)?.category || null;
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target !== "vitals.speed" || m.type !== "bonus") continue;
+        if (!armorRequirementMet(m, armorCategory === "Shield" ? null : armorCategory, !!ctx.state.hasShield)) continue;
+        speed += modifierNumber(m);
     }
     // Heavy Armor Strength requirement penalty: -10 ft if Strength is lower than required
     if (ctx.state.selectedArmor && ctx.state.selectedArmor !== "None") {
@@ -399,27 +334,18 @@ export function getSpeed(ctx: CharacterCreatorContext): number {
     return speed;
 }
 
+/** Climb / swim / fly speeds from class and subclass features ("walk" = equal to walking speed). */
 export function getSpecialSpeeds(ctx: CharacterCreatorContext): string[] {
-    const special: string[] = [];
     const baseSpeed = getSpeed(ctx);
-    // Sea Druid Level 6+ Aquatic Affinity
-    if (ctx.state.classId === "druid" && ctx.state.subclassId === "sea" && ctx.state.level >= 6) {
-        special.push(`Swim ${baseSpeed} ft.`);
+    const best: Record<string, number> = {};
+    for (const m of getProgressionModifiers(ctx)) {
+        const kind = String(m.target || "").replace(/^vitals\./, "");
+        if (!["climb", "swim", "fly", "burrow"].includes(kind) || m.type !== "set") continue;
+        const value = m.value === "walk" ? baseSpeed : Number(m.value) || 0;
+        best[kind] = Math.max(best[kind] || 0, value);
     }
-    // Barbarian Wild Heart Aspect of the Spider (Level 6+)
-    if (
-        ctx.state.classId === "barbarian" &&
-        ctx.state.subclassId === "wild-heart" &&
-        ctx.state.level >= 6 &&
-        ctx.state.subclassFeatureChoices?.["barbarian-6-wild-heart"] === "spider"
-    ) {
-        special.push(`Climb ${baseSpeed} ft.`);
-    }
-    // Ranger Level 6+ (Roving: Climbing and Swimming speed)
-    if (ctx.state.classId === "ranger" && ctx.state.level >= 6) {
-        special.push(`Climb ${baseSpeed} ft.`, `Swim ${baseSpeed} ft.`);
-    }
-    return special;
+    const labels: Record<string, string> = { climb: "Climb", swim: "Swim", fly: "Fly", burrow: "Burrow" };
+    return ["climb", "swim", "fly", "burrow"].filter((k) => best[k] > 0).map((k) => `${labels[k]} ${best[k]} ft.`);
 }
 
 export function getSpeedDisplay(ctx: CharacterCreatorContext): string {
@@ -482,6 +408,22 @@ export function canMulticlassInto(
     };
 }
 
+/**
+ * Armor / weapon training from class and subclass features (e.g. Divine Order Protector: proficiencies.armor.heavy),
+ * as proficiency names ("Heavy Armor", "Martial Weapons").
+ */
+function progressionProficiencies(ctx: CharacterCreatorContext, kind: "armor" | "weapons"): string[] {
+    const names: string[] = [];
+    for (const m of getProgressionModifiers(ctx)) {
+        const target = String(m.target || "");
+        if (!target.startsWith(`proficiencies.${kind}.`)) continue;
+        const what = target.slice(`proficiencies.${kind}.`.length);
+        const label = what.charAt(0).toUpperCase() + what.slice(1);
+        names.push(kind === "armor" ? (what === "shields" ? "Shields" : `${label} Armor`) : `${label} Weapons`);
+    }
+    return names;
+}
+
 export function getAllArmorProficiencies(ctx: CharacterCreatorContext): string[] {
     ctx.syncStateClassProperties();
     const profs = new Set<string>();
@@ -494,9 +436,10 @@ export function getAllArmorProficiencies(ctx: CharacterCreatorContext): string[]
     for (let i = 1; i < ctx.state.classes.length; i++) {
         const cc = ctx.state.classes[i];
         const cls = ctx.classes.find((c) => c.id === cc.classId);
-        const multi = cls?.multiclassing?.proficiencies || MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+        const multi = cls?.multiclassing?.proficiencies;
         multi?.armor.forEach((p) => profs.add(p));
     }
+    progressionProficiencies(ctx, "armor").forEach((p) => profs.add(p));
     return Array.from(profs);
 }
 
@@ -512,9 +455,10 @@ export function getAllWeaponProficiencies(ctx: CharacterCreatorContext): string[
     for (let i = 1; i < ctx.state.classes.length; i++) {
         const cc = ctx.state.classes[i];
         const cls = ctx.classes.find((c) => c.id === cc.classId);
-        const multi = cls?.multiclassing?.proficiencies || MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+        const multi = cls?.multiclassing?.proficiencies;
         multi?.weapons.forEach((p) => profs.add(p));
     }
+    progressionProficiencies(ctx, "weapons").forEach((p) => profs.add(p));
     return Array.from(profs);
 }
 
@@ -525,7 +469,7 @@ export function getAllToolProficiencies(ctx: CharacterCreatorContext): string[] 
     for (let i = 1; i < ctx.state.classes.length; i++) {
         const cc = ctx.state.classes[i];
         const cls = ctx.classes.find((c) => c.id === cc.classId);
-        const multi = cls?.multiclassing?.proficiencies || MULTICLASS_PROFICIENCIES_2024[cc.classId.toLowerCase()];
+        const multi = cls?.multiclassing?.proficiencies;
         multi?.tools.forEach((t) => tools.add(t));
     }
     return Array.from(tools);
@@ -551,10 +495,13 @@ export function isProficientWithWeapon(ctx: CharacterCreatorContext, weaponName:
     const profs = getAllWeaponProficiencies(ctx);
     if (profs.includes("Martial Weapons") || profs.includes("Simple Weapons, Martial Weapons")) return true;
     if (weapon.category.startsWith("Simple") && profs.some((p) => p.includes("Simple"))) return true;
-    const hasRogue = ctx.state.classes.some((c) => c.classId === "rogue");
-    if (hasRogue && (weapon.properties.includes("Finesse") || weapon.properties.includes("Light"))) return true;
-    const hasMonk = ctx.state.classes.some((c) => c.classId === "monk");
-    if (hasMonk && weapon.properties.includes("Light")) return true;
+    // Restricted training, e.g. "Martial Weapons with Finesse or Light" (Rogue), "Martial Weapons with Light property" (Monk)
+    for (const p of profs) {
+        const m = p.match(/^(Simple|Martial) Weapons with (.+?)(?: propert(?:y|ies))?$/i);
+        if (!m || !weapon.category.toLowerCase().startsWith(m[1].toLowerCase())) continue;
+        const allowed = m[2].split(/\s*(?:,|\bor\b|\band\b)\s*/i).map((s) => s.trim().toLowerCase()).filter(Boolean);
+        if (weapon.properties.some((prop) => allowed.some((a) => prop.toLowerCase().startsWith(a)))) return true;
+    }
     return false;
 }
 

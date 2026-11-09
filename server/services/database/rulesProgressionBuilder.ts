@@ -211,7 +211,8 @@ export type ModifierType =
     | "grant_spell"      // Grants a specific spell or cantrip
     | "grant_feature"    // Grants a specific feature or trait
     | "multiplier"       // Multiplies a value (e.g. 2x carrying capacity)
-    | "half_proficiency"; // Adds half the Proficiency Bonus, rounded down (e.g. Jack of All Trades)
+    | "half_proficiency" // Adds half the Proficiency Bonus, rounded down (e.g. Jack of All Trades)
+    | "unarmored_ac";    // Base AC 10 + the listed abilities' modifiers while not wearing armor
 
 export interface StatModifier {
     target: ModifierTarget;
@@ -219,6 +220,11 @@ export interface StatModifier {
     value?: number | string;
     abilitySource?: AbilityName;
     minimum?: number;              // floor for ability_mod (e.g. Thaumaturge: Wisdom modifier, minimum +1)
+    valueByLevel?: number[];       // value by the granting class's level (index = level), e.g. Unarmored Movement
+    perClassLevel?: number;        // value × the granting class's level, e.g. Draconic Resilience HP
+    abilities?: AbilityName[];     // unarmored_ac: abilities whose modifiers add to 10
+    allowsShield?: boolean;        // unarmored_ac: still applies while holding a shield
+    requires?: "no-armor" | "no-heavy-armor" | "no-armor-or-shield"; // only applies in this armor state
     condition?: string;
     description?: string;
 }
@@ -1040,7 +1046,7 @@ export const DRUID_LAND_BIOMES: ProgressionChoiceOption[] = [
 export const BARBARIAN_ASPECTS: ProgressionChoiceOption[] = [
     { id: "elephant", name: "Aspect of the Elephant", description: "Advantage on Athletics checks and carrying capacity doubled.", modifiers: [{ target: "skills.athletics", type: "advantage", description: "Advantage on Athletics checks" }] },
     { id: "owl", name: "Aspect of the Owl", description: "Gain Darkvision 60 ft. and Advantage on Perception checks.", modifiers: [{ target: "vitals.darkvision", type: "bonus", value: 60, description: "Gain Darkvision 60 ft." }, { target: "skills.perception", type: "advantage", description: "Advantage on Perception checks" }] },
-    { id: "spider", name: "Aspect of the Spider", description: "Gain climbing speed equal to walking speed.", modifiers: [{ target: "vitals.speed", type: "bonus", value: 0, description: "Climbing speed equals walking speed" }] },
+    { id: "spider", name: "Aspect of the Spider", description: "Gain climbing speed equal to walking speed.", modifiers: [{ target: "vitals.climb", type: "set", value: "walk", description: "Climbing speed equals walking speed" }] },
     { id: "wolf", name: "Aspect of the Wolf", description: "Track creatures at fast pace and move stealthily at normal pace.", modifiers: [{ target: "skills.stealth", type: "advantage", description: "Stealth advantage at normal travel pace" }] }
 ];
 
@@ -1353,7 +1359,17 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
 
             // Add inherent modifiers for well-known features
             if (featSlug === "fast-movement") {
-                modifiers.push({ target: "vitals.speed", type: "bonus", value: 10, condition: "not wearing heavy armor", description: "+10 ft. Walking Speed" });
+                modifiers.push({ target: "vitals.speed", type: "bonus", value: 10, requires: "no-heavy-armor", condition: "not wearing heavy armor", description: "+10 ft. Walking Speed" });
+            } else if (featSlug === "unarmored-movement") {
+                modifiers.push({
+                    target: "vitals.speed", type: "bonus", requires: "no-armor-or-shield",
+                    valueByLevel: [0, 0, 10, 10, 10, 10, 15, 15, 15, 15, 20, 20, 20, 20, 25, 25, 25, 25, 30, 30, 30],
+                    condition: "not wearing armor or wielding a shield", description: "Speed increase while unarmored"
+                });
+            } else if (featSlug === "roving") {
+                modifiers.push({ target: "vitals.speed", type: "bonus", value: 10, requires: "no-heavy-armor", condition: "not wearing heavy armor", description: "+10 ft. Speed" });
+                modifiers.push({ target: "vitals.climb", type: "set", value: "walk", description: "Climb Speed equal to Speed" });
+                modifiers.push({ target: "vitals.swim", type: "set", value: "walk", description: "Swim Speed equal to Speed" });
             } else if (featSlug === "feral-instinct") {
                 modifiers.push({ target: "vitals.initiative", type: "advantage", description: "Advantage on Initiative rolls" });
             } else if (featSlug === "primal-champion") {
@@ -1362,7 +1378,14 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
             } else if (featSlug === "aura-of-protection") {
                 modifiers.push({ target: "saves.all", type: "ability_mod", abilitySource: "cha", condition: "not incapacitated", description: "Add Charisma modifier to all saving throws" });
             } else if (featSlug === "unarmored-defense") {
-                modifiers.push({ target: "vitals.ac", type: "bonus", value: "con_or_wis", description: "Add ability modifier to unarmored AC" });
+                // Barbarian: 10 + DEX + CON, shield allowed; Monk: 10 + DEX + WIS, no shield
+                const isMonk = classSlug === "monk";
+                modifiers.push({
+                    target: "vitals.ac", type: "unarmored_ac",
+                    abilities: isMonk ? ["dex", "wis"] : ["dex", "con"],
+                    allowsShield: !isMonk,
+                    description: isMonk ? "AC 10 + DEX + WIS while wearing no armor and no shield" : "AC 10 + DEX + CON while wearing no armor"
+                });
             } else if (featSlug === "jack-of-all-trades") {
                 modifiers.push({ target: "skills.unproficient", type: "half_proficiency", description: "Add half your Proficiency Bonus to skill checks you aren't proficient in" });
             }
@@ -2269,8 +2292,10 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
 
             // Add inherent modifiers for concrete subclass features
             if (featSlug === "draconic-resilience") {
-                modifiers.push({ target: "vitals.ac", type: "bonus", value: "cha", condition: "unarmored", description: "Base AC 10 + DEX + CHA mod" });
-                modifiers.push({ target: "vitals.maxHp", type: "bonus", value: 1, description: "+1 HP per Sorcerer level" });
+                modifiers.push({ target: "vitals.ac", type: "unarmored_ac", abilities: ["dex", "cha"], allowsShield: true, description: "AC 10 + DEX + CHA while wearing no armor" });
+                modifiers.push({ target: "vitals.maxHp", type: "bonus", perClassLevel: 1, description: "+1 HP per Sorcerer level" });
+            } else if (featSlug === "aquatic-affinity") {
+                modifiers.push({ target: "vitals.swim", type: "set", value: "walk", description: "Swim Speed equal to Speed" });
             } else if (featSlug === "umbral-sight") {
                 modifiers.push({ target: "vitals.darkvision", type: "bonus", value: 60, description: "Darkvision +60 ft." });
             }
