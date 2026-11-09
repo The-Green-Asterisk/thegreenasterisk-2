@@ -2119,6 +2119,108 @@ describe("CharacterCreatorController", () => {
         expect(availableNames).not.toContain("Scorching Ray"); // Wizard 2
     });
 
+    it("splits spell selection per class for multiclass characters (2024 rules)", () => {
+        document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div><div id="creator-validation-alert" class="hidden"></div>';
+        const root = document.getElementById("creator-step-panels")!;
+
+        // Wizard 1 / Cleric 3
+        ctrl.state.classes = [
+            { classId: "wizard", level: 1, subclassId: "" },
+            { classId: "cleric", level: 3, subclassId: "life" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "alert";
+
+        const buckets = ctrl.getSpellBuckets();
+        expect(buckets.map((b) => [b.key, b.maxCantrips, b.maxPrepared, b.maxSpellLevel])).toEqual([
+            ["wizard", 3, 4, 1],
+            ["cleric", 3, 6, 2]
+        ]);
+        // Each class only offers its own list, up to its own max spell level
+        const wiz = buckets[0];
+        expect(wiz.preparedPool.some((s) => s.name === "Shield")).toBe(true);
+        expect(wiz.preparedPool.some((s) => s.name === "Bless")).toBe(false);
+        expect(wiz.preparedPool.some((s) => s.name === "Misty Step")).toBe(false);
+        expect(buckets[1].preparedPool.some((s) => s.name === "Aid")).toBe(true);
+
+        // Picking Wizard spells in the Wizard tab only fills the Wizard allotment
+        ctrl.activeSpellClassFilter = "wizard";
+        ctrl.renderStep(8);
+        expect(root.querySelectorAll(".spell-class-tab-btn").length).toBe(2);
+        for (const name of ["Shield", "Magic Missile", "Sleep", "Detect Magic", "Mage Armor"]) {
+            (root.querySelector(`.spell1-row[data-spell-name="${name}"]`) as HTMLElement).click();
+        }
+        expect(ctrl.state.classSpellSelections!.wizard.prepared).toHaveLength(5);
+        expect(ctrl.state.classSpellSelections!.cleric.prepared).toHaveLength(0);
+        expect(ctrl.state.selectedSpellsLevel1).toHaveLength(5);
+
+        // 5 of 10 total, but 5 of 4 for the Wizard: blocked with a per-class warning
+        ctrl.state.currentStep = 8;
+        ctrl.spellsWarningDismissed = false;
+        expect(ctrl.validateCurrentStep()).toBe(false);
+        expect(document.getElementById("creator-validation-alert")!.textContent).toContain("5/4 Wizard prepared spells");
+
+        // Keyboard toggling works on spell rows
+        const mageArmor = root.querySelector('.spell1-row[data-spell-name="Mage Armor"]') as HTMLElement;
+        expect(mageArmor.getAttribute("role")).toBe("checkbox");
+        mageArmor.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+        expect(ctrl.state.classSpellSelections!.wizard.prepared).not.toContain("Mage Armor");
+
+        // Saved spells carry their class as the source
+        ctrl.state.classSpellSelections!.cleric = { cantrips: [], prepared: ["Aid"] };
+        ctrl.state.selectedSpellsLevel1.push("Aid");
+        const payload = ctrl.buildPayload();
+        expect(payload.spells.find((s: any) => s.name === "Shield").source).toBe("Wizard");
+        expect(payload.spells.find((s: any) => s.name === "Aid").source).toBe("Cleric");
+    });
+
+    it("assigns unattributed spells to a class that can prepare them and auto-fills each class separately", () => {
+        // Cleric 3 / Wizard 1, with a flat (pre-split) selection
+        ctrl.state.classes = [
+            { classId: "cleric", level: 3, subclassId: "life" },
+            { classId: "wizard", level: 1, subclassId: "evoker" }
+        ];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "alert";
+        ctrl.state.classSpellSelections = {};
+        ctrl.state.selectedSpellsLevel1 = ["Aid", "Shield", "Bless"];
+        ctrl.sanitizeSpellSelections();
+        expect(ctrl.state.classSpellSelections!.cleric.prepared).toEqual(["Aid", "Bless"]);
+        expect(ctrl.state.classSpellSelections!.wizard.prepared).toEqual(["Shield"]);
+
+        const smart = ctrl.getSmartAutoFillSpells();
+        expect(smart.byBucket.cleric.prepared).toHaveLength(6);
+        expect(smart.byBucket.wizard.prepared).toHaveLength(4);
+        expect(smart.byBucket.wizard.cantrips).toHaveLength(3);
+        expect(smart.byBucket.cleric.cantrips).toHaveLength(3);
+        // Wizard picks stay level 1 and come from the Wizard list
+        for (const name of smart.byBucket.wizard.prepared) {
+            const sp = ctrl.getSpell(name)!;
+            expect(sp.level).toBe(1);
+            expect(sp.classes).toContain("Wizard");
+        }
+    });
+
+    it("keeps Magic Initiate spells in their own pool", () => {
+        ctrl.state.classId = "wizard";
+        ctrl.state.level = 1;
+        ctrl.state.classes = [{ classId: "wizard", level: 1, subclassId: "" }];
+        ctrl.syncStateClassProperties();
+        ctrl.state.originFeatId = "magic-initiate-cleric";
+        const buckets = ctrl.getSpellBuckets();
+        expect(buckets.map((b) => [b.key, b.maxCantrips, b.maxPrepared])).toEqual([
+            ["wizard", 3, 4],
+            ["magic-initiate", 2, 1]
+        ]);
+        ctrl.state.classSpellSelections = { "magic-initiate": { cantrips: ["Guidance"], prepared: ["Bless"] } };
+        ctrl.state.selectedCantrips = ["Guidance"];
+        ctrl.state.selectedSpellsLevel1 = ["Bless"];
+        const payload = ctrl.buildPayload();
+        const bless = payload.spells.find((s: any) => s.name === "Bless");
+        expect(bless.source).toBe("Magic Initiate (Cleric)");
+        expect(bless.alwaysPrepared).toBe(true);
+    });
+
     it("allows higher-level prepared spells only for classes that qualify by class level", () => {
         // Cleric 3 / Wizard 1
         ctrl.state.classes = [
@@ -2638,13 +2740,13 @@ describe("CharacterCreatorController", () => {
             grantedRow!.click();
             expect(ctrl.state.selectedCantrips).not.toContain("Minor Illusion");
 
-            // Payload: progression spells are saved as always-prepared bonus spells, base spells as Class spells
+            // Payload: progression spells are saved as always-prepared bonus spells, base spells under their class
             const payload = ctrl.buildPayload();
             const illusion = payload.spells.find((s: any) => s.name === "Minor Illusion");
             expect(illusion.source).toBe("Warlock / Pact of the Tome");
             expect(illusion.alwaysPrepared).toBe(true);
             const charm = payload.spells.find((s: any) => s.name === "Charm Person");
-            expect(charm.source).toBe("Class");
+            expect(charm.source).toBe("Warlock");
         });
 
         it("Bard Magical Secrets at Level 10 expands prepared spells to Cleric, Druid, and Wizard lists without a separate 2-spell picker", () => {
@@ -2690,16 +2792,16 @@ describe("CharacterCreatorController", () => {
             expect(lvl10Spells.cantrips.some((s) => s.name === "Vicious Mockery")).toBe(true);
             expect(lvl10Spells.cantrips.some((s) => s.name === "Sacred Flame")).toBe(false);
 
-            // 5. Preparing Fireball & Revivify in normal prepared spells works and saves with Class source
+            // 5. Preparing Fireball & Revivify in normal prepared spells works and saves with the Bard as source
             ctrl.state.selectedSpellsLevel1 = ["Fireball", "Revivify", "Dissonant Whispers"];
             const payload = ctrl.buildPayload();
             const fireball = payload.spells.find((s: any) => s.name === "Fireball");
             const revivify = payload.spells.find((s: any) => s.name === "Revivify");
             expect(fireball).toBeDefined();
-            expect(fireball.source).toBe("Class");
+            expect(fireball.source).toBe("Bard");
             expect(fireball.prepared).toBe(true);
             expect(revivify).toBeDefined();
-            expect(revivify.source).toBe("Class");
+            expect(revivify.source).toBe("Bard");
             expect(revivify.prepared).toBe(true);
         });
     });

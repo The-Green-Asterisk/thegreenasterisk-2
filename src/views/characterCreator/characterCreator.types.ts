@@ -75,7 +75,28 @@ export interface CreatorState {
     equippedKitIndex?: number;
     selectedCantrips: string[];
     selectedSpellsLevel1: string[];
+    classSpellSelections?: Record<string, SpellBucketSelection>;
     featureSpellChoices: Record<string, string[]>;
+}
+
+export interface SpellBucketSelection {
+    cantrips: string[];
+    prepared: string[];
+}
+
+export interface SpellBucket {
+    key: string;
+    kind: "class" | "feat";
+    label: string;
+    sourceLabel: string;
+    level: number;
+    ability: AbilityName;
+    maxCantrips: number;
+    maxPrepared: number;
+    maxSpellLevel: number;
+    priorityKey: string;
+    cantripPool: RuleSpellDefinition[];
+    preparedPool: RuleSpellDefinition[];
 }
 
 export const ALL_SKILLS: Array<{ name: string; stat: AbilityName }> = [

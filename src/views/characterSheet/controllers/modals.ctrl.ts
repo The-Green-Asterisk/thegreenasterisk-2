@@ -6,7 +6,7 @@ import {
     linkifyConditionAndSpellTags,
     resolveDndBeyondActionUrl
 } from "../components/markupLinks";
-import { getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
+import { describePreparedByClass, getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
 import { renderWeapons } from "../components/weapons";
 import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
@@ -484,7 +484,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         if (manageSpellsTotalBadge) {
             if (limits.maxPrepared > 0) {
-                manageSpellsTotalBadge.textContent = `Cantrips: ${limits.currentCantrips}/${limits.maxCantrips} • Prepared: ${limits.currentPrepared}/${limits.maxPrepared} (${activeCharacter.spells.length} Spells on Sheet)`;
+                const byClass = limits.byClass.length > 1 ? ` [${describePreparedByClass(limits)}]` : "";
+                manageSpellsTotalBadge.textContent = `Cantrips: ${limits.currentCantrips}/${limits.maxCantrips} • Prepared: ${limits.currentPrepared}/${limits.maxPrepared}${byClass} (${activeCharacter.spells.length} Spells on Sheet)`;
             } else {
                 manageSpellsTotalBadge.textContent = `${activeCharacter.spells.length} Spells on Sheet`;
             }

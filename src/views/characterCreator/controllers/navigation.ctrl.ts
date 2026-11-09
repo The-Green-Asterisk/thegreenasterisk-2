@@ -57,15 +57,33 @@ export function validateCurrentStep(ctx: CharacterCreatorContext): boolean {
                 const cls = ctx.classes.find((c) => c.id === ctx.state.classId) || ctx.classes[0];
                 const className = cls?.name || "Spellcaster";
 
-                if ((maxCantrips > 0 && cantripCount > maxCantrips) || (maxPrepared > 0 && spellCount > maxPrepared)) {
-                    let warnMsg = "";
-                    if (cantripCount > maxCantrips && spellCount > maxPrepared) {
-                        warnMsg = `Warning: You have selected more spells than your allotment (${cantripCount}/${maxCantrips} cantrips, ${spellCount}/${maxPrepared} prepared spells). Click Next again to proceed anyway, or adjust your selections below.`;
-                    } else if (cantripCount > maxCantrips) {
-                        warnMsg = `Warning: You have selected more cantrips (${cantripCount}) than your allotment (${maxCantrips}). Click Next again to proceed anyway, or adjust your selections below.`;
+                // D&D 2024 multiclassing: each class has its own cantrip and prepared spell allotment
+                const buckets = ctx.getSpellBuckets();
+                const overages: string[] = [];
+                for (const b of buckets) {
+                    const sel = ctx.state.classSpellSelections?.[b.key] || { cantrips: [], prepared: [] };
+                    const c = sel.cantrips.length;
+                    const p = sel.prepared.length;
+                    const cOver = b.maxCantrips > 0 ? c > b.maxCantrips : c > 0;
+                    const pOver = b.maxPrepared > 0 ? p > b.maxPrepared : p > 0;
+                    if (buckets.length === 1) {
+                        if (cOver && pOver) {
+                            overages.push(`more spells than your allotment (${c}/${b.maxCantrips} cantrips, ${p}/${b.maxPrepared} prepared spells)`);
+                        } else if (cOver) {
+                            overages.push(`more cantrips (${c}) than your allotment (${b.maxCantrips})`);
+                        } else if (pOver) {
+                            overages.push(`more prepared spells (${p}) than your allotment (${b.maxPrepared})`);
+                        }
                     } else {
-                        warnMsg = `Warning: You have selected more prepared spells (${spellCount}) than your allotment (${maxPrepared}). Click Next again to proceed anyway, or adjust your selections below.`;
+                        if (cOver) overages.push(`${c}/${b.maxCantrips} ${b.label} cantrips`);
+                        if (pOver) overages.push(`${p}/${b.maxPrepared} ${b.label} prepared spells`);
                     }
+                }
+
+                if (overages.length > 0) {
+                    const warnMsg = buckets.length === 1
+                        ? `Warning: You have selected ${overages[0]}. Click Next again to proceed anyway, or adjust your selections below.`
+                        : `Warning: You have selected more spells than a class allows (${overages.join(", ")}). Each class prepares spells separately. Click Next again to proceed anyway, or adjust your selections below.`;
                     showAlert(warnMsg, "warning");
                     ctx.spellsWarningDismissed = true;
                     return false;

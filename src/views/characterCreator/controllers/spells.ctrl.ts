@@ -1,3 +1,4 @@
+import { getBucketSelection, syncFlatSpellSelections } from "../services/spellReconciliation";
 import { CharacterCreatorContext } from "./context";
 
 export function initSpellsController(ctx: CharacterCreatorContext): void {
@@ -8,6 +9,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
         btn.addEventListener("click", () => {
             const c = btn.getAttribute("data-class") || "all";
             ctx.activeSpellClassFilter = c;
+            ctx.activeSpellLevelFilter = "all";
             ctx.renderStep(8);
         });
     });
@@ -39,6 +41,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     const autoBtn = document.querySelector(".auto-spells-btn");
     autoBtn?.addEventListener("click", () => {
         const smart = ctx.getSmartAutoFillSpells();
+        ctx.state.classSpellSelections = smart.byBucket;
         ctx.state.selectedCantrips = smart.cantrips;
         ctx.state.selectedSpellsLevel1 = smart.prepared;
         const usedNames = new Set([...smart.cantrips, ...smart.prepared]);
@@ -59,6 +62,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     clearBtn?.addEventListener("click", () => {
         ctx.state.selectedCantrips = [];
         ctx.state.selectedSpellsLevel1 = [];
+        ctx.state.classSpellSelections = {};
         ctx.state.featureSpellChoices = {};
         ctx.spellsWarningDismissed = false;
         ctx.hideAlert();
@@ -89,36 +93,40 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    // Cantrip toggles
-    document.querySelectorAll(".cantrip-row").forEach((row) => {
-        row.addEventListener("click", () => {
-            // Progression-granted spells are bonus spells and cannot be added to the base allotment
-            if (row.getAttribute("data-granted") === "true") return;
-            const spName = row.getAttribute("data-spell-name") || "";
-            if (ctx.state.selectedCantrips.includes(spName)) {
-                ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((s) => s !== spName);
-            } else {
-                ctx.state.selectedCantrips.push(spName);
-            }
-            ctx.spellsWarningDismissed = false;
-            ctx.hideAlert();
-            ctx.renderStep(8);
+    // Cantrip and prepared spell toggles apply to the class whose tab is active
+    const activeBucketKey = (): string | undefined => {
+        const buckets = ctx.getSpellBuckets();
+        return (buckets.find((b) => b.key === ctx.activeSpellClassFilter) || buckets[0])?.key;
+    };
+    const bindToggle = (selector: string, field: "cantrips" | "prepared") => {
+        document.querySelectorAll(selector).forEach((row) => {
+            const toggle = () => {
+                // Progression-granted spells are bonus spells and cannot be added to the base allotment
+                if (row.getAttribute("data-granted") === "true") return;
+                const key = activeBucketKey();
+                const spName = row.getAttribute("data-spell-name") || "";
+                if (!key || !spName) return;
+                const sel = getBucketSelection(ctx, key);
+                sel[field] = sel[field].includes(spName)
+                    ? sel[field].filter((s) => s !== spName)
+                    : [...sel[field], spName];
+                syncFlatSpellSelections(ctx);
+                ctx.spellsWarningDismissed = false;
+                ctx.hideAlert();
+                ctx.renderStep(8);
+                const rows = Array.from(document.querySelectorAll<HTMLElement>(selector));
+                rows.find((r) => r.getAttribute("data-spell-name") === spName)?.focus();
+            };
+            row.addEventListener("click", toggle);
+            row.addEventListener("keydown", (e) => {
+                const key = (e as KeyboardEvent).key;
+                if (key === " " || key === "Enter") {
+                    e.preventDefault();
+                    toggle();
+                }
+            });
         });
-    });
-
-    // Prepared spell toggles
-    document.querySelectorAll(".spell1-row").forEach((row) => {
-        row.addEventListener("click", () => {
-            if (row.getAttribute("data-granted") === "true") return;
-            const spName = row.getAttribute("data-spell-name") || "";
-            if (ctx.state.selectedSpellsLevel1.includes(spName)) {
-                ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((s) => s !== spName);
-            } else {
-                ctx.state.selectedSpellsLevel1.push(spName);
-            }
-            ctx.spellsWarningDismissed = false;
-            ctx.hideAlert();
-            ctx.renderStep(8);
-        });
-    });
+    };
+    bindToggle(".cantrip-row", "cantrips");
+    bindToggle(".spell1-row", "prepared");
 }

@@ -52,7 +52,7 @@ import {
 import { ALL_SKILLS } from "../characterCreator.types";
 import { getOrdinalSuffix } from "../components/class";
 import { CharacterCreatorContext } from "../controllers/context";
-import { getProgressionGrantedSpellNames } from "./spellReconciliation";
+import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, resolveSpellBucketKey } from "./spellReconciliation";
 
 function getSpellDef(ctx: CharacterCreatorContext, spNameOrId: string): RuleSpellDefinition | undefined {
     if (!spNameOrId) return undefined;
@@ -274,9 +274,20 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
             if (Array.isArray(char.spells)) {
                 // Always-prepared spells come from class/subclass progression, species, or feats; they are bonus
                 // spells and must not be loaded into the base cantrip/prepared allotment.
-                const baseSpells = char.spells.filter((s: any) => !s?.alwaysPrepared);
+                // Magic Initiate spells are always prepared but are still chosen in the spells step, in their own pool.
+                const baseSpells = char.spells.filter((s: any) => !s?.alwaysPrepared || resolveSpellBucketKey(ctx, s?.source) === MAGIC_INITIATE_BUCKET_KEY);
                 ctx.state.selectedCantrips = baseSpells.filter((s: any) => s.level === 0).map((s: any) => s.name);
                 ctx.state.selectedSpellsLevel1 = baseSpells.filter((s: any) => s.level > 0).map((s: any) => s.name);
+                // Multiclass: spells saved with a class name as their source go back to that class's list; the rest
+                // (e.g. older saves with a generic "Class" source) are assigned when selections are sanitized.
+                ctx.state.classSpellSelections = {};
+                for (const s of baseSpells) {
+                    const key = resolveSpellBucketKey(ctx, s?.source);
+                    if (!key) continue;
+                    const sel = ctx.state.classSpellSelections[key] || { cantrips: [], prepared: [] };
+                    (Number(s.level) === 0 ? sel.cantrips : sel.prepared).push(s.name);
+                    ctx.state.classSpellSelections[key] = sel;
+                }
             }
         }
 
@@ -702,9 +713,15 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
 
     // Spells
     const spellsPayload: any[] = [];
+    ctx.sanitizeSpellSelections();
     const progressionGrantedNames = getProgressionGrantedSpellNames(ctx);
-    for (const spName of [...ctx.state.selectedCantrips, ...ctx.state.selectedSpellsLevel1]) {
-        // Progression-granted spells are emitted below as always-prepared bonus spells, not base "Class" spells
+    // Each class's spells are saved with that class as the source, so the sheet can count them per class
+    const bucketSpells = ctx.getSpellBuckets().flatMap((b) => {
+        const sel = ctx.state.classSpellSelections?.[b.key] || { cantrips: [], prepared: [] };
+        return [...sel.cantrips, ...sel.prepared].map((name) => ({ name, bucket: b }));
+    });
+    for (const { name: spName, bucket } of bucketSpells) {
+        // Progression-granted spells are emitted below as always-prepared bonus spells, not base class spells
         if (progressionGrantedNames.has(spName.toLowerCase())) continue;
         const spDef = getSpellDef(ctx, spName);
         if (spDef) {
@@ -712,8 +729,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
                 name: spDef.name,
                 level: spDef.level,
                 school: spDef.school,
-                source: "Class",
+                source: bucket.sourceLabel,
                 prepared: true,
+                ...(bucket.kind === "feat" ? { alwaysPrepared: true } : {}),
                 castingTime: spDef.castingTime,
                 range: spDef.range,
                 duration: spDef.duration,

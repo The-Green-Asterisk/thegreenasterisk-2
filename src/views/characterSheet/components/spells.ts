@@ -1,4 +1,5 @@
 import { CLASSES_2024 } from "../../../rules/dnd5e_2024/classes";
+import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -27,6 +28,154 @@ export function isCharacterBonusSpell(spell: SpellDefinition): boolean {
     );
 }
 
+export interface SheetSpellcastingClass {
+    name: string;
+    level: number;
+    maxCantrips: number;
+    maxPrepared: number;
+    maxSpellLevel: number;
+    currentCantrips: number;
+    currentPrepared: number;
+    aboveMaxLevel: string[];
+    isCantripsOverLimit: boolean;
+    isPreparedOverLimit: boolean;
+}
+
+export interface SheetSpellcastingBreakdown {
+    classes: SheetSpellcastingClass[];
+    unassignedCantrips: number;
+    unassignedPrepared: number;
+    bonusCantrips: number;
+    bonusPrepared: number;
+    legacyMagicInitiate: boolean;
+}
+
+/**
+ * Spells that never count against a class's cantrip or prepared spell limits: always-prepared spells (subclass,
+ * feature, and feat spells), species spells, and spells granted by a class feature such as Pact of the Tome.
+ */
+export function isCharacterUncountedSpell(spell: SpellDefinition): boolean {
+    if (spell.alwaysPrepared === true || isCharacterBonusSpell(spell)) return true;
+    const src = (spell.source || "").toLowerCase().trim();
+    return (
+        src.includes(" / ") ||
+        src.includes("feat") ||
+        src.startsWith("magic initiate") ||
+        src.startsWith("fighting style") ||
+        src === "item" ||
+        src === "background"
+    );
+}
+
+const THIRD_CASTER_SUBCLASSES: Array<{ match: string; id: string }> = [
+    { match: "eldritch knight", id: "eldritch-knight" },
+    { match: "eldritch-knight", id: "eldritch-knight" },
+    { match: "arcane trickster", id: "arcane-trickster" },
+    { match: "arcane-trickster", id: "arcane-trickster" }
+];
+
+/**
+ * Cantrips for classes that aren't in the 2024 rules.
+ */
+function getLegacyCantripLimit(name: string, lvl: number): number {
+    if (name === "artificer") return lvl >= 14 ? 4 : lvl >= 10 ? 3 : 2;
+    return 0;
+}
+
+/**
+ * D&D 2024 multiclassing: each class prepares its own spells, as if single-classed, using its own class level for
+ * how many cantrips and prepared spells it gets and how high a spell level it can prepare. Spells are attributed to
+ * a class by their source; spells with a generic source (older saves, spells added from the database) can't be
+ * attributed and only count against the combined total.
+ */
+export function getCharacterSpellcastingBreakdown(data: CharacterData): SheetSpellcastingBreakdown {
+    const classes: SheetSpellcastingClass[] = [];
+    const sourceToClass = new Map<string, SheetSpellcastingClass>();
+
+    (data.classes || []).forEach(c => {
+        const rawName = (c.name || "").trim();
+        const name = rawName.toLowerCase();
+        const sub = (c.subclass || "").toLowerCase();
+        const lvl = Math.max(1, Math.min(20, Number(c.level) || 1));
+        const clsDef = CLASSES_2024.find(cd => cd.id === name || cd.name.toLowerCase() === name);
+        const subclassId = THIRD_CASTER_SUBCLASSES.find(t => sub.includes(t.match))?.id || "";
+        const info = getMulticlassCasterInfo({ classId: clsDef?.id || name, level: lvl, subclassId }, clsDef);
+
+        const entry: SheetSpellcastingClass = info
+            ? {
+                name: clsDef?.name || rawName,
+                level: lvl,
+                maxCantrips: info.maxCantrips,
+                maxPrepared: info.maxPrepared,
+                maxSpellLevel: info.maxSpellLevel,
+                currentCantrips: 0,
+                currentPrepared: 0,
+                aboveMaxLevel: [],
+                isCantripsOverLimit: false,
+                isPreparedOverLimit: false
+            }
+            : {
+                name: rawName,
+                level: lvl,
+                maxCantrips: getLegacyCantripLimit(name, lvl),
+                maxPrepared: 0,
+                maxSpellLevel: 9,
+                currentCantrips: 0,
+                currentPrepared: 0,
+                aboveMaxLevel: [],
+                isCantripsOverLimit: false,
+                isPreparedOverLimit: false
+            };
+        if (entry.maxCantrips === 0 && entry.maxPrepared === 0) return;
+        classes.push(entry);
+        sourceToClass.set(name, entry);
+        if (clsDef) sourceToClass.set(clsDef.name.toLowerCase(), entry);
+    });
+
+    let unassignedCantrips = 0;
+    let unassignedPrepared = 0;
+    let bonusCantrips = 0;
+    let bonusPrepared = 0;
+    (data.spells || []).forEach(spell => {
+        const isCantrip = (Number(spell.level) || 0) === 0;
+        if (isCharacterUncountedSpell(spell)) {
+            if (isCantrip) bonusCantrips++;
+            else bonusPrepared++;
+            return;
+        }
+        const owner = sourceToClass.get((spell.source || "").toLowerCase().trim());
+        if (!owner) {
+            if (isCantrip) unassignedCantrips++;
+            else unassignedPrepared++;
+            return;
+        }
+        if (isCantrip) {
+            owner.currentCantrips++;
+        } else {
+            owner.currentPrepared++;
+            if ((Number(spell.level) || 0) > owner.maxSpellLevel) owner.aboveMaxLevel.push(spell.name);
+        }
+    });
+
+    classes.forEach(c => {
+        c.isCantripsOverLimit = c.currentCantrips > c.maxCantrips;
+        c.isPreparedOverLimit = c.currentPrepared > c.maxPrepared || c.aboveMaxLevel.length > 0;
+    });
+
+    // Characters saved before Magic Initiate spells had their own source stored them as generic class spells
+    const hasMagicInitiateFeat = (data.features || []).some(f => f.name.toLowerCase().includes("magic initiate"));
+    const hasMagicInitiateSpells = (data.spells || []).some(s => (s.source || "").toLowerCase().startsWith("magic initiate"));
+
+    return {
+        classes,
+        unassignedCantrips,
+        unassignedPrepared,
+        bonusCantrips,
+        bonusPrepared,
+        legacyMagicInitiate: hasMagicInitiateFeat && !hasMagicInitiateSpells
+    };
+}
+
 export function getCharacterPreparedSpellsLimit(data: CharacterData): number {
     if (typeof data.creatorState?.maxPrepared === "number" && data.creatorState.maxPrepared > 0) {
         return data.creatorState.maxPrepared;
@@ -36,60 +185,9 @@ export function getCharacterPreparedSpellsLimit(data: CharacterData): number {
         return tracking.maxPrepared;
     }
 
-    let total = 0;
-    const thirdCasterSpells = [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13];
-
-    (data.classes || []).forEach(c => {
-        const name = (c.name || "").toLowerCase();
-        const sub = (c.subclass || "").toLowerCase();
-        const lvl = Math.max(1, Math.min(20, Number(c.level) || 1));
-        const lvlIdx = lvl - 1;
-
-        const clsDef = CLASSES_2024.find(cd => cd.id === name || cd.name.toLowerCase() === name);
-        if (clsDef?.spellcasting?.preparedSpellsByLevel?.[lvlIdx]) {
-            total += clsDef.spellcasting.preparedSpellsByLevel[lvlIdx];
-            return;
-        }
-
-        if (name === "fighter" && sub.includes("eldritch knight") && lvl >= 3) {
-            total += thirdCasterSpells[lvlIdx] || 0;
-            return;
-        }
-        if (name === "rogue" && sub.includes("arcane trickster") && lvl >= 3) {
-            total += thirdCasterSpells[lvlIdx] || 0;
-            return;
-        }
-
-        // Fallback for custom / 2014 classes
-        const abilityScore = (abbr: string) => data.abilities?.find(a => a.abbr.toUpperCase() === abbr)?.score ?? 10;
-        const abilityMod = (abbr: string) => Math.floor((abilityScore(abbr) - 10) / 2);
-
-        if (name === "wizard") {
-            total += Math.max(1, lvl + Math.max(0, abilityMod("INT")));
-        } else if (name === "cleric" || name === "druid") {
-            total += Math.max(1, lvl + Math.max(0, abilityMod("WIS")));
-        } else if (name === "paladin") {
-            total += Math.max(1, Math.floor(lvl / 2) + Math.max(0, abilityMod("CHA")));
-        } else if (name === "bard") {
-            const bardSpellsKnown = [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22];
-            total += bardSpellsKnown[lvlIdx] || 4;
-        } else if (name === "sorcerer") {
-            const sorcSpellsKnown = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15];
-            total += sorcSpellsKnown[lvlIdx] || 2;
-        } else if (name === "warlock") {
-            const warlockSpellsKnown = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
-            total += warlockSpellsKnown[lvlIdx] || 2;
-        } else if (name === "ranger") {
-            const rangerSpellsKnown = [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11];
-            total += rangerSpellsKnown[lvlIdx] || 0;
-        }
-    });
-
-    if ((data.features || []).some(f => f.name.toLowerCase().includes("magic initiate"))) {
-        total += 1;
-    }
-
-    return total;
+    const breakdown = getCharacterSpellcastingBreakdown(data);
+    const total = breakdown.classes.reduce((sum, c) => sum + c.maxPrepared, 0);
+    return total + (breakdown.legacyMagicInitiate ? 1 : 0);
 }
 
 export function getCharacterSpellLevelLimits(data: CharacterData): {
@@ -100,6 +198,9 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
     currentCantrips: number;
     maxPrepared: number;
     currentPrepared: number;
+    bonusCantrips: number;
+    bonusPrepared: number;
+    byClass: SheetSpellcastingClass[];
     isPreparedOverLimit: boolean;
     isCantripsOverLimit: boolean;
 } {
@@ -137,36 +238,12 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
     const availableLevels = Array.from(availableSet).sort((a, b) => a - b);
     const allowedByLevel: Record<number, number> = {};
 
-    // Compute default Cantrip (Level 0) allowance from classes + features
-    let defaultCantripsAllowed = 0;
-    (data.classes || []).forEach(c => {
-        const name = (c.name || "").toLowerCase();
-        const sub = (c.subclass || "").toLowerCase();
-        const lvl = Number(c.level) || 1;
-        if (name === "sorcerer") {
-            defaultCantripsAllowed += lvl >= 10 ? 6 : lvl >= 4 ? 5 : 4;
-        } else if (name === "cleric" || name === "wizard") {
-            defaultCantripsAllowed += lvl >= 10 ? 5 : lvl >= 4 ? 4 : 3;
-        } else if (name === "bard" || name === "druid" || name === "warlock") {
-            defaultCantripsAllowed += lvl >= 10 ? 4 : lvl >= 4 ? 3 : 2;
-        } else if (name === "artificer") {
-            defaultCantripsAllowed += lvl >= 14 ? 4 : lvl >= 10 ? 3 : 2;
-        } else if (sub.includes("eldritch knight") || sub.includes("arcane trickster")) {
-            defaultCantripsAllowed += lvl >= 10 ? 3 : 2;
-        }
-    });
-    if ((data.features || []).some(f => f.name.toLowerCase().includes("pact of the tome"))) {
-        defaultCantripsAllowed += 3;
-    }
-
-    // Add species/racial bonus cantrips (e.g. Tiefling Thaumaturgy/Fire Bolt, Elf, etc.)
-    const speciesCantripsCount = (data.spells || []).filter(s => (Number(s.level) || 0) === 0 && isCharacterSpeciesSpell(s)).length;
-    defaultCantripsAllowed += speciesCantripsCount;
-
-    const maxCantrips = Math.max(defaultCantripsAllowed, 2);
+    // Cantrips and prepared spells count per class (D&D 2024 multiclassing); bonus spells never count
+    const breakdown = getCharacterSpellcastingBreakdown(data);
+    const maxCantrips = breakdown.classes.reduce((sum, c) => sum + c.maxCantrips, 0) + (breakdown.legacyMagicInitiate ? 2 : 0);
     const maxPrepared = getCharacterPreparedSpellsLimit(data);
-    const currentCantrips = currentByLevel[0]?.length || 0;
-    const currentPrepared = (data.spells || []).filter(s => (Number(s.level) || 0) > 0 && !isCharacterBonusSpell(s)).length;
+    const currentCantrips = breakdown.classes.reduce((sum, c) => sum + c.currentCantrips, 0) + breakdown.unassignedCantrips;
+    const currentPrepared = breakdown.classes.reduce((sum, c) => sum + c.currentPrepared, 0) + breakdown.unassignedPrepared;
 
     availableLevels.forEach(lvl => {
         if (explicitAllowed[lvl] !== undefined && explicitAllowed[lvl] >= 0) {
@@ -196,9 +273,24 @@ export function getCharacterSpellLevelLimits(data: CharacterData): {
         currentCantrips,
         maxPrepared,
         currentPrepared,
-        isPreparedOverLimit: maxPrepared > 0 && currentPrepared > maxPrepared,
-        isCantripsOverLimit: maxCantrips > 0 && currentCantrips > maxCantrips
+        bonusCantrips: breakdown.bonusCantrips,
+        bonusPrepared: breakdown.bonusPrepared,
+        byClass: breakdown.classes,
+        isPreparedOverLimit: (maxPrepared > 0 && currentPrepared > maxPrepared) || breakdown.classes.some(c => c.isPreparedOverLimit),
+        isCantripsOverLimit: (maxCantrips > 0 && currentCantrips > maxCantrips) || breakdown.classes.some(c => c.isCantripsOverLimit)
     };
+}
+
+/**
+ * "Bard 10/10 • Warlock 7/7" style summary of prepared spells per class, for multiclass characters.
+ */
+export function describePreparedByClass(limits: ReturnType<typeof getCharacterSpellLevelLimits>): string {
+    const parts = limits.byClass
+        .filter(c => c.maxPrepared > 0)
+        .map(c => `${c.name} ${c.currentPrepared}/${c.maxPrepared}${c.aboveMaxLevel.length > 0 ? ` (${c.aboveMaxLevel.join(", ")} above level ${c.maxSpellLevel})` : ''}`);
+    const unassigned = limits.currentPrepared - limits.byClass.reduce((sum, c) => sum + c.currentPrepared, 0);
+    if (unassigned > 0) parts.push(`${unassigned} not assigned to a class`);
+    return parts.join(" • ");
 }
 
 export function renderSpellCard(spell: SpellDefinition): string {
@@ -298,10 +390,12 @@ export function renderSpellsByLevel(
                 (characterData?.trackingState as any)?.allowedSpellsByLevel?.[level] !== undefined;
 
             let countBadgeHtml = "";
-            if (isCantrip) {
-                const maxC = limits?.maxCantrips ?? (explicitAllowed ?? levelSpells.length);
-                const isOver = maxC > 0 && levelSpells.length > maxC;
-                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="Cantrips: ${levelSpells.length} current / ${maxC} allowed">${levelSpells.length}/${maxC}</span>`;
+            if (isCantrip && limits && limits.maxCantrips > 0) {
+                const bonusNote = limits.bonusCantrips > 0 ? ` (+${limits.bonusCantrips} bonus)` : '';
+                const title = `Cantrips: ${limits.currentCantrips} current / ${limits.maxCantrips} allowed${limits.bonusCantrips > 0 ? `; ${limits.bonusCantrips} bonus cantrips from species, feats, and class features don't count` : ''}`;
+                countBadgeHtml = `<span class="spells-level-count ${limits.isCantripsOverLimit ? 'over-limit' : ''}" title="${title}">${limits.currentCantrips}/${limits.maxCantrips}${bonusNote}</span>`;
+            } else if (isCantrip) {
+                countBadgeHtml = `<span class="spells-level-count" title="${levelSpells.length} cantrips">${levelSpells.length}</span>`;
             } else if (hasUserConfiguredLimit && explicitAllowed !== undefined && explicitAllowed >= 0) {
                 const isOver = levelSpells.length > explicitAllowed;
                 countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="${spellLevelLabel(level)}: ${levelSpells.length} current / ${explicitAllowed} allowed">${levelSpells.length}/${explicitAllowed}</span>`;

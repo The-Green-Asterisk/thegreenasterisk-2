@@ -8,7 +8,7 @@ import {
     RuleSpellDefinition,
     SpeciesDefinition
 } from "../../../rules/dnd5e_2024";
-import { CreatorState, FeatureSpellChoiceSection } from "../characterCreator.types";
+import { CreatorState, FeatureSpellChoiceSection, SpellBucket, SpellBucketSelection } from "../characterCreator.types";
 
 export interface CharacterCreatorContext {
     state: CreatorState;
@@ -98,7 +98,8 @@ export interface CharacterCreatorContext {
     getAvailableSpells: () => { cantrips: RuleSpellDefinition[]; leveledSpells: RuleSpellDefinition[]; spellsLvl1: RuleSpellDefinition[] };
     getFeatureSpellChoiceSections: () => FeatureSpellChoiceSection[];
     sanitizeSpellSelections: () => void;
-    getSmartAutoFillSpells: () => { cantrips: string[]; prepared: string[] };
+    getSmartAutoFillSpells: () => { cantrips: string[]; prepared: string[]; byBucket: Record<string, SpellBucketSelection> };
+    getSpellBuckets: () => SpellBucket[];
     getSpellcastingAbility: () => AbilityName | null;
     getSpellSaveDc: (abilityOverride?: AbilityName) => number | null;
     getSpellAttackModifier: (abilityOverride?: AbilityName) => number | null;

@@ -8,7 +8,7 @@ import {
     calculateMulticlassSpellSlots,
     getMulticlassCasterInfo
 } from "../../../rules/dnd5e_2024";
-import { FeatureSpellChoiceSection } from "../characterCreator.types";
+import { FeatureSpellChoiceSection, SpellBucket, SpellBucketSelection } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 
 function getAllSpells(ctx: CharacterCreatorContext): RuleSpellDefinition[] {
@@ -453,6 +453,152 @@ export function getProgressionGrantedSpellNames(ctx: CharacterCreatorContext): S
     return names;
 }
 
+export const MAGIC_INITIATE_BUCKET_KEY = "magic-initiate";
+
+function getMagicInitiateClass(ctx: CharacterCreatorContext): string {
+    if (ctx.state.originFeatId === "magic-initiate-cleric") return "Cleric";
+    if (ctx.state.originFeatId === "magic-initiate-druid") return "Druid";
+    if (ctx.state.originFeatId === "magic-initiate-wizard") return "Wizard";
+    return "";
+}
+
+function getClassSpellLists(ctx: CharacterCreatorContext, info: MulticlassCasterClassInfo): { cantripLists: string[]; leveledLists: string[] } {
+    const base = info.type === "third" ? "Wizard" : info.className;
+    const cantripLists = [base];
+    const leveledLists = [base];
+    const cc = ctx.state.classes?.find((c) => c.classId.toLowerCase() === info.classId);
+    const clsDef = ctx.classes.find((c) => c.id === cc?.classId || c.slug === cc?.classId) || CLASSES_2024.find((c) => c.id === info.classId);
+    for (const exp of clsDef?.spellcasting?.expandedSpellLists || []) {
+        if (info.level < exp.level) continue;
+        for (const expCls of exp.classes) {
+            if (!leveledLists.includes(expCls)) leveledLists.push(expCls);
+            if (exp.allowCantrips && !cantripLists.includes(expCls)) cantripLists.push(expCls);
+        }
+    }
+    return { cantripLists, leveledLists };
+}
+
+/**
+ * D&D 2024 multiclassing: each class prepares its own spells from its own list, using its own class level for the
+ * number of cantrips/prepared spells and the highest spell level it can prepare. Magic Initiate is its own pool.
+ */
+export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
+    const allSpells = getAllSpells(ctx);
+    const buckets: SpellBucket[] = [];
+    for (const info of getSpellcasterInfos(ctx)) {
+        if (buckets.some((b) => b.key === info.classId)) continue;
+        const { cantripLists, leveledLists } = getClassSpellLists(ctx, info);
+        buckets.push({
+            key: info.classId,
+            kind: "class",
+            label: info.className,
+            sourceLabel: info.className,
+            level: info.level,
+            ability: info.ability,
+            maxCantrips: info.maxCantrips,
+            maxPrepared: info.maxPrepared,
+            maxSpellLevel: info.maxSpellLevel,
+            priorityKey: info.type === "third" ? "wizard" : info.classId,
+            cantripPool: info.maxCantrips > 0 ? allSpells.filter((sp) => sp.level === 0 && sp.classes.some((c) => cantripLists.includes(c))) : [],
+            preparedPool: info.maxPrepared > 0
+                ? allSpells.filter((sp) => sp.level >= 1 && sp.level <= info.maxSpellLevel && sp.classes.some((c) => leveledLists.includes(c)))
+                : []
+        });
+    }
+    const miClass = getMagicInitiateClass(ctx);
+    if (miClass) {
+        buckets.push({
+            key: MAGIC_INITIATE_BUCKET_KEY,
+            kind: "feat",
+            label: `Magic Initiate (${miClass})`,
+            sourceLabel: `Magic Initiate (${miClass})`,
+            level: 0,
+            ability: miClass === "Wizard" ? "int" : "wis",
+            maxCantrips: 2,
+            maxPrepared: 1,
+            maxSpellLevel: 1,
+            priorityKey: miClass.toLowerCase(),
+            cantripPool: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes(miClass)),
+            preparedPool: allSpells.filter((sp) => sp.level === 1 && sp.classes.includes(miClass))
+        });
+    }
+    return buckets;
+}
+
+/**
+ * Resolves a saved spell's source (a class name, or a Magic Initiate label) to its spell bucket key.
+ */
+export function resolveSpellBucketKey(ctx: CharacterCreatorContext, source: string): string | null {
+    const src = String(source || "").trim().toLowerCase();
+    if (!src) return null;
+    if (src.startsWith("magic initiate")) return MAGIC_INITIATE_BUCKET_KEY;
+    for (const c of ctx.state.classes || []) {
+        const def = ctx.classes.find((x) => x.id === c.classId);
+        if (src === c.classId.toLowerCase() || src === (def?.name || "").toLowerCase()) return c.classId;
+    }
+    return null;
+}
+
+function uniq(names: string[]): string[] {
+    return Array.from(new Set(names));
+}
+
+export function getBucketSelection(ctx: CharacterCreatorContext, key: string): SpellBucketSelection {
+    ctx.state.classSpellSelections = ctx.state.classSpellSelections || {};
+    const sel = ctx.state.classSpellSelections[key] || { cantrips: [], prepared: [] };
+    ctx.state.classSpellSelections[key] = sel;
+    return sel;
+}
+
+/**
+ * Rebuilds the flat selectedCantrips / selectedSpellsLevel1 lists from the per-class selections, keeping the
+ * existing order and appending anything new.
+ */
+export function syncFlatSpellSelections(ctx: CharacterCreatorContext): void {
+    const sels = Object.values(ctx.state.classSpellSelections || {});
+    const cantrips = uniq(sels.flatMap((s) => s.cantrips));
+    const prepared = uniq(sels.flatMap((s) => s.prepared));
+    ctx.state.selectedCantrips = uniq([...ctx.state.selectedCantrips.filter((n) => cantrips.includes(n)), ...cantrips]);
+    ctx.state.selectedSpellsLevel1 = uniq([...ctx.state.selectedSpellsLevel1.filter((n) => prepared.includes(n)), ...prepared]);
+}
+
+/**
+ * Keeps the per-class selections consistent with the flat selection lists: drops picks a class can no longer make,
+ * and assigns any unattributed pick to the first class that can take it (preferring one that still has room).
+ */
+function reconcileSpellBuckets(ctx: CharacterCreatorContext): void {
+    const buckets = getSpellBuckets(ctx);
+    const prev = ctx.state.classSpellSelections || {};
+    const next: Record<string, SpellBucketSelection> = {};
+    const cantripSet = new Set(ctx.state.selectedCantrips);
+    const preparedSet = new Set(ctx.state.selectedSpellsLevel1);
+
+    for (const b of buckets) {
+        const old = prev[b.key] || { cantrips: [], prepared: [] };
+        const cantripNames = new Set(b.cantripPool.map((s) => s.name));
+        const preparedNames = new Set(b.preparedPool.map((s) => s.name));
+        next[b.key] = {
+            cantrips: uniq((old.cantrips || []).filter((n) => cantripSet.has(n) && cantripNames.has(n))),
+            prepared: uniq((old.prepared || []).filter((n) => preparedSet.has(n) && preparedNames.has(n)))
+        };
+    }
+
+    const assign = (name: string, field: "cantrips" | "prepared") => {
+        if (buckets.some((b) => next[b.key][field].includes(name))) return true;
+        const poolOf = (b: SpellBucket) => (field === "cantrips" ? b.cantripPool : b.preparedPool);
+        const maxOf = (b: SpellBucket) => (field === "cantrips" ? b.maxCantrips : b.maxPrepared);
+        const eligible = buckets.filter((b) => poolOf(b).some((s) => s.name === name));
+        if (eligible.length === 0) return false;
+        const target = eligible.find((b) => next[b.key][field].length < maxOf(b)) || eligible[0];
+        next[target.key][field].push(name);
+        return true;
+    };
+
+    ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((n) => assign(n, "cantrips"));
+    ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((n) => assign(n, "prepared"));
+    ctx.state.classSpellSelections = next;
+}
+
 export function sanitizeSpellSelections(ctx: CharacterCreatorContext): void {
     ctx.state.featureSpellChoices = ctx.state.featureSpellChoices || {};
     const activeFeatureSections = getFeatureSpellChoiceSections(ctx);
@@ -473,6 +619,7 @@ export function sanitizeSpellSelections(ctx: CharacterCreatorContext): void {
     if (allowed.length === 0) {
         ctx.state.selectedCantrips = [];
         ctx.state.selectedSpellsLevel1 = [];
+        ctx.state.classSpellSelections = {};
         return;
     }
     const available = getAvailableSpells(ctx);
@@ -483,129 +630,94 @@ export function sanitizeSpellSelections(ctx: CharacterCreatorContext): void {
     const granted = getProgressionGrantedSpellNames(ctx);
     ctx.state.selectedCantrips = ctx.state.selectedCantrips.filter((s) => validCantripNames.has(s) && !granted.has(s.toLowerCase()));
     ctx.state.selectedSpellsLevel1 = ctx.state.selectedSpellsLevel1.filter((s) => validLeveledNames.has(s) && !granted.has(s.toLowerCase()));
+
+    reconcileSpellBuckets(ctx);
 }
 
-export function getSmartAutoFillSpells(ctx: CharacterCreatorContext): { cantrips: string[]; prepared: string[] } {
-    const rawAvailable = getAvailableSpells(ctx);
-    // Don't spend base allotment on spells already granted by class/subclass progression
-    const grantedNames = getProgressionGrantedSpellNames(ctx);
-    const available = {
-        cantrips: rawAvailable.cantrips.filter((s) => !grantedNames.has(s.name.toLowerCase())),
-        leveledSpells: rawAvailable.leveledSpells.filter((s) => !grantedNames.has(s.name.toLowerCase()))
-    };
-    const maxCantrips = getMaxCantrips(ctx);
-    const maxPrepared = getMaxPreparedSpells(ctx);
-    const maxLevel = getMaxSpellLevel(ctx);
-
-    const infos = getSpellcasterInfos(ctx);
-    const activeClassKeys = infos.map((i) => i.type === "third" ? "wizard" : i.classId.toLowerCase());
-    if (activeClassKeys.length === 0) {
-        activeClassKeys.push((ctx.state.classId || "wizard").toLowerCase());
-    }
-
-    const combinedPriorities = {
-        cantrips: [] as string[],
-        leveled: [] as string[]
-    };
-    for (const ck of activeClassKeys) {
-        const p = CLASS_SPELL_PRIORITIES[ck];
-        if (p) {
-            p.cantrips.forEach((name) => {
-                if (!combinedPriorities.cantrips.includes(name)) combinedPriorities.cantrips.push(name);
-            });
-            p.leveled.forEach((name) => {
-                if (!combinedPriorities.leveled.includes(name)) combinedPriorities.leveled.push(name);
-            });
-        }
-    }
-
-    // 1. Smart Cantrips: rank by class priorities, then alphabetical
-    const cantripRank = (sp: RuleSpellDefinition) => {
-        const idx = combinedPriorities.cantrips.indexOf(sp.name);
+function autoFillBucket(
+    bucket: SpellBucket,
+    exclude: Set<string>
+): SpellBucketSelection {
+    const priorities = CLASS_SPELL_PRIORITIES[bucket.priorityKey] || { cantrips: [], leveled: [] };
+    const rank = (list: string[], sp: RuleSpellDefinition) => {
+        const idx = list.indexOf(sp.name);
         return idx >= 0 ? idx : 999;
     };
-    const sortedCantrips = [...available.cantrips].sort((a, b) => {
-        const rA = cantripRank(a);
-        const rB = cantripRank(b);
+    const byRank = (list: string[]) => (a: RuleSpellDefinition, b: RuleSpellDefinition) => {
+        const rA = rank(list, a);
+        const rB = rank(list, b);
         if (rA !== rB) return rA - rB;
         return a.name.localeCompare(b.name);
-    });
-    const selectedCantrips = sortedCantrips.slice(0, maxCantrips).map((c) => c.name);
-
-    // 2. Smart Prepared Spells: ensure coverage across available spell levels, prioritizing staples
-    const leveledRank = (sp: RuleSpellDefinition) => {
-        const idx = combinedPriorities.leveled.indexOf(sp.name);
-        return idx >= 0 ? idx : 999;
     };
 
-    // Group available leveled spells by level
+    // 1. Smart Cantrips: rank by class priorities, then alphabetical
+    const cantrips = bucket.cantripPool
+        .filter((s) => !exclude.has(s.name.toLowerCase()))
+        .sort(byRank(priorities.cantrips))
+        .slice(0, bucket.maxCantrips)
+        .map((c) => c.name);
+
+    // 2. Smart Prepared Spells: ensure coverage across available spell levels, prioritizing staples
+    const leveled = bucket.preparedPool.filter((s) => !exclude.has(s.name.toLowerCase()));
+    const maxPrepared = bucket.maxPrepared;
+    const maxLevel = bucket.maxSpellLevel;
     const byLevel: Record<number, RuleSpellDefinition[]> = {};
     for (let lvl = 1; lvl <= maxLevel; lvl++) {
-        byLevel[lvl] = available.leveledSpells
-            .filter((s) => s.level === lvl)
-            .sort((a, b) => {
-                const rA = leveledRank(a);
-                const rB = leveledRank(b);
-                if (rA !== rB) return rA - rB;
-                return a.name.localeCompare(b.name);
-            });
+        byLevel[lvl] = leveled.filter((s) => s.level === lvl).sort(byRank(priorities.leveled));
     }
 
-    const selectedPreparedSet = new Set<string>();
-
+    const selected = new Set<string>();
     if (maxLevel <= 1) {
-        // Level 1 only: take top priorities
-        const topLvl1 = (byLevel[1] || []).slice(0, maxPrepared);
-        topLvl1.forEach((s) => selectedPreparedSet.add(s.name));
+        (byLevel[1] || []).slice(0, maxPrepared).forEach((s) => selected.add(s.name));
     } else {
         // Multi-level: distribute across levels from maxLevel down to 1
         for (let lvl = maxLevel; lvl >= 1; lvl--) {
             const spellsAtLvl = byLevel[lvl] || [];
             const quota = lvl === maxLevel ? 2 : 1;
             for (let i = 0; i < Math.min(quota, spellsAtLvl.length); i++) {
-                if (selectedPreparedSet.size < maxPrepared) {
-                    selectedPreparedSet.add(spellsAtLvl[i].name);
-                }
+                if (selected.size < maxPrepared) selected.add(spellsAtLvl[i].name);
             }
         }
 
-        // Pass 2: Round-robin fill starting from highest levels down to 1
+        // Round-robin fill starting from highest levels down to 1
         let addedInPass = true;
-        while (selectedPreparedSet.size < maxPrepared && addedInPass) {
+        while (selected.size < maxPrepared && addedInPass) {
             addedInPass = false;
             for (let lvl = maxLevel; lvl >= 1; lvl--) {
-                const spellsAtLvl = byLevel[lvl] || [];
-                for (const s of spellsAtLvl) {
-                    if (!selectedPreparedSet.has(s.name) && selectedPreparedSet.size < maxPrepared) {
-                        selectedPreparedSet.add(s.name);
-                        addedInPass = true;
-                        break;
-                    }
+                const next = (byLevel[lvl] || []).find((s) => !selected.has(s.name));
+                if (next && selected.size < maxPrepared) {
+                    selected.add(next.name);
+                    addedInPass = true;
                 }
-                if (selectedPreparedSet.size >= maxPrepared) break;
+                if (selected.size >= maxPrepared) break;
             }
         }
     }
 
-    // If still under maxPrepared, fill with any remaining available spells
-    if (selectedPreparedSet.size < maxPrepared) {
-        const allSorted = [...available.leveledSpells].sort((a, b) => {
-            if (b.level !== a.level) return b.level - a.level;
-            const rA = leveledRank(a);
-            const rB = leveledRank(b);
-            if (rA !== rB) return rA - rB;
-            return a.name.localeCompare(b.name);
-        });
-        for (const s of allSorted) {
-            if (!selectedPreparedSet.has(s.name) && selectedPreparedSet.size < maxPrepared) {
-                selectedPreparedSet.add(s.name);
-            }
-        }
-    }
+    return { cantrips, prepared: Array.from(selected) };
+}
 
+/**
+ * Auto-fills every spell bucket from its own class list and limits, never picking the same spell for two classes.
+ */
+export function getSmartAutoFillSpells(ctx: CharacterCreatorContext): {
+    cantrips: string[];
+    prepared: string[];
+    byBucket: Record<string, SpellBucketSelection>;
+} {
+    // Don't spend base allotment on spells already granted by class/subclass progression
+    const used = new Set(getProgressionGrantedSpellNames(ctx));
+    const byBucket: Record<string, SpellBucketSelection> = {};
+    for (const bucket of getSpellBuckets(ctx)) {
+        const sel = autoFillBucket(bucket, used);
+        [...sel.cantrips, ...sel.prepared].forEach((n) => used.add(n.toLowerCase()));
+        byBucket[bucket.key] = sel;
+    }
+    const sels = Object.values(byBucket);
     return {
-        cantrips: selectedCantrips,
-        prepared: Array.from(selectedPreparedSet)
+        cantrips: uniq(sels.flatMap((s) => s.cantrips)),
+        prepared: uniq(sels.flatMap((s) => s.prepared)),
+        byBucket
     };
 }
 

@@ -21,7 +21,9 @@ import {
     AsiChoice,
     CharacterClassChoice,
     CreatorState,
-    FeatureSpellChoiceSection
+    FeatureSpellChoiceSection,
+    SpellBucket,
+    SpellBucketSelection
 } from "./characterCreator.types";
 import {
     getNavBottom,
@@ -120,6 +122,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         equippedKitIndex: 0,
         selectedCantrips: [],
         selectedSpellsLevel1: [],
+        classSpellSelections: {},
         featureSpellChoices: {}
     };
 
@@ -775,8 +778,12 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         spellCalc.sanitizeSpellSelections(this);
     }
 
-    public getSmartAutoFillSpells(): { cantrips: string[]; prepared: string[] } {
+    public getSmartAutoFillSpells(): { cantrips: string[]; prepared: string[]; byBucket: Record<string, SpellBucketSelection> } {
         return spellCalc.getSmartAutoFillSpells(this);
+    }
+
+    public getSpellBuckets(): SpellBucket[] {
+        return spellCalc.getSpellBuckets(this);
     }
 
     public getSpellcastingAbility(): AbilityName | null {

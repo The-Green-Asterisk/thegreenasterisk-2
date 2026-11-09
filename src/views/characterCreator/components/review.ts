@@ -44,6 +44,7 @@ import {
 import { CharacterCreatorContext } from "../controllers/context";
 
 export function renderStep9Review(ctx: CharacterCreatorContext): string {
+    ctx.sanitizeSpellSelections();
     const species = ctx.species.find((s) => s.id === ctx.state.speciesId)?.name || "";
     const currentClsDef = ctx.classes.find((c) => c.id === ctx.state.classId);
     const cls = currentClsDef?.name || "";
@@ -163,11 +164,23 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
 
                 <div class="review-section" style="grid-column: 1 / -1;">
                     <h4>Magic & Spells</h4>
-                    <div class="review-row"><span class="label">Cantrips (${ctx.state.selectedCantrips.length}/${ctx.getMaxCantrips()}):</span><strong>${ctx.state.selectedCantrips.join(", ") || "None"}</strong></div>
-                    <div class="review-row"><span class="label">Prepared Spells (${ctx.state.selectedSpellsLevel1.length}/${ctx.getMaxPreparedSpells()}):</span><strong>${ctx.state.selectedSpellsLevel1.map((name) => {
-                        const sp = SPELLS_2024.find((s) => s.name === name);
-                        return sp ? `${name} (Lvl ${sp.level})` : name;
-                    }).join(", ") || "None"}</strong></div>
+                    ${(() => {
+                        const buckets = ctx.getSpellBuckets();
+                        const withLevel = (name: string) => {
+                            const sp = SPELLS_2024.find((s) => s.name === name);
+                            return sp ? `${name} (Lvl ${sp.level})` : name;
+                        };
+                        if (buckets.length === 0) {
+                            return `<div class="review-row"><span class="label">Cantrips (0/0):</span><strong>None</strong></div>
+                    <div class="review-row"><span class="label">Prepared Spells (0/0):</span><strong>None</strong></div>`;
+                        }
+                        return buckets.map((b) => {
+                            const sel = ctx.state.classSpellSelections?.[b.key] || { cantrips: [], prepared: [] };
+                            const prefix = buckets.length > 1 ? `${b.label} ` : "";
+                            return `<div class="review-row"><span class="label">${prefix}Cantrips (${sel.cantrips.length}/${b.maxCantrips}):</span><strong>${sel.cantrips.join(", ") || "None"}</strong></div>
+                    <div class="review-row"><span class="label">${prefix}Prepared Spells (${sel.prepared.length}/${b.maxPrepared}):</span><strong>${sel.prepared.map(withLevel).join(", ") || "None"}</strong></div>`;
+                        }).join("");
+                    })()}
                     ${ctx.getFeatureSpellChoiceSections().map((sec) => {
                         const chosen = ctx.state.featureSpellChoices[sec.id] || [];
                         return `<div class="review-row"><span class="label">${sec.title} (${chosen.length}/${sec.chooseCount}):</span><strong>${chosen.join(", ") || "None"}</strong></div>`;

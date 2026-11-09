@@ -792,9 +792,16 @@ describe('Frontend View Templates', () => {
         expect(limits.currentPrepared).toBe(17);
         expect(limits.isPreparedOverLimit).toBe(false);
 
-        // Cantrips have an allotment (Bard 3 + Warlock 3 + Tome 3 + Tiefling 2 = 11)
-        expect(limits.maxCantrips).toBe(11);
-        expect(limits.currentCantrips).toBe(11);
+        // Each class prepares its own spells (2024 multiclassing): Bard 6 -> 10, Warlock 6 -> 7
+        expect(limits.byClass.map(c => [c.name, c.currentPrepared, c.maxPrepared])).toEqual([
+            ["Bard", 10, 10],
+            ["Warlock", 7, 7]
+        ]);
+
+        // Class cantrips (Bard 3 + Warlock 3); Tome (3) and Tiefling (2) cantrips are bonus and don't count
+        expect(limits.maxCantrips).toBe(6);
+        expect(limits.currentCantrips).toBe(6);
+        expect(limits.bonusCantrips).toBe(5);
         expect(limits.isCantripsOverLimit).toBe(false);
 
         // Spells HTML should NOT show "8/4" or "over-limit" for 1st-level spells (he has 8 1st-level spells on sheet with 4 slots)
@@ -805,6 +812,77 @@ describe('Frontend View Templates', () => {
         // Dynamic sheet content renders the prepared spells pool badge
         const sheetHtml = renderSheetContent(darvellData);
         expect(sheetHtml).toContain('Prepared: <strong>17/17</strong>');
+        expect(sheetHtml).toContain('Bard 10/10 • Warlock 7/7');
+    });
+
+    it('counts prepared spells per class for multiclass characters (2024 rules)', async () => {
+        const { getCharacterSpellLevelLimits } = await import('../../../src/views/characterSheet/components/spells');
+        const spell = (name: string, level: number, source: string, alwaysPrepared?: boolean) =>
+            ({ id: name, name, level, school: 'Evocation', source, castingTime: '', range: '', duration: '', components: '', concentration: false, ritual: false, description: '', alwaysPrepared });
+
+        // Wizard 1 / Cleric 3: Wizard prepares 4 (up to level 1), Cleric prepares 6 (up to level 2)
+        const charData: any = {
+            classes: [{ name: 'Wizard', level: 1 }, { name: 'Cleric', level: 3, subclass: 'Life Domain' }],
+            spellSlots: { level1: { total: 4 }, level2: { total: 3 } },
+            features: [],
+            spells: [
+                spell('Fire Bolt', 0, 'Wizard'),
+                spell('Sacred Flame', 0, 'Cleric'),
+                spell('Shield', 1, 'Wizard'),
+                spell('Magic Missile', 1, 'Wizard'),
+                spell('Sleep', 1, 'Wizard'),
+                spell('Detect Magic', 1, 'Wizard'),
+                spell('Mage Armor', 1, 'Wizard'),
+                spell('Bless', 1, 'Cleric'),
+                spell('Aid', 2, 'Cleric'),
+                spell('Lesser Restoration', 2, 'Life Domain', true),
+                spell('Light', 0, 'Elf Species')
+            ]
+        };
+
+        const limits = getCharacterSpellLevelLimits(charData);
+        // Total (7 of 10) is under the combined limit, but the Wizard has 5 of its 4
+        expect(limits.maxPrepared).toBe(10);
+        expect(limits.currentPrepared).toBe(7);
+        expect(limits.byClass.find(c => c.name === 'Wizard')).toMatchObject({ currentPrepared: 5, maxPrepared: 4, isPreparedOverLimit: true });
+        expect(limits.byClass.find(c => c.name === 'Cleric')).toMatchObject({ currentPrepared: 2, maxPrepared: 6, isPreparedOverLimit: false });
+        expect(limits.isPreparedOverLimit).toBe(true);
+        // Always-prepared domain spell and species cantrip don't count
+        expect(limits.bonusPrepared).toBe(1);
+        expect(limits.maxCantrips).toBe(3 + 3);
+        expect(limits.currentCantrips).toBe(2);
+
+        // A Wizard spell above what a 1st-level Wizard can prepare is flagged even with room in the total
+        charData.spells = charData.spells.filter((s: any) => s.name !== 'Mage Armor');
+        charData.spells.push(spell('Misty Step', 2, 'Wizard'));
+        const limits2 = getCharacterSpellLevelLimits(charData);
+        expect(limits2.byClass.find(c => c.name === 'Wizard')).toMatchObject({ currentPrepared: 5, aboveMaxLevel: ['Misty Step'] });
+    });
+
+    it('gives Eldritch Knights and Arcane Tricksters their 2024 cantrip and prepared counts on the sheet', async () => {
+        const { getCharacterSpellLevelLimits } = await import('../../../src/views/characterSheet/components/spells');
+        const limits = getCharacterSpellLevelLimits({
+            classes: [{ name: 'Rogue', level: 3, subclass: 'Arcane Trickster' }, { name: 'Fighter', level: 10, subclass: 'Eldritch Knight' }],
+            spellSlots: {},
+            features: [],
+            spells: []
+        } as any);
+        expect(limits.byClass.map(c => [c.name, c.maxCantrips, c.maxPrepared])).toEqual([
+            ['Rogue', 3, 3],
+            ['Fighter', 3, 7]
+        ]);
+    });
+
+    it('does not give non-casters a cantrip allotment', async () => {
+        const { getCharacterSpellLevelLimits } = await import('../../../src/views/characterSheet/components/spells');
+        const limits = getCharacterSpellLevelLimits({
+            classes: [{ name: 'Fighter', level: 5, subclass: 'Champion' }],
+            spellSlots: {},
+            features: [],
+            spells: []
+        } as any);
+        expect(limits.maxCantrips).toBe(0);
+        expect(limits.maxPrepared).toBe(0);
     });
 
     it('renders feat and trait decision dropdowns and updates character stats when choices change', async () => {
