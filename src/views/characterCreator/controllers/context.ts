@@ -8,7 +8,7 @@ import {
     RuleSpellDefinition,
     SpeciesDefinition
 } from "../../../rules/dnd5e_2024";
-import { CreatorState, FeatureSpellChoiceSection, SpellBucket, SpellBucketSelection } from "../characterCreator.types";
+import { AsiSlot, CreatorState, FeatureSpellChoiceSection, SpellBucket, SpellBucketSelection } from "../characterCreator.types";
 
 export interface CharacterCreatorContext {
     state: CreatorState;
@@ -81,7 +81,7 @@ export interface CharacterCreatorContext {
     incrementPointBuy: (stat: AbilityName) => boolean;
     decrementPointBuy: (stat: AbilityName) => boolean;
     setStandardArrayScore: (targetStat: AbilityName, newValue: number) => void;
-    getAsiLevels: () => number[];
+    getAsiSlots: () => AsiSlot[];
     ensureAsiChoices: () => void;
     getMaxWeaponMasteriesCount: () => number;
     getMaxMetamagicCount: () => number;

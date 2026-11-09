@@ -147,16 +147,17 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                         return rows.join("");
                     })()}
                     ${ctx.state.expertiseSkills.length > 0 ? `<div class="review-row"><span class="label">Expertise Skills:</span><strong>${ctx.state.expertiseSkills.join(", ")}</strong></div>` : ""}
-                    ${ctx.getAsiLevels().length > 0 ? `
+                    ${ctx.getAsiSlots().length > 0 ? `
                         <div class="review-row" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
                             <span class="label">Ability Improvements & Feats:</span>
-                            ${ctx.getAsiLevels().map((lvl) => {
-                                const ch = ctx.state.asiChoices[lvl];
-                                if (!ch) return `<div>• Level ${lvl}: Standard Increase</div>`;
-                                if (ch.type === "single") return `<div>• Level ${lvl}: +2 ${ch.statA?.toUpperCase()}</div>`;
-                                if (ch.type === "dual") return `<div>• Level ${lvl}: +1 ${ch.statA?.toUpperCase()}, +1 ${ch.statB?.toUpperCase()}</div>`;
+                            ${ctx.getAsiSlots().map((slot) => {
+                                const ch = ctx.state.asiChoices[slot.key];
+                                const where = ctx.state.classes.length > 1 ? `${slot.className} ${slot.classLevel}` : `Level ${slot.classLevel}`;
+                                if (!ch) return `<div>• ${where}: Standard Increase</div>`;
+                                if (ch.type === "single") return `<div>• ${where}: ${ch.statA ? `+2 ${ch.statA.toUpperCase()}` : "Not chosen"}</div>`;
+                                if (ch.type === "dual") return `<div>• ${where}: +1 ${ch.statA?.toUpperCase()}, +1 ${ch.statB?.toUpperCase()}</div>`;
                                 const fDef = ctx.generalFeats.find((f) => f.id === ch.featId);
-                                return `<div>• Level ${lvl}: Feat (${fDef?.name || ch.featId}) [+1 ${ch.statA?.toUpperCase()}]</div>`;
+                                return `<div>• ${where}: Feat (${fDef?.name || ch.featId})${ch.statA ? ` [+1 ${ch.statA.toUpperCase()}]` : ""}</div>`;
                             }).join("")}
                         </div>
                     ` : ""}

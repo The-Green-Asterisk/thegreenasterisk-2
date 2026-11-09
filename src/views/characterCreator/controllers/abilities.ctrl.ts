@@ -117,13 +117,13 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     document.querySelectorAll(".asi-type-radio").forEach((radio) => {
         radio.addEventListener("change", (e) => {
             const target = e.target as HTMLInputElement;
-            const lvl = Number(target.getAttribute("data-asi-level"));
+            const lvl = target.getAttribute("data-asi-key") || "";
             const newType = target.value as "single" | "dual" | "feat";
             ctx.ensureAsiChoices();
             if (ctx.state.asiChoices[lvl]) {
                 ctx.state.asiChoices[lvl].type = newType;
                 if (newType === "feat" && !ctx.state.asiChoices[lvl].featId) {
-                    const isEpic = lvl >= 19;
+                    const isEpic = ctx.getAsiSlots().find((s) => s.key === lvl)?.isEpicBoon ?? false;
                     const feats = isEpic ? ctx.generalFeats : ctx.generalFeats.filter((f) => !f.isEpicBoon);
                     const defaultFeat = feats[0];
                     ctx.state.asiChoices[lvl].featId = defaultFeat?.id || "alert-general";
@@ -138,7 +138,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     document.querySelectorAll(".asi-stat-select").forEach((select) => {
         select.addEventListener("change", (e) => {
             const target = e.target as HTMLSelectElement;
-            const lvl = Number(target.getAttribute("data-asi-level"));
+            const lvl = target.getAttribute("data-asi-key") || "";
             const field = target.getAttribute("data-asi-field") as "statA" | "statB";
             ctx.ensureAsiChoices();
             if (ctx.state.asiChoices[lvl] && field) {
@@ -152,7 +152,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     document.querySelectorAll(".asi-feat-select").forEach((select) => {
         select.addEventListener("change", (e) => {
             const target = e.target as HTMLSelectElement;
-            const lvl = Number(target.getAttribute("data-asi-level"));
+            const lvl = target.getAttribute("data-asi-key") || "";
             const featId = target.value;
             ctx.ensureAsiChoices();
             if (ctx.state.asiChoices[lvl]) {

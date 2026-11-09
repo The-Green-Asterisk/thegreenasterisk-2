@@ -51,6 +51,7 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { getOrdinalSuffix } from "../components/class";
+import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
 import { CharacterCreatorContext } from "../controllers/context";
 import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, resolveSpellBucketKey } from "./spellReconciliation";
 
@@ -274,6 +275,20 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                     if (abbr && ctx.state.baseAbilities[abbr] !== undefined) {
                         ctx.state.baseAbilities[abbr] = ab.baseScore ?? ab.score ?? 10;
                     }
+                }
+            }
+
+            // D&D Beyond imports: the saved sheet keeps final scores and feat names but not which class level granted
+            // each feat, so read base scores, background bonuses, origin feats and ASI/feat choices from D&D Beyond
+            const isDndBeyond = (response?.savedCharacter?.source || char.source) === "dndbeyond";
+            const externalId = response?.savedCharacter?.externalCharacterId
+                || (isDndBeyond && /^\d+$/.test(String(char.id || "")) ? String(char.id) : undefined);
+            if (isDndBeyond && externalId) {
+                try {
+                    const raw = await getData<any>(`/get-dndbeyond-character?id=${externalId}`);
+                    if (raw) applyDndBeyondAbilityChoices(ctx, raw);
+                } catch (err) {
+                    console.warn("Could not read ability score choices from D&D Beyond:", err);
                 }
             }
 
@@ -1024,9 +1039,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         }
     }
 
-    const asiLevels = ctx.getAsiLevels();
-    for (const lvl of asiLevels) {
-        const choice = ctx.state.asiChoices[lvl];
+    const isMulticlassAsi = ctx.state.classes.length > 1;
+    for (const slot of ctx.getAsiSlots()) {
+        const choice = ctx.state.asiChoices[slot.key];
         if (choice?.type === "feat" && choice.featId) {
             const featDef = ctx.generalFeats.find((f) => f.id === choice.featId);
             if (featDef) {
@@ -1039,7 +1054,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             }
         } else {
             featsList.push({
-                name: `${lvl}: Ability Score Improvement`,
+                name: isMulticlassAsi ? `${slot.className} ${slot.classLevel}: Ability Score Improvement` : `${slot.classLevel}: Ability Score Improvement`,
                 source: "Feat",
                 type: "Feat",
                 description: wrapHtmlParagraph(

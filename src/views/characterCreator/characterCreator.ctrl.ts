@@ -19,6 +19,7 @@ import {
 import {
     ALL_SKILLS,
     AsiChoice,
+    AsiSlot,
     CharacterClassChoice,
     CreatorState,
     FeatureSpellChoiceSection,
@@ -543,11 +544,11 @@ export class CharacterCreatorController implements CharacterCreatorContext {
 
         // 10. ASI Choices:
         if (this.state.asiChoices) {
-            const asiLevels = this.getAsiLevels();
-            for (const lvlStr of Object.keys(this.state.asiChoices)) {
-                const lvlNum = parseInt(lvlStr, 10);
-                if (!asiLevels.includes(lvlNum) || lvlNum > this.state.level) {
-                    delete this.state.asiChoices[lvlNum];
+            rulesCalc.normalizeAsiChoices(this, false);
+            const slotKeys = new Set(rulesCalc.getAsiSlots(this, false).map((s) => s.key));
+            for (const key of Object.keys(this.state.asiChoices)) {
+                if (!slotKeys.has(key)) {
+                    delete this.state.asiChoices[key];
                 }
             }
         }
@@ -717,8 +718,8 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         rulesCalc.setStandardArrayScore(this, targetStat, newValue);
     }
 
-    public getAsiLevels(): number[] {
-        return rulesCalc.getAsiLevels(this);
+    public getAsiSlots(): AsiSlot[] {
+        return rulesCalc.getAsiSlots(this);
     }
 
     public ensureAsiChoices(): void {

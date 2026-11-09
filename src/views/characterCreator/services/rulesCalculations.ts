@@ -5,7 +5,7 @@ import {
     MULTICLASS_PROFICIENCIES_2024,
     checkClassPrerequisite
 } from "../../../rules/dnd5e_2024";
-import { ALL_SKILLS } from "../characterCreator.types";
+import { ALL_SKILLS, AsiChoice, AsiSlot } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 
 export const STANDARD_ARRAY: number[] = [15, 14, 13, 12, 10, 8];
@@ -77,24 +77,59 @@ export function setStandardArrayScore(ctx: CharacterCreatorContext, targetStat: 
     }
 }
 
-export function getAsiLevels(ctx: CharacterCreatorContext): number[] {
-    const lvls = [4, 8, 12, 16, 19];
-    if (ctx.state.classId === "fighter") {
-        lvls.push(6, 14);
-    } else if (ctx.state.classId === "rogue") {
-        lvls.push(10);
+/**
+ * D&D 2024: Ability Score Improvements are a class feature, earned at each class's own levels (4, 8, 12, 16, plus
+ * Fighter 6 and 14 and Rogue 10), and every class gets an Epic Boon at 19. A Bard 10 / Warlock 10 has four slots
+ * (Bard 4, Bard 8, Warlock 4, Warlock 8), not five at total levels 4–19.
+ */
+export function getAsiSlots(ctx: CharacterCreatorContext, syncClasses = true): AsiSlot[] {
+    // syncStateClassProperties itself cleans up ASI choices, so that cleanup reads slots without syncing again
+    if (syncClasses) ctx.syncStateClassProperties();
+    const slots: AsiSlot[] = [];
+    for (const c of ctx.state.classes || []) {
+        const classId = (c.classId || "").toLowerCase();
+        const className = ctx.classes.find((x) => x.id === classId)?.name || classId;
+        const levels = [4, 8, 12, 16, 19];
+        if (classId === "fighter") levels.push(6, 14);
+        else if (classId === "rogue") levels.push(10);
+        for (const classLevel of levels.sort((a, b) => a - b)) {
+            if (classLevel > (c.level || 0)) continue;
+            slots.push({ key: `${classId}-${classLevel}`, classId, className, classLevel, isEpicBoon: classLevel === 19 });
+        }
     }
-    return lvls.sort((a, b) => a - b).filter((l) => l <= ctx.state.level);
+    return slots;
+}
+
+/**
+ * Moves ASI choices saved before slots were per class (keyed by total character level) onto the per-class slots:
+ * a single-class character's levels map directly; a multiclass character's are assigned in order.
+ */
+export function normalizeAsiChoices(ctx: CharacterCreatorContext, syncClasses = true): void {
+    const choices = (ctx.state.asiChoices || {}) as Record<string, AsiChoice>;
+    const legacyKeys = Object.keys(choices).filter((k) => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
+    if (legacyKeys.length === 0) return;
+    const slots = getAsiSlots(ctx, syncClasses);
+    const singleClass = (ctx.state.classes || []).length <= 1;
+    const free = slots.filter((s) => !choices[s.key]).sort((a, b) => a.classLevel - b.classLevel);
+    for (const k of legacyKeys) {
+        const choice = choices[k];
+        delete choices[k];
+        const target = singleClass ? free.find((s) => s.classLevel === Number(k)) : free[0];
+        if (!target) continue;
+        choices[target.key] = choice;
+        free.splice(free.indexOf(target), 1);
+    }
+    ctx.state.asiChoices = choices;
 }
 
 export function ensureAsiChoices(ctx: CharacterCreatorContext): void {
-    const asiLevels = getAsiLevels(ctx);
     if (!ctx.state.asiChoices) ctx.state.asiChoices = {};
-    for (const lvl of asiLevels) {
-        if (!ctx.state.asiChoices[lvl]) {
-            const cls = ctx.classes.find((c) => c.id === ctx.state.classId);
+    normalizeAsiChoices(ctx);
+    for (const slot of getAsiSlots(ctx)) {
+        if (!ctx.state.asiChoices[slot.key]) {
+            const cls = ctx.classes.find((c) => c.id === slot.classId);
             const defaultStat: AbilityName = cls?.savingThrows[0] || "str";
-            ctx.state.asiChoices[lvl] = {
+            ctx.state.asiChoices[slot.key] = {
                 type: "single",
                 statA: defaultStat
             };
@@ -252,10 +287,10 @@ export function getEffectiveAbilityScore(ctx: CharacterCreatorContext, stat: Abi
         }
     }
 
-    // ASI / Feat bonuses up to current level
-    const asiLevels = getAsiLevels(ctx);
-    for (const lvl of asiLevels) {
-        const choice = ctx.state.asiChoices?.[lvl];
+    // ASI / Feat bonuses for each class's earned slots
+    normalizeAsiChoices(ctx);
+    for (const slot of getAsiSlots(ctx)) {
+        const choice = ctx.state.asiChoices?.[slot.key];
         if (!choice) continue;
         if (choice.type === "single") {
             if (choice.statA === stat) score += 2;

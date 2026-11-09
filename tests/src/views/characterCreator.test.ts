@@ -490,39 +490,96 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.selectedSpellsLevel1).not.toContain("Fireball");
     });
 
-    it("calculates ASI milestone levels accurately by class and current level", () => {
+    it("calculates ASI slots per class, at each class's own levels (2024 rules)", () => {
+        const keys = () => ctrl.getAsiSlots().map((s) => s.key);
         // Standard class (e.g. Wizard)
         ctrl.state.classId = "wizard";
         ctrl.state.level = 1;
-        expect(ctrl.getAsiLevels()).toEqual([]);
+        expect(keys()).toEqual([]);
 
         ctrl.state.level = 4;
-        expect(ctrl.getAsiLevels()).toEqual([4]);
+        expect(keys()).toEqual(["wizard-4"]);
 
         ctrl.state.level = 12;
-        expect(ctrl.getAsiLevels()).toEqual([4, 8, 12]);
+        expect(keys()).toEqual(["wizard-4", "wizard-8", "wizard-12"]);
 
         ctrl.state.level = 20;
-        expect(ctrl.getAsiLevels()).toEqual([4, 8, 12, 16, 19]);
+        expect(keys()).toEqual(["wizard-4", "wizard-8", "wizard-12", "wizard-16", "wizard-19"]);
+        expect(ctrl.getAsiSlots().find((s) => s.key === "wizard-19")?.isEpicBoon).toBe(true);
 
         // Fighter gains extra ASIs at 6 and 14
         ctrl.state.classId = "fighter";
         ctrl.state.level = 6;
-        expect(ctrl.getAsiLevels()).toEqual([4, 6]);
-
-        ctrl.state.level = 14;
-        expect(ctrl.getAsiLevels()).toEqual([4, 6, 8, 12, 14]);
+        expect(keys()).toEqual(["fighter-4", "fighter-6"]);
 
         ctrl.state.level = 20;
-        expect(ctrl.getAsiLevels()).toEqual([4, 6, 8, 12, 14, 16, 19]);
+        expect(keys()).toEqual(["fighter-4", "fighter-6", "fighter-8", "fighter-12", "fighter-14", "fighter-16", "fighter-19"]);
 
         // Rogue gains extra ASI at 10
         ctrl.state.classId = "rogue";
         ctrl.state.level = 10;
-        expect(ctrl.getAsiLevels()).toEqual([4, 8, 10]);
+        expect(keys()).toEqual(["rogue-4", "rogue-8", "rogue-10"]);
 
-        ctrl.state.level = 20;
-        expect(ctrl.getAsiLevels()).toEqual([4, 8, 10, 12, 16, 19]);
+        // Multiclass: by class level, not total level (Bard 10 / Warlock 10 has four, no Epic Boon)
+        ctrl.state.classes = [
+            { classId: "bard", level: 10, subclassId: "" },
+            { classId: "warlock", level: 10, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        expect(keys()).toEqual(["bard-4", "bard-8", "warlock-4", "warlock-8"]);
+    });
+
+    it("imports base scores, background bonuses, origin feat, and each class's ASI/feat choice from D&D Beyond", async () => {
+        const { applyDndBeyondAbilityChoices } = await import("../../../src/views/characterCreator/services/dndBeyondAbilityChoices");
+        ctrl.state.speciesId = "tiefling";
+        ctrl.state.classes = [
+            { classId: "bard", level: 8, subclassId: "" },
+            { classId: "warlock", level: 4, subclassId: "" }
+        ];
+        ctrl.syncStateClassProperties();
+        const feat = (componentId: number, id: number, name: string, tags: string[]) =>
+            ({ componentId, definition: { id, name, categories: tags.map((tagName) => ({ tagName })) } });
+        const bonus = (componentId: number, subType: string, value: number) =>
+            ({ type: "bonus", subType, componentId, fixedValue: value, value });
+        applyDndBeyondAbilityChoices(ctrl, {
+            data: {
+                stats: [{ id: 1, value: 8 }, { id: 2, value: 14 }, { id: 3, value: 12 }, { id: 4, value: 10 }, { id: 5, value: 13 }, { id: 6, value: 15 }],
+                classes: [
+                    { definition: { name: "Bard" }, classFeatures: [
+                        { definition: { id: 101, name: "Ability Score Improvement", requiredLevel: 4 } },
+                        { definition: { id: 102, name: "8: Ability Score Improvement", requiredLevel: 8 } }
+                    ] },
+                    { definition: { name: "Warlock" }, classFeatures: [
+                        { definition: { id: 201, name: "Ability Score Improvement", requiredLevel: 4 } }
+                    ] }
+                ],
+                feats: [
+                    feat(9, 900, "Entertainer Ability Score Improvements", ["__INITIAL_ASI"]),
+                    feat(9, 901, "Musician", ["Origin"]),
+                    feat(101, 910, "Actor", ["General"]),
+                    feat(201, 920, "Ability Score Improvement", ["General"]),
+                    feat(77, 930, "Faction Renown", ["__DISGUISE_FEAT"])
+                ],
+                modifiers: { feat: [
+                    bonus(900, "charisma-score", 2), bonus(900, "dexterity-score", 1),
+                    bonus(910, "charisma-score", 1),
+                    bonus(920, "constitution-score", 1), bonus(920, "wisdom-score", 1)
+                ] }
+            }
+        });
+
+        expect(ctrl.state.baseAbilities).toEqual({ str: 8, dex: 14, con: 12, int: 10, wis: 13, cha: 15 });
+        expect([ctrl.state.backgroundOption, ctrl.state.bgStatA, ctrl.state.bgStatB]).toEqual(["two-and-one", "cha", "dex"]);
+        expect(ctrl.state.originFeatId).toBe("musician");
+        expect(ctrl.state.asiChoices).toEqual({
+            "bard-4": { type: "feat", featId: "actor", statA: "cha" },
+            "bard-8": { type: "single" },
+            "warlock-4": { type: "dual", statA: "con", statB: "wis" }
+        });
+        // 15 + 2 (background) + 1 (Actor) = 18; bard-8 left empty on D&D Beyond adds nothing
+        expect(ctrl.getEffectiveAbilityScore("cha")).toBe(18);
+        expect(ctrl.getEffectiveAbilityScore("con")).toBe(13);
+        expect(ctrl.getEffectiveAbilityScore("dex")).toBe(15);
     });
 
     it("applies ASI choices (single +2, dual +1/+1, and feat +1) to effective ability scores", () => {

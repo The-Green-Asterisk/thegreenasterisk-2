@@ -15,6 +15,15 @@ export interface AsiChoice {
     featId?: string;
 }
 
+export interface AsiSlot {
+    /** `${classId}-${classLevel}`, e.g. "bard-4" */
+    key: string;
+    classId: string;
+    className: string;
+    classLevel: number;
+    isEpicBoon: boolean;
+}
+
 export interface CharacterClassChoice {
     classId: string;
     level: number;
@@ -66,7 +75,8 @@ export interface CreatorState {
     originFeatId: string;
     abilityMode: "standard" | "pointbuy" | "roll" | "manual";
     baseAbilities: Record<AbilityName, number>;
-    asiChoices: Record<number, AsiChoice>;
+    /** Keyed by AsiSlot.key ("bard-4"); older saves used total character level and are normalized on use. */
+    asiChoices: Record<string, AsiChoice>;
     classSkills: string[];
     expertiseSkills: string[];
     selectedWeapons: string[];
