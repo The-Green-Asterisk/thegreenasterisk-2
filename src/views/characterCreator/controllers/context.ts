@@ -21,6 +21,8 @@ export interface CharacterCreatorContext {
     loadedExtras?: Record<string, unknown>;
     /** The character as loaded, for keeping play state and (when imported from D&D Beyond) what the creator doesn't make */
     loadedCharacter?: any;
+    /** Original target ID used to load the character */
+    loadedTargetId?: string | number;
     /** Fields locked against D&D Beyond refreshes when the character was loaded */
     loadedLocks?: Record<string, boolean>;
     /** Each lockable field's value as loaded (importLocks), to tell which ones the player changed */
@@ -137,4 +139,6 @@ export interface CharacterCreatorContext {
     buildPayload: () => any;
     submitCharacter: () => Promise<void>;
     loadCharacter: (targetId: string | number) => Promise<void>;
+    updateExitLink: () => void;
+    exitToSheet: () => void;
 }

@@ -45,8 +45,8 @@ import {
 import {
     bindNavigationEvents,
     CharacterCreatorContext,
+    getLoadedCharacterId,
     goToStep,
-    updateCreatorTitle,
     hideAlert,
     initAbilitiesController,
     initBackgroundController,
@@ -57,15 +57,17 @@ import {
     initSpeciesController,
     initSpellsController,
     showAlert,
+    updateCreatorTitle,
+    updateExitLink,
     validateAndAdvance,
     validateCurrentStep
 } from "./controllers";
+import { bindLockEvents, decorateStepLocks, snapshotLockGroups } from "./services/importLocks";
 import * as persistService from "./services/persistence";
+import { choiceKeysFor, getProgressionChoices, getProgressionPools, hasUnlockedProgressionChoice, optionAvailableAt } from "./services/progressionModifiers";
 import * as rulesCalc from "./services/rulesCalculations";
 import * as skillRules from "./services/skillRules";
-import { choiceKeysFor, getProgressionChoices, getProgressionPools, hasUnlockedProgressionChoice, optionAvailableAt } from "./services/progressionModifiers";
 import * as spellCalc from "./services/spellReconciliation";
-import { bindLockEvents, decorateStepLocks, snapshotLockGroups } from "./services/importLocks";
 
 export { ALL_SKILLS, AsiChoice, CharacterClassChoice, CreatorState, FeatureSpellChoiceSection };
 
@@ -136,6 +138,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public originFeats: OriginFeatDefinition[] = [...ORIGIN_FEATS_2024];
     public loadedExtras?: Record<string, unknown>;
     public loadedCharacter?: any;
+    public loadedTargetId?: string | number;
     public loadedLocks?: Record<string, boolean>;
     public lockSnapshot?: Record<string, string>;
     public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
@@ -296,14 +299,19 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             console.warn("Using offline / fallback spells dictionary:", e);
         }
 
-        const targetId = query?.id || query?.savedId || query?.characterId || query?.siteCharacterId;
+        const targetId = typeof query === "string" || typeof query === "number"
+            ? query
+            : (query?.id || query?.savedId || query?.characterId || query?.siteCharacterId);
         if (targetId) {
+            this.loadedTargetId = targetId;
+            this.updateExitLink();
             await this.loadCharacter(targetId);
         }
         this.renderStep(1);
         if (targetId) snapshotLockGroups(this);
         bindLockEvents(this);
         this.updateLiveSummary();
+        this.updateExitLink();
     }
 
     // Subclass and Class Progression Deduplication & Sync
@@ -804,7 +812,21 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     }
 
     public async loadCharacter(targetId: string | number): Promise<void> {
-        return persistService.loadCharacter(this, targetId);
+        this.loadedTargetId = targetId;
+        await persistService.loadCharacter(this, targetId);
+        this.updateExitLink();
+    }
+
+    public updateExitLink(): void {
+        updateExitLink(this);
+    }
+
+    public exitToSheet(): void {
+        const charId = getLoadedCharacterId(this);
+        const url = charId ? `/character-sheet/${encodeURIComponent(String(charId))}` : "/character-sheet";
+        if (typeof window !== "undefined" && window.location) {
+            window.location.href = url;
+        }
     }
 
     // Step Rendering methods

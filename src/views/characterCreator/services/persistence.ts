@@ -132,6 +132,7 @@ function isChoiceUnlocked(ctx: CharacterCreatorContext, key: string): boolean {
 
 export async function loadCharacter(ctx: CharacterCreatorContext, targetId: string | number): Promise<void> {
     try {
+        ctx.loadedTargetId = targetId;
         const queryParam = typeof targetId === "number" || /^\d+$/.test(String(targetId))
             ? `id=${targetId}`
             : `siteCharacterId=${encodeURIComponent(targetId)}`;
@@ -167,6 +168,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
         ctx.loadedCharacter = JSON.parse(JSON.stringify(char));
         ctx.loadedLocks = { ...(char.lockedFields || {}) };
         ctx.state.lockChoices = {};
+        ctx.updateExitLink?.();
 
         // Keep what the creator doesn't edit (campaign, companions) for when it saves
         ctx.loadedExtras = Object.fromEntries(

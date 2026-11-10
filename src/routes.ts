@@ -67,7 +67,11 @@ export default class Routes extends RoutesBase {
     ['character-sheet']() {
         if (this.path[1] === 'creator') {
             el.body.appendChild(views.characterCreatorTemplate());
-            views.characterCreator(this.query);
+            const query = { ...this.query };
+            if (this.path[2] && !query.id && !query.characterId) {
+                query.id = this.path[2];
+            }
+            views.characterCreator(query);
             return;
         }
         el.body.appendChild(views.characterSheetTemplate());
@@ -78,7 +82,11 @@ export default class Routes extends RoutesBase {
     ['character']() {
         if (this.path[1] === 'creator') {
             el.body.appendChild(views.characterCreatorTemplate());
-            views.characterCreator(this.query);
+            const query = { ...this.query };
+            if (this.path[2] && !query.id && !query.characterId) {
+                query.id = this.path[2];
+            }
+            views.characterCreator(query);
             return;
         }
         el.body.appendChild(views.characterSheetTemplate());

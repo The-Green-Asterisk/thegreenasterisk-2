@@ -71,7 +71,7 @@ export const characterCreatorTemplate = () => html`
                     <p class="creator-subtitle">Craft a fully-featured hero with D&D's complete 2024 5.5e ruleset.</p>
                 </div>
                 <div class="creator-header-actions">
-                    <a href="/character-sheet" class="creator-cancel-btn" title="Back to Character Sheet">
+                    <a href="/character-sheet" id="creator-exit-btn" class="creator-cancel-btn" title="Back to Character Sheet">
                         <i class="fa-solid fa-arrow-left"></i> Exit to Sheet
                     </a>
                 </div>

@@ -253,7 +253,47 @@ function activateOptionFromKeyboard(e: KeyboardEvent): void {
     }
 }
 
+/**
+ * Resolves the identifier for the currently loaded character (if any).
+ */
+export function getLoadedCharacterId(ctx: CharacterCreatorContext): string | number | undefined {
+    if (ctx.state.siteCharacterId) return ctx.state.siteCharacterId;
+    if (ctx.loadedCharacter?.siteCharacterId) return ctx.loadedCharacter.siteCharacterId;
+    if (ctx.state.savedId) return ctx.state.savedId;
+    if (ctx.loadedCharacter?.savedCharacterId) return ctx.loadedCharacter.savedCharacterId;
+    if (ctx.loadedCharacter?.id) return ctx.loadedCharacter.id;
+    if (ctx.state.dndBeyondId) return ctx.state.dndBeyondId;
+    if (ctx.loadedTargetId) return ctx.loadedTargetId;
+    return undefined;
+}
+
+/**
+ * Updates the "Exit to Sheet" button link to point to the loaded character's sheet if present,
+ * or the default blank sheet if creating a new character.
+ */
+export function updateExitLink(ctx: CharacterCreatorContext): void {
+    const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn, .creator-cancel-btn");
+    if (!exitBtn) return;
+    const charId = getLoadedCharacterId(ctx);
+    if (charId) {
+        const targetUrl = `/character-sheet/${encodeURIComponent(String(charId))}`;
+        exitBtn.href = targetUrl;
+        exitBtn.setAttribute("href", targetUrl);
+        exitBtn.title = "Exit to Character Sheet";
+    } else {
+        exitBtn.href = "/character-sheet";
+        exitBtn.setAttribute("href", "/character-sheet");
+        exitBtn.title = "Back to Character Sheet";
+    }
+}
+
 export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
+    updateExitLink(ctx);
+    const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn, .creator-cancel-btn");
+    exitBtn?.addEventListener("click", () => {
+        updateExitLink(ctx);
+    });
+
     const prevBtn = document.getElementById("creator-prev-btn");
     const nextBtn = document.getElementById("creator-next-btn");
     const submitBtn = document.getElementById("creator-submit-btn");
