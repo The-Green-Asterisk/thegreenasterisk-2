@@ -64,7 +64,7 @@ import {
 import * as persistService from "./services/persistence";
 import * as rulesCalc from "./services/rulesCalculations";
 import * as skillRules from "./services/skillRules";
-import { hasUnlockedProgressionChoice } from "./services/progressionModifiers";
+import { choiceKeysFor, getProgressionChoices, getProgressionPools, hasUnlockedProgressionChoice, optionAvailableAt } from "./services/progressionModifiers";
 import * as spellCalc from "./services/spellReconciliation";
 
 export { ALL_SKILLS, AsiChoice, CharacterClassChoice, CreatorState, FeatureSpellChoiceSection };
@@ -457,35 +457,26 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             this.state.primalOrder = "";
         }
 
-        // 5. Metamagic (scalingTraits.metamagicByLevel)
-        const maxMetamagic = rulesCalc.getMaxMetamagicCount(this);
-        if (maxMetamagic <= 0) {
-            this.state.metamagic = [];
-        } else if (this.state.metamagic && this.state.metamagic.length > maxMetamagic) {
-            this.state.metamagic = this.state.metamagic.slice(0, maxMetamagic);
-        }
-
-        // 6. Invocations (scalingTraits.invocationsByLevel), checked against that class's level
-        const warlockLvl = rulesCalc.getScalingTraitClassLevel(this, "invocationsByLevel");
-        const maxInvocations = rulesCalc.getMaxInvocationsCount(this);
-        if (warlockLvl <= 0 || maxInvocations <= 0) {
-            this.state.invocations = [];
-        } else if (this.state.invocations) {
-            this.state.invocations = this.state.invocations.filter((id) => {
-                const invDef = ELDRITCH_INVOCATIONS.find((inv) => inv.id === id);
-                return !invDef?.minLevel || warlockLvl >= invDef.minLevel;
-            });
-            if (this.state.invocations.length > maxInvocations) {
-                this.state.invocations = this.state.invocations.slice(0, maxInvocations);
+        // 5–7. Pick lists (Eldritch Invocations, Metamagic, Maneuvers…, kept in state[pool]): drop picks the class's level
+        // doesn't allow yet and anything over its limit; clear lists no current class offers
+        const offeredPools = getProgressionPools(this);
+        const knownPools = new Set(this.classes.flatMap((c) => [c.progression || [], ...(c.subclasses || []).map((s) => s.progression || [])])
+            .flatMap((levels: any[]) => levels.flatMap((pl: any) => pl.choices || []))
+            .map((ch: any) => ch.pool)
+            .filter((p: any): p is string => !!p));
+        for (const poolName of knownPools) {
+            const current: string[] = Array.isArray((this.state as any)[poolName]) ? (this.state as any)[poolName] : [];
+            const pools = offeredPools.filter((p) => p.pool === poolName);
+            if (pools.length === 0) {
+                (this.state as any)[poolName] = [];
+                continue;
             }
-        }
-
-        // 7. Maneuvers (subclass scalingTraits.maneuversByLevel)
-        const maxManeuvers = rulesCalc.getMaxManeuversCount(this);
-        if (maxManeuvers <= 0) {
-            this.state.maneuvers = [];
-        } else if (this.state.maneuvers && this.state.maneuvers.length > maxManeuvers) {
-            this.state.maneuvers = this.state.maneuvers.slice(0, maxManeuvers);
+            const max = pools.reduce((sum, p) => sum + p.max, 0);
+            const allowed = (id: string) => pools.some((p) => {
+                const opt = p.options.find((o) => o.id === id);
+                return !opt || optionAvailableAt(opt, p.classLevel);
+            });
+            (this.state as any)[poolName] = current.filter(allowed).slice(0, max);
         }
 
         // 8. Weapon Masteries:
@@ -494,42 +485,16 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             this.state.weaponMasteries = this.state.weaponMasteries.slice(0, maxWM);
         }
 
-        // 9. Subclass Feature Choices (subclassFeatureChoices)
+        // 9. Progression choices: keep a stored key only while an unlocked choice of the current classes/subclasses
+        // reads from it. Classes whose rules have no progression data (rules not loaded) keep their keys.
         if (this.state.subclassFeatureChoices) {
+            const liveKeys = new Set(getProgressionChoices(this).filter((e) => e.unlocked).flatMap((e) => choiceKeysFor(e)));
             for (const key of Object.keys(this.state.subclassFeatureChoices)) {
-                const isDynamicChoiceActive = this.state.classes.some((cc) => {
-                    const clsDef = this.classes.find((x) => x.id === cc.classId);
-                    const subDef = clsDef?.subclasses?.find((s) => s.id === cc.subclassId);
-                    const maxLvl = cc.level || 1;
-                    const inClassProg = (clsDef?.progression || []).some(
-                        (pl) => pl.level <= maxLvl && (pl.choices || []).some((ch) => (ch.choiceId || ch.id) === key)
-                    );
-                    const inSubProg = (subDef?.progression || []).some(
-                        (pl) => pl.level <= maxLvl && (pl.choices || []).some((ch) => (ch.choiceId || ch.id) === key)
-                    );
-                    return inClassProg || inSubProg;
-                });
-                if (isDynamicChoiceActive) {
-                    continue;
-                }
-
-                const parts = key.split("-");
-                const classId = parts[0];
-                const choiceLvl = parseInt(parts[1], 10);
-                const classChoice = this.state.classes.find((c) => c.classId === classId);
-
-                if (!classChoice || isNaN(choiceLvl) || (classChoice.level || 1) < choiceLvl) {
-                    delete this.state.subclassFeatureChoices[key];
-                    continue;
-                }
-
-                const clsDef = this.classes.find((x) => x.id === classId);
-                const subDef = clsDef?.subclasses?.find((s) => key.includes(`-${s.id}`));
-                if (subDef) {
-                    if (classChoice.subclassId !== subDef.id) {
-                        delete this.state.subclassFeatureChoices[key];
-                    }
-                }
+                if (liveKeys.has(key)) continue;
+                const owner = this.state.classes.find((c) => key.startsWith(`${c.classId}-`));
+                const ownerDef = owner ? this.classes.find((x) => x.id === owner.classId) : undefined;
+                if (owner && !(ownerDef?.progression && ownerDef.progression.length > 0)) continue;
+                delete this.state.subclassFeatureChoices[key];
             }
         }
 

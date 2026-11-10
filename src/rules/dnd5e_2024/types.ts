@@ -201,11 +201,30 @@ export interface ProgressionGrantedFeature {
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
 }
 
+/**
+ * Spells a feature or option lets the player pick (e.g. Mystic Arcanum, a Thaumaturge's extra cantrip). The creator
+ * shows one section per pick on the Spells step; picked spells are always prepared and don't count as class picks.
+ */
+export interface SpellPick {
+    id: string;                    // section id; also the key saved picks are stored under
+    title: string;
+    sourceLabel: string;           // saved spell source
+    description: string;
+    count: number;
+    ability?: AbilityName;
+    lists?: string[];              // class spell lists to pick from; omitted = any list
+    levels?: number[];             // spell levels allowed (0 = cantrip)
+    maxLevel?: "castable";         // or: up to the highest level the granting class can cast (plus cantrips if 0 is in levels)
+    orRitual?: boolean;            // also allow ritual spells of any level
+    sourceAliases?: string[];      // lower-case source text older saves used for these spells
+}
+
 export interface ProgressionFeature {
     id: string;
     name: string;
     description: string;
     modifiers?: StatModifier[];
+    spellPicks?: SpellPick[];
     actionGrant?: {
         name: string;
         type: "Action" | "Bonus Action" | "Reaction";
@@ -221,6 +240,12 @@ export interface ProgressionChoiceOption {
     id: string;
     name: string;
     description: string;
+    /** Ids older saves may hold for this option */
+    legacyIds?: string[];
+    /** Class level the option requires (e.g. Eldritch Invocation prerequisites) */
+    minLevel?: number;
+    /** Spells the player picks when this option is chosen */
+    spellPicks?: SpellPick[];
     prerequisite?: string;
     modifiers?: StatModifier[];
     actionGrant?: {
@@ -241,6 +266,10 @@ export interface ProgressionChoice {
     prompt?: string;
     description?: string;
     chooseCount: number;
+    /** Creator storage keys older saves may hold this choice under */
+    legacyKeys?: string[];
+    /** A pick list counted by a scalingTraits table rather than chooseCount (e.g. "invocations", "metamagic") */
+    pool?: string;
     choiceType?: "feature" | "spell" | "proficiency" | "custom";
     options: ProgressionChoiceOption[];
 }
@@ -257,6 +286,8 @@ export interface ProgressionLevel {
     features: ProgressionFeature[];
     choices?: ProgressionChoice[];
     resourceUpdates?: ProgressionResourceUpdate[];
+    /** Short level summaries shown on the creator's progression (e.g. "Rage Damage +2", "2 Attacks") */
+    badges?: string[];
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
     grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }

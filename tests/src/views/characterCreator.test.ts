@@ -911,6 +911,7 @@ describe("CharacterCreatorController", () => {
 
     it("displays Subclass Selection (Level 3) rather than the character's current level", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         ctrl.state.classId = "fighter";
         ctrl.state.level = 10;
         ctrl.renderStep(3);
@@ -922,6 +923,7 @@ describe("CharacterCreatorController", () => {
 
     it("renders level boxes for all levels including abilities without player choices", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         ctrl.state.classId = "fighter";
         ctrl.state.level = 5;
         ctrl.renderStep(3);
@@ -957,6 +959,7 @@ describe("CharacterCreatorController", () => {
 
     it("makes each level progression collapsible and supports toggle all", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
 
         ctrl.state.classId = "fighter";
@@ -1015,6 +1018,7 @@ describe("CharacterCreatorController", () => {
 
     it("unlocks levels by clicking the progression-lvl-badge and supports adding multiclass with navigation buttons", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         document.body.innerHTML = '<div id="creator-step-panels"></div>';
 
         // Fighter at level 3
@@ -1082,6 +1086,7 @@ describe("CharacterCreatorController", () => {
 
     it("allows selecting class, subclass, and feature choices on the primary class", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
 
         ctrl.renderStep(3);
@@ -1117,6 +1122,7 @@ describe("CharacterCreatorController", () => {
 
     it("clearly indicates when a starting equipment kit is equipped", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
 
         ctrl.state.classId = "fighter";
@@ -1171,6 +1177,7 @@ describe("CharacterCreatorController", () => {
 
     it("smart auto-fills curated class staples and distributes across available spell levels", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
 
         // Level 1 Wizard
         ctrl.state.classId = "wizard";
@@ -1215,14 +1222,15 @@ describe("CharacterCreatorController", () => {
 
     it("renders class and subclass feature choices at level 6 and 7", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
 
-        // Level 6 Druid - Circle of the Land
+        // Level 3 Druid - Circle of the Land picks its land at 3 (2024)
         ctrl.state.classId = "druid";
-        ctrl.state.subclassId = "land";
         ctrl.state.level = 6;
+        ctrl.state.subclassId = "land";
         const druidCls = ctrl.classes.find((c) => c.id === "druid")!;
-        const lvl6Choices = (ctrl as any).renderLevelChoices(druidCls, 6);
-        expect(lvl6Choices).toContain("Circle of the Land Biome Affinity");
+        const lvl6Choices = (ctrl as any).renderLevelChoices(druidCls, 3);
+        expect(lvl6Choices).toContain("Land Biome");
         expect(lvl6Choices).toContain("Arid");
         expect(lvl6Choices).toContain("Polar");
         expect(lvl6Choices).toContain("Temperate");
@@ -1248,9 +1256,10 @@ describe("CharacterCreatorController", () => {
         // Level 6 Ranger - Hunter
         ctrl.state.classId = "ranger";
         ctrl.state.subclassId = "hunter";
-        ctrl.state.level = 6;
+        ctrl.state.level = 7;
         const rangerCls = ctrl.classes.find((c) => c.id === "ranger")!;
-        const rangerLvl6 = (ctrl as any).renderLevelChoices(rangerCls, 6);
+        // 2024 Hunter: Defensive Tactics at level 7
+        const rangerLvl6 = (ctrl as any).renderLevelChoices(rangerCls, 7);
         expect(rangerLvl6).toContain("Defensive Tactics");
         expect(rangerLvl6).toContain("Multiattack Defense");
         expect(rangerLvl6).toContain("Escape the Horde");
@@ -1263,6 +1272,114 @@ describe("CharacterCreatorController", () => {
         expect(clericLvl7).toContain("Blessed Strikes");
         expect(clericLvl7).toContain("Divine Strike");
         expect(clericLvl7).toContain("Potent Spellcasting");
+    });
+
+    describe("progression choices, pick lists, spell picks and resources from class data", () => {
+        const setClasses = (classes: Array<{ classId: string; level: number; subclassId?: string }>) => {
+            ctrl.state.classId = classes[0].classId;
+            ctrl.state.level = classes.reduce((s, c) => s + c.level, 0);
+            ctrl.state.subclassId = classes[0].subclassId || "";
+            ctrl.state.classes = classes.map((c) => ({ subclassId: "", ...c }));
+            ctrl.syncStateClassProperties();
+        };
+        const entry = async (key: string) => {
+            const { getProgressionChoices } = await import("../../../src/views/characterCreator/services/progressionModifiers");
+            return getProgressionChoices(ctrl).find((e) => e.key === key)!;
+        };
+
+        it("reads choices saved under older keys and option ids, and moves them to the storage key when changed", async () => {
+            const { setProgressionChoice } = await import("../../../src/views/characterCreator/services/progressionModifiers");
+            setClasses([{ classId: "druid", level: 7, subclassId: "land" }]);
+            ctrl.state.subclassFeatureChoices = { "druid-6-land": "arid", "druid-7": "potent-spellcasting" };
+            expect((await entry("druid-3-land-biome")).selectedIds).toEqual(["arid"]);
+            expect((await entry("druid-7-elemental-fury")).selectedIds).toEqual(["potent-spellcasting"]);
+            setProgressionChoice(ctrl, await entry("druid-3-land-biome"), ["polar"]);
+            expect(ctrl.state.subclassFeatureChoices).toEqual({ "druid-3-land-biome": "polar", "druid-7": "potent-spellcasting" });
+
+            // Champion's short legacy option ids map to the Fighting Style feat ids
+            setClasses([{ classId: "fighter", level: 7, subclassId: "champion" }]);
+            ctrl.state.subclassFeatureChoices = { "fighter-7-champion": "great-weapon" };
+            expect((await entry("fighter-7-additional-fighting-style")).selectedIds).toEqual(["great-weapon-fighting"]);
+        });
+
+        it("offers 2024 Fighting Styles per class, Defensive Tactics at Hunter 7, and no War God's Blessing for Psi Warriors", async () => {
+            const { getProgressionChoices } = await import("../../../src/views/characterCreator/services/progressionModifiers");
+            const styles = async (classId: string, level: number) => {
+                setClasses([{ classId, level }]);
+                return (await entry(`${classId}-${level}-fighting-style`)).choice.options.map((o) => o.id);
+            };
+            const fighter = await styles("fighter", 1);
+            expect(fighter).toContain("thrown");
+            expect(fighter).not.toContain("blessed-warrior");
+            expect(fighter).not.toContain("druidic-warrior");
+            expect(await styles("paladin", 2)).toContain("blessed-warrior");
+            expect(await styles("ranger", 2)).toContain("druidic-warrior");
+
+            setClasses([{ classId: "ranger", level: 7, subclassId: "hunter" }]);
+            expect(getProgressionChoices(ctrl).some((e) => e.key === "ranger-7-defensive-tactics")).toBe(true);
+            setClasses([{ classId: "fighter", level: 7, subclassId: "psi-warrior" }]);
+            expect(getProgressionChoices(ctrl).some((e) => e.choice.id === "war-god-blessing")).toBe(false);
+        });
+
+        it("stores multi-pick choices together and saves each as a feature", async () => {
+            document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
+            setClasses([{ classId: "rogue", level: 5 }]);
+            ctrl.renderStep(3);
+            const click = (id: string) => (document.querySelector(`.progression-choice-card[data-feature-key="rogue-5-cunning-strike"][data-feature-choice="${id}"]`) as HTMLElement).click();
+            click("poison");
+            click("trip");
+            expect(ctrl.state.subclassFeatureChoices["rogue-5-cunning-strike"]).toBe("poison,trip");
+            const names = ctrl.buildPayload().features.map((f: any) => f.name);
+            expect(names).toContain("Cunning Strike: Poison (Cost: 1d6)");
+            expect(names).toContain("Cunning Strike: Trip (Cost: 1d6)");
+        });
+
+        it("limits pick lists by the class's table and option levels, and saves them as class options", async () => {
+            const { getProgressionPools } = await import("../../../src/views/characterCreator/services/progressionModifiers");
+            setClasses([{ classId: "warlock", level: 2 }]);
+            const pool = getProgressionPools(ctrl).find((p) => p.pool === "invocations")!;
+            expect(pool.max).toBe(3);
+            const highLevel = pool.options.find((o) => Number((o as any).minLevel) >= 5)!;
+            ctrl.state.invocations = ["agonizing-blast", highLevel.id];
+            ctrl.syncStateClassProperties();
+            expect(ctrl.state.invocations).toEqual(["agonizing-blast"]);
+            const inv = ctrl.buildPayload().features.find((f: any) => f.name === "Eldritch Invocation: Agonizing Blast");
+            expect(inv).toMatchObject({ source: "Class Option / Invocation", type: "Invocation" });
+        });
+
+        it("builds Spells-step sections from spell picks in the class data", () => {
+            setClasses([{ classId: "cleric", level: 1 }]);
+            ctrl.state.divineOrder = "thaumaturge";
+            const thaum = ctrl.getFeatureSpellChoiceSections().find((s) => s.id === "divine-order-thaumaturge")!;
+            expect(thaum.chooseCount).toBe(1);
+            expect(thaum.availableSpells.every((s) => s.level === 0 && s.classes.includes("Cleric"))).toBe(true);
+            // A chosen cantrip, not a fixed Sacred Flame
+            expect(ctrl.buildPayload().spells.some((s: any) => s.name === "Sacred Flame" && s.source === "Thaumaturge")).toBe(false);
+
+            setClasses([{ classId: "bard", level: 6, subclassId: "lore" }]);
+            const disc = ctrl.getFeatureSpellChoiceSections().find((s) => s.id === "bard-6-magical-discoveries")!;
+            expect(Math.max(...disc.availableSpells.map((s) => s.level))).toBe(3);
+            expect(disc.availableSpells.some((s) => s.level === 0)).toBe(true);
+        });
+
+        it("gives each class its own resources at its own level, from the class data", () => {
+            setClasses([{ classId: "fighter", level: 2 }, { classId: "paladin", level: 3 }]);
+            const res = Object.fromEntries(ctrl.buildPayload().classResources.map((r: any) => [r.name, r.total]));
+            expect(res).toMatchObject({ "Second Wind": 2, "Action Surge": 1, "Lay on Hands": 15, "Channel Divinity": 2 });
+            setClasses([{ classId: "cleric", level: 6 }]);
+            const cleric = ctrl.buildPayload().classResources.find((r: any) => r.name === "Channel Divinity");
+            expect(cleric.total).toBe(3);
+        });
+
+        it("summarizes each level from the class data", async () => {
+            const { getClassLevelStatBadge } = await import("../../../src/views/characterCreator/components/class");
+            const barbarian = ctrl.classes.find((c) => c.id === "barbarian")!;
+            const badge = getClassLevelStatBadge(barbarian, 9);
+            expect(badge).toContain("Rage: 4");
+            expect(badge).toContain("Rage Damage +3");
+            expect(badge).toContain("Speed +10 ft");
+            expect(getClassLevelStatBadge(ctrl.classes.find((c) => c.id === "rogue")!, 5)).toContain("Sneak Attack: 3d6");
+        });
     });
 
     it("applies class features from the class rules: unarmored defense and movement, Roving, weapon and armor training", () => {
@@ -1392,6 +1509,7 @@ describe("CharacterCreatorController", () => {
 
     it("renders and selects branching class and subclass feature choices across classes and levels", () => {
         const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
         const root = document.getElementById("creator-step-panels")!;
 
@@ -1409,56 +1527,56 @@ describe("CharacterCreatorController", () => {
         ctrl.state.subclassId = "wild-heart";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let rageCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-3-wild-heart"][data-feature-choice="eagle"]') as HTMLElement;
+        let rageCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-3-wild-heart-rage"][data-feature-choice="eagle"]') as HTMLElement;
         expect(rageCard).toBeTruthy();
         rageCard.click();
-        expect(ctrl.state.subclassFeatureChoices["barbarian-3-wild-heart"]).toBe("eagle");
+        expect(ctrl.state.subclassFeatureChoices["barbarian-3-wild-heart-rage"]).toBe("eagle");
 
         // 3. Barbarian Zealot Divine Fury at Level 3
         ctrl.state.subclassId = "zealot";
         ctrl.renderStep(3);
-        let zealotCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-3-zealot"][data-feature-choice="necrotic"]') as HTMLElement;
+        let zealotCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-3-divine-fury"][data-feature-choice="necrotic"]') as HTMLElement;
         expect(zealotCard).toBeTruthy();
         zealotCard.click();
-        expect(ctrl.state.subclassFeatureChoices["barbarian-3-zealot"]).toBe("necrotic");
+        expect(ctrl.state.subclassFeatureChoices["barbarian-3-divine-fury"]).toBe("necrotic");
 
         // 4. Monk Warrior of Elements Attunement at Level 3
         ctrl.state.classId = "monk";
         ctrl.state.subclassId = "elements";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let elemCard = root.querySelector('.subclass-feature-card[data-feature-key="monk-3-elements"][data-feature-choice="cold"]') as HTMLElement;
+        let elemCard = root.querySelector('.subclass-feature-card[data-feature-key="monk-3-elemental-attunement"][data-feature-choice="cold"]') as HTMLElement;
         expect(elemCard).toBeTruthy();
         elemCard.click();
-        expect(ctrl.state.subclassFeatureChoices["monk-3-elements"]).toBe("cold");
+        expect(ctrl.state.subclassFeatureChoices["monk-3-elemental-attunement"]).toBe("cold");
 
         // 5. Ranger Beast Master Primal Companion at Level 3
         ctrl.state.classId = "ranger";
         ctrl.state.subclassId = "beast-master";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let compCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-beast-master"][data-feature-choice="sky"]') as HTMLElement;
+        let compCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-primal-companion"][data-feature-choice="sky"]') as HTMLElement;
         expect(compCard).toBeTruthy();
         compCard.click();
-        expect(ctrl.state.subclassFeatureChoices["ranger-3-beast-master"]).toBe("sky");
+        expect(ctrl.state.subclassFeatureChoices["ranger-3-primal-companion"]).toBe("sky");
 
         // 6. Ranger Hunter Hunter's Prey at Level 3
         ctrl.state.subclassId = "hunter";
         ctrl.renderStep(3);
-        let preyCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-hunter"][data-feature-choice="horde-breaker"]') as HTMLElement;
+        let preyCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-hunter-prey"][data-feature-choice="horde-breaker"]') as HTMLElement;
         expect(preyCard).toBeTruthy();
         preyCard.click();
-        expect(ctrl.state.subclassFeatureChoices["ranger-3-hunter"]).toBe("horde-breaker");
+        expect(ctrl.state.subclassFeatureChoices["ranger-3-hunter-prey"]).toBe("horde-breaker");
 
         // 7. Sorcerer Draconic Ancestor at Level 3
         ctrl.state.classId = "sorcerer";
         ctrl.state.subclassId = "draconic";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let dragonCard = root.querySelector('.subclass-feature-card[data-feature-key="sorcerer-3-draconic"][data-feature-choice="silver"]') as HTMLElement;
+        let dragonCard = root.querySelector('.subclass-feature-card[data-feature-key="sorcerer-3-draconic-ancestor"][data-feature-choice="silver"]') as HTMLElement;
         expect(dragonCard).toBeTruthy();
         dragonCard.click();
-        expect(ctrl.state.subclassFeatureChoices["sorcerer-3-draconic"]).toBe("silver");
+        expect(ctrl.state.subclassFeatureChoices["sorcerer-3-draconic-ancestor"]).toBe("silver");
 
         // 8. Rogue Cunning Strike at Level 5
         ctrl.state.classId = "rogue";
@@ -1492,20 +1610,20 @@ describe("CharacterCreatorController", () => {
         ctrl.state.subclassId = "fiend";
         ctrl.state.level = 10;
         ctrl.renderStep(3);
-        let fiendCard = root.querySelector('.subclass-feature-card[data-feature-key="warlock-10-fiend"][data-feature-choice="radiant"]') as HTMLElement;
+        let fiendCard = root.querySelector('.subclass-feature-card[data-feature-key="warlock-10-fiendish-resilience"][data-feature-choice="radiant"]') as HTMLElement;
         expect(fiendCard).toBeTruthy();
         fiendCard.click();
-        expect(ctrl.state.subclassFeatureChoices["warlock-10-fiend"]).toBe("radiant");
+        expect(ctrl.state.subclassFeatureChoices["warlock-10-fiendish-resilience"]).toBe("radiant");
 
         // 12. Barbarian Totemic Attunement at Level 14
         ctrl.state.classId = "barbarian";
         ctrl.state.subclassId = "wild-heart";
         ctrl.state.level = 14;
         ctrl.renderStep(3);
-        let totemCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-14-wild-heart"][data-feature-choice="lion"]') as HTMLElement;
+        let totemCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-14-totemic-attunement"][data-feature-choice="lion"]') as HTMLElement;
         expect(totemCard).toBeTruthy();
         totemCard.click();
-        expect(ctrl.state.subclassFeatureChoices["barbarian-14-wild-heart"]).toBe("lion");
+        expect(ctrl.state.subclassFeatureChoices["barbarian-14-totemic-attunement"]).toBe("lion");
 
         // 13. Rogue Devious Strike at Level 14
         ctrl.state.classId = "rogue";
@@ -1521,10 +1639,10 @@ describe("CharacterCreatorController", () => {
         ctrl.state.subclassId = "stars";
         ctrl.state.level = 6;
         ctrl.renderStep(3);
-        let starryCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-stars"][data-feature-choice="dragon"]') as HTMLElement;
+        let starryCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-starry-form"][data-feature-choice="dragon"]') as HTMLElement;
         expect(starryCard).toBeTruthy();
         starryCard.click();
-        expect(ctrl.state.subclassFeatureChoices["druid-3-stars"]).toBe("dragon");
+        expect(ctrl.state.subclassFeatureChoices["druid-3-starry-form"]).toBe("dragon");
 
         let omenCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-6-stars"]');
         expect(omenCard).toBeNull();
@@ -1533,108 +1651,108 @@ describe("CharacterCreatorController", () => {
         ctrl.state.subclassId = "sea";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let seaCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-sea"][data-feature-choice="thunder"]') as HTMLElement;
+        let seaCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-wrath-of-the-sea"][data-feature-choice="thunder"]') as HTMLElement;
         expect(seaCard).toBeTruthy();
         seaCard.click();
-        expect(ctrl.state.subclassFeatureChoices["druid-3-sea"]).toBe("thunder");
+        expect(ctrl.state.subclassFeatureChoices["druid-3-wrath-of-the-sea"]).toBe("thunder");
 
         // 16. Druid Circle of the Moon (Level 3 Circle Forms Strike)
         ctrl.state.subclassId = "moon";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let moonCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-moon"][data-feature-choice="physical"]') as HTMLElement;
+        let moonCard = root.querySelector('.subclass-feature-card[data-feature-key="druid-3-circle-forms-strike"][data-feature-choice="physical"]') as HTMLElement;
         expect(moonCard).toBeTruthy();
         moonCard.click();
-        expect(ctrl.state.subclassFeatureChoices["druid-3-moon"]).toBe("physical");
+        expect(ctrl.state.subclassFeatureChoices["druid-3-circle-forms-strike"]).toBe("physical");
 
         // 17. Fighter Battle Master Student of War (Level 3)
         ctrl.state.classId = "fighter";
         ctrl.state.subclassId = "battle-master";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let studentCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-3-battle-master-student"][data-feature-choice="Insight"]') as HTMLElement;
+        let studentCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-3-student-of-war"][data-feature-choice="Insight"]') as HTMLElement;
         expect(studentCard).toBeTruthy();
         studentCard.click();
-        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBe("Insight");
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-student-of-war"]).toBe("Insight");
 
         // 18. Monk Warrior of Open Hand (Level 3 Open Hand Technique)
         ctrl.state.classId = "monk";
         ctrl.state.subclassId = "open-hand";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let openHandCard = root.querySelector('.subclass-feature-card[data-feature-key="monk-3-open-hand"][data-feature-choice="topple"]') as HTMLElement;
+        let openHandCard = root.querySelector('.subclass-feature-card[data-feature-key="monk-3-open-hand-technique"][data-feature-choice="topple"]') as HTMLElement;
         expect(openHandCard).toBeTruthy();
         openHandCard.click();
-        expect(ctrl.state.subclassFeatureChoices["monk-3-open-hand"]).toBe("topple");
+        expect(ctrl.state.subclassFeatureChoices["monk-3-open-hand-technique"]).toBe("topple");
 
         // 19. Ranger Fey Wanderer Otherworldly Glamour (Level 3)
         ctrl.state.classId = "ranger";
         ctrl.state.subclassId = "fey-wanderer";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let glamCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-fey-wanderer"][data-feature-choice="Performance"]') as HTMLElement;
+        let glamCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-3-otherworldly-glamour"][data-feature-choice="Performance"]') as HTMLElement;
         expect(glamCard).toBeTruthy();
         glamCard.click();
-        expect(ctrl.state.subclassFeatureChoices["ranger-3-fey-wanderer"]).toBe("Performance");
+        expect(ctrl.state.subclassFeatureChoices["ranger-3-otherworldly-glamour"]).toBe("Performance");
 
         // 20. Warlock Archfey Steps of the Fey (Level 3)
         ctrl.state.classId = "warlock";
         ctrl.state.subclassId = "archfey";
         ctrl.state.level = 3;
         ctrl.renderStep(3);
-        let stepCard = root.querySelector('.subclass-feature-card[data-feature-key="warlock-3-archfey"][data-feature-choice="refreshing-step"]') as HTMLElement;
+        let stepCard = root.querySelector('.subclass-feature-card[data-feature-key="warlock-3-steps-of-the-fey"][data-feature-choice="refreshing-step"]') as HTMLElement;
         expect(stepCard).toBeTruthy();
         stepCard.click();
-        expect(ctrl.state.subclassFeatureChoices["warlock-3-archfey"]).toBe("refreshing-step");
+        expect(ctrl.state.subclassFeatureChoices["warlock-3-steps-of-the-fey"]).toBe("refreshing-step");
 
         // 21. Cleric War Domain War God's Blessing (Level 6)
         ctrl.state.classId = "cleric";
         ctrl.state.subclassId = "war";
         ctrl.state.level = 6;
         ctrl.renderStep(3);
-        let warCard = root.querySelector('.subclass-feature-card[data-feature-key="cleric-6-war"][data-feature-choice="spiritual-weapon"]') as HTMLElement;
+        let warCard = root.querySelector('.subclass-feature-card[data-feature-key="cleric-6-war-god-blessing"][data-feature-choice="spiritual-weapon"]') as HTMLElement;
         expect(warCard).toBeTruthy();
         warCard.click();
-        expect(ctrl.state.subclassFeatureChoices["cleric-6-war"]).toBe("spiritual-weapon");
+        expect(ctrl.state.subclassFeatureChoices["cleric-6-war-god-blessing"]).toBe("spiritual-weapon");
 
         // 22. Fighter Champion Additional Fighting Style (Level 7)
         ctrl.state.classId = "fighter";
         ctrl.state.subclassId = "champion";
         ctrl.state.level = 7;
         ctrl.renderStep(3);
-        let champCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-7-champion"][data-feature-choice="dueling"]') as HTMLElement;
+        let champCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-7-additional-fighting-style"][data-feature-choice="dueling"]') as HTMLElement;
         expect(champCard).toBeTruthy();
         champCard.click();
-        expect(ctrl.state.subclassFeatureChoices["fighter-7-champion"]).toBe("dueling");
+        expect(ctrl.state.subclassFeatureChoices["fighter-7-additional-fighting-style"]).toBe("dueling");
 
         // 23. Fighter Psi Warrior Telekinetic Thrust (Level 7)
         ctrl.state.subclassId = "psi-warrior";
         ctrl.state.level = 7;
         ctrl.renderStep(3);
-        let psiCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-7-psi-warrior"][data-feature-choice="topple"]') as HTMLElement;
+        let psiCard = root.querySelector('.subclass-feature-card[data-feature-key="fighter-7-telekinetic-thrust"][data-feature-choice="topple"]') as HTMLElement;
         expect(psiCard).toBeTruthy();
         psiCard.click();
-        expect(ctrl.state.subclassFeatureChoices["fighter-7-psi-warrior"]).toBe("topple");
+        expect(ctrl.state.subclassFeatureChoices["fighter-7-telekinetic-thrust"]).toBe("topple");
 
         // 24. Barbarian Path of the World Tree Battering Roots (Level 10)
         ctrl.state.classId = "barbarian";
         ctrl.state.subclassId = "world-tree";
         ctrl.state.level = 10;
         ctrl.renderStep(3);
-        let rootCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-10-world-tree"][data-feature-choice="topple"]') as HTMLElement;
+        let rootCard = root.querySelector('.subclass-feature-card[data-feature-key="barbarian-10-battering-roots"][data-feature-choice="topple"]') as HTMLElement;
         expect(rootCard).toBeTruthy();
         rootCard.click();
-        expect(ctrl.state.subclassFeatureChoices["barbarian-10-world-tree"]).toBe("topple");
+        expect(ctrl.state.subclassFeatureChoices["barbarian-10-battering-roots"]).toBe("topple");
 
         // 25. Wizard Diviner The Third Eye (Level 10)
         ctrl.state.classId = "wizard";
         ctrl.state.subclassId = "diviner";
         ctrl.state.level = 10;
         ctrl.renderStep(3);
-        let eyeCard = root.querySelector('.subclass-feature-card[data-feature-key="wizard-10-diviner"][data-feature-choice="see-invisibility"]') as HTMLElement;
+        let eyeCard = root.querySelector('.subclass-feature-card[data-feature-key="wizard-10-the-third-eye"][data-feature-choice="see-invisibility"]') as HTMLElement;
         expect(eyeCard).toBeTruthy();
         eyeCard.click();
-        expect(ctrl.state.subclassFeatureChoices["wizard-10-diviner"]).toBe("see-invisibility");
+        expect(ctrl.state.subclassFeatureChoices["wizard-10-the-third-eye"]).toBe("see-invisibility");
 
         // 26. Barbarian Improved Brutal Strike (Level 13)
         ctrl.state.classId = "barbarian";
@@ -1650,20 +1768,20 @@ describe("CharacterCreatorController", () => {
         ctrl.state.subclassId = "aberrant";
         ctrl.state.level = 14;
         ctrl.renderStep(3);
-        let aberrantCard = root.querySelector('.subclass-feature-card[data-feature-key="sorcerer-14-aberrant"][data-feature-choice="viscous-body"]') as HTMLElement;
+        let aberrantCard = root.querySelector('.subclass-feature-card[data-feature-key="sorcerer-14-revelation-in-flesh"][data-feature-choice="viscous-body"]') as HTMLElement;
         expect(aberrantCard).toBeTruthy();
         aberrantCard.click();
-        expect(ctrl.state.subclassFeatureChoices["sorcerer-14-aberrant"]).toBe("viscous-body");
+        expect(ctrl.state.subclassFeatureChoices["sorcerer-14-revelation-in-flesh"]).toBe("viscous-body");
 
         // 28. Ranger Hunter Superior Hunter's Defense (Level 15)
         ctrl.state.classId = "ranger";
         ctrl.state.subclassId = "hunter";
         ctrl.state.level = 15;
         ctrl.renderStep(3);
-        let defenseCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-15-hunter"][data-feature-choice="uncanny-dodge"]') as HTMLElement;
+        let defenseCard = root.querySelector('.subclass-feature-card[data-feature-key="ranger-15-superior-hunter-defense"][data-feature-choice="uncanny-dodge"]') as HTMLElement;
         expect(defenseCard).toBeTruthy();
         defenseCard.click();
-        expect(ctrl.state.subclassFeatureChoices["ranger-15-hunter"]).toBe("uncanny-dodge");
+        expect(ctrl.state.subclassFeatureChoices["ranger-15-superior-hunter-defense"]).toBe("uncanny-dodge");
     });
 
     it("replaces generic Subclass Feature placeholders with concrete subclass features across all 12 classes and 48 subclasses", () => {
@@ -2086,14 +2204,14 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.classes[0].subclassId).toBe("battle-master");
 
         // Select a maneuver
-        const manCard = document.querySelector('.maneuver-card[data-maneuver-id="trip-attack"]') as HTMLElement;
+        const manCard = document.querySelector('.pool-card[data-pool="maneuvers"][data-option-id="trip-attack"]') as HTMLElement;
         if (manCard) manCard.click();
         expect(ctrl.state.maneuvers).toContain("trip-attack");
 
         // Select Student of War skill choice (fighter-3-battle-master-student)
-        const studentCard = document.querySelector('.subclass-feature-card[data-feature-key="fighter-3-battle-master-student"][data-feature-choice="History"]') as HTMLElement;
+        const studentCard = document.querySelector('.subclass-feature-card[data-feature-key="fighter-3-student-of-war"][data-feature-choice="History"]') as HTMLElement;
         if (studentCard) studentCard.click();
-        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBe("History");
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-student-of-war"]).toBe("History");
 
         // Now re-lock level 3 by clicking the level 3 badge
         const lvl3Badge = document.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
@@ -2106,7 +2224,7 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.classes[0].subclassId).toBe("");
         expect(ctrl.state.subclassId).toBe("");
         expect(ctrl.state.maneuvers).toEqual([]);
-        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBeUndefined();
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-student-of-war"]).toBeUndefined();
 
         // Re-unlock level 3: selections remain unselected
         const reUnlockBadge = document.querySelector('.progression-lvl-badge[data-level="3"]') as HTMLElement;
@@ -2114,7 +2232,7 @@ describe("CharacterCreatorController", () => {
         expect(ctrl.state.classes[0].level).toBe(3);
         expect(ctrl.state.classes[0].subclassId).toBe("");
         expect(ctrl.state.maneuvers).toEqual([]);
-        expect(ctrl.state.subclassFeatureChoices["fighter-3-battle-master-student"]).toBeUndefined();
+        expect(ctrl.state.subclassFeatureChoices["fighter-3-student-of-war"]).toBeUndefined();
     });
 
     it("unselects feature choices when jumping down multiple levels or re-locking higher levels", () => {
@@ -2877,9 +2995,9 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.state.invocations).toContain("eyes-of-the-rune-keeper");
 
             const step3Html = ctrl["renderStep3Class"]();
-            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="agonizing-blast"/);
-            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="devils-sight"/);
-            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="pact-of-the-tome"/);
+            expect(step3Html).toMatch(/class="[^"]*pool-card[^"]*selected[^"]*"[^>]*data-pool="invocations" data-option-id="agonizing-blast"/);
+            expect(step3Html).toMatch(/class="[^"]*pool-card[^"]*selected[^"]*"[^>]*data-pool="invocations" data-option-id="devils-sight"/);
+            expect(step3Html).toMatch(/class="[^"]*pool-card[^"]*selected[^"]*"[^>]*data-pool="invocations" data-option-id="pact-of-the-tome"/);
         });
 
         it("resolves Eldritch Invocations with parenthetical names and curly quotes from character features", async () => {
@@ -2907,7 +3025,7 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.state.invocations).toContain("whispers-of-the-grave");
 
             const step3Html = ctrl["renderStep3Class"]();
-            expect(step3Html).toMatch(/class="[^"]*invocation-card[^"]*selected[^"]*"[^>]*data-invocation-id="whispers-of-the-grave"/);
+            expect(step3Html).toMatch(/class="[^"]*pool-card[^"]*selected[^"]*"[^>]*data-pool="invocations" data-option-id="whispers-of-the-grave"/);
         });
 
         it("places feature descriptions inside level-choice-box under level-choice-title and avoids duplicate ability-feature-cards across all classes and subclasses", () => {
@@ -3100,11 +3218,11 @@ describe("CharacterCreatorController", () => {
             expect(findFamiliarSpell.source).toBe("Warlock / Pact of the Tome");
             expect(findFamiliarSpell.ritual).toBe(true);
 
-            // 3. Fighter Level 1 (non-spellcaster class) with Blessed Warrior Fighting Style gets access to Step 8 progression spell picker
-            ctrl.state.classId = "fighter";
-            ctrl.state.level = 1;
+            // 3. Paladin Level 2 with the Blessed Warrior Fighting Style (Paladin-only in 2024) gets the Step 8 spell picker
+            ctrl.state.classId = "paladin";
+            ctrl.state.level = 2;
             ctrl.state.subclassId = "";
-            ctrl.state.classes = [{ classId: "fighter", level: 1, subclassId: "" }];
+            ctrl.state.classes = [{ classId: "paladin", level: 2, subclassId: "" }];
             ctrl.state.fightingStyle = "blessed-warrior";
             ctrl.state.invocations = [];
             ctrl.state.featureSpellChoices = {};
@@ -3123,6 +3241,7 @@ describe("CharacterCreatorController", () => {
             ]);
 
             const fighterPayload = ctrl.buildPayload();
+            // A Fighter can't take Blessed Warrior (2024), so it isn't offered
             expect(fighterPayload.spells.map((s: any) => s.name)).toContain("Thaumaturgy");
             expect(fighterPayload.spells.map((s: any) => s.name)).toContain("Toll the Dead");
             expect(fighterPayload.spells.map((s: any) => s.name)).not.toContain("Sacred Flame");

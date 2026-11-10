@@ -38,6 +38,8 @@ export interface FeatureSpellChoiceSection {
     chooseCount: number;
     availableSpells: RuleSpellDefinition[];
     ability?: AbilityName;
+    /** Lower-case source text older saves used for these spells */
+    sourceAliases?: string[];
 }
 
 export interface CreatorState {

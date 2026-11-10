@@ -1,5 +1,6 @@
 import { getData, postData, putData } from "@services/request";
 import {
+    ProgressionResourceUpdate,
     ABERRANT_REVELATION_OPTIONS,
     AbilityName,
     BARBARIAN_ASPECTS,
@@ -52,6 +53,7 @@ import {
 import { ALL_SKILLS } from "../characterCreator.types";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
+import { getProgressionChoices, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
 import { distributeImportedSkills, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
 import { CharacterCreatorContext } from "../controllers/context";
 import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, resolveSpellBucketKey } from "./spellReconciliation";
@@ -447,91 +449,46 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
             }
         }
 
-        // Robustly resolve Eldritch Invocations for Warlock characters
-        const warlockClass = ctx.state.classes?.find((c) => c.classId === "warlock");
-        if (warlockClass && warlockClass.level >= 1) {
-            const rawInvocations: string[] = [
-                ...(Array.isArray(ctx.state.invocations) ? ctx.state.invocations : []),
-                ...(Array.isArray(char.invocations) ? char.invocations : []),
-                ...(Array.isArray(char.creatorState?.invocations) ? char.creatorState.invocations : [])
+        // Restore pick lists (Eldritch Invocations, Metamagic, Maneuvers…) from saved state and from the features a pull
+        // or save produced: "<List>: <Option>", an Invocation-type feature, or a feature named exactly the option
+        for (const pool of getProgressionPools(ctx)) {
+            const saved = [
+                ...(Array.isArray((ctx.state as any)[pool.pool]) ? (ctx.state as any)[pool.pool] : []),
+                ...(Array.isArray(char[pool.pool]) ? char[pool.pool] : []),
+                ...(Array.isArray(char.creatorState?.[pool.pool]) ? char.creatorState[pool.pool] : [])
             ];
-
-            if (Array.isArray(char.features)) {
-                for (const feat of char.features) {
-                    const fName: string = String(feat?.name || "").trim();
-                    const fType: string = String(feat?.type || "").trim();
-                    const fSource: string = String(feat?.source || "").trim();
-
-                    const isInvocation =
-                        fType.toLowerCase() === "invocation" ||
-                        fSource.toLowerCase().includes("invocation") ||
-                        fName.toLowerCase().startsWith("invocation:") ||
-                        fName.toLowerCase().startsWith("eldritch invocation");
-
-                    // Strip prefixes and parentheticals, e.g. "Agonizing Blast (Eldritch Blast)" -> "Agonizing Blast"
-                    const cleanName: string = fName
-                        .replace(/^invocation:\s*/i, "")
-                        .replace(/^eldritch invocation:\s*/i, "")
-                        .replace(/\s*\(.*?\)\s*$/g, "")
-                        .replace(/['’]/g, "'")
-                        .trim();
-
-                    const matchedInv = ELDRITCH_INVOCATIONS.find((inv) => {
-                        const invNorm = inv.name.replace(/['’]/g, "'").toLowerCase();
-                        const cleanNorm = cleanName.toLowerCase();
-                        return (
-                            inv.id === cleanNorm ||
-                            invNorm === cleanNorm ||
-                            (isInvocation && (cleanNorm.includes(invNorm) || invNorm.includes(cleanNorm)))
-                        );
-                    });
-
-                    if (matchedInv && !rawInvocations.includes(matchedInv.id)) {
-                        rawInvocations.push(matchedInv.id);
-                    }
-                }
+            const ids: string[] = saved.filter((id: string) => pool.options.some((o) => o.id === id));
+            const singular = poolSingular(pool.name).toLowerCase();
+            const norm = (s: string) => s.replace(/['’]/g, "'").toLowerCase().trim();
+            for (const feat of Array.isArray(char.features) ? char.features : []) {
+                const fName = norm(String(feat?.name || ""));
+                const fromList = String(feat?.type || "").toLowerCase() === "invocation" || fName.startsWith(`${singular}:`);
+                const clean = fName.replace(new RegExp(`^${singular}:\\s*`), "").replace(/\s*\(.*?\)\s*$/g, "").trim();
+                const opt = pool.options.find((o) => {
+                    const oName = norm(o.name);
+                    return o.id === clean || oName === clean || (fromList && (clean.includes(oName) || oName.includes(clean)));
+                });
+                if (opt && !ids.includes(opt.id)) ids.push(opt.id);
             }
-
-            const maxInvocations = ctx.getMaxInvocationsCount();
-            const validInvocations = rawInvocations.filter((id: string) => {
-                const invDef = ELDRITCH_INVOCATIONS.find((inv) => inv.id === id);
-                return invDef && (!invDef.minLevel || warlockClass.level >= invDef.minLevel);
-            });
-
-            ctx.state.invocations = validInvocations.slice(0, maxInvocations);
+            (ctx.state as any)[pool.pool] = ids
+                .filter((id) => {
+                    const opt = pool.options.find((o) => o.id === id);
+                    return !!opt && optionAvailableAt(opt, pool.classLevel);
+                })
+                .slice(0, pool.max);
         }
 
-        // Resolve fighting style if present in features
-        if (!ctx.state.fightingStyle && Array.isArray(char.features)) {
-            for (const feat of char.features) {
-                const fName = String(feat?.name || "").toLowerCase();
-                const matchedFs = FIGHTING_STYLES.find((fs) => fName.includes(fs.name.toLowerCase()) || fName.includes(fs.id));
-                if (matchedFs) {
-                    ctx.state.fightingStyle = matchedFs.id;
-                    break;
-                }
-            }
-        }
-
-        // Resolve Divine Order / Primal Order if present in features
-        if (!ctx.state.divineOrder && Array.isArray(char.features)) {
-            const doFeat = char.features.find((f: any) => {
-                const name = String(f?.name || "").toLowerCase();
-                return name.includes("protector") || name.includes("thaumaturge");
-            });
-            if (doFeat) {
-                const name = String(doFeat.name).toLowerCase();
-                ctx.state.divineOrder = name.includes("thaumaturge") ? "thaumaturge" : "protector";
-            }
-        }
-        if (!ctx.state.primalOrder && Array.isArray(char.features)) {
-            const poFeat = char.features.find((f: any) => {
-                const name = String(f?.name || "").toLowerCase();
-                return name.includes("warden") || name.includes("magician");
-            });
-            if (poFeat) {
-                const name = String(poFeat.name).toLowerCase();
-                ctx.state.primalOrder = name.includes("warden") ? "warden" : "magician";
+        // Restore progression choices (Fighting Style, Divine Order, subclass options…) from the saved features:
+        // "<Choice>: <Option>", a feature naming both, or a feature named exactly the option
+        if (Array.isArray(char.features)) {
+            const featureNames = char.features.map((f: any) => String(f?.name || "").toLowerCase().trim()).filter(Boolean);
+            for (const entry of getProgressionChoices(ctx).filter((e) => e.unlocked && e.selectedIds.length === 0)) {
+                const choiceName = entry.choice.name.toLowerCase();
+                const matches = (entry.choice.options || []).filter((opt) => {
+                    const optName = opt.name.toLowerCase();
+                    return featureNames.some((n: string) => n === `${choiceName}: ${optName}` || n === optName || (n.includes(choiceName) && n.includes(optName)));
+                });
+                if (matches.length > 0) setProgressionChoice(ctx, entry, matches.slice(0, entry.choice.chooseCount || 1).map((o) => o.id));
             }
         }
 
@@ -551,63 +508,38 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                         const spName = String(rawSpell?.name || "").trim();
                         const spSource = String(rawSpell?.source || "").toLowerCase();
                         const spLvl = Number(rawSpell?.level ?? -1);
-                        const matchedDef = sec.availableSpells.find((a) => a.name.toLowerCase() === spName.toLowerCase());
+                        // A spell whose saved source names this section is kept even if it's outside the section's picks
+                        // (e.g. imported from D&D Beyond), so imports don't lose spells
+                        let matchedDef = sec.availableSpells.find((a) => a.name.toLowerCase() === spName.toLowerCase());
+                        if (!matchedDef) {
+                            const outside = ctx.getSpell(spName);
+                            const offeredElsewhere = outside && activeFeatureSections.some((other) =>
+                                other.id !== sec.id && other.availableSpells.some((a) => a.name === outside.name));
+                            const sameLevelOffered = outside && sec.availableSpells.some((a) => (a.level === 0) === (outside.level === 0));
+                            if (outside && !offeredElsewhere && sameLevelOffered) matchedDef = outside;
+                        }
                         if (!matchedDef || existing.includes(matchedDef.name)) continue;
 
                         const isSourceMatch =
-                            (sec.id.startsWith("pact-of-the-tome") && spSource.includes("pact of the tome")) ||
-                            (sec.id === "divine-order-thaumaturge" && (spSource.includes("thaumaturge") || spSource.includes("divine order"))) ||
-                            (sec.id === "primal-order-magician" && (spSource.includes("magician") || spSource.includes("primal order"))) ||
-                            (sec.id === "fighting-style-blessed-warrior" && spSource.includes("blessed warrior")) ||
-                            (sec.id === "fighting-style-druidic-warrior" && spSource.includes("druidic warrior")) ||
-                            (sec.id === "bard-6-magical-discoveries" && (spSource.includes("magical discoveries") || spSource.includes("lore"))) ||
-                            (sec.id.includes("mystic-arcanum") && (spSource.includes("mystic arcanum") || spLvl >= 6)) ||
-                            (sec.id.startsWith("wizard-18-spell-mastery") && spSource.includes("spell mastery")) ||
-                            (sec.id === "wizard-20-signature-spells" && spSource.includes("signature spell")) ||
                             spSource === sec.sourceLabel.toLowerCase() ||
-                            spSource === sec.title.toLowerCase();
+                            spSource === sec.title.toLowerCase() ||
+                            (sec.sourceAliases || []).some((alias) => spSource.includes(alias));
 
                         if (isSourceMatch) {
                             existing.push(matchedDef.name);
                         }
                     }
                 }
-                // Fallback pass: reconcile progression spells that were saved with generic sources ("Class", "Warlock", etc.)
+                // Older saves gave some of these spells a generic source ("Class", a class name): a saved spell that fits
+                // this section and that no class could have picked normally belongs here
                 if (existing.length < sec.chooseCount) {
-                    const allowedClasses = ctx.getAllowedSpellClasses();
+                    const classPickable = new Set(ctx.getSpellBuckets().flatMap((b) => [...b.cantripPool, ...b.preparedPool].map((sp) => sp.name)));
                     for (const rawSpell of char.spells) {
                         if (existing.length >= sec.chooseCount) break;
                         const spName = String(rawSpell?.name || "").trim();
-                        const spLvl = Number(rawSpell?.level ?? -1);
                         const matchedDef = sec.availableSpells.find((a) => a.name.toLowerCase() === spName.toLowerCase());
-                        if (!matchedDef || existing.includes(matchedDef.name)) continue;
-
-                        let fallbackMatch = false;
-                        if (sec.id === "pact-of-the-tome-cantrips") {
-                            const isFromOtherClass = !allowedClasses.some((c) => matchedDef.classes.includes(c));
-                            const isKnownTomeSpell = spName === "Produce Flame" || spName === "Ray of Frost" || spName === "Eldritch Blast";
-                            fallbackMatch = isFromOtherClass || isKnownTomeSpell;
-                        } else if (sec.id === "pact-of-the-tome-rituals") {
-                            const isKnownTomeSpell = spName === "Charm Person" || spName === "Mirror Image";
-                            const isRitualSpell = (matchedDef.ritual && matchedDef.level === 1) || matchedDef.level === 1;
-                            fallbackMatch = isKnownTomeSpell || isRitualSpell;
-                        } else if (sec.id === "fighting-style-blessed-warrior") {
-                            fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Cleric");
-                        } else if (sec.id === "fighting-style-druidic-warrior") {
-                            fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Druid");
-                        } else if (sec.id === "divine-order-thaumaturge") {
-                            fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Cleric");
-                        } else if (sec.id === "primal-order-magician") {
-                            fallbackMatch = matchedDef.level === 0 && matchedDef.classes.includes("Druid");
-                        } else if (sec.id === "bard-6-magical-discoveries") {
-                            fallbackMatch = !matchedDef.classes.includes("Bard") && (matchedDef.classes.includes("Cleric") || matchedDef.classes.includes("Druid") || matchedDef.classes.includes("Wizard"));
-                        } else if (sec.id.includes("mystic-arcanum")) {
-                            fallbackMatch = spLvl >= 6 && matchedDef.classes.includes("Warlock");
-                        }
-
-                        if (fallbackMatch) {
-                            existing.push(matchedDef.name);
-                        }
+                        if (!matchedDef || existing.includes(matchedDef.name) || classPickable.has(matchedDef.name)) continue;
+                        existing.push(matchedDef.name);
                     }
                 }
                 if (existing.length > 0) {
@@ -870,17 +802,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
 
     // Progression-granted spells from selected class and subclass options
     const selectedProgressionOptions: any[] = [];
-    if (ctx.state.fightingStyle) {
-        const opt = findClassOption("fighting-style", ctx.state.fightingStyle);
-        if (opt) selectedProgressionOptions.push(opt);
-    }
-    if (ctx.state.divineOrder) {
-        const opt = findClassOption("divine-order", ctx.state.divineOrder);
-        if (opt) selectedProgressionOptions.push(opt);
-    }
-    if (ctx.state.primalOrder) {
-        const opt = findClassOption("primal-order", ctx.state.primalOrder);
-        if (opt) selectedProgressionOptions.push(opt);
+    // Options chosen in unlocked class/subclass progression choices
+    for (const entry of getProgressionChoices(ctx).filter((e) => e.unlocked)) {
+        selectedProgressionOptions.push(...entry.selectedOptions);
     }
     if (Array.isArray(ctx.state.invocations)) {
         for (const invId of ctx.state.invocations) {
@@ -888,64 +812,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             if (opt) selectedProgressionOptions.push(opt);
         }
     }
-    const findDynamicProgressionOption = (key: string, val: string): any => {
-        for (const c of ctx.classes) {
-            for (const pl of c.progression || []) {
-                for (const ch of pl.choices || []) {
-                    if (ch.choiceId === key || ch.id === key) {
-                        const opt = ch.options?.find((o: any) => o.id === val);
-                        if (opt) {
-                            return {
-                                ...opt,
-                                choiceName: ch.name,
-                                source: c.name,
-                                level: pl.level,
-                                isSubclass: false
-                            };
-                        }
-                    }
-                }
-            }
-            for (const sub of c.subclasses || []) {
-                for (const pl of sub.progression || []) {
-                    for (const ch of pl.choices || []) {
-                        if (ch.choiceId === key || ch.id === key) {
-                            const opt = ch.options?.find((o: any) => o.id === val);
-                            if (opt) {
-                                return {
-                                    ...opt,
-                                    choiceName: ch.name,
-                                    source: sub.name,
-                                    level: pl.level,
-                                    isSubclass: true
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return undefined;
-    };
 
-    if (ctx.state.subclassFeatureChoices) {
-        for (const [featKey, optVal] of Object.entries(ctx.state.subclassFeatureChoices)) {
-            const opt = findClassOption(featKey, optVal) || findDynamicProgressionOption(featKey, optVal);
-            if (opt) selectedProgressionOptions.push(opt);
-        }
-    }
 
-    const optionToFeatureSectionId: Record<string, string> = {
-        "thaumaturge": "divine-order-thaumaturge",
-        "magician": "primal-order-magician",
-        "blessed-warrior": "fighting-style-blessed-warrior",
-        "druidic-warrior": "fighting-style-druidic-warrior"
-    };
     for (const opt of selectedProgressionOptions) {
-        const mappedSecId = optionToFeatureSectionId[opt.id];
-        if (mappedSecId && (ctx.state.featureSpellChoices[mappedSecId]?.length ?? 0) > 0) {
-            continue;
-        }
         if (Array.isArray(opt.grantedSpells)) {
             for (const sp of opt.grantedSpells) {
                 const spName = typeof sp === "string" ? sp : (sp.name || sp.spellId);
@@ -1175,467 +1044,37 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
 
     const featuresPayload: any[] = [];
 
-    // Subclass Feature Choices
-    if (ctx.state.subclassFeatureChoices) {
-        for (const [key, val] of Object.entries(ctx.state.subclassFeatureChoices)) {
-            if (key === "druid-6-land" && ctx.state.classId === "druid" && ctx.state.subclassId === "land" && ctx.state.level >= 6) {
-                const opt = DRUID_LAND_BIOMES.find((b) => b.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Land Biome: ${opt.name}`,
-                        source: "Circle of the Land",
-                        type: "Subclass",
-                        level: 6,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "druid-7" && ctx.state.classId === "druid" && ctx.state.level >= 7) {
-                const opt = ELEMENTAL_FURY_OPTIONS.find((o) => o.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Elemental Fury: ${opt.name}`,
-                        source: "Druid",
-                        type: "Class",
-                        level: 7,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "cleric-7" && ctx.state.classId === "cleric" && ctx.state.level >= 7) {
-                const opt = BLESSED_STRIKES_OPTIONS.find((o) => o.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Blessed Strikes: ${opt.name}`,
-                        source: "Cleric",
-                        type: "Class",
-                        level: 7,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-6-wild-heart" && ctx.state.classId === "barbarian" && ctx.state.subclassId === "wild-heart" && ctx.state.level >= 6) {
-                const opt = BARBARIAN_ASPECTS.find((a) => a.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Aspect of the Beast: ${opt.name}`,
-                        source: "Path of the Wild Heart",
-                        type: "Subclass",
-                        level: 6,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "ranger-6-hunter" && ctx.state.classId === "ranger" && ctx.state.subclassId === "hunter" && ctx.state.level >= 6) {
-                const opt = HUNTER_DEFENSIVE_TACTICS.find((t) => t.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Defensive Tactics: ${opt.name}`,
-                        source: "Hunter",
-                        type: "Subclass",
-                        level: 6,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "wizard-2-scholar" && isChoiceUnlocked(ctx, key)) {
-                const opt = WIZARD_SCHOLAR_SKILLS.find((s) => s.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Scholar: ${opt.name}`,
-                        source: "Wizard",
-                        type: "Class",
-                        level: 2,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-3-wild-heart" && ctx.state.classId === "barbarian" && ctx.state.subclassId === "wild-heart" && ctx.state.level >= 3) {
-                const opt = WILD_HEART_RAGES.find((r) => r.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Rage of the Wilds: ${opt.name}`,
-                        source: "Path of the Wild Heart",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-3-zealot" && ctx.state.classId === "barbarian" && ctx.state.subclassId === "zealot" && ctx.state.level >= 3) {
-                const opt = ZEALOT_DIVINE_FURIES.find((z) => z.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Divine Fury: ${opt.name}`,
-                        source: "Path of the Zealot",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "monk-3-elements" && ctx.state.classId === "monk" && ctx.state.subclassId === "elements" && ctx.state.level >= 3) {
-                const opt = ELEMENTS_ATTUNEMENT_DAMAGE_TYPES.find((e) => e.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Elemental Attunement: ${opt.name}`,
-                        source: "Warrior of the Elements",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "ranger-3-beast-master" && ctx.state.classId === "ranger" && ctx.state.subclassId === "beast-master" && ctx.state.level >= 3) {
-                const opt = PRIMAL_COMPANION_TYPES.find((p) => p.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Primal Companion: ${opt.name}`,
-                        source: "Beast Master",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "ranger-3-hunter" && ctx.state.classId === "ranger" && ctx.state.subclassId === "hunter" && ctx.state.level >= 3) {
-                const opt = HUNTER_PREY_OPTIONS.find((h) => h.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Hunter's Prey: ${opt.name}`,
-                        source: "Hunter",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "sorcerer-3-draconic" && ctx.state.classId === "sorcerer" && ctx.state.subclassId === "draconic" && ctx.state.level >= 3) {
-                const opt = DRACONIC_ANCESTOR_ELEMENTS.find((d) => d.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Draconic Ancestor: ${opt.name}`,
-                        source: "Draconic Sorcery",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "rogue-5-cunning-strike" && ctx.state.classId === "rogue" && ctx.state.level >= 5) {
-                const opt = ROGUE_CUNNING_STRIKES.find((c) => c.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Cunning Strike: ${opt.name}`,
-                        source: "Rogue",
-                        type: "Class",
-                        level: 5,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-9-brutal-strike" && ctx.state.classId === "barbarian" && ctx.state.level >= 9) {
-                const opt = BRUTAL_STRIKE_OPTIONS.find((b) => b.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Brutal Strike: ${opt.name}`,
-                        source: "Barbarian",
-                        type: "Class",
-                        level: 9,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "fighter-9-tactical-master" && ctx.state.classId === "fighter" && ctx.state.level >= 9) {
-                const opt = TACTICAL_MASTER_PROPERTIES.find((t) => t.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Tactical Master: ${opt.name}`,
-                        source: "Fighter",
-                        type: "Class",
-                        level: 9,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "warlock-10-fiend" && ctx.state.classId === "warlock" && ctx.state.subclassId === "fiend" && ctx.state.level >= 10) {
-                const opt = FIENDISH_RESILIENCE_DAMAGE_TYPES.find((f) => f.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Fiendish Resilience: ${opt.name}`,
-                        source: "Fiend Patron",
-                        type: "Subclass",
-                        level: 10,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-14-wild-heart" && ctx.state.classId === "barbarian" && ctx.state.subclassId === "wild-heart" && ctx.state.level >= 14) {
-                const opt = WILD_HEART_TOTEMIC_ATTUNEMENTS.find((t) => t.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Totemic Attunement: ${opt.name}`,
-                        source: "Path of the Wild Heart",
-                        type: "Subclass",
-                        level: 14,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "rogue-14-devious-strike" && ctx.state.classId === "rogue" && ctx.state.level >= 14) {
-                const opt = ROGUE_DEVIOUS_STRIKES.find((d) => d.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Devious Strike: ${opt.name}`,
-                        source: "Rogue",
-                        type: "Class",
-                        level: 14,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "fighter-3-battle-master-student" && ctx.state.classId === "fighter" && ctx.state.subclassId === "battle-master" && ctx.state.level >= 3) {
-                const opt = STUDENT_OF_WAR_SKILLS.find((s) => s.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Student of War: ${opt.name}`,
-                        source: "Battle Master",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "monk-3-open-hand" && ctx.state.classId === "monk" && ctx.state.subclassId === "open-hand" && ctx.state.level >= 3) {
-                const opt = OPEN_HAND_TECHNIQUES.find((t) => t.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Open Hand Technique: ${opt.name}`,
-                        source: "Warrior of the Open Hand",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "ranger-3-fey-wanderer" && ctx.state.classId === "ranger" && ctx.state.subclassId === "fey-wanderer" && ctx.state.level >= 3) {
-                const opt = FEY_WANDERER_GLAMOUR_SKILLS.find((s) => s.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Otherworldly Glamour: ${opt.name}`,
-                        source: "Fey Wanderer",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "warlock-3-archfey" && ctx.state.classId === "warlock" && ctx.state.subclassId === "archfey" && ctx.state.level >= 3) {
-                const opt = STEPS_OF_THE_FEY_OPTIONS.find((s) => s.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Steps of the Fey: ${opt.name}`,
-                        source: "Archfey Patron",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "druid-3-stars" && ctx.state.classId === "druid" && ctx.state.subclassId === "stars" && ctx.state.level >= 3) {
-                const opt = STARRY_FORM_CONSTELLATIONS.find((c) => c.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Starry Form: ${opt.name}`,
-                        source: "Circle of the Stars",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "druid-3-sea" && ctx.state.classId === "druid" && ctx.state.subclassId === "sea" && ctx.state.level >= 3) {
-                const opt = SEA_WRATH_DAMAGE_TYPES.find((w) => w.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Wrath of the Sea: ${opt.name}`,
-                        source: "Circle of the Sea",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "druid-3-moon" && ctx.state.classId === "druid" && ctx.state.subclassId === "moon" && ctx.state.level >= 3) {
-                const opt = MOON_CIRCLE_FORMS_STRIKES.find((m) => m.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Circle Forms Strike: ${opt.name}`,
-                        source: "Circle of the Moon",
-                        type: "Subclass",
-                        level: 3,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "cleric-6-war" && ctx.state.classId === "cleric" && ctx.state.subclassId === "war" && ctx.state.level >= 6) {
-                const opt = WAR_GOD_BLESSING_OPTIONS.find((w) => w.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `War God's Blessing: ${opt.name}`,
-                        source: "War Domain",
-                        type: "Subclass",
-                        level: 6,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "fighter-7-champion" && ctx.state.classId === "fighter" && ctx.state.subclassId === "champion" && ctx.state.level >= 7) {
-                const opt = CHAMPION_ADDITIONAL_FIGHTING_STYLES.find((s) => s.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Additional Fighting Style: ${opt.name}`,
-                        source: "Champion",
-                        type: "Subclass",
-                        level: 7,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "fighter-7-psi-warrior" && ctx.state.classId === "fighter" && ctx.state.subclassId === "psi-warrior" && ctx.state.level >= 7) {
-                const opt = PSI_WARRIOR_THRUST_OPTIONS.find((p) => p.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Telekinetic Thrust: ${opt.name}`,
-                        source: "Psi Warrior",
-                        type: "Subclass",
-                        level: 7,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-10-world-tree" && ctx.state.classId === "barbarian" && ctx.state.subclassId === "world-tree" && ctx.state.level >= 10) {
-                const opt = BATTERING_ROOTS_OPTIONS.find((b) => b.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Battering Roots: ${opt.name}`,
-                        source: "Path of the World Tree",
-                        type: "Subclass",
-                        level: 10,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "wizard-10-diviner" && ctx.state.classId === "wizard" && ctx.state.subclassId === "diviner" && ctx.state.level >= 10) {
-                const opt = DIVINER_THIRD_EYE_OPTIONS.find((o) => o.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `The Third Eye: ${opt.name}`,
-                        source: "Diviner",
-                        type: "Subclass",
-                        level: 10,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "barbarian-13-brutal-strike" && ctx.state.classId === "barbarian" && ctx.state.level >= 13) {
-                const opt = IMPROVED_BRUTAL_STRIKE_OPTIONS.find((b) => b.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Improved Brutal Strike: ${opt.name}`,
-                        source: "Barbarian",
-                        type: "Class",
-                        level: 13,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "sorcerer-14-aberrant" && ctx.state.classId === "sorcerer" && ctx.state.subclassId === "aberrant" && ctx.state.level >= 14) {
-                const opt = ABERRANT_REVELATION_OPTIONS.find((a) => a.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Revelation in Flesh: ${opt.name}`,
-                        source: "Aberrant Sorcery",
-                        type: "Subclass",
-                        level: 14,
-                        description: opt.description
-                    });
-                }
-            } else if (key === "ranger-15-hunter" && ctx.state.classId === "ranger" && ctx.state.subclassId === "hunter" && ctx.state.level >= 15) {
-                const opt = HUNTER_SUPERIOR_DEFENSE_OPTIONS.find((o) => o.id === val);
-                if (opt) {
-                    featuresPayload.push({
-                        name: `Superior Hunter's Defense: ${opt.name}`,
-                        source: "Hunter",
-                        type: "Subclass",
-                        level: 15,
-                        description: opt.description
-                    });
-                }
-            } else {
-                const dynOpt = findDynamicProgressionOption(key, val);
-                if (dynOpt) {
-                    featuresPayload.push({
-                        name: `${dynOpt.choiceName || "Choice"}: ${dynOpt.name}`,
-                        source: dynOpt.source || "Class Option",
-                        type: dynOpt.isSubclass ? "Subclass" : "Class",
-                        level: dynOpt.level || 1,
-                        description: dynOpt.description
-                    });
-                }
-            }
-        }
-    }
-
-    // Fighting Style
-    if (ctx.state.fightingStyle) {
-        const fs = findClassOption("fighting-style", ctx.state.fightingStyle) || FIGHTING_STYLES.find((f) => f.id === ctx.state.fightingStyle);
-        if (fs && !featuresPayload.some(f => f.name === `Fighting Style: ${fs.name}`)) {
+    // Progression choices (class and subclass), as "<Choice>: <Option>" features. Choices kept in their own state
+    // fields (Fighting Style, Divine/Primal Order) keep their "Class Option" format.
+    for (const entry of getProgressionChoices(ctx).filter((e) => e.unlocked)) {
+        for (const opt of entry.selectedOptions) {
+            const name = `${entry.choice.name}: ${opt.name}`;
+            if (featuresPayload.some((f) => f.name === name)) continue;
+            const ownField = isStateFieldChoice(entry.choice);
             featuresPayload.push({
-                name: `Fighting Style: ${fs.name}`,
-                source: "Class Option / Fighting Style",
-                type: "Invocation",
-                description: fs.description
+                name,
+                source: ownField ? `Class Option / ${entry.choice.name}` : entry.sourceName,
+                type: ownField ? "Invocation" : entry.isSubclass ? "Subclass" : "Class",
+                level: entry.level,
+                description: opt.description
             });
         }
     }
 
-    // Divine Order / Primal Order
-    if (ctx.state.divineOrder) {
-        const ord = findClassOption("divine-order", ctx.state.divineOrder) || DIVINE_ORDERS.find((o) => o.id === ctx.state.divineOrder);
-        if (ord && !featuresPayload.some(f => f.name === `Divine Order: ${ord.name}`)) {
+    // Pick lists (Eldritch Invocations, Metamagic, Maneuvers…), as "<List>: <Option>" class option features
+    for (const pool of getProgressionPools(ctx)) {
+        const singular = poolSingular(pool.name);
+        const picked: string[] = Array.isArray((ctx.state as any)[pool.pool]) ? (ctx.state as any)[pool.pool] : [];
+        for (const id of picked) {
+            const opt = pool.options.find((o) => o.id === id);
+            if (!opt || featuresPayload.some((f) => f.name === `${singular}: ${opt.name}`)) continue;
             featuresPayload.push({
-                name: `Divine Order: ${ord.name}`,
-                source: "Class Option / Divine Order",
+                name: `${singular}: ${opt.name}`,
+                source: `Class Option / ${singular.split(" ").pop()}`,
                 type: "Invocation",
-                description: ord.description
+                description: opt.description
             });
         }
-    }
-    if (ctx.state.primalOrder) {
-        const ord = findClassOption("primal-order", ctx.state.primalOrder) || PRIMAL_ORDERS.find((o) => o.id === ctx.state.primalOrder);
-        if (ord && !featuresPayload.some(f => f.name === `Primal Order: ${ord.name}`)) {
-            featuresPayload.push({
-                name: `Primal Order: ${ord.name}`,
-                source: "Class Option / Primal Order",
-                type: "Invocation",
-                description: ord.description
-            });
-        }
-    }
-
-    // Metamagic
-    if (Array.isArray(ctx.state.metamagic) && ctx.state.metamagic.length > 0) {
-        ctx.state.metamagic.forEach((mId) => {
-            const meta = findClassOption("metamagic", mId) || METAMAGIC_OPTIONS.find((m) => m.id === mId);
-            if (meta && !featuresPayload.some(f => f.name === `Metamagic: ${meta.name}`)) {
-                featuresPayload.push({
-                    name: `Metamagic: ${meta.name}`,
-                    source: "Class Option / Metamagic",
-                    type: "Invocation",
-                    description: meta.description
-                });
-            }
-        });
-    }
-
-    // Invocations
-    if (Array.isArray(ctx.state.invocations) && ctx.state.invocations.length > 0) {
-        ctx.state.invocations.forEach((invId) => {
-            const inv = findClassOption("invocation", invId) || ELDRITCH_INVOCATIONS.find((i) => i.id === invId);
-            if (inv && !featuresPayload.some(f => f.name === `Eldritch Invocation: ${inv.name}`)) {
-                featuresPayload.push({
-                    name: `Eldritch Invocation: ${inv.name}`,
-                    source: "Class Option / Invocation",
-                    type: "Invocation",
-                    description: inv.description
-                });
-            }
-        });
-    }
-
-    // Maneuvers
-    if (ctx.state.maneuvers.length > 0 && ctx.state.classId === "fighter" && ctx.state.subclassId === "battle-master" && ctx.state.level >= 3) {
-        ctx.state.maneuvers.forEach((mId) => {
-            const man = BATTLE_MASTER_MANEUVERS.find((m) => m.id === mId);
-            if (man) {
-                featuresPayload.push({
-                    name: `Maneuver: ${man.name}`,
-                    source: "Class Option / Maneuver",
-                    type: "Invocation",
-                    description: man.description
-                });
-            }
-        });
     }
 
     // Assemble featuresPayload in D&D Beyond order:
@@ -1660,42 +1099,39 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         ...speciesTraitsList
     );
 
-    // Class Resources
+    // Class Resources: each class's latest resourceUpdates up to its own level (class rules data). Totals can be
+    // templates ("{{cha}}" = Charisma modifier, minimum 1; "{{level}}" = class level; "{{pb}}"); dice values such as
+    // Sneak Attack aren't uses to track. A resource two classes share keeps the larger total.
     const resourcesPayload: any[] = [];
-    if (cls.id === "barbarian") {
-        const rageTotal = ctx.state.level >= 17 ? 6 : ctx.state.level >= 12 ? 5 : ctx.state.level >= 6 ? 4 : ctx.state.level >= 3 ? 3 : 2;
-        resourcesPayload.push({ name: "Rage", total: rageTotal, resetOn: "long", currentUsed: 0 });
-    } else if (cls.id === "bard") {
-        const bardicDie = ctx.state.level >= 15 ? "d12" : ctx.state.level >= 10 ? "d10" : ctx.state.level >= 5 ? "d8" : "d6";
-        const bardicReset = ctx.state.level >= 5 ? "short" : "long";
-        resourcesPayload.push({ name: `Bardic Inspiration (${bardicDie})`, total: Math.max(1, ctx.getAbilityModifier("cha")), resetOn: bardicReset, dieOrType: bardicDie, currentUsed: 0 });
-    } else if (cls.id === "cleric" && ctx.state.level >= 2) {
-        const cdTotal = ctx.state.level >= 18 ? 4 : ctx.state.level >= 6 ? 3 : 2;
-        resourcesPayload.push({ name: "Channel Divinity", total: cdTotal, resetOn: "short", currentUsed: 0 });
-    } else if (cls.id === "druid" && ctx.state.level >= 2) {
-        const wsTotal = ctx.state.level >= 20 ? 99 : ctx.state.level >= 17 ? 4 : ctx.state.level >= 6 ? 3 : 2;
-        resourcesPayload.push({ name: "Wild Shape", total: wsTotal, resetOn: "short", currentUsed: 0 });
-    } else if (cls.id === "fighter") {
-        const swTotal = ctx.state.level >= 10 ? 4 : ctx.state.level >= 4 ? 3 : 2;
-        resourcesPayload.push({ name: "Second Wind", total: swTotal, resetOn: "short", dieOrType: "1d10", currentUsed: 0 });
-        if (ctx.state.level >= 2) {
-            resourcesPayload.push({ name: "Action Surge", total: ctx.state.level >= 17 ? 2 : 1, resetOn: "short", currentUsed: 0 });
+    for (const cc of ctx.state.classes || []) {
+        const def = ctx.classes.find((c) => c.id === cc.classId);
+        const latest = new Map<string, ProgressionResourceUpdate>();
+        for (const pl of [...(def?.progression || [])].sort((a, b) => a.level - b.level)) {
+            if (pl.level > (cc.level || 0)) continue;
+            for (const r of pl.resourceUpdates || []) latest.set(r.name, r);
         }
-        if (ctx.state.level >= 9) {
-            const indomTotal = ctx.state.level >= 17 ? 3 : ctx.state.level >= 13 ? 2 : 1;
-            resourcesPayload.push({ name: "Indomitable", total: indomTotal, resetOn: "long", currentUsed: 0 });
-        }
-    } else if (cls.id === "monk" && ctx.state.level >= 2) {
-        resourcesPayload.push({ name: "Focus Points", total: ctx.state.level, resetOn: "short", currentUsed: 0 });
-    } else if (cls.id === "paladin") {
-        resourcesPayload.push({ name: "Lay on Hands", total: 5 * ctx.state.level, resetOn: "long", currentUsed: 0 });
-        if (ctx.state.level >= 3) {
-            resourcesPayload.push({ name: "Channel Divinity", total: ctx.state.level >= 11 ? 3 : 2, resetOn: "short", currentUsed: 0 });
-        }
-    } else if (cls.id === "sorcerer") {
-        resourcesPayload.push({ name: "Innate Sorcery", total: 2, resetOn: "long", currentUsed: 0 });
-        if (ctx.state.level >= 2) {
-            resourcesPayload.push({ name: "Sorcery Points", total: ctx.state.level, resetOn: "long", currentUsed: 0 });
+        for (const r of latest.values()) {
+            let total: number;
+            if (typeof r.total === "number") {
+                total = r.total;
+            } else {
+                const tmpl = String(r.total).match(/^\{\{(\w+)\}\}$/);
+                if (tmpl) {
+                    const key = tmpl[1].toLowerCase();
+                    total = key === "level" ? (cc.level || 0)
+                        : key === "pb" ? pb
+                            : Math.max(1, ctx.getAbilityModifier(key as AbilityName));
+                } else {
+                    total = Number(r.total);
+                }
+            }
+            if (!Number.isFinite(total) || total <= 0) continue;
+            const existing = resourcesPayload.find((x) => x.name === r.name);
+            if (existing) {
+                existing.total = Math.max(existing.total, total);
+                continue;
+            }
+            resourcesPayload.push({ name: r.name, total, resetOn: r.resetOn, ...(r.die ? { dieOrType: r.die } : {}), currentUsed: 0 });
         }
     }
 
@@ -2031,11 +1467,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     };
 
     for (const opt of selectedProgressionOptions) {
-        const mappedSecId = optionToFeatureSectionId[opt.id];
-        const optToApply = (mappedSecId && (ctx.state.featureSpellChoices[mappedSecId]?.length ?? 0) > 0)
-            ? { ...opt, grantedSpells: [] }
-            : opt;
-        applyProgressionChoiceOption(characterPayload, optToApply, 1);
+        applyProgressionChoiceOption(characterPayload, opt, 1);
     }
 
     return characterPayload;

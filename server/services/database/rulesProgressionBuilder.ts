@@ -264,11 +264,30 @@ export interface ProgressionGrantedFeature {
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
 }
 
+/**
+ * Spells a feature or option lets the player pick (e.g. Mystic Arcanum, a Thaumaturge's extra cantrip). The creator
+ * shows one section per pick on the Spells step; picked spells are always prepared and don't count as class picks.
+ */
+export interface SpellPick {
+    id: string;                    // section id; also the key saved picks are stored under
+    title: string;
+    sourceLabel: string;           // saved spell source
+    description: string;
+    count: number;
+    ability?: AbilityName;
+    lists?: string[];              // class spell lists to pick from; omitted = any list
+    levels?: number[];             // spell levels allowed (0 = cantrip)
+    maxLevel?: "castable";         // or: up to the highest level the granting class can cast (plus cantrips if 0 is in levels)
+    orRitual?: boolean;            // also allow ritual spells of any level
+    sourceAliases?: string[];      // lower-case source text older saves used for these spells
+}
+
 export interface ProgressionFeature {
     id: string;
     name: string;
     description: string;
     modifiers?: StatModifier[];
+    spellPicks?: SpellPick[];
     actionGrant?: {
         name: string;
         type: "Action" | "Bonus Action" | "Reaction";
@@ -284,6 +303,9 @@ export interface ProgressionChoiceOption {
     id: string;
     name: string;
     description: string;
+    legacyIds?: string[];          // ids older saves may hold for this option
+    minLevel?: number;             // class level the option requires (e.g. Eldritch Invocation prerequisites)
+    spellPicks?: SpellPick[];      // spells the player picks when this option is chosen
     prerequisite?: string;
     modifiers?: StatModifier[];
     actionGrant?: {
@@ -303,6 +325,9 @@ export interface ProgressionChoice {
     name: string;
     prompt: string;
     chooseCount: number;
+    legacyKeys?: string[];         // creator storage keys older saves may hold this choice under
+    /** A pick list counted by a scalingTraits table rather than chooseCount (e.g. "invocations", "metamagic") */
+    pool?: string;
     choiceType?: "feature" | "spell" | "proficiency" | "custom";
     options: ProgressionChoiceOption[];
 }
@@ -319,6 +344,8 @@ export interface ProgressionLevel {
     features: ProgressionFeature[];
     choices?: ProgressionChoice[];
     resourceUpdates?: ProgressionResourceUpdate[];
+    /** Short level summaries shown on the creator's progression (e.g. "Rage Damage +2", "2 Attacks") */
+    badges?: string[];
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
     grantedFeatures?: Array<ProgressionGrantedFeature | string>;
 }
@@ -432,6 +459,14 @@ export const FIGHTING_STYLE_OPTIONS: ProgressionChoiceOption[] = [
         id: "blessed-warrior",
         name: "Blessed Warrior",
         description: "Learn two Cleric cantrips of your choice.",
+        spellPicks: [{
+            id: "fighting-style-blessed-warrior",
+            title: "Fighting Style: Blessed Warrior — Cleric Cantrips",
+            sourceLabel: "Fighting Style (Blessed Warrior)",
+            description: "You learn two Cleric cantrips of your choice. They count as class spells for you, and Charisma is your spellcasting ability for them.",
+            count: 2, lists: ["Cleric"], levels: [0], ability: "cha",
+            sourceAliases: ["blessed warrior"]
+        }],
         modifiers: [
             {
                 target: "spells.cantrips_known",
@@ -500,6 +535,34 @@ export const FIGHTING_STYLE_OPTIONS: ProgressionChoiceOption[] = [
     }
 ];
 
+// 2024 Fighting Style feats every class with the feature can take; Blessed Warrior is Paladin-only, Druidic Warrior
+// Ranger-only
+const BASE_FIGHTING_STYLES = FIGHTING_STYLE_OPTIONS.filter((o) => o.id !== "blessed-warrior" && o.id !== "druidic-warrior");
+const DRUIDIC_WARRIOR_OPTION: ProgressionChoiceOption = {
+    id: "druidic-warrior",
+    name: "Druidic Warrior",
+    description: "You learn two Druid cantrips of your choice (Guidance and Starry Wisp are recommended). Wisdom is your spellcasting ability for them.",
+    spellPicks: [{
+        id: "fighting-style-druidic-warrior",
+        title: "Fighting Style: Druidic Warrior — Druid Cantrips",
+        sourceLabel: "Fighting Style (Druidic Warrior)",
+        description: "You learn two Druid cantrips of your choice. They count as class spells for you, and Wisdom is your spellcasting ability for them.",
+        count: 2, lists: ["Druid"], levels: [0], ability: "wis",
+        sourceAliases: ["druidic warrior"]
+    }]
+};
+export const FIGHTER_FIGHTING_STYLES: ProgressionChoiceOption[] = BASE_FIGHTING_STYLES;
+export const PALADIN_FIGHTING_STYLES: ProgressionChoiceOption[] = [
+    ...BASE_FIGHTING_STYLES,
+    ...FIGHTING_STYLE_OPTIONS.filter((o) => o.id === "blessed-warrior")
+];
+export const RANGER_FIGHTING_STYLES: ProgressionChoiceOption[] = [...BASE_FIGHTING_STYLES, DRUIDIC_WARRIOR_OPTION];
+
+export const BATTERING_ROOTS_OPTIONS: ProgressionChoiceOption[] = [
+    { id: "push", name: "Battering Push", description: "Push the target up to 10 feet away from you on hit." },
+    { id: "topple", name: "Battering Topple", description: "Knock the target Prone on hit on a failed Strength save." }
+];
+
 export const DIVINE_ORDER_OPTIONS: ProgressionChoiceOption[] = [
     {
         id: "protector",
@@ -524,15 +587,14 @@ export const DIVINE_ORDER_OPTIONS: ProgressionChoiceOption[] = [
         id: "thaumaturge",
         name: "Thaumaturge",
         description: "Know one extra Cleric cantrip, and add your Wisdom modifier to Intelligence (Arcana or Religion) checks.",
-        grantedSpells: [
-            {
-                name: "Sacred Flame",
-                level: 0,
-                alwaysPrepared: true,
-                ability: "wis",
-                notes: "Extra Cleric cantrip"
-            }
-        ],
+        spellPicks: [{
+            id: "divine-order-thaumaturge",
+            title: "Divine Order: Thaumaturge — Bonus Cleric Cantrip",
+            sourceLabel: "Cleric / Divine Order (Thaumaturge)",
+            description: "You know one extra cantrip of your choice from the Cleric spell list.",
+            count: 1, lists: ["Cleric"], levels: [0], ability: "wis",
+            sourceAliases: ["thaumaturge", "divine order"]
+        }],
         modifiers: [
             {
                 target: "spells.cantrips_known",
@@ -563,15 +625,14 @@ export const PRIMAL_ORDER_OPTIONS: ProgressionChoiceOption[] = [
         id: "magician",
         name: "Magician",
         description: "Know one extra Druid cantrip, and add your Wisdom modifier to Intelligence (Arcana or Nature) checks.",
-        grantedSpells: [
-            {
-                name: "Druidcraft",
-                level: 0,
-                alwaysPrepared: true,
-                ability: "wis",
-                notes: "Extra Druid cantrip"
-            }
-        ],
+        spellPicks: [{
+            id: "primal-order-magician",
+            title: "Primal Order: Magician — Bonus Druid Cantrip",
+            sourceLabel: "Druid / Primal Order (Magician)",
+            description: "You know one extra cantrip of your choice from the Druid spell list.",
+            count: 1, lists: ["Druid"], levels: [0], ability: "wis",
+            sourceAliases: ["magician", "primal order"]
+        }],
         modifiers: [
             {
                 target: "spells.cantrips_known",
@@ -705,6 +766,24 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
         id: "pact-of-the-tome",
         name: "Pact of the Tome",
         description: "Book of Shadows grants three cantrips and two 1st-level ritual spells from any class list.",
+        spellPicks: [
+            {
+                id: "pact-of-the-tome-cantrips",
+                title: "Pact of the Tome: Book of Shadows — Cantrips",
+                sourceLabel: "Warlock / Pact of the Tome",
+                description: "While the Book of Shadows is on your person, you have three chosen cantrips prepared from any class's spell list, and they function as Warlock spells for you.",
+                count: 3, levels: [0], ability: "cha",
+                sourceAliases: ["pact of the tome"]
+            },
+            {
+                id: "pact-of-the-tome-rituals",
+                title: "Pact of the Tome: Book of Shadows — 1st-Level Rituals & Bonus Spells",
+                sourceLabel: "Warlock / Pact of the Tome",
+                description: "Choose two 1st-level spells that have the Ritual tag from any class's spell list. While the book is on your person, you have the chosen spells prepared, and they function as Warlock spells for you.",
+                count: 2, levels: [1], orRitual: true, ability: "cha",
+                sourceAliases: ["pact of the tome"]
+            }
+        ],
         modifiers: [
             { target: "spells.cantrips_known", type: "bonus", value: 3, description: "+3 cantrips from any list" }
         ]
@@ -829,18 +908,21 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "thirsting-blade",
+        minLevel: 5,
         name: "Thirsting Blade",
         description: "Attack twice with your pact weapon whenever you take the Attack action.",
         prerequisite: "Level 5, Pact of the Blade"
     },
     {
         id: "lifedrinker",
+        minLevel: 9,
         name: "Lifedrinker",
         description: "Hit with pact weapon deals 1d6 extra Necrotic, Psychic, or Radiant damage.",
         prerequisite: "Level 9, Pact of the Blade"
     },
     {
         id: "whispers-of-the-grave",
+        minLevel: 9,
         name: "Whispers of the Grave",
         description: "Cast Speak with Dead at will without expending a spell slot.",
         prerequisite: "Level 9",
@@ -870,6 +952,7 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "gaze-of-two-minds",
+        minLevel: 5,
         name: "Gaze of Two Minds",
         description: "Use a Bonus Action to touch a willing humanoid and perceive through its senses until the end of your next turn. While perceiving, you can cast spells as though you were in its space.",
         prerequisite: "Level 5"
@@ -890,12 +973,14 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "lessons-of-the-first-ones",
+        minLevel: 2,
         name: "Lessons of the First Ones",
         description: "You gain one Origin feat of your choice.",
         prerequisite: "Level 2"
     },
     {
         id: "otherworldly-leap",
+        minLevel: 2,
         name: "Otherworldly Leap",
         description: "You can cast Jump on yourself at will, without expending a spell slot.",
         prerequisite: "Level 2",
@@ -911,6 +996,7 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "ascendant-step",
+        minLevel: 5,
         name: "Ascendant Step",
         description: "You can cast Levitate on yourself at will, without expending a spell slot or material components.",
         prerequisite: "Level 5",
@@ -926,12 +1012,14 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "eldritch-smite",
+        minLevel: 5,
         name: "Eldritch Smite",
         description: "Once per turn when you hit with your pact weapon, spend a pact slot to deal 1d8 force damage plus 1d8 per slot level, and knock target prone if Huge or smaller.",
         prerequisite: "Level 5, Pact of the Blade"
     },
     {
         id: "master-of-myriad-forms",
+        minLevel: 5,
         name: "Master of Myriad Forms",
         description: "You can cast Alter Self at will, without expending a spell slot.",
         prerequisite: "Level 5",
@@ -947,12 +1035,14 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "one-with-shadows",
+        minLevel: 5,
         name: "One with Shadows",
         description: "When you are in dim light or darkness, you can take a Magic action to become Invisible until you move or take an action or reaction.",
         prerequisite: "Level 5"
     },
     {
         id: "witch-sight",
+        minLevel: 15,
         name: "Witch Sight",
         description: "You can see the true form of any shapechanger or creature concealed by illusion or transmutation magic within 30 feet.",
         prerequisite: "Level 15"
@@ -1295,14 +1385,12 @@ export const WAR_GOD_BLESSING_OPTIONS: ProgressionChoiceOption[] = [
     }
 ];
 
-export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: ProgressionChoiceOption[] = [
-    { id: "archery", name: "Archery", description: "+2 bonus to attack rolls made with ranged weapons.", modifiers: [{ target: "attacks.ranged", type: "bonus", value: 2, description: "+2 bonus to ranged attacks" }] },
-    { id: "defense", name: "Defense", description: "+1 bonus to Armor Class while wearing armor.", modifiers: [{ target: "vitals.ac", type: "bonus", value: 1, condition: "wearing armor", description: "+1 AC" }] },
-    { id: "dueling", name: "Dueling", description: "+2 bonus to damage rolls with one-handed melee weapon.", modifiers: [{ target: "damage.melee_one_handed", type: "bonus", value: 2, description: "+2 damage" }] },
-    { id: "great-weapon", name: "Great Weapon Fighting", description: "Treat 1 or 2 on damage dice for two-handed weapon as 3." },
-    { id: "protection", name: "Protection", description: "Impose Disadvantage on attack against adjacent ally with shield reaction." },
-    { id: "two-weapon", name: "Two-Weapon Fighting", description: "Add ability modifier to off-hand attack damage." }
-];
+// Champion's Additional Fighting Style: any Fighting Style feat a Fighter can take. Older saves used short ids.
+export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: ProgressionChoiceOption[] = BASE_FIGHTING_STYLES.map((o) =>
+    o.id === "great-weapon-fighting" ? { ...o, legacyIds: ["great-weapon"] }
+        : o.id === "two-weapon-fighting" ? { ...o, legacyIds: ["two-weapon"] }
+            : o
+);
 
 export const PSI_WARRIOR_THRUST_OPTIONS: ProgressionChoiceOption[] = [
     { id: "push", name: "Telekinetic Push", description: "Push target up to 10 feet horizontally away on a failed Strength save." },
@@ -1348,6 +1436,44 @@ export const IMPROVED_BRUTAL_STRIKE_OPTIONS: ProgressionChoiceOption[] = [
 // Class Progression Generator (Levels 1 to 20)
 // --------------------------------------------------------------------------
 
+/** Spell picks a class feature grants (Mystic Arcanum, Spell Mastery, Signature Spells). */
+function classFeatureSpellPicks(classSlug: string, lvl: number, featSlug: string): SpellPick[] | undefined {
+    if (classSlug === "warlock" && featSlug.startsWith("mystic-arcanum")) {
+        const spellLevel = ({ 11: 6, 13: 7, 15: 8, 17: 9 } as Record<number, number>)[lvl];
+        if (!spellLevel) return undefined;
+        const label = `${spellLevel}th`;
+        return [{
+            id: `warlock-${lvl}-mystic-arcanum`,
+            title: `Mystic Arcanum (${label} Level)`,
+            sourceLabel: `Warlock / Mystic Arcanum (${label} Level)`,
+            description: `Your patron grants you a magical secret called an arcanum. Choose one ${label}-level Warlock spell as this arcanum. You can cast it once without expending a spell slot per Long Rest.`,
+            count: 1, lists: ["Warlock"], levels: [spellLevel], ability: "cha",
+            sourceAliases: ["mystic arcanum"]
+        }];
+    }
+    if (classSlug === "wizard" && featSlug === "spell-mastery") {
+        return [1, 2].map((spellLevel) => ({
+            id: `wizard-18-spell-mastery-${spellLevel}`,
+            title: `Spell Mastery — Level ${spellLevel} Wizard Spell`,
+            sourceLabel: "Wizard / Spell Mastery",
+            description: `Choose one Level ${spellLevel} Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.`,
+            count: 1, lists: ["Wizard"], levels: [spellLevel], ability: "int" as AbilityName,
+            sourceAliases: ["spell mastery"]
+        }));
+    }
+    if (classSlug === "wizard" && featSlug === "signature-spells") {
+        return [{
+            id: "wizard-20-signature-spells",
+            title: "Signature Spells — Level 3 Wizard Spells",
+            sourceLabel: "Wizard / Signature Spells",
+            description: "Choose two Level 3 Wizard spells in your spellbook as your signature spells. You always have these spells prepared and can cast each of them once at 3rd level without expending a spell slot per Short or Long Rest.",
+            count: 2, lists: ["Wizard"], levels: [3], ability: "int",
+            sourceAliases: ["signature spell"]
+        }];
+    }
+    return undefined;
+}
+
 export function buildClassProgression(classSlug: string, baseFeatures: Array<{ name: string; level: number; description: string }> = []): ProgressionLevel[] {
     const levels: ProgressionLevel[] = [];
 
@@ -1390,16 +1516,19 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 modifiers.push({ target: "skills.unproficient", type: "half_proficiency", description: "Add half your Proficiency Bonus to skill checks you aren't proficient in" });
             }
 
+            const spellPicks = classFeatureSpellPicks(classSlug, lvl, featSlug);
             return {
                 id: `${classSlug}-${lvl}-${featSlug}`,
                 name: f.name,
                 description: f.description,
-                modifiers: modifiers.length > 0 ? modifiers : undefined
+                modifiers: modifiers.length > 0 ? modifiers : undefined,
+                spellPicks
             };
         });
 
         const choices: ProgressionChoice[] = [];
         const resourceUpdates: ProgressionResourceUpdate[] = [];
+        const badges: string[] = [];
 
         // Build class-specific progression choices and resources per level
         switch (classSlug) {
@@ -1407,6 +1536,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 // Rages scaling: 2 (1-2), 3 (3-5), 4 (6-11), 5 (12-16), 6 (17-20)
                 const rages = lvl >= 17 ? 6 : lvl >= 12 ? 5 : lvl >= 6 ? 4 : lvl >= 3 ? 3 : 2;
                 resourceUpdates.push({ name: "Rage", total: rages, resetOn: "long" });
+                badges.push(`Rage Damage ${lvl >= 16 ? "+4" : lvl >= 9 ? "+3" : "+2"}`);
                 if (lvl === 9) {
                     choices.push({
                         id: "brutal-strike",
@@ -1417,6 +1547,15 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                             { id: "forceful-blow", name: "Forceful Blow", description: "Push target 15 ft. away and move up to half speed toward it without provoking opportunity attacks." },
                             { id: "hamstring-blow", name: "Hamstring Blow", description: "Reduce target's speed by 15 ft. until start of next turn." }
                         ]
+                    });
+                }
+                if (lvl === 13) {
+                    choices.push({
+                        id: "brutal-strike",
+                        name: "Improved Brutal Strike",
+                        prompt: "Choose your primary Improved Brutal Strike technique.",
+                        chooseCount: 1,
+                        options: IMPROVED_BRUTAL_STRIKE_OPTIONS
                     });
                 }
                 break;
@@ -1446,7 +1585,8 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                         options: BLESSED_STRIKES_OPTIONS
                     });
                 }
-                const chUses = lvl >= 18 ? 4 : lvl >= 11 ? 3 : lvl >= 2 ? 2 : 0;
+                // 2024: 2 at level 2, 3 at 6, 4 at 18
+                const chUses = lvl >= 18 ? 4 : lvl >= 6 ? 3 : lvl >= 2 ? 2 : 0;
                 if (chUses > 0) {
                     resourceUpdates.push({ name: "Channel Divinity", total: chUses, resetOn: "short" });
                 }
@@ -1484,30 +1624,44 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                         name: "Fighting Style",
                         prompt: "Select a Fighting Style feat.",
                         chooseCount: 1,
-                        options: FIGHTING_STYLE_OPTIONS
+                        options: FIGHTER_FIGHTING_STYLES
+                    });
+                }
+                if (lvl === 9) {
+                    choices.push({
+                        id: "tactical-master",
+                        name: "Tactical Master",
+                        prompt: "Choose the mastery property you most often swap in.",
+                        chooseCount: 1,
+                        options: TACTICAL_MASTER_PROPERTIES
                     });
                 }
                 if (lvl >= 2) {
                     resourceUpdates.push({ name: "Action Surge", total: lvl >= 17 ? 2 : 1, resetOn: "short" });
                 }
-                resourceUpdates.push({ name: "Second Wind", total: lvl >= 10 ? 4 : lvl >= 4 ? 3 : 2, resetOn: "short" });
+                resourceUpdates.push({ name: "Second Wind", total: lvl >= 10 ? 4 : lvl >= 4 ? 3 : 2, die: "1d10", resetOn: "short" });
+                if (lvl >= 9) {
+                    resourceUpdates.push({ name: "Indomitable", total: lvl >= 17 ? 3 : lvl >= 13 ? 2 : 1, resetOn: "long" });
+                }
+                badges.push(lvl >= 20 ? "4 Attacks" : lvl >= 11 ? "3 Attacks" : lvl >= 5 ? "2 Attacks" : "1 Attack");
                 break;
 
             case "monk":
                 if (lvl >= 2) {
                     resourceUpdates.push({ name: "Focus Points", total: lvl, resetOn: "short" });
                 }
+                badges.push(`Martial Arts ${lvl >= 17 ? "1d12" : lvl >= 11 ? "1d10" : lvl >= 5 ? "1d8" : "1d6"}`);
                 break;
 
             case "paladin":
-                resourceUpdates.push({ name: "Lay on Hands Pool", total: lvl * 5, resetOn: "long" });
+                resourceUpdates.push({ name: "Lay on Hands", total: lvl * 5, resetOn: "long" });
                 if (lvl === 2) {
                     choices.push({
                         id: "fighting-style",
                         name: "Fighting Style",
                         prompt: "Select a Fighting Style feat.",
                         chooseCount: 1,
-                        options: FIGHTING_STYLE_OPTIONS
+                        options: PALADIN_FIGHTING_STYLES
                     });
                 }
                 if (lvl >= 3) {
@@ -1522,7 +1676,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                         name: "Fighting Style",
                         prompt: "Select a Fighting Style feat.",
                         chooseCount: 1,
-                        options: FIGHTING_STYLE_OPTIONS
+                        options: RANGER_FIGHTING_STYLES
                     });
                 }
                 break;
@@ -1539,15 +1693,26 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                         options: ROGUE_CUNNING_STRIKES
                     });
                 }
+                if (lvl === 14) {
+                    choices.push({
+                        id: "devious-strike",
+                        name: "Devious Strike",
+                        prompt: "Choose your primary Devious Strike option.",
+                        chooseCount: 1,
+                        options: ROGUE_DEVIOUS_STRIKES
+                    });
+                }
                 break;
 
             case "sorcerer":
+                resourceUpdates.push({ name: "Innate Sorcery", total: 2, resetOn: "long" });
                 if (lvl >= 2) {
                     resourceUpdates.push({ name: "Sorcery Points", total: lvl, resetOn: "long" });
                 }
                 if (lvl === 2) {
                     choices.push({
                         id: "metamagic",
+                        pool: "metamagic",
                         name: "Metamagic",
                         prompt: "Select 2 Metamagic options.",
                         chooseCount: 2,
@@ -1556,6 +1721,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 } else if (lvl === 10 || lvl === 17) {
                     choices.push({
                         id: `metamagic-${lvl}`,
+                        pool: "metamagic",
                         name: "Metamagic",
                         prompt: "Select 1 additional Metamagic option.",
                         chooseCount: 1,
@@ -1568,6 +1734,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 const invCount = lvl >= 18 ? 10 : lvl >= 15 ? 9 : lvl >= 12 ? 8 : lvl >= 9 ? 7 : lvl >= 7 ? 6 : lvl >= 5 ? 5 : lvl >= 2 ? 3 : 1;
                 choices.push({
                     id: "eldritch-invocations",
+                    pool: "invocations",
                     choiceId: "eldritch-invocations",
                     name: "Eldritch Invocations",
                     prompt: `Select Eldritch Invocations (choose up to ${invCount}).`,
@@ -1593,7 +1760,8 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
             level: lvl,
             features: levelFeatures,
             choices: choices.length > 0 ? choices : undefined,
-            resourceUpdates: resourceUpdates.length > 0 ? resourceUpdates : undefined
+            resourceUpdates: resourceUpdates.length > 0 ? resourceUpdates : undefined,
+            badges: badges.length > 0 ? badges : undefined
         });
     }
 
@@ -2032,6 +2200,15 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
                 options: WILD_HEART_TOTEMIC_ATTUNEMENTS
             });
         }
+    } else if (normSub.includes("world-tree") && lvl === 10) {
+        choices.push({
+            id: "battering-roots",
+            choiceId: "battering-roots",
+            name: "Battering Roots",
+            prompt: "Choose the mastery property Battering Roots adds most often.",
+            chooseCount: 1,
+            options: BATTERING_ROOTS_OPTIONS
+        });
     } else if (normSub.includes("zealot") && lvl === 3) {
         choices.push({
             id: "divine-fury",
@@ -2047,6 +2224,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
     if (normSub.includes("battle-master") && lvl === 3) {
         choices.push({
             id: "maneuvers-3",
+            pool: "maneuvers",
             choiceId: "maneuvers-3",
             name: "Maneuvers",
             prompt: "Choose 3 Battle Master Maneuvers.",
@@ -2056,6 +2234,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "student-of-war",
             choiceId: "student-of-war",
+            legacyKeys: ["fighter-3-battle-master-student"],
             name: "Student of War",
             prompt: "Choose 1 skill proficiency.",
             chooseCount: 1,
@@ -2086,6 +2265,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "land-biome",
             choiceId: "land-biome",
+            legacyKeys: ["druid-6-land"],
             name: "Land Biome",
             prompt: "Choose your current land biome affinity.",
             chooseCount: 1,
@@ -2120,8 +2300,8 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         });
     }
 
-    // 4. Cleric Subclasses
-    if (normSub.includes("war") && lvl === 6) {
+    // 4. Cleric Subclasses (War Domain; not Psi Warrior, whose id also contains "war")
+    if ((normSub === "war" || normSub === "war-domain") && lvl === 6) {
         choices.push({
             id: "war-god-blessing",
             choiceId: "war-god-blessing",
@@ -2164,10 +2344,12 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
                 chooseCount: 1,
                 options: HUNTER_PREY_OPTIONS
             });
-        } else if (lvl === 6) {
+        } else if (lvl === 7) {
+            // 2024 Hunter: Defensive Tactics at level 7
             choices.push({
                 id: "defensive-tactics",
                 choiceId: "defensive-tactics",
+                legacyKeys: ["ranger-6-hunter"],
                 name: "Defensive Tactics",
                 prompt: "Choose a Defensive Tactics feature.",
                 chooseCount: 1,
@@ -2289,6 +2471,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
         const featsAtLevel = subFeatures.filter(f => (f.level || 3) === lvl).map(f => {
             const featSlug = slugify(f.name);
             const modifiers: StatModifier[] = [];
+            let subSpellPicks: SpellPick[] | undefined;
 
             // Add inherent modifiers for concrete subclass features
             if (featSlug === "draconic-resilience") {
@@ -2296,6 +2479,15 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 modifiers.push({ target: "vitals.maxHp", type: "bonus", perClassLevel: 1, description: "+1 HP per Sorcerer level" });
             } else if (featSlug === "aquatic-affinity") {
                 modifiers.push({ target: "vitals.swim", type: "set", value: "walk", description: "Swim Speed equal to Speed" });
+            } else if (featSlug === "magical-discoveries") {
+                subSpellPicks = [{
+                    id: "bard-6-magical-discoveries",
+                    title: "Magical Discoveries (College of Lore) — Bonus Spells",
+                    sourceLabel: "Bard / Magical Discoveries",
+                    description: "You learn two spells of your choice from the Cleric, Druid, or Wizard spell list (cantrip or a spell of a level you can cast). You always have the chosen spells prepared.",
+                    count: 2, lists: ["Cleric", "Druid", "Wizard"], levels: [0], maxLevel: "castable", ability: "cha",
+                    sourceAliases: ["magical discoveries"]
+                }];
             } else if (featSlug === "umbral-sight") {
                 modifiers.push({ target: "vitals.darkvision", type: "bonus", value: 60, description: "Darkvision +60 ft." });
             }
@@ -2327,6 +2519,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 name: f.name,
                 description: f.description,
                 modifiers: modifiers.length > 0 ? modifiers : undefined,
+                spellPicks: subSpellPicks,
                 actionGrant,
                 grantedSpells: (f as any).grantedSpells,
                 grantedFeatures: (f as any).grantedFeatures
@@ -2339,6 +2532,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 name: `${sub.name} Spells`,
                 description: `Spells granted by ${sub.name} at level ${lvl}.`,
                 modifiers: undefined,
+                spellPicks: undefined,
                 actionGrant: undefined,
                 grantedSpells: spellsAtLevel,
                 grantedFeatures: undefined

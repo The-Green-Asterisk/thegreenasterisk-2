@@ -1,4 +1,5 @@
 import { CharacterClassChoice } from "../characterCreator.types";
+import { getProgressionChoices, getProgressionPools, setProgressionChoice } from "../services/progressionModifiers";
 import { CharacterCreatorContext } from "./context";
 
 export function initClassController(ctx: CharacterCreatorContext): void {
@@ -194,72 +195,6 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".fighting-style-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
-            ctx.state.fightingStyle = card.getAttribute("data-fighting-style-id") || "";
-            ctx.renderStep(3);
-        });
-    });
-
-    document.querySelectorAll(".divine-order-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
-            ctx.state.divineOrder = card.getAttribute("data-divine-order-id") || "";
-            ctx.renderStep(3);
-        });
-    });
-
-    document.querySelectorAll(".primal-order-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
-            ctx.state.primalOrder = card.getAttribute("data-primal-order-id") || "";
-            ctx.renderStep(3);
-        });
-    });
-
-    document.querySelectorAll(".metamagic-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
-            const metaId = card.getAttribute("data-metamagic-id") || "";
-            const maxCount = ctx.getMaxMetamagicCount();
-            if (ctx.state.metamagic.includes(metaId)) {
-                ctx.state.metamagic = ctx.state.metamagic.filter((m) => m !== metaId);
-            } else if (ctx.state.metamagic.length < maxCount) {
-                ctx.state.metamagic.push(metaId);
-            }
-            ctx.renderStep(3);
-        });
-    });
-
-    document.querySelectorAll(".invocation-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
-            const invId = card.getAttribute("data-invocation-id") || "";
-            const maxCount = ctx.getMaxInvocationsCount();
-            if (ctx.state.invocations.includes(invId)) {
-                ctx.state.invocations = ctx.state.invocations.filter((i) => i !== invId);
-            } else if (ctx.state.invocations.length < maxCount) {
-                ctx.state.invocations.push(invId);
-            }
-            ctx.renderStep(3);
-        });
-    });
-
-    document.querySelectorAll(".maneuver-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
-            const manId = card.getAttribute("data-maneuver-id") || "";
-            const maxCount = ctx.getMaxManeuversCount();
-            if (ctx.state.maneuvers.includes(manId)) {
-                ctx.state.maneuvers = ctx.state.maneuvers.filter((m) => m !== manId);
-            } else if (ctx.state.maneuvers.length < maxCount) {
-                ctx.state.maneuvers.push(manId);
-            }
-            ctx.renderStep(3);
-        });
-    });
-
     document.querySelectorAll(".prog-filter-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
             const filter = (btn.getAttribute("data-prog-filter") || "all") as "all" | "unlocked";
@@ -268,18 +203,66 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".subclass-feature-card").forEach((card) => {
-        card.addEventListener("click", () => {
+    // Pick lists (Eldritch Invocations, Metamagic, Maneuvers…): state[pool], up to the class's scalingTraits limit
+    document.querySelectorAll<HTMLElement>(".pool-card").forEach((card) => {
+        const toggle = () => {
+            if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
+            const poolName = card.getAttribute("data-pool") || "";
+            const optionId = card.getAttribute("data-option-id") || "";
+            const classIndex = Number(card.getAttribute("data-class-index") || 0);
+            const pool = getProgressionPools(ctx).find((p) => p.pool === poolName && p.classIndex === classIndex);
+            if (!pool || !optionId) return;
+            const current: string[] = Array.isArray((ctx.state as any)[poolName]) ? [...(ctx.state as any)[poolName]] : [];
+            if (current.includes(optionId)) {
+                (ctx.state as any)[poolName] = current.filter((id) => id !== optionId);
+            } else if (current.length < pool.max) {
+                (ctx.state as any)[poolName] = [...current, optionId];
+            }
+            ctx.renderStep(3, true);
+            ctx.updateLiveSummary();
+            Array.from(document.querySelectorAll<HTMLElement>(".pool-card"))
+                .find((c) => c.getAttribute("data-pool") === poolName && c.getAttribute("data-option-id") === optionId)
+                ?.focus();
+        };
+        card.addEventListener("click", toggle);
+        card.addEventListener("keydown", (e) => {
+            if (e.key === " " || e.key === "Enter") {
+                e.preventDefault();
+                toggle();
+            }
+        });
+    });
+
+    // Progression choices (class and subclass): stored by the engine under their storage key
+    document.querySelectorAll<HTMLElement>(".subclass-feature-card").forEach((card) => {
+        const toggle = () => {
             if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
             const key = card.getAttribute("data-feature-key");
-            const choice = card.getAttribute("data-feature-choice");
-            if (key && choice) {
-                if (!ctx.state.subclassFeatureChoices) {
-                    ctx.state.subclassFeatureChoices = {};
-                }
-                ctx.state.subclassFeatureChoices[key] = choice;
-                ctx.renderStep(3);
-                ctx.updateLiveSummary();
+            const optionId = card.getAttribute("data-feature-choice");
+            const classIndex = Number(card.getAttribute("data-class-index") || 0);
+            if (!key || !optionId) return;
+            const entry = getProgressionChoices(ctx).find((e) => e.key === key && e.classIndex === classIndex)
+                || getProgressionChoices(ctx).find((e) => e.key === key);
+            if (!entry) return;
+            const count = entry.choice.chooseCount || 1;
+            let next: string[];
+            if (entry.selectedIds.includes(optionId)) {
+                next = count > 1 ? entry.selectedIds.filter((id) => id !== optionId) : entry.selectedIds;
+            } else {
+                next = count > 1 ? [...entry.selectedIds, optionId].slice(-count) : [optionId];
+            }
+            setProgressionChoice(ctx, entry, next);
+            ctx.renderStep(3, true);
+            ctx.updateLiveSummary();
+            Array.from(document.querySelectorAll<HTMLElement>(".subclass-feature-card"))
+                .find((c) => c.getAttribute("data-feature-key") === key && c.getAttribute("data-feature-choice") === optionId)
+                ?.focus();
+        };
+        card.addEventListener("click", toggle);
+        card.addEventListener("keydown", (e) => {
+            if (e.key === " " || e.key === "Enter") {
+                e.preventDefault();
+                toggle();
             }
         });
     });

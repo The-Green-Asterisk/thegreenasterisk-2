@@ -10,6 +10,7 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { FeatureSpellChoiceSection, SpellBucket, SpellBucketSelection } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
+import { getActiveSpellPicks } from "./progressionModifiers";
 
 function getAllSpells(ctx: CharacterCreatorContext): RuleSpellDefinition[] {
     return (ctx.spells && ctx.spells.length > 0) ? ctx.spells : SPELLS_2024;
@@ -206,176 +207,35 @@ export function getFeatureSpellChoiceSections(ctx: CharacterCreatorContext): Fea
     }
     ctx.state.featureSpellChoices = ctx.state.featureSpellChoices || {};
 
-    const getClassLevel = (cid: string): number => {
-        const found = (ctx.state.classes || []).find((c) => (c.classId || "").toLowerCase() === cid.toLowerCase());
-        return found ? (found.level || 0) : 0;
-    };
-    const getClassSubclass = (cid: string): string => {
-        const found = (ctx.state.classes || []).find((c) => (c.classId || "").toLowerCase() === cid.toLowerCase());
-        const raw = found ? (found.subclassId || "") : "";
-        return ctx.resolveCanonicalSubclassId(cid, raw);
-    };
-
     const sections: FeatureSpellChoiceSection[] = [];
     const allSpells = getAllSpells(ctx);
 
-    // 1. Warlock — Pact of the Tome (3 cantrips from any class + 2 Level 1 Ritual spells from any class)
-    if (getClassLevel("warlock") >= 1 && Array.isArray(ctx.state.invocations) && ctx.state.invocations.includes("pact-of-the-tome")) {
-        sections.push({
-            id: "pact-of-the-tome-cantrips",
-            title: "Pact of the Tome: Book of Shadows — Cantrips",
-            sourceLabel: "Warlock / Pact of the Tome",
-            description: "While the Book of Shadows is on your person, you have three chosen cantrips prepared from any class's spell list, and they function as Warlock spells for you.",
-            chooseCount: 3,
-            availableSpells: allSpells.filter((sp) => sp.level === 0),
-            ability: "cha"
-        });
-        const currentTomeRitualNames = new Set(ctx.state.featureSpellChoices?.["pact-of-the-tome-rituals"] || []);
-        const availableRituals = allSpells.filter((sp) =>
-            (sp.level === 1) ||
-            sp.ritual ||
-            sp.name === "Mirror Image" ||
-            currentTomeRitualNames.has(sp.name)
-        );
-        sections.push({
-            id: "pact-of-the-tome-rituals",
-            title: "Pact of the Tome: Book of Shadows — 1st-Level Rituals & Bonus Spells",
-            sourceLabel: "Warlock / Pact of the Tome",
-            description: "Choose two 1st-level spells that have the Ritual tag (or bonus spells granted by your Book of Shadows) from any class's spell list. While the book is on your person, you have the chosen spells prepared, and they function as Warlock spells for you.",
-            chooseCount: 2,
-            availableSpells: availableRituals,
-            ability: "cha"
-        });
-    }
-
-    // 2. Cleric — Divine Order: Thaumaturge (1 extra Cleric cantrip)
-    if (getClassLevel("cleric") >= 1 && ctx.state.divineOrder === "thaumaturge") {
-        sections.push({
-            id: "divine-order-thaumaturge",
-            title: "Divine Order: Thaumaturge — Bonus Cleric Cantrip",
-            sourceLabel: "Cleric / Divine Order (Thaumaturge)",
-            description: "You know one extra cantrip of your choice from the Cleric spell list.",
-            chooseCount: 1,
-            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
-            ability: "wis"
-        });
-    }
-
-    // 3. Druid — Primal Order: Magician (1 extra Druid cantrip)
-    if (getClassLevel("druid") >= 1 && ctx.state.primalOrder === "magician") {
-        sections.push({
-            id: "primal-order-magician",
-            title: "Primal Order: Magician — Bonus Druid Cantrip",
-            sourceLabel: "Druid / Primal Order (Magician)",
-            description: "You know one extra cantrip of your choice from the Druid spell list.",
-            chooseCount: 1,
-            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
-            ability: "wis"
-        });
-    }
-
-    // 4. Fighting Style — Blessed Warrior (2 Cleric cantrips)
-    const hasFightingStyleClass = getClassLevel("fighter") >= 1 || getClassLevel("paladin") >= 2 || getClassLevel("ranger") >= 2;
-    const hasChampionAdditionalFs = getClassLevel("fighter") >= 7 && getClassSubclass("fighter") === "champion";
-    if (
-        (hasFightingStyleClass && ctx.state.fightingStyle === "blessed-warrior") ||
-        (hasChampionAdditionalFs && ctx.state.subclassFeatureChoices?.["fighter-7-champion"] === "blessed-warrior")
-    ) {
-        sections.push({
-            id: "fighting-style-blessed-warrior",
-            title: "Fighting Style: Blessed Warrior — Cleric Cantrips",
-            sourceLabel: "Fighting Style (Blessed Warrior)",
-            description: "You learn two Cleric cantrips of your choice. They count as class spells for you, and Charisma is your spellcasting ability for them.",
-            chooseCount: 2,
-            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Cleric")),
-            ability: "cha"
-        });
-    }
-
-    // 5. Fighting Style — Druidic Warrior (2 Druid cantrips)
-    if (
-        (hasFightingStyleClass && ctx.state.fightingStyle === "druidic-warrior") ||
-        (hasChampionAdditionalFs && ctx.state.subclassFeatureChoices?.["fighter-7-champion"] === "druidic-warrior")
-    ) {
-        sections.push({
-            id: "fighting-style-druidic-warrior",
-            title: "Fighting Style: Druidic Warrior — Druid Cantrips",
-            sourceLabel: "Fighting Style (Druidic Warrior)",
-            description: "You learn two Druid cantrips of your choice. They count as class spells for you, and Wisdom is your spellcasting ability for them.",
-            chooseCount: 2,
-            availableSpells: allSpells.filter((sp) => sp.level === 0 && sp.classes.includes("Druid")),
-            ability: "wis"
-        });
-    }
-
-    // 6. Bard — College of Lore: Magical Discoveries (Level 6+: 2 spells from Cleric, Druid, or Wizard)
-    const bardLvl = getClassLevel("bard");
-    if (bardLvl >= 6 && getClassSubclass("bard") === "lore") {
-        const bardMaxSpellLvl = Math.min(9, Math.ceil(bardLvl / 2));
-        sections.push({
-            id: "bard-6-magical-discoveries",
-            title: "Magical Discoveries (College of Lore) — Bonus Spells",
-            sourceLabel: "Bard / Magical Discoveries",
-            description: "You learn two spells of your choice from the Cleric, Druid, or Wizard spell list (cantrip or a spell of a level you can cast). You always have the chosen spells prepared.",
-            chooseCount: 2,
-            availableSpells: allSpells.filter((sp) => sp.level <= bardMaxSpellLvl && sp.classes.some((c) => c === "Cleric" || c === "Druid" || c === "Wizard")),
-            ability: "cha"
-        });
-    }
-
-    // 7. Warlock — Mystic Arcanum (Levels 11, 13, 15, 17: 6th, 7th, 8th, 9th level Warlock spell)
-    const warlockLvl = getClassLevel("warlock");
-    const arcanumTiers = [
-        { minLvl: 11, spellLvl: 6, label: "6th" },
-        { minLvl: 13, spellLvl: 7, label: "7th" },
-        { minLvl: 15, spellLvl: 8, label: "8th" },
-        { minLvl: 17, spellLvl: 9, label: "9th" }
-    ];
-    for (const tier of arcanumTiers) {
-        if (warlockLvl >= tier.minLvl) {
-            sections.push({
-                id: `warlock-${tier.minLvl}-mystic-arcanum`,
-                title: `Mystic Arcanum (${tier.label} Level)`,
-                sourceLabel: `Warlock / Mystic Arcanum (${tier.label} Level)`,
-                description: `Your patron grants you a magical secret called an arcanum. Choose one ${tier.label}-level Warlock spell as this arcanum. You can cast it once without expending a spell slot per Long Rest.`,
-                chooseCount: 1,
-                availableSpells: allSpells.filter((sp) => sp.level === tier.spellLvl && sp.classes.includes("Warlock")),
-                ability: "cha"
-            });
+    // Spell picks from class/subclass features, chosen options and pick-list entries (class rules data)
+    for (const pick of getActiveSpellPicks(ctx)) {
+        let castable = Infinity;
+        if (pick.maxLevel === "castable") {
+            const cc = (ctx.state.classes || []).find((c) => c.classId === pick.classId);
+            const def = ctx.classes.find((c) => c.id === pick.classId);
+            castable = (cc && getMulticlassCasterInfo(cc, def)?.maxSpellLevel) || 0;
         }
-    }
-
-    // 9. Wizard — Spell Mastery (Level 18+: 1 Level 1 Wizard spell and 1 Level 2 Wizard spell) & Signature Spells (Level 20: 2 Level 3 Wizard spells)
-    const wizardLvl = getClassLevel("wizard");
-    if (wizardLvl >= 18) {
+        const current = new Set(ctx.state.featureSpellChoices?.[pick.id] || []);
+        const levelOk = (lvl: number) =>
+            (pick.levels ? pick.levels.includes(lvl) : !pick.maxLevel) ||
+            (pick.maxLevel === "castable" && lvl >= 1 && lvl <= castable);
         sections.push({
-            id: "wizard-18-spell-mastery-1",
-            title: "Spell Mastery — Level 1 Wizard Spell",
-            sourceLabel: "Wizard / Spell Mastery",
-            description: "Choose one Level 1 Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.",
-            chooseCount: 1,
-            availableSpells: allSpells.filter((sp) => sp.level === 1 && sp.classes.includes("Wizard")),
-            ability: "int"
-        });
-        sections.push({
-            id: "wizard-18-spell-mastery-2",
-            title: "Spell Mastery — Level 2 Wizard Spell",
-            sourceLabel: "Wizard / Spell Mastery",
-            description: "Choose one Level 2 Wizard spell that has a casting time of an action. You always have it prepared and can cast it at its lowest level without expending a spell slot.",
-            chooseCount: 1,
-            availableSpells: allSpells.filter((sp) => sp.level === 2 && sp.classes.includes("Wizard")),
-            ability: "int"
-        });
-    }
-    if (wizardLvl >= 20) {
-        sections.push({
-            id: "wizard-20-signature-spells",
-            title: "Signature Spells — Level 3 Wizard Spells",
-            sourceLabel: "Wizard / Signature Spells",
-            description: "Choose two Level 3 Wizard spells in your spellbook as your signature spells. You always have these spells prepared and can cast each of them once at 3rd level without expending a spell slot per Short or Long Rest.",
-            chooseCount: 2,
-            availableSpells: allSpells.filter((sp) => sp.level === 3 && sp.classes.includes("Wizard")),
-            ability: "int"
+            id: pick.id,
+            title: pick.title,
+            sourceLabel: pick.sourceLabel,
+            description: pick.description,
+            chooseCount: pick.count,
+            availableSpells: allSpells.filter((sp) =>
+                current.has(sp.name) || (
+                    (!pick.lists || sp.classes.some((c) => pick.lists!.includes(c))) &&
+                    (levelOk(sp.level) || (!!pick.orRitual && sp.ritual))
+                )
+            ),
+            ability: pick.ability,
+            sourceAliases: pick.sourceAliases
         });
     }
 
