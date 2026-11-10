@@ -1,3 +1,4 @@
+import { rangeFeet, resolveSenses, senseGrantsFrom, writeSenses } from "../../rules/dnd5e_2024/senses";
 import { abilityKey, effectsFromLegacyNotes, mergeSaveEffects, normalizeAgainst, SaveEffect, saveEffectsFromRules } from "../../rules/dnd5e_2024/saveEffects";
 import {
     AbilityScore,
@@ -14,7 +15,7 @@ import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass
 import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
 import { featBonus, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
 import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
-import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
+import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSenseGrants, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
 import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
@@ -507,10 +508,6 @@ export function parseDndBeyondCharacter(
         else if (opt) featMechanics.push({ name: opt.name, modifiers: opt.modifiers });
     }
     const featMods = (target: string, type?: string) => featModifiers(featMechanics, target, type);
-    const featSense = (target: string): string | undefined => {
-        const v = featMods(target, "set")[0]?.value;
-        return v === undefined ? undefined : typeof v === "number" ? `${v} ft.` : String(v);
-    };
 
     // Class levels & features lookup helpers
     const hasClassFeatureOrOption = (featureKeyword: string): boolean => {
@@ -1060,22 +1057,13 @@ export function parseDndBeyondCharacter(
         }
     }
 
-    // Detect Devil's Sight (Eldritch Invocation / magical darkness sight)
+    // Sight in magical darkness: a D&D Beyond darkvision sense restricted to magical darkness
     const devilsSightMod = allMods.find(
         m =>
             (m.type === "sense" || m.type === "set-base") &&
             String(m.subType || "").toLowerCase().includes("darkvision") &&
             String(m.restriction || "").toLowerCase().includes("magical")
     );
-    const hasDevilsSightFeature =
-        !!devilsSightMod ||
-        (raw.options?.class || []).some((o: any) => /devil[’']s sight/i.test(o.definition?.name || "")) ||
-        allMods.some(m => /devil[’']s sight/i.test(m.friendlySubtypeName || ""));
-    const devilsSightSense = hasDevilsSightFeature
-        ? Number(devilsSightMod?.value ?? devilsSightMod?.fixedValue) > 0
-            ? `${Number(devilsSightMod?.value ?? devilsSightMod?.fixedValue)} ft.`
-            : "120 ft."
-        : undefined;
 
     // Senses parser supporting "sense" and "set-base" modifiers, custom senses, and racial traits
     const getSenseRange = (senseName: string, fallback = "None") => {
@@ -1114,28 +1102,28 @@ export function parseDndBeyondCharacter(
             if (senseName === "darkvision") return "60 ft.";
         }
 
-        // 3. Racial traits fallback (e.g. Tiefling, Elf, Dwarf, etc.)
-        if (senseName === "darkvision" && raw.race?.racialTraits) {
-            const darkvisionTrait = raw.race.racialTraits.find((rt: any) =>
-                /darkvision/i.test(rt.definition?.name || "")
-            );
-            if (darkvisionTrait) {
-                const text = `${darkvisionTrait.definition?.snippet || ""} ${darkvisionTrait.definition?.description || ""}`;
-                if (text.includes("120")) return "120 ft.";
-                return "60 ft.";
-            }
-        }
-
-        // 4. Feats and fighting styles (e.g. Boon of Truesight, Skulker, Blind Fighting), from their data
-        const fromFeat = featSense(`vitals.${senseName}`);
-        if (fromFeat) return fromFeat;
-
         return fallback;
     };
-    const darkvisionSense = getSenseRange("darkvision");
-    const blindsightSense = getSenseRange("blindsight");
-    const tremorsenseSense = getSenseRange("tremorsense");
-    const truesightSense = getSenseRange("truesight");
+    // D&D Beyond's senses are the base; the species, feats, and class options it gave no sense modifier for add theirs
+    // from the rules data (species darkvision and traits, Boon of Truesight, Skulker, Blind Fighting, Devil's Sight,
+    // and any senses.<key> added later)
+    const ddbSenses: Record<string, number> = {};
+    for (const key of ["darkvision", "blindsight", "tremorsense", "truesight"]) {
+        const n = rangeFeet(getSenseRange(key));
+        if (n > 0) ddbSenses[key] = n;
+    }
+    const ddbDevilsSight = rangeFeet(devilsSightMod?.value ?? devilsSightMod?.fixedValue) || (devilsSightMod ? 120 : 0);
+    if (ddbDevilsSight > 0) ddbSenses["devils-sight"] = ddbDevilsSight;
+    const senseGrants = [
+        ...speciesSenseGrants(ruleSpecies, getRuleLineage(), totalLevel),
+        ...senseGrantsFrom(featMechanics.map((f: any) => ({ name: f.name, modifiers: f.modifiers })))
+    ].filter((g) => !ddbSenses[g.key]);
+    const senseVitals: any = {};
+    writeSenses(senseVitals, resolveSenses(ddbSenses, senseGrants), senseGrants);
+    const darkvisionSense = senseVitals.darkvision;
+    const blindsightSense = senseVitals.blindsight;
+    const tremorsenseSense = senseVitals.tremorsense;
+    const truesightSense = senseVitals.truesight;
 
     // 6b. Initiative (DEX mod + initiative bonuses + statId bonuses like Rakish Audacity/Dread Ambusher/Tactical Wit + Alert proficiency/half-proficiency)
     const initBonusMods = allMods.filter(
@@ -2225,7 +2213,8 @@ export function parseDndBeyondCharacter(
             darkvision: darkvisionSense,
             tremorsense: tremorsenseSense,
             truesight: truesightSense,
-            devilsSight: devilsSightSense,
+            devilsSight: senseVitals.devilsSight,
+            ...(senseVitals.otherSenses ? { otherSenses: senseVitals.otherSenses } : {}),
             hitDice: hitDiceStr,
             heroicInspiration: !!raw.inspiration,
             spellSaveDc,
@@ -2237,6 +2226,8 @@ export function parseDndBeyondCharacter(
         },
         savingThrowNotes,
         saveEffects,
+        baseSenses: ddbSenses,
+        senseGrants,
         damageResistances,
         conditionImmunities,
         abilities,

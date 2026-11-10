@@ -308,6 +308,7 @@ export function renderVitalsSection(data: CharacterData): string {
                         <div class="special-sense-row"><span>Blindsight</span><strong class="sense-blindsight-val">${formatSense(data.vitals.blindsight)}</strong></div>
                         <div class="special-sense-row"><span>Tremorsense</span><strong class="sense-tremorsense-val">${formatSense(data.vitals.tremorsense)}</strong></div>
                         <div class="special-sense-row"><span>Truesight</span><strong class="sense-truesight-val">${formatSense(data.vitals.truesight)}</strong></div>
+                        ${(data.vitals.otherSenses || []).map((s) => `<div class="special-sense-row" data-sense="${escapeText(s.key)}"><span>${escapeText(s.label)}</span><strong>${escapeText(formatSense(s.range))}</strong></div>`).join("")}
                     </div>
                 </div>
             </div>

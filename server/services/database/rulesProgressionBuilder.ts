@@ -170,6 +170,7 @@ export type ModifierTarget =
     | "vitals.speed"
     | "vitals.blindsight"
     | "vitals.darkvision"
+    | "vitals.devilsSight"
     | "abilities.str"
     | "abilities.dex"
     | "abilities.con"
@@ -844,8 +845,8 @@ export const ELDRITCH_INVOCATIONS: ProgressionChoiceOption[] = [
         description: "See normally in magical and nonmagical darkness to 120 feet.",
         modifiers: [
             {
-                target: "vitals.darkvision",
-                type: "bonus",
+                target: "vitals.devilsSight",
+                type: "set",
                 value: 120,
                 description: "See in magical and nonmagical darkness out to 120 feet"
             }
@@ -1404,7 +1405,7 @@ export const PSI_WARRIOR_THRUST_OPTIONS: ProgressionChoiceOption[] = [
 ];
 
 export const DIVINER_THIRD_EYE_OPTIONS: ProgressionChoiceOption[] = [
-    { id: "darkvision", name: "Darkvision", description: "Gain Darkvision 60 feet until next rest.", modifiers: [{ target: "vitals.darkvision", type: "bonus", value: 60, description: "+60 ft. Darkvision" }] },
+    { id: "darkvision", name: "Darkvision", description: "Gain Darkvision 60 feet until next rest.", modifiers: [{ target: "vitals.darkvision", type: "set", value: 60, description: "Darkvision 60 ft." }] },
     { id: "ethereal-sight", name: "Ethereal Sight", description: "See into the Ethereal Plane within 60 feet." },
     { id: "greater-comprehension", name: "Greater Comprehension", description: "Read any language." },
     { id: "see-invisibility", name: "See Invisibility", description: "See invisible creatures within 10 feet." }

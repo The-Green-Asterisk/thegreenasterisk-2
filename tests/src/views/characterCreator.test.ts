@@ -2184,7 +2184,7 @@ describe("CharacterCreatorController", () => {
 
         let char = capturedPayload.character || capturedPayload;
         expect(char.race).toBe("Drow");
-        expect(char.vitals.darkvision).toBe("Darkvision 120 ft.");
+        expect(char.vitals.darkvision).toBe("120 ft.");
 
         // 2. Dragonborn at level 5
         postSpy.mockClear();

@@ -85,10 +85,12 @@ export function findClassOption(kind: string, optId: string, customOptions?: Fea
 
 /** Finds a class or subclass choice option by its name (e.g. a fighting style or invocation D&D Beyond lists by name). */
 export function findClassOptionByName(name: string): FeatureOption | undefined {
-    const key = String(name || "").trim().toLowerCase();
+    // D&D Beyond writes "Devil’s Sight" with a curly apostrophe; the rules data uses a straight one
+    const norm = (s: string) => String(s || "").trim().toLowerCase().replace(/[’‘`]/g, "'");
+    const key = norm(name);
     if (!key) return undefined;
     for (const src of allChoiceSources(getClassRules())) {
-        const found = (src.choice.options || []).find((o) => o.name.toLowerCase() === key);
+        const found = (src.choice.options || []).find((o) => norm(o.name) === key);
         if (found) return found;
     }
     return undefined;

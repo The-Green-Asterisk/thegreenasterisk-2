@@ -1,3 +1,4 @@
+import { listSenses, rangeFeet, resolveSenses, SenseGrant, senseGrantsFrom, writeSenses } from "./senses";
 import { AbilityName, LineageDefinition, SpeciesDefinition, SpeciesTrait, StatModifier } from "./types";
 
 const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"];
@@ -206,4 +207,32 @@ export function resolveSpeciesSpellAbility(
 ): AbilityName | undefined {
     const options = speciesSpellAbilityOptions(species, lineage, level);
     return options.find((ab) => ab === picked) || options[0];
+}
+
+/**
+ * The special senses the species and lineage give at this character level: their darkvision ("Darkvision 120 ft."),
+ * and any sense their modifiers or active traits set or extend (senses.<key>, vitals.darkvision, ...), each named by
+ * where it comes from.
+ */
+export function speciesSenseGrants(species: SpeciesDefinition | undefined, lineage: LineageDefinition | undefined, level: number): SenseGrant[] {
+    const grants: SenseGrant[] = [];
+    const dv = (text: unknown, source: string) => {
+        const n = rangeFeet(text);
+        if (n > 0) grants.push({ key: "darkvision", type: "set", value: n, source });
+    };
+    if (species) dv(species.darkvision, species.name);
+    if (lineage) dv(lineage.darkvision, lineage.name);
+    grants.push(...senseGrantsFrom([
+        ...(lineage?.modifiers ? [{ name: lineage.name, modifiers: lineage.modifiers }] : []),
+        ...activeSpeciesTraits(species, lineage, level).map((t) => ({ name: traitBaseName(t.name), modifiers: t.modifiers }))
+    ]));
+    return grants;
+}
+
+/** The species' senses at 1st level, for its card ("Darkvision 60 ft."). */
+export function speciesSenseSummary(species: SpeciesDefinition | undefined, lineage?: LineageDefinition): string[] {
+    const vitals: Record<string, any> = {};
+    const grants = speciesSenseGrants(species, lineage, 1);
+    writeSenses(vitals, resolveSenses({}, grants), grants);
+    return listSenses(vitals).map((s) => `${s.label} ${s.range}`);
 }

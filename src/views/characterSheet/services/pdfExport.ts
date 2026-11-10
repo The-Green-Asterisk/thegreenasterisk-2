@@ -1,3 +1,4 @@
+import { listSenses } from "../../../rules/dnd5e_2024/senses";
 import { speciesSpellcastingSummary } from "../components/details";
 import { isCharacterSpeciesSpell } from "../components/spells";
 import { jsPDF } from "jspdf";
@@ -204,12 +205,8 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
                         <div class="pdf-sense-item"><strong>${data.vitals.passiveInvestigation}</strong> Passive Investigation</div>
                         <div class="pdf-sense-item"><strong>${data.vitals.passiveInsight}</strong> Passive Insight</div>
                         ${(() => {
-                            const senses: string[] = [];
-                            if (data.vitals.darkvision) senses.push(`Darkvision ${data.vitals.darkvision}`);
-                            if (data.vitals.blindsight) senses.push(`Blindsight ${data.vitals.blindsight}`);
-                            if (data.vitals.tremorsense) senses.push(`Tremorsense ${data.vitals.tremorsense}`);
-                            if (data.vitals.truesight) senses.push(`Truesight ${data.vitals.truesight}`);
-                            if (data.vitals.devilsSight) senses.push(`Devil's Sight ${data.vitals.devilsSight}`);
+                            // Every sense the character has (none listed as "None"), including senses added by rules data
+                            const senses = listSenses(data.vitals).map((s) => `${s.label} ${s.range}`);
                             return senses.length ? `<div class="pdf-sense-item"><strong>Senses:</strong> ${escapeHtml(senses.join(", "))}</div>` : "";
                         })()}
                     </div>

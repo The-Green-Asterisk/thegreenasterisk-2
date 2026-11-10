@@ -1,3 +1,4 @@
+import { speciesSenseSummary } from "../../../rules/dnd5e_2024/speciesRules";
 import { SpeciesDefinition } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
@@ -89,7 +90,7 @@ export function renderStep2Species(ctx: CharacterCreatorContext): string {
                             <h4 class="card-title">${sp.name}</h4>
                             <span class="card-check"><i class="fa-solid fa-check"></i></span>
                         </div>
-                        <span class="card-tag">${sp.size} • ${sp.speed} ft. ${sp.darkvision ? `• ${sp.darkvision}` : ""}</span>
+                        <span class="card-tag">${[sp.size, `${sp.speed} ft.`, ...speciesSenseSummary(sp)].join(" • ")}</span>
                         <p class="card-body">${sp.description}</p>
                     </div>
                 `).join("")}

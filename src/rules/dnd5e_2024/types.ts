@@ -159,6 +159,9 @@ export type ModifierTarget =
     | "vitals.speed"
     | "vitals.blindsight"
     | "vitals.darkvision"
+    | "vitals.devilsSight"
+    /** Any special sense, existing or new (senses.ts): "set" = at least value ft., "bonus" = value ft. farther */
+    | `senses.${string}`
     | "abilities.str"
     | "abilities.dex"
     | "abilities.con"
@@ -216,6 +219,8 @@ export interface StatModifier {
     allowsShield?: boolean;        // unarmored_ac: still applies while holding a shield
     requires?: "no-armor" | "no-heavy-armor" | "no-armor-or-shield"; // only applies in this armor state
     condition?: string;
+    /** Name of a sense the sheet doesn't know yet (senses.<key> targets) */
+    label?: string;
     description?: string;
 }
 

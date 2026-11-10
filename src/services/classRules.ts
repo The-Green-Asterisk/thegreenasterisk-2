@@ -53,9 +53,10 @@ export function setFeatRules(feats: Array<OriginFeatDefinition | GeneralFeatDefi
 
 /** Finds a feat by id or name (a D&D Beyond name like "Skilled" or "Keen Mind"). */
 export function findFeatRule(nameOrId: string): OriginFeatDefinition | GeneralFeatDefinition | undefined {
-    const key = (nameOrId || "").trim().toLowerCase();
+    const norm = (s: string) => (s || "").trim().toLowerCase().replace(/[’‘`]/g, "'");
+    const key = norm(nameOrId);
     const slug = key.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    return getFeatRules().find((f) => f.id === key || f.id === slug || f.name.toLowerCase() === key);
+    return getFeatRules().find((f) => f.id === key || f.id === slug || norm(f.name) === key);
 }
 
 /** The species rules (rule_species, as served by /get-rules) once loaded; until then the offline copy. */

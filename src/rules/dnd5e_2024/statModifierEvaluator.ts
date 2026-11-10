@@ -2,6 +2,7 @@ import { CharacterData } from "../../views/characterSheet/characterData";
 import { AbilityName, StatModifier } from "./types";
 import { findClassOption } from "./classOptions";
 import { abilityKey, applySaveEffect, normalizeAgainst, SaveEffect } from "./saveEffects";
+import { applySenseGrants, senseGrantsFrom, senseKeyOfTarget } from "./senses";
 
 function syncCharacterNote(character: CharacterData, note: string, add: boolean): void {
     if (!character) return;
@@ -93,21 +94,9 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
     else if (target === "vitals.spellAttackBonus" || target === "spells.attack") {
         character.vitals.spellAttackBonus = (character.vitals.spellAttackBonus || 0) + sign * delta;
     }
-    // Blindsight
-    else if (target === "vitals.blindsight") {
-        if (sign === 1) {
-            character.vitals.blindsight = String(mod.value || "10 ft.");
-        } else {
-            character.vitals.blindsight = "None";
-        }
-    }
-    // Darkvision
-    else if (target === "vitals.darkvision") {
-        if (sign === 1) {
-            const cur = parseInt(String(character.vitals.darkvision || "0 ft.").match(/\d+/)?.[0] || "0", 10);
-            const added = numVal || 60;
-            character.vitals.darkvision = `${Math.max(cur, added)} ft.`;
-        }
+    // Special senses (darkvision, blindsight, ..., Devil's Sight, and any senses.<key>), undone exactly by source
+    else if (senseKeyOfTarget(target)) {
+        applySenseGrants(character, senseGrantsFrom([{ name: source, modifiers: [mod] }]), sign === -1);
     }
     // Abilities
     else if (target.startsWith("abilities.")) {

@@ -1,4 +1,5 @@
 import type { SaveEffect } from "../../rules/dnd5e_2024/saveEffects";
+import type { OtherSense, SenseGrant } from "../../rules/dnd5e_2024/senses";
 
 export interface SpellDefinition {
     id: string | number;
@@ -213,6 +214,8 @@ export interface CharacterData {
         tremorsense?: string;
         truesight?: string;
         devilsSight?: string;
+        /** Senses without their own field (from rules data senses.<key> modifiers) */
+        otherSenses?: OtherSense[];
         hitDice: string;
         heroicInspiration: boolean;
         spellSaveDc: number;
@@ -231,6 +234,10 @@ export interface CharacterData {
     savingThrowNotes?: string[];
     /** Advantage, disadvantage, and situational bonuses on saving throws, merged, with their sources */
     saveEffects?: SaveEffect[];
+    /** Senses before any rules-data grants (species, or what D&D Beyond gave), feet by key */
+    baseSenses?: Record<string, number>;
+    /** Senses granted by rules data (class features, options, feats, traits), with their sources */
+    senseGrants?: SenseGrant[];
     damageResistances?: string[];
     conditionImmunities?: string[];
     abilities: AbilityScore[];
