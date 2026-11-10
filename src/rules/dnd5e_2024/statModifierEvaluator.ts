@@ -1,8 +1,8 @@
 import { CharacterData } from "../../views/characterSheet/characterData";
-import { AbilityName, StatModifier } from "./types";
 import { findClassOption } from "./classOptions";
 import { abilityKey, applySaveEffect, normalizeAgainst, SaveEffect } from "./saveEffects";
 import { applySenseGrants, senseGrantsFrom, senseKeyOfTarget } from "./senses";
+import { StatModifier } from "./types";
 
 function syncCharacterNote(character: CharacterData, note: string, add: boolean): void {
     if (!character) return;
@@ -51,6 +51,17 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
 
     // AC
     if (target === "vitals.ac" || target === "vitals.armorClass") {
+        if (mod.requires === "armor") {
+            const dexMod = character.abilities?.find(a => a.abbr === "DEX")?.modifier ?? 0;
+            const hasExplicitArmor = (character.equipment || []).some(i => {
+                if (!i.equipped) return false;
+                const type = (i.type || i.filterType || "").toLowerCase();
+                const name = (i.name || "").toLowerCase();
+                return (type === "armor" || name.includes("armor") || name.includes("mail") || name.includes("plate") || name.includes("leather")) && !name.includes("shield");
+            }) || (!!character.creatorState?.armor && character.creatorState.armor !== "none");
+            const isArmored = hasExplicitArmor || (!character.equipment?.length && !character.creatorState?.armor && (character.vitals?.armorClass ?? 0) > 10 + dexMod);
+            if (!isArmored) return;
+        }
         character.vitals.armorClass = (character.vitals.armorClass || 10) + sign * (delta || 1);
     }
     // Max HP
@@ -64,7 +75,31 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
         const currentSpeedMatch = String(character.vitals.speed || "30 ft.").match(/\d+/);
         const currentSpeed = currentSpeedMatch ? parseInt(currentSpeedMatch[0], 10) : 30;
         const newSpeed = Math.max(0, currentSpeed + sign * delta);
-        character.vitals.speed = `${newSpeed} ft.`;
+        const currentParen = String(character.vitals.speed || "").match(/\s*(\([^)]+\))/);
+        character.vitals.speed = `${newSpeed} ft.${currentParen ? currentParen[0] : ""}`;
+    }
+    // Special Speeds: climb, swim, fly, burrow
+    else if (
+        target === "vitals.climb" || target === "vitals.swim" || target === "vitals.fly" ||
+        target === "speeds.fly" || target === "speeds.swim" || target === "speeds.climb" ||
+        target === "vitals.burrow" || target === "speeds.burrow"
+    ) {
+        const kind = target.replace(/^(vitals|speeds)\./, "").toLowerCase();
+        const walkSpeedMatch = String(character.vitals.speed || "30 ft.").match(/\d+/);
+        const walkSpeed = walkSpeedMatch ? parseInt(walkSpeedMatch[0], 10) : 30;
+        const speedVal = (mod.value === "walk" || mod.value === "equal_walk") ? walkSpeed : Number(mod.value) || walkSpeed;
+        const label = kind.charAt(0).toUpperCase() + kind.slice(1);
+        const speedStr = `${label} ${speedVal} ft.`;
+        const currentParen = String(character.vitals.speed || "").match(/\(([^)]+)\)/);
+        let specialSpeeds = currentParen ? currentParen[1].split(/,\s*/).map(s => s.trim()).filter(Boolean) : [];
+        if (sign === 1) {
+            specialSpeeds = specialSpeeds.filter(s => !s.toLowerCase().startsWith(kind));
+            specialSpeeds.push(speedStr);
+        } else {
+            specialSpeeds = specialSpeeds.filter(s => !s.toLowerCase().startsWith(kind));
+        }
+        const baseWalk = `${walkSpeed} ft.`;
+        character.vitals.speed = specialSpeeds.length > 0 ? `${baseWalk} (${specialSpeeds.join(", ")})` : baseWalk;
     }
     // Initiative
     else if (target === "vitals.initiative") {
@@ -188,6 +223,74 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
                     character.vitals.passiveInvestigation += passiveDelta;
                 }
             }
+        }
+    }
+    // Great Weapon Fighting damage floor
+    else if (target === "attacks.two_handed_damage_floor") {
+        const note = "GWF (min 3 on damage dice)";
+        if (Array.isArray(character.weapons)) {
+            character.weapons.forEach(w => {
+                const isTwoHanded = Array.isArray(w.properties) && w.properties.some((p: string) => p.toLowerCase().includes("two-handed"));
+                if (isTwoHanded) {
+                    if (sign === 1 && !w.properties.includes(note)) {
+                        w.properties.push(note);
+                    } else if (sign === -1) {
+                        const idx = w.properties.indexOf(note);
+                        if (idx !== -1) w.properties.splice(idx, 1);
+                    }
+                }
+            });
+        }
+        syncCharacterNote(character, "Great Weapon Fighting: damage die roll of 1 or 2 is treated as a 3 on two-handed melee weapons", sign === 1);
+    }
+    // Two-Weapon Fighting off-hand damage
+    else if (target === "damage.offhand_ability_mod") {
+        const note = "TWF (adds ability mod to off-hand damage)";
+        if (Array.isArray(character.weapons)) {
+            character.weapons.forEach(w => {
+                const isLight = Array.isArray(w.properties) && w.properties.some((p: string) => p.toLowerCase().includes("light"));
+                if (isLight) {
+                    if (sign === 1 && !w.properties.includes(note)) {
+                        w.properties.push(note);
+                    } else if (sign === -1) {
+                        const idx = w.properties.indexOf(note);
+                        if (idx !== -1) w.properties.splice(idx, 1);
+                    }
+                }
+            });
+        }
+        syncCharacterNote(character, "Two-Weapon Fighting: add ability modifier to off-hand attack damage", sign === 1);
+    }
+    // Cantrip damage modifiers (e.g. Potent Spellcasting, Agonizing Blast)
+    else if (target === "damage.cantrips" || target === "damage.eldritch_blast") {
+        const isEbOnly = target === "damage.eldritch_blast";
+        let bonus = delta;
+        if (type === "ability_mod" && mod.abilitySource) {
+            const ab = character.abilities.find(a => a.abbr.toLowerCase() === mod.abilitySource?.toLowerCase());
+            bonus = ab ? ab.modifier : 0;
+        }
+        if (Array.isArray(character.actions)) {
+            character.actions.forEach(a => {
+                const isCantrip = !!a.spellName || (character.spells || []).some(s => s.level === 0 && s.name.toLowerCase() === a.name.toLowerCase());
+                if (!isCantrip) return;
+                if (isEbOnly && a.name.toLowerCase() !== "eldritch blast") return;
+
+                if (a.damageOrEffect && a.damageOrEffect !== "Spell Effect") {
+                    const match = a.damageOrEffect.match(/^(\d+d\d+)(?:\s*([+-]\s*\d+))?\s*(.*)$/);
+                    if (match) {
+                        const die = match[1];
+                        const curBonus = match[2] ? parseInt(match[2].replace(/\s+/g, ""), 10) : 0;
+                        const typeStr = match[3] || "";
+                        const newBonus = curBonus + sign * bonus;
+                        const bonusPart = newBonus !== 0 ? (newBonus > 0 ? ` + ${newBonus}` : ` - ${Math.abs(newBonus)}`) : "";
+                        a.damageOrEffect = `${die}${bonusPart} ${typeStr}`.trim();
+                    }
+                } else if (bonus !== 0 && sign === 1) {
+                    a.damageOrEffect = `+${bonus} Damage`;
+                } else if (sign === -1 && a.damageOrEffect === `+${bonus} Damage`) {
+                    a.damageOrEffect = "Spell Effect";
+                }
+            });
         }
     }
     // Weapon Attacks
@@ -323,14 +426,15 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
             }
         }
     }
-    // Grant Action
-    else if (type === "grant_action" || target.startsWith("actions.")) {
-        const actionName = String(mod.value || "").trim();
+    // Grant Action / Reaction
+    else if (type === "grant_action" || target.startsWith("actions.") || target.startsWith("reactions.")) {
+        const rawActionName = String(mod.value || "").trim() || (target.startsWith("reactions.") ? target.replace(/^reactions\./, "") : target.replace(/^actions\./, ""));
+        const actionName = rawActionName.charAt(0).toUpperCase() + rawActionName.slice(1);
         if (actionName) {
             if (!Array.isArray(character.actions)) {
                 character.actions = [];
             }
-            const actionType = target.includes("bonus") ? "Bonus Action" : target.includes("reaction") ? "Reaction" : "Action";
+            const actionType = target.startsWith("reactions.") ? "Reaction" : target.includes("bonus") ? "Bonus Action" : "Action";
             if (sign === 1) {
                 if (!character.actions.some(a => a.name.toLowerCase() === actionName.toLowerCase())) {
                     character.actions.push({
@@ -361,6 +465,13 @@ export function applyProgressionChoiceOption(
         modifiers?: StatModifier[];
         grantedSpells?: Array<any>;
         grantedFeatures?: Array<any>;
+        actionGrant?: {
+            name: string;
+            type?: string;
+            range?: string;
+            notes?: string;
+            effect?: string;
+        };
     },
     sign: 1 | -1
 ): void {
@@ -369,6 +480,26 @@ export function applyProgressionChoiceOption(
     if (Array.isArray(option.modifiers)) {
         for (const mod of option.modifiers) {
             applyStatModifier(character, mod, sign, option.name);
+        }
+    }
+
+    if (option.actionGrant) {
+        if (!Array.isArray(character.actions)) character.actions = [];
+        const grant = option.actionGrant;
+        if (sign === 1) {
+            if (!character.actions.some(a => a.name.toLowerCase() === grant.name.toLowerCase())) {
+                character.actions.push({
+                    name: grant.name,
+                    type: (grant.type as any) || "Reaction",
+                    rangeOrReach: grant.range || "5 ft.",
+                    hitOrDc: "Special",
+                    damageOrEffect: grant.notes || option.description,
+                    notes: grant.notes || `Granted by ${option.name}.`
+                });
+            }
+        } else {
+            const idx = character.actions.findIndex(a => a.name.toLowerCase() === grant.name.toLowerCase());
+            if (idx !== -1) character.actions.splice(idx, 1);
         }
     }
 
