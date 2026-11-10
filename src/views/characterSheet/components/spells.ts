@@ -1,6 +1,7 @@
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
-import { findClassRule, getClassRules, getFeatRules, getSpeciesRules } from "../../../services/classRules";
 import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
+import { findClassRule, getClassRules, getFeatRules, getSpeciesRules } from "../../../services/classRules";
+import { extractSpellDamageInfo, getSpellDamageDisplay, parseDamageScalingString } from "../../../services/spellDamage";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -284,12 +285,28 @@ export function describeDuplicateSpells(data: Pick<CharacterData, "name" | "dupl
         `Remove the extra ${dupes.length === 1 && dupes[0].copies.length <= 2 ? "copy" : "copies"} on D&D Beyond.${freed}`;
 }
 
-export function renderSpellCard(spell: SpellDefinition): string {
-    const levelText = spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`;
+export function renderSpellCard(spell: SpellDefinition, characterLevel?: number): string {
+    const isUpcast = spell.castAtLevel !== undefined && spell.castAtLevel !== spell.level;
+    const currentLevel = isUpcast ? spell.castAtLevel! : spell.level;
+    const levelText = spell.level === 0
+        ? 'Cantrip'
+        : isUpcast
+            ? `Level ${spell.castAtLevel} (Base: Level ${spell.level})`
+            : `Level ${spell.level}`;
     const concBadge = spell.concentration ? '<span class="badge badge-conc" title="Concentration">Conc</span>' : '';
     const ritBadge = spell.ritual ? '<span class="badge badge-ritual" title="Ritual">Ritual</span>' : '';
+    const upcastBadge = isUpcast ? `<span class="badge badge-upcast" title="Cast using a Level ${spell.castAtLevel} spell slot">Upcast</span>` : '';
+
+    const damageText = getSpellDamageDisplay(spell, currentLevel, characterLevel);
+    const damageBadge = damageText
+        ? `<span class="badge badge-damage" title="Damage: ${damageText}"><i class="fa-solid fa-burst"></i> ${damageText}</span>`
+        : '';
+    const damageMeta = damageText
+        ? `<div class="meta-item meta-damage"><span class="meta-label">Damage:</span> <span class="meta-value damage-dice-value"><i class="fa-solid fa-burst"></i> ${damageText}</span></div>`
+        : '';
+
     return `
-        <div class="spell-card" data-spell-name="${encodeURIComponent(spell.name)}" data-spell-id="${spell.id ?? ''}" tabindex="0" role="button" aria-haspopup="dialog" title="Click to view full spell description">
+        <div class="spell-card ${isUpcast ? 'spell-card-upcast' : ''}" data-spell-name="${encodeURIComponent(spell.name)}" data-spell-id="${spell.id ?? ''}" tabindex="0" role="button" aria-haspopup="dialog" title="Click to view full spell description">
             <div class="spell-card-top">
                 <div class="spell-title-wrap">
                     <h4 class="spell-title">${spell.name}</h4>
@@ -298,14 +315,17 @@ export function renderSpellCard(spell: SpellDefinition): string {
                 <div class="spell-badges">
                     <span class="badge badge-source">${spell.source}</span>
                     ${spell.viaFeature ? `<span class="badge badge-source" title="Not on the ${spell.source} spell list; available through ${spell.viaFeature}">${spell.viaFeature}</span>` : ''}
+                    ${damageBadge}
                     ${concBadge}
                     ${ritBadge}
+                    ${upcastBadge}
                 </div>
             </div>
             <div class="spell-card-meta">
                 <div class="meta-item"><span class="meta-label">Time:</span> <span class="meta-value">${spell.castingTime}</span></div>
                 <div class="meta-item"><span class="meta-label">Range:</span> <span class="meta-value">${spell.range}</span></div>
                 <div class="meta-item"><span class="meta-label">Duration:</span> <span class="meta-value">${spell.duration}</span></div>
+                ${damageMeta}
             </div>
             <div class="spell-card-footer">
                 <span class="view-details-hint"><i class="fa-solid fa-book-open"></i> Full Description</span>
@@ -358,16 +378,81 @@ export function renderSpellsByLevel(
     spellSlots: CharacterData["spellSlots"],
     characterData?: CharacterData
 ): string {
-    const sorted = [...spells].sort((a, b) => {
-        if (a.level !== b.level) return a.level - b.level;
-        return a.name.localeCompare(b.name);
+    const characterLevel = characterData
+        ? (Number(characterData.level) || (characterData.classes || []).reduce((sum, c) => sum + (Number(c.level) || 0), 0) || 1)
+        : undefined;
+
+    // Enrich all spells with damage information if missing
+    const enrichedSpells = spells.map(sp => {
+        if (!sp.damageDice || !sp.damageScaling) {
+            const info = extractSpellDamageInfo(sp);
+            if (info.damageDice || info.damageScaling) {
+                return {
+                    ...sp,
+                    damageDice: sp.damageDice || info.damageDice,
+                    damageType: sp.damageType || info.damageType,
+                    damageModifier: sp.damageModifier || info.damageModifier,
+                    damageScaling: sp.damageScaling || info.damageScaling
+                };
+            }
+        }
+        return sp;
     });
 
+    // Determine available higher spell slot levels on this character
+    const availableSlotLevels = new Set<number>();
+    if (spellSlots) {
+        for (let l = 1; l <= 9; l++) {
+            const slot = spellSlots[`level${l}`];
+            if (slot && slot.total > 0) {
+                availableSlotLevels.add(l);
+            }
+        }
+        if (spellSlots.pact && spellSlots.pact.total > 0 && spellSlots.pact.level) {
+            availableSlotLevels.add(spellSlots.pact.level);
+        }
+    }
+
     const grouped = new Map<number, SpellDefinition[]>();
-    sorted.forEach(spell => {
-        const list = grouped.get(spell.level) || [];
-        list.push(spell);
-        grouped.set(spell.level, list);
+
+    enrichedSpells.forEach(spell => {
+        const baseLevel = Number(spell.level) || 0;
+        // Base spell entry
+        const baseList = grouped.get(baseLevel) || [];
+        baseList.push({ ...spell, castAtLevel: baseLevel });
+        grouped.set(baseLevel, baseList);
+
+        // If this is a leveled spell, check if it can be cast at higher levels with updated damage
+        if (baseLevel >= 1) {
+            const scaling = parseDamageScalingString(spell.damageScaling);
+            const higherScalingLevels = scaling
+                ? scaling
+                    .map(r => Number(r.level))
+                    .filter(lvl => lvl > baseLevel && !isNaN(lvl))
+                : [];
+
+            // If character has slot tracking, only repeat at levels the character has slots for;
+            // if no slot tracking exists, repeat for all scaled higher levels
+            const targetLevels = availableSlotLevels.size > 0
+                ? Array.from(availableSlotLevels).filter(lvl => lvl > baseLevel).sort((a, b) => a - b)
+                : higherScalingLevels.sort((a, b) => a - b);
+
+            targetLevels.forEach(targetLvl => {
+                const baseDamage = getSpellDamageDisplay(spell, baseLevel);
+                const upcastDamage = getSpellDamageDisplay(spell, targetLvl);
+                const hasScalingRow = scaling?.some(r => Number(r.level) === targetLvl);
+
+                if (hasScalingRow || (upcastDamage && upcastDamage !== baseDamage)) {
+                    const upcastSpell: SpellDefinition = {
+                        ...spell,
+                        castAtLevel: targetLvl
+                    };
+                    const targetList = grouped.get(targetLvl) || [];
+                    targetList.push(upcastSpell);
+                    grouped.set(targetLvl, targetList);
+                }
+            });
+        }
     });
 
     const limits = characterData ? getCharacterSpellLevelLimits(characterData) : null;
@@ -375,11 +460,25 @@ export function renderSpellsByLevel(
     return Array.from(grouped.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([level, levelSpells]) => {
+            // Sort: base spells first, then upcast spells, alphabetical within each group
+            levelSpells.sort((a, b) => {
+                const aIsUpcast = a.castAtLevel !== undefined && a.castAtLevel !== a.level;
+                const bIsUpcast = b.castAtLevel !== undefined && b.castAtLevel !== b.level;
+                if (aIsUpcast !== bIsUpcast) {
+                    return aIsUpcast ? 1 : -1;
+                }
+                return a.name.localeCompare(b.name);
+            });
+
             const isCantrip = level === 0;
             const explicitAllowed = limits?.allowedByLevel[level];
             const hasUserConfiguredLimit =
                 characterData?.allowedSpellsByLevel?.[level] !== undefined ||
                 (characterData?.trackingState as any)?.allowedSpellsByLevel?.[level] !== undefined;
+
+            const baseSpellsCount = levelSpells.filter(s => s.castAtLevel === undefined || s.castAtLevel === s.level).length;
+            const upcastCount = levelSpells.length - baseSpellsCount;
+            const upcastNote = upcastCount > 0 ? ` (+${upcastCount} upcast)` : '';
 
             let countBadgeHtml = "";
             if (isCantrip && limits && limits.maxCantrips > 0) {
@@ -387,12 +486,12 @@ export function renderSpellsByLevel(
                 const title = `Cantrips: ${limits.currentCantrips} current / ${limits.maxCantrips} allowed${limits.bonusCantrips > 0 ? `; ${limits.bonusCantrips} bonus cantrips from species, feats, and class features don't count` : ''}`;
                 countBadgeHtml = `<span class="spells-level-count ${limits.isCantripsOverLimit ? 'over-limit' : ''}" title="${title}">${limits.currentCantrips}/${limits.maxCantrips}${bonusNote}</span>`;
             } else if (isCantrip) {
-                countBadgeHtml = `<span class="spells-level-count" title="${levelSpells.length} cantrips">${levelSpells.length}</span>`;
+                countBadgeHtml = `<span class="spells-level-count" title="${baseSpellsCount} cantrips">${baseSpellsCount}</span>`;
             } else if (hasUserConfiguredLimit && explicitAllowed !== undefined && explicitAllowed >= 0) {
-                const isOver = levelSpells.length > explicitAllowed;
-                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="${spellLevelLabel(level)}: ${levelSpells.length} current / ${explicitAllowed} allowed">${levelSpells.length}/${explicitAllowed}</span>`;
+                const isOver = baseSpellsCount > explicitAllowed;
+                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="${spellLevelLabel(level)}: ${baseSpellsCount} current${upcastNote} / ${explicitAllowed} allowed">${baseSpellsCount}${upcastNote}/${explicitAllowed}</span>`;
             } else {
-                countBadgeHtml = `<span class="spells-level-count" title="${levelSpells.length} spells for ${spellLevelLabel(level)}">${levelSpells.length}</span>`;
+                countBadgeHtml = `<span class="spells-level-count" title="${baseSpellsCount} prepared spells for ${spellLevelLabel(level)}${upcastNote}">${baseSpellsCount}${upcastNote}</span>`;
             }
 
             return `
@@ -405,7 +504,7 @@ export function renderSpellsByLevel(
                     ${countBadgeHtml}
                 </header>
                 <div class="spells-grid level-spells-grid">
-                    ${levelSpells.map(renderSpellCard).join('')}
+                    ${levelSpells.map(spell => renderSpellCard(spell, characterLevel)).join('')}
                 </div>
             </section>
         `;
