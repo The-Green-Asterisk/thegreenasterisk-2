@@ -2274,7 +2274,7 @@ describe("CharacterCreatorController", () => {
 
     it("positions multiclass-top-bar directly at the bottom of the site nav bar when visible, and at 0px when hidden", () => {
         document.body.innerHTML = `
-            <nav style="height: 70px;"></nav>
+            <nav id="site-nav" style="height: 70px;"></nav>
             <div id="creator-step-panels"></div>
         `;
 
@@ -2285,7 +2285,7 @@ describe("CharacterCreatorController", () => {
         ctrl.syncStateClassProperties();
         ctrl.renderStep(3);
 
-        const nav = document.querySelector("nav") as HTMLElement;
+        const nav = document.querySelector("#site-nav") as HTMLElement;
         const topBar = document.getElementById("multiclass-top-bar") as HTMLElement;
         expect(topBar).not.toBeNull();
 

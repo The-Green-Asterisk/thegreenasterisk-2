@@ -1,4 +1,4 @@
-nav {
+nav:where(#site-nav) {
     width: 100%;
     box-shadow: var(--lg-shadow);
     display: flex;
@@ -12,7 +12,7 @@ nav {
     left: 0;
 }
 
-nav ul {
+nav:where(#site-nav) ul {
     font-family: var(--ui-font);
     list-style-type: none;
     margin: 0;
@@ -29,7 +29,7 @@ nav ul {
     left: 0;
     display: none;
 }
-nav #menu {
+nav:where(#site-nav) #menu {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -42,13 +42,13 @@ nav #menu {
     padding-bottom: 13px;
 }
 
-nav li.fa-solid {
+nav:where(#site-nav) li.fa-solid {
     text-align: center;
     font-size: 1.5rem;
     padding-top: 13px;
 }
 
-nav li a {
+nav:where(#site-nav) li a {
     display: block;
     text-align: center;
     padding: 14px 0;
@@ -56,11 +56,11 @@ nav li a {
     border-radius: var(--radius);
 }
 
-nav li a:hover {
+nav:where(#site-nav) li a:hover {
     background-color: var(--hover-tint);
 }
 
-nav #discord_login {
+nav:where(#site-nav) #discord_login {
     background-color: var(--discord);
     border-radius: var(--radius);
     width: 70px;
@@ -71,7 +71,7 @@ nav #discord_login {
     z-index: var(--z-nav-controls);
 }
 
-nav #theme-toggle {
+nav:where(#site-nav) #theme-toggle {
     color: var(--ui-text);
     font-size: 1.25rem;
     padding: 10px;
@@ -79,22 +79,22 @@ nav #theme-toggle {
     z-index: var(--z-nav-controls);
 }
 
-nav #logo {
+nav:where(#site-nav) #logo {
     position:absolute;
     top: 0;
     left: 0;
     width: 90px;
 }
 
-nav .show {
+nav:where(#site-nav) .show {
     display: flex;
 }
 
-nav #nav-profile-picture {
+nav:where(#site-nav) #nav-profile-picture {
     z-index: var(--z-nav-controls);
 }
 
-nav #nav-profile-picture img {
+nav:where(#site-nav) #nav-profile-picture img {
     background-color: var(--surface-alt);
     border: 3px solid var(--avatar-border);
     box-shadow: var(--md-shadow);
@@ -106,11 +106,11 @@ nav #nav-profile-picture img {
 }
 
 @media screen and (min-width: 1024px) {
-    nav li.fa-solid {
+    nav:where(#site-nav) li.fa-solid {
         display: none;
     }
 
-    nav ul {
+    nav:where(#site-nav) ul {
         flex-direction: row;
         justify-content: space-evenly;
         position: static;
@@ -119,15 +119,15 @@ nav #nav-profile-picture img {
         display: flex;
     }
 
-    nav #menu {
+    nav:where(#site-nav) #menu {
         position: static;
     }
 
-    nav #menu::before {
+    nav:where(#site-nav) #menu::before {
         content: '';
     }
 
-    nav #discord_login {
+    nav:where(#site-nav) #discord_login {
         margin: 10px;
         width: fit-content;
         white-space: nowrap;
@@ -135,11 +135,11 @@ nav #nav-profile-picture img {
         padding: 10px 20px;
     }
 
-    nav #nav-profile-picture {
+    nav:where(#site-nav) #nav-profile-picture {
         z-index: auto;
     }
 
-    nav #theme-toggle {
+    nav:where(#site-nav) #theme-toggle {
         z-index: auto;
     }
 }

@@ -148,7 +148,7 @@ export default class BaseEl {
         return this.getElements<HTMLTextAreaElement>('textarea') ?? ([] as unknown as NodeListOf<HTMLTextAreaElement>);
     }
     public static get nav() {
-        return this.getElement<HTMLElement>('nav');
+        return this.getElement<HTMLElement>('#site-nav');
     }
     public static csrfToken: string = '';
     public static get modal() {

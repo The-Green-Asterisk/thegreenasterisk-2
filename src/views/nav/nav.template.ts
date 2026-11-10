@@ -11,7 +11,7 @@ const navTemplate = () => {
                                     </a>` : '';
 
     return Helpers.html`
-    <nav>
+    <nav id="site-nav" aria-label="Site">
         <img id="logo" src="/storage/images/BIG-AS.png" alt="The Green Asterisk" />
         <div style="width: 100px;"></div>
         <div class="fa-solid fa-bars" id="menu">

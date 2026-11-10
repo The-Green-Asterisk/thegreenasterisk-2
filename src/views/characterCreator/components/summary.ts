@@ -1,7 +1,7 @@
 import { CharacterCreatorContext } from "../controllers/context";
 
 export function getNavBottom(): number {
-    const siteNav = document.querySelector("nav") as HTMLElement;
+    const siteNav = document.querySelector("#site-nav") as HTMLElement;
     if (!siteNav) return 0;
     const isHidden = siteNav.style.display === "none"
         || (typeof window !== "undefined" && window.getComputedStyle(siteNav).display === "none");

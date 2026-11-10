@@ -300,7 +300,7 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
                 ctx.updateMulticlassNavBars();
             }
         });
-        const siteNav = document.querySelector("nav");
+        const siteNav = document.querySelector("#site-nav");
         if (siteNav) {
             navObserver.observe(siteNav, { attributes: true, attributeFilter: ["style", "class"] });
         }
