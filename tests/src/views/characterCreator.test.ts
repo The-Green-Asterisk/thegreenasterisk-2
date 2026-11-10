@@ -757,6 +757,19 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.getMaxExpertiseCount()).toBe(1);
         });
 
+        it("reads feat skill picks from the feat data, so a homebrew feat works the same way", () => {
+            setup([{ classId: "fighter", level: 4 }]);
+            ctrl.generalFeats = [...ctrl.generalFeats, {
+                id: "lore-hound", name: "Lore Hound", description: "", category: "general", allowedStats: ["int"], benefits: [],
+                skillPicks: [{ count: 2, from: ["Arcana", "History", "Nature"], mode: "proficiency" }, { count: 1, mode: "expertise" }]
+            }];
+            ctrl.state.asiChoices = { "fighter-4": { type: "feat", featId: "lore-hound", statA: "int" } };
+            ctrl.renderStep(6);
+            const cards = Array.from(document.querySelectorAll('.feat-skill-card[data-feat-section="asi:fighter-4:lore-hound"]'));
+            expect(cards.map((c) => c.getAttribute("data-skill-name")).sort()).toEqual(["Arcana", "History", "Nature"]);
+            expect(ctrl.getMaxExpertiseCount()).toBe(1);
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };

@@ -144,6 +144,16 @@ describe("RulesController", () => {
                         benefitsJson: JSON.stringify(["Damage reduction"]),
                         statOptionsJson: JSON.stringify(["str"]),
                         isEpicBoon: false
+                    },
+                    {
+                        slug: "skill-expert",
+                        name: "Skill Expert",
+                        description: "Honed skills",
+                        category: "general",
+                        benefitsJson: JSON.stringify([]),
+                        statOptionsJson: JSON.stringify(["str", "dex", "con", "int", "wis", "cha"]),
+                        skillPicksJson: JSON.stringify([{ count: 1, mode: "proficiency" }, { count: 1, mode: "expertise" }]),
+                        isEpicBoon: false
                     }
                 ])
             };
@@ -175,6 +185,7 @@ describe("RulesController", () => {
             expect(data.backgrounds[0].name).toBe("Soldier");
             expect(data.originFeats.find((f: any) => f.id === "alert")).toBeDefined();
             expect(data.generalFeats.find((f: any) => f.id === "heavy-armor-master")).toBeDefined();
+            expect(data.generalFeats.find((f: any) => f.id === "skill-expert").skillPicks).toEqual([{ count: 1, mode: "proficiency" }, { count: 1, mode: "expertise" }]);
             expect(data.spells).toBeDefined();
         });
     });

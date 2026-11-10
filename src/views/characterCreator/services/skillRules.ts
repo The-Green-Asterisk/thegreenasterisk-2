@@ -1,4 +1,4 @@
-import { StatModifier } from "../../../rules/dnd5e_2024";
+import { GeneralFeatDefinition, OriginFeatDefinition, StatModifier } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 import { getProgressionModifiers } from "./progressionModifiers";
@@ -68,30 +68,55 @@ export function getProgressionSkillModifiers(ctx: CharacterCreatorContext): Prog
     return result;
 }
 
-/**
- * Skill picks offered by the character's feats: Skilled (origin feat) and, in Ability Score Improvement slots,
- * Skill Expert, Keen Mind, and Observant.
- */
-export function getFeatSkillSections(ctx: CharacterCreatorContext): FeatSkillSection[] {
-    const sections: FeatSkillSection[] = [];
-    if (ctx.state.originFeatId === "skilled") {
-        sections.push({ key: "origin:skilled", label: "Skilled (origin feat)", count: 3, from: null, mode: "proficiency" });
-    }
-    if (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId === "skilled" && ctx.state.originFeatId !== "skilled") {
-        sections.push({ key: "human-origin:skilled", label: "Skilled (Human Versatile feat)", count: 3, from: null, mode: "proficiency" });
+/** A feat the character has taken, the key its skill picks are saved under, and where it came from. */
+interface TakenFeat {
+    key: string;
+    label: string;
+    feat: OriginFeatDefinition | GeneralFeatDefinition;
+}
+
+function findFeat(ctx: CharacterCreatorContext, featId: string): OriginFeatDefinition | GeneralFeatDefinition | undefined {
+    if (!featId) return undefined;
+    return ctx.originFeats.find((f) => f.id === featId) || ctx.generalFeats.find((f) => f.id === featId);
+}
+
+/** The origin feat, the Human Versatile feat, and feats taken in Ability Score Improvement slots. */
+function getTakenFeats(ctx: CharacterCreatorContext): TakenFeat[] {
+    const taken: TakenFeat[] = [];
+    const origin = findFeat(ctx, ctx.state.originFeatId);
+    if (origin) taken.push({ key: `origin:${origin.id}`, label: `${origin.name} (origin feat)`, feat: origin });
+    if (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId !== ctx.state.originFeatId) {
+        const versatile = findFeat(ctx, ctx.state.humanExtraFeatId);
+        if (versatile) taken.push({ key: `human-origin:${versatile.id}`, label: `${versatile.name} (Human Versatile feat)`, feat: versatile });
     }
     const isMulticlass = (ctx.state.classes || []).length > 1;
     for (const slot of getAsiSlots(ctx)) {
         const choice = ctx.state.asiChoices?.[slot.key];
-        if (choice?.type !== "feat") continue;
+        if (choice?.type !== "feat" || !choice.featId) continue;
+        const feat = findFeat(ctx, choice.featId);
+        if (!feat) continue;
         const where = isMulticlass ? `${slot.className} ${slot.classLevel}` : `Level ${slot.classLevel}`;
-        if (choice.featId === "skill-expert") {
-            sections.push({ key: `asi:${slot.key}:skill-expert`, label: `Skill Expert (${where})`, count: 1, from: null, mode: "proficiency" });
-        } else if (choice.featId === "keen-mind") {
-            sections.push({ key: `asi:${slot.key}:keen-mind`, label: `Keen Mind (${where})`, count: 1, from: ["Arcana", "History", "Investigation", "Nature", "Religion"], mode: "proficiency-or-expertise" });
-        } else if (choice.featId === "observant") {
-            sections.push({ key: `asi:${slot.key}:observant`, label: `Observant (${where})`, count: 1, from: ["Insight", "Investigation", "Perception"], mode: "proficiency-or-expertise" });
-        }
+        taken.push({ key: `asi:${slot.key}:${feat.id}`, label: `${feat.name} (${where})`, feat });
+    }
+    return taken;
+}
+
+/**
+ * Skill picks offered by the character's feats (feat data skillPicks), e.g. Skilled, Skill Expert, Keen Mind, and
+ * Observant. A feat's first pick is saved under its key; any further ones under "<key>:<n>".
+ */
+export function getFeatSkillSections(ctx: CharacterCreatorContext): FeatSkillSection[] {
+    const sections: FeatSkillSection[] = [];
+    for (const { key, label, feat } of getTakenFeats(ctx)) {
+        (feat.skillPicks || [])
+            .filter((p) => p.mode !== "expertise" && p.count > 0)
+            .forEach((p, i) => sections.push({
+                key: i === 0 ? key : `${key}:${i}`,
+                label,
+                count: p.count,
+                from: p.from && p.from.length > 0 ? p.from : null,
+                mode: p.mode as FeatSkillSection["mode"]
+            }));
     }
     return sections;
 }
@@ -159,7 +184,8 @@ export function getGrantedExpertiseSkills(ctx: CharacterCreatorContext): Map<str
 }
 
 /**
- * Expertise picks: each class's scalingTraits.expertiseByLevel at its class level, plus one per Skill Expert feat.
+ * Expertise picks: each class's scalingTraits.expertiseByLevel at its class level, plus feats' Expertise picks
+ * (feat data skillPicks, e.g. Skill Expert).
  */
 export function getExpertiseSources(ctx: CharacterCreatorContext): SkillSource[] {
     ctx.syncStateClassProperties();
@@ -173,8 +199,10 @@ export function getExpertiseSources(ctx: CharacterCreatorContext): SkillSource[]
         const count = table?.[Math.min(classLevel(ctx, cc.classId), table.length - 1)] || 0;
         if (count > 0) sources.push({ key: cc.classId, label: cls?.name || cc.classId, count, from: null });
     }
-    for (const sec of getFeatSkillSections(ctx)) {
-        if (sec.key.endsWith(":skill-expert")) sources.push({ key: `${sec.key}:expertise`, label: sec.label, count: 1, from: null });
+    for (const { key, label, feat } of getTakenFeats(ctx)) {
+        (feat.skillPicks || [])
+            .filter((p) => p.mode === "expertise" && p.count > 0)
+            .forEach((p, i) => sources.push({ key: i === 0 ? `${key}:expertise` : `${key}:expertise:${i}`, label, count: p.count, from: p.from && p.from.length > 0 ? p.from : null }));
     }
     return sources;
 }

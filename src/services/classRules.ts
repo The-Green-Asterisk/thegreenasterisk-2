@@ -1,8 +1,11 @@
 import { CLASSES_2024 } from "../rules/dnd5e_2024/classes";
-import { ClassDefinition } from "../rules/dnd5e_2024/types";
+import { GENERAL_FEATS_2024 } from "../rules/dnd5e_2024/generalFeats";
+import { ORIGIN_FEATS_2024 } from "../rules/dnd5e_2024/originFeats";
+import { ClassDefinition, GeneralFeatDefinition, OriginFeatDefinition } from "../rules/dnd5e_2024/types";
 import { getData } from "./request";
 
 let classRules: ClassDefinition[] | null = null;
+let featRules: Array<OriginFeatDefinition | GeneralFeatDefinition> | null = null;
 let loading: Promise<ClassDefinition[]> | null = null;
 
 /**
@@ -23,11 +26,29 @@ export function loadClassRules(): Promise<ClassDefinition[]> {
         loading = getData<any>("/get-rules")
             .then((rules) => {
                 if (Array.isArray(rules?.classes)) setClassRules(rules.classes);
+                const feats = [...(Array.isArray(rules?.originFeats) ? rules.originFeats : []), ...(Array.isArray(rules?.generalFeats) ? rules.generalFeats : [])];
+                setFeatRules(feats);
                 return getClassRules();
             })
             .catch(() => getClassRules());
     }
     return loading;
+}
+
+/** The feat rules (rule_feats, as served by /get-rules) once loaded; until then the offline copy. */
+export function getFeatRules(): Array<OriginFeatDefinition | GeneralFeatDefinition> {
+    return featRules || [...ORIGIN_FEATS_2024, ...GENERAL_FEATS_2024];
+}
+
+export function setFeatRules(feats: Array<OriginFeatDefinition | GeneralFeatDefinition> | null): void {
+    featRules = feats && feats.length > 0 ? feats : null;
+}
+
+/** Finds a feat by id or name (a D&D Beyond name like "Skilled" or "Keen Mind"). */
+export function findFeatRule(nameOrId: string): OriginFeatDefinition | GeneralFeatDefinition | undefined {
+    const key = (nameOrId || "").trim().toLowerCase();
+    const slug = key.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return getFeatRules().find((f) => f.id === key || f.id === slug || f.name.toLowerCase() === key);
 }
 
 /** Finds a class by id or name. */

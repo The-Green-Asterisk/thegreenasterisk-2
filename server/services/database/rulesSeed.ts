@@ -7249,6 +7249,7 @@ export const SEED_ORIGIN_FEATS = [
     },
     {
         "id": "skilled",
+        "skillPicks": [{ "count": 3, "mode": "proficiency" }],
         "name": "Skilled",
         "description": "You have exceptionally broad training across various disciplines.",
         "benefits": [
@@ -7570,6 +7571,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "keen-mind",
+        "skillPicks": [{ "count": 1, "from": ["Arcana", "History", "Investigation", "Nature", "Religion"], "mode": "proficiency-or-expertise" }],
         "name": "Keen Mind",
         "description": "You have a mind that can track time, direction, and detail with pinpoint precision.",
         "category": "general",
@@ -7665,6 +7667,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "observant",
+        "skillPicks": [{ "count": 1, "from": ["Insight", "Investigation", "Perception"], "mode": "proficiency-or-expertise" }],
         "name": "Observant",
         "description": "Quick to notice details in your environment, enhancing investigation and perception.",
         "category": "general",
@@ -7895,6 +7898,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "skill-expert",
+        "skillPicks": [{ "count": 1, "mode": "proficiency" }, { "count": 1, "mode": "expertise" }],
         "name": "Skill Expert",
         "description": "Your focused study grants you broad skill proficiency and peerless expertise.",
         "category": "general",

@@ -322,4 +322,22 @@ describe("Feature Decisions Progression Choice Integration", () => {
         expect(dec.map(d => d.label)).toEqual(["Superior Hunter's Defense"]);
         expect(result.hasFightingStyleDecision).toBe(false);
     });
+
+    it("offers feat skill picks from the feat data (Skilled, Skill Expert, Keen Mind)", () => {
+        const feat = (name: string, mods: any[] = []) => {
+            const raw = { classes: [], feats: [{ definition: { id: 950, name }, componentId: 950 }] };
+            const allMods = mods.map(m => ({ ...m, componentId: 950, _sourceKey: "feat", isGranted: true }));
+            return extractFeaturesAndApplyDecisions(raw, allMods, {}).features.find(f => f.name === name)?.decisions || [];
+        };
+
+        expect(feat("Skilled").filter(d => d.id.includes(":skill-prof:"))).toHaveLength(3);
+
+        const expert = feat("Skill Expert");
+        expect(expert.filter(d => d.id.includes(":skill-prof:"))).toHaveLength(1);
+        expect(expert.filter(d => d.id.includes(":skill-exp:"))).toHaveLength(1);
+
+        const keenMind = feat("Keen Mind", [{ type: "proficiency", subType: "history" }]);
+        const prof = keenMind.find(d => d.id.includes(":skill-prof:"))!;
+        expect(prof.options.map(o => o.value)).toEqual(["skill-prof:arcana", "skill-prof:history", "skill-prof:investigation", "skill-prof:nature", "skill-prof:religion"]);
+    });
 });

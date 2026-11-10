@@ -498,6 +498,7 @@ export default class RulesController extends BaseController {
                     category: "origin",
                     benefitsJson: JSON.stringify(ofeat.benefits || []),
                     statOptionsJson: (ofeat as any).spellcastingAbilityOptions ? JSON.stringify((ofeat as any).spellcastingAbilityOptions) : undefined,
+                    skillPicksJson: (ofeat as any).skillPicks ? JSON.stringify((ofeat as any).skillPicks) : undefined,
                     isEpicBoon: false,
                     source: "2024 Core Rules"
                 }));
@@ -509,6 +510,7 @@ export default class RulesController extends BaseController {
                     prerequisite: gfeat.prerequisite || undefined,
                     benefitsJson: JSON.stringify(gfeat.benefits || []),
                     statOptionsJson: JSON.stringify(gfeat.allowedStats || gfeat.statOptions || []),
+                    skillPicksJson: gfeat.skillPicks ? JSON.stringify(gfeat.skillPicks) : undefined,
                     isEpicBoon: !!gfeat.isEpicBoon,
                     source: "2024 Core Rules"
                 }));
@@ -788,7 +790,8 @@ export default class RulesController extends BaseController {
                     id: rf.slug,
                     name: rf.name,
                     description: rf.description,
-                    benefits: this.safeParse(rf.benefitsJson, [])
+                    benefits: this.safeParse(rf.benefitsJson, []),
+                    skillPicks: this.safeParse(rf.skillPicksJson, undefined)
                 }));
 
             const generalFeats = dbFeats
@@ -801,7 +804,8 @@ export default class RulesController extends BaseController {
                     prerequisite: rf.prerequisite || undefined,
                     benefits: this.safeParse(rf.benefitsJson, []),
                     allowedStats: this.safeParse(rf.statOptionsJson, ["str", "dex", "con", "int", "wis", "cha"]),
-                    isEpicBoon: rf.isEpicBoon
+                    isEpicBoon: rf.isEpicBoon,
+                    skillPicks: this.safeParse(rf.skillPicksJson, undefined)
                 }));
 
             const allSubclasses = loadedSubclasses.length > 0

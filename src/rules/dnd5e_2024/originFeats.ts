@@ -91,6 +91,7 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     },
     {
         id: "skilled",
+        skillPicks: [{ count: 3, mode: "proficiency" }],
         name: "Skilled",
         description: "You have exceptionally broad training across various disciplines.",
         benefits: [

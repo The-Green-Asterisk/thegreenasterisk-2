@@ -37,11 +37,22 @@ export interface SpeciesDefinition {
     extraFeatCount?: number;
 }
 
+/**
+ * Skills a feat lets the player choose: how many, from which skills (omitted = any), and what they get.
+ * "proficiency-or-expertise" grants Expertise when the character is already proficient (Keen Mind, Observant).
+ */
+export interface FeatSkillPick {
+    count: number;
+    from?: string[];
+    mode: "proficiency" | "proficiency-or-expertise" | "expertise";
+}
+
 export interface OriginFeatDefinition {
     id: string;
     name: string;
     description: string;
     benefits: string[];
+    skillPicks?: FeatSkillPick[];
     spellsGranted?: string[];
     spellcastingAbilityOptions?: AbilityName[];
 }
@@ -55,6 +66,7 @@ export interface GeneralFeatDefinition {
     category?: 'general' | 'fighting-style' | 'epic-boon';
     prerequisite?: string;
     benefits: string[];
+    skillPicks?: FeatSkillPick[];
 }
 
 export interface BackgroundDefinition {

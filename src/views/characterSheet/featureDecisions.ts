@@ -7,7 +7,7 @@ import {
 import { applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
 import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
 import { classChoiceDecisionIds, classChoiceModifiers, classChoiceOptions, findChoiceOption, matchClassChoice, unlockedClassChoices } from "./classChoiceDecisions";
-import { getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
+import { findFeatRule, getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -971,6 +971,22 @@ export function extractFeaturesAndApplyDecisions(
             }
         }
 
+        // Skills a feat lets the player choose (feat data skillPicks, e.g. Skilled, Skill Expert, Keen Mind)
+        const featPicks = category === "feat" ? findFeatRule(featureName)?.skillPicks || [] : [];
+        const toSkillKeys = (names?: string[]) => (names && names.length > 0 ? names.map(n => n.toLowerCase().replace(/\s+/g, "-")) : undefined);
+        const featExpertisePicks = featPicks.filter(p => p.mode === "expertise");
+        const featExpertiseCount = featExpertisePicks.reduce((sum, p) => sum + p.count, 0);
+        const featProfPicks = featPicks.filter(p => p.mode !== "expertise");
+        const featProfCount = featProfPicks.reduce((sum, p) => sum + p.count, 0);
+        // Expertise can come from an Expertise pick or a "proficiency-or-expertise" pick (Keen Mind, Observant)
+        const featExpertiseSources = featPicks.filter(p => p.mode !== "proficiency");
+        const featExpertiseAllowed = featExpertiseSources.length > 0 && featExpertiseSources.every(p => p.from && p.from.length > 0)
+            ? toSkillKeys(featExpertiseSources.flatMap(p => p.from || []))
+            : undefined;
+        const featProfAllowed = featProfPicks.every(p => p.from && p.from.length > 0)
+            ? toSkillKeys(featProfPicks.flatMap(p => p.from || []))
+            : undefined;
+
         // 3. Skill Expertise Modifiers on this Feature
         const skillExpMods = featureMods.filter(
             m =>
@@ -986,19 +1002,19 @@ export function extractFeaturesAndApplyDecisions(
                     `skill-exp:${idx}`,
                     label,
                     `skill-exp:${skKey}`,
-                    buildSkillChoiceOptions("exp"),
+                    buildSkillChoiceOptions("exp", featExpertiseAllowed),
                     [m]
                 );
             });
-        } else if (!classMatch && (nameLower === "expertise" || nameLower.includes("skill expert"))) {
-            const count = nameLower === "expertise" ? 2 : 1;
+        } else if (!classMatch && (nameLower === "expertise" || featExpertiseCount > 0)) {
+            const count = featExpertiseCount > 0 ? featExpertiseCount : 2;
             const defaults = ["perception", "stealth"];
             for (let idx = 0; idx < count; idx++) {
                 registerDecision(
                     `skill-exp:${idx}`,
                     count > 1 ? `Skill Expertise #${idx + 1}` : "Skill Expertise",
                     `skill-exp:${defaults[idx] || "perception"}`,
-                    buildSkillChoiceOptions("exp"),
+                    buildSkillChoiceOptions("exp", featExpertiseAllowed),
                     []
                 );
             }
@@ -1012,7 +1028,7 @@ export function extractFeaturesAndApplyDecisions(
                 SKILL_KEY_SET.has(String(m.subType || "").toLowerCase())
         );
         const isKeenSenses = nameLower.includes("keen senses");
-        const keenSensesAllowed = isKeenSenses ? ["insight", "perception", "survival"] : undefined;
+        const keenSensesAllowed = isKeenSenses ? ["insight", "perception", "survival"] : featProfAllowed;
 
         if (skillProfMods.length > 0) {
             skillProfMods.forEach((m, idx) => {
@@ -1026,8 +1042,8 @@ export function extractFeaturesAndApplyDecisions(
                     [m]
                 );
             });
-        } else if (nameLower === "skilled" || nameLower.includes("skill expert") || isKeenSenses || nameLower === "skillful") {
-            const count = nameLower === "skilled" ? 3 : 1;
+        } else if (featProfCount > 0 || isKeenSenses || nameLower === "skillful") {
+            const count = featProfCount > 0 ? featProfCount : 1;
             const defaults = ["perception", "investigation", "insight"];
             for (let idx = 0; idx < count; idx++) {
                 registerDecision(
