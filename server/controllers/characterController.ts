@@ -12,6 +12,7 @@ import CharacterSpell from "services/database/entity/CharacterSpell";
 import CharacterVitals from "services/database/entity/CharacterVitals";
 import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
+import { mergeRowItems } from "../services/characterItems";
 import { mergeVitals } from "../services/characterVitals";
 import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
 import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
@@ -1332,7 +1333,7 @@ export default class CharacterController extends BaseController {
             : (fallbackPayload?.skills || []);
 
         const weapons = record.inventory && record.inventory.length > 0
-            ? record.inventory
+            ? mergeRowItems(record.inventory
                 .filter(i => i.damage || i.category?.toLowerCase().includes("melee") || i.category?.toLowerCase().includes("ranged"))
                 .map(w => ({
                     id: w.id,
@@ -1360,11 +1361,11 @@ export default class CharacterController extends BaseController {
                     notes: w.notes,
                     grantedBy: w.grantedBy,
                     imageUrl: w.imageUrl
-                }))
+                })), fallbackPayload?.weapons)
             : (fallbackPayload?.weapons || []);
 
         const equipment = record.inventory && record.inventory.length > 0
-            ? record.inventory
+            ? mergeRowItems(record.inventory
                 .filter(i => !(i.damage || i.category?.toLowerCase().includes("melee") || i.category?.toLowerCase().includes("ranged")))
                 .map(e => ({
                     id: e.id,
@@ -1381,7 +1382,7 @@ export default class CharacterController extends BaseController {
                     notes: e.notes,
                     grantedBy: e.grantedBy,
                     imageUrl: e.imageUrl
-                }))
+                })), fallbackPayload?.equipment)
             : (fallbackPayload?.equipment || []);
 
         const spells = record.spells && record.spells.length > 0
