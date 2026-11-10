@@ -1,6 +1,7 @@
-import { initDialogFocus } from "./dialogFocus";
-import { restoreUsePips } from "../components/usesTracker";
+import el from "@elements";
+import FileService from "@services/fileService";
 import { getData, postData } from "@services/request";
+import { getSpellDamageDisplay, resolveActionSpellDamage } from "../../../services/spellDamage";
 import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
 import { renderEquipment } from "../components/equipment";
 import {
@@ -9,12 +10,23 @@ import {
     resolveDndBeyondActionUrl
 } from "../components/markupLinks";
 import { describePreparedByClass, getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
+import { restoreUsePips } from "../components/usesTracker";
 import { renderWeapons } from "../components/weapons";
 import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
+import { initDialogFocus } from "./dialogFocus";
 import { initEquipmentController } from "./equipment.ctrl";
 import { initSpellsController } from "./spells.ctrl";
 import { initWeaponsController } from "./weapons.ctrl";
+
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 export function initModalsController(ctx: CharacterSheetContext) {
     // Tab stays in an open dialog, and focus returns to its opener when it closes
@@ -79,6 +91,34 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const customSpellCancelBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-cancel-btn");
     const customSpellForm = sheet.querySelector<HTMLFormElement>("#custom-spell-form");
     const customSpellStatus = sheet.querySelector<HTMLElement>("#custom-spell-status");
+    const customSpellGuideBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-guide-btn");
+    const customSpellImgInput = sheet.querySelector<HTMLInputElement>("#custom-spell-image");
+    const customSpellFileInput = sheet.querySelector<HTMLInputElement>("#custom-spell-file-input");
+    const customSpellUploadTriggerBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-upload-trigger-btn");
+    const customSpellUploadStatus = sheet.querySelector<HTMLElement>("#custom-spell-upload-status");
+    const customSpellPreviewWrap = sheet.querySelector<HTMLElement>("#custom-spell-image-preview-wrap");
+    const customSpellPreviewImg = sheet.querySelector<HTMLImageElement>("#custom-spell-image-preview");
+    const customSpellClearImgBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-image-clear-btn");
+    const customSpellHasDamage = sheet.querySelector<HTMLInputElement>("#custom-spell-has-damage");
+    const customSpellDamagePanel = sheet.querySelector<HTMLElement>("#custom-spell-damage-panel");
+    const customSpellDamageDice = sheet.querySelector<HTMLInputElement>("#custom-spell-damage-dice");
+    const customSpellDamageType = sheet.querySelector<HTMLSelectElement>("#custom-spell-damage-type");
+    const customSpellDamageMod = sheet.querySelector<HTMLInputElement>("#custom-spell-damage-mod");
+    const customSpellAutoscaleBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-autoscale-btn");
+    const customSpellResetScalingBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-reset-scaling-btn");
+    const customSpellScalingTbody = sheet.querySelector<HTMLElement>("#custom-spell-scaling-tbody");
+    const customSpellScalingType = sheet.querySelector<HTMLSelectElement>("#custom-spell-scaling-type");
+    const customSpellScalingColHeader = sheet.querySelector<HTMLElement>("#custom-spell-scaling-col-header");
+    const customSpellScalingTitle = sheet.querySelector<HTMLElement>("#custom-spell-scaling-title");
+    const customSpellScalingHint = sheet.querySelector<HTMLElement>("#custom-spell-scaling-hint");
+    const customSpellLevelInput = sheet.querySelector<HTMLInputElement>("#custom-spell-level");
+
+    // Markup / Placeholder guide modal elements
+    const markupGuideModal = sheet.querySelector<HTMLElement>("#markup-guide-modal-container");
+    const markupGuideCloseBtn = sheet.querySelector<HTMLButtonElement>("#markup-guide-close-btn");
+    const markupGuideDoneBtn = sheet.querySelector<HTMLButtonElement>("#markup-guide-done-btn");
+    const markupGuideCopyBtn = sheet.querySelector<HTMLButtonElement>("#markup-guide-copy-example-btn");
+    const markupGuideExampleText = sheet.querySelector<HTMLElement>("#markup-guide-example-text");
 
     // Conditions modal elements
     const conditionsModalBackdrop = sheet.querySelector<HTMLElement>("#conditions-modal-container");
@@ -1317,9 +1357,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalSpellName) modalSpellName.textContent = displayName;
         if (modalSpellType) modalSpellType.textContent = `${displayLvl} • ${displaySchool}`;
 
+        const activeChar = ctx.getCharacter();
+        const activeCharLevel = activeChar
+            ? (Number(activeChar.level) || (activeChar.classes || []).reduce((sum, c) => sum + (Number(c.level) || 0), 0) || 1)
+            : undefined;
+
         if (modalBadges) {
             let badgesHtml = `<span class="modal-badge school-badge">${displaySchool}</span>`;
             if (localSpell?.source) badgesHtml += `<span class="modal-badge source-badge">${localSpell.source}</span>`;
+            const localDamage = localSpell ? getSpellDamageDisplay(localSpell, undefined, activeCharLevel) : "";
+            if (localDamage) badgesHtml += `<span class="modal-badge damage-badge"><i class="fa-solid fa-burst"></i> ${localDamage}</span>`;
             if (localSpell?.concentration) {
                 badgesHtml += `<span class="modal-badge conc-badge"><i class="fa-solid fa-brain"></i> Concentration</span>`;
             }
@@ -1402,6 +1449,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 if (modalBadges) {
                     let badges = `<span class="modal-badge school-badge">${independentSpell.school || displaySchool}</span>`;
                     badges += `<span class="modal-badge tier-badge tier-${String(spellSourceTier).toLowerCase().replace(/[^a-z0-9]/g, '-')}"><i class="fa-solid fa-database"></i> Source: ${spellSourceTier}</span>`;
+                    const indDamage = getSpellDamageDisplay(independentSpell, undefined, activeCharLevel);
+                    if (indDamage) badges += `<span class="modal-badge damage-badge"><i class="fa-solid fa-burst"></i> ${indDamage}</span>`;
                     if (independentSpell.concentration) {
                         badges += `<span class="modal-badge conc-badge"><i class="fa-solid fa-brain"></i> Concentration</span>`;
                     }
@@ -1473,6 +1522,183 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
     }
 
+    function updateCustomSpellImagePreview(url: string) {
+        const cleanUrl = url.trim();
+        if (cleanUrl && customSpellPreviewWrap && customSpellPreviewImg) {
+            customSpellPreviewImg.src = cleanUrl;
+            customSpellPreviewWrap.classList.remove("hidden");
+        } else if (customSpellPreviewWrap && customSpellPreviewImg) {
+            customSpellPreviewImg.src = "";
+            customSpellPreviewWrap.classList.add("hidden");
+        }
+    }
+
+    function resetCustomSpellImageState() {
+        if (customSpellImgInput) customSpellImgInput.value = "";
+        if (customSpellFileInput) customSpellFileInput.value = "";
+        updateCustomSpellImagePreview("");
+        if (customSpellUploadStatus) {
+            customSpellUploadStatus.className = "custom-spell-upload-status hidden";
+            customSpellUploadStatus.textContent = "";
+        }
+    }
+
+    function resetCustomSpellDamageState() {
+        if (customSpellHasDamage) customSpellHasDamage.checked = false;
+        if (customSpellDamagePanel) customSpellDamagePanel.classList.add("hidden");
+        if (customSpellDamageDice) customSpellDamageDice.value = "";
+        if (customSpellDamageType) customSpellDamageType.value = "Fire";
+        if (customSpellDamageMod) customSpellDamageMod.value = "";
+        if (customSpellScalingType) customSpellScalingType.value = "auto";
+        if (customSpellScalingTbody) customSpellScalingTbody.innerHTML = "";
+    }
+
+    function getOrdinalLevelLabel(n: number): string {
+        if (n === 1) return "1st";
+        if (n === 2) return "2nd";
+        if (n === 3) return "3rd";
+        return `${n}th`;
+    }
+
+    function computeDamageRowPreview(dice: string, mod: string, damageType: string): string {
+        const cleanDice = dice.trim();
+        const cleanMod = mod.trim();
+        const formattedMod = cleanMod ? (cleanMod.startsWith("+") || cleanMod.startsWith("-") ? cleanMod : `+${cleanMod}`) : "";
+        if (!cleanDice && !formattedMod) return "—";
+        const parts = [cleanDice, formattedMod].filter(Boolean).join(" ");
+        return `${parts} ${damageType}`.trim();
+    }
+
+    function renderCustomSpellScalingRows(options?: { autoScale?: boolean; resetToBase?: boolean }) {
+        if (!customSpellScalingTbody) return;
+
+        const level = Math.max(0, Math.min(9, Number(customSpellLevelInput?.value || "0")));
+        const baseDice = customSpellDamageDice?.value.trim() || "";
+        const baseMod = customSpellDamageMod?.value.trim() || "";
+        const damageType = customSpellDamageType?.value || "Fire";
+        const scalingMode = customSpellScalingType?.value || "auto";
+        const isCharacterScaling = scalingMode === "character" || (scalingMode === "auto" && level === 0);
+
+        if (customSpellScalingColHeader) {
+            customSpellScalingColHeader.textContent = isCharacterScaling ? "Character Level" : "Casting Slot Level";
+        }
+        if (customSpellScalingHint) {
+            customSpellScalingHint.textContent = isCharacterScaling
+                ? "Damage dice and modifiers scale with total character level at 1st, 5th, 11th, and 17th level (e.g. Acid Splash, Fire Bolt)."
+                : "Customize damage dice and modifiers for each slot level at which this spell can be cast.";
+        }
+        if (customSpellAutoscaleBtn) {
+            customSpellAutoscaleBtn.title = isCharacterScaling
+                ? "Add +1 die for each higher character level tier (5th, 11th, 17th level)"
+                : "Add +1 die for each higher spell slot level";
+        }
+
+        const existingValues = new Map<number, { dice: string; mod: string }>();
+        if (!options?.resetToBase && !options?.autoScale) {
+            customSpellScalingTbody.querySelectorAll<HTMLTableRowElement>("tr[data-level]").forEach(tr => {
+                const lvl = Number(tr.getAttribute("data-level"));
+                const d = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value ?? "";
+                const m = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value ?? "";
+                existingValues.set(lvl, { dice: d, mod: m });
+            });
+        }
+
+        interface LevelTier {
+            levelNumber: number;
+            label: string;
+            step: number;
+        }
+
+        const tiers: LevelTier[] = [];
+        if (isCharacterScaling) {
+            tiers.push({ levelNumber: 1, label: level === 0 ? "Cantrip (Level 1–4)" : "1st Level (Levels 1–4)", step: 0 });
+            tiers.push({ levelNumber: 5, label: "5th Level (Levels 5–10)", step: 1 });
+            tiers.push({ levelNumber: 11, label: "11th Level (Levels 11–16)", step: 2 });
+            tiers.push({ levelNumber: 17, label: "17th Level (Levels 17–20)", step: 3 });
+        } else {
+            for (let lvl = level; lvl <= 9; lvl++) {
+                const isBase = lvl === level;
+                const label = isBase ? `${getOrdinalLevelLabel(lvl)} Level (Base)` : `${getOrdinalLevelLabel(lvl)} Level Slot`;
+                tiers.push({ levelNumber: lvl, label, step: lvl - level });
+            }
+        }
+
+        const diceMatch = baseDice.match(/^(\d*)d(\d+)(.*)$/i);
+        const parsedBaseCount = diceMatch ? parseInt(diceMatch[1] || "1", 10) : 1;
+        const parsedSides = diceMatch ? diceMatch[2] : "";
+        const parsedExtra = diceMatch ? diceMatch[3] : "";
+
+        customSpellScalingTbody.innerHTML = tiers.map(tier => {
+            let rowDice = baseDice;
+            let rowMod = baseMod;
+
+            if (options?.autoScale) {
+                if (diceMatch && parsedSides) {
+                    const scaledCount = parsedBaseCount + tier.step;
+                    rowDice = `${scaledCount}d${parsedSides}${parsedExtra}`;
+                } else {
+                    rowDice = baseDice;
+                }
+                rowMod = baseMod;
+            } else if (options?.resetToBase) {
+                rowDice = baseDice;
+                rowMod = baseMod;
+            } else if (existingValues.has(tier.levelNumber)) {
+                const prev = existingValues.get(tier.levelNumber)!;
+                rowDice = prev.dice;
+                rowMod = prev.mod;
+            }
+
+            const preview = computeDamageRowPreview(rowDice, rowMod, damageType);
+
+            return `
+                <tr data-level="${tier.levelNumber}">
+                    <td>
+                        <span class="scaling-level-pill">
+                            <span class="scaling-level-label">${escapeHtml(tier.label)}</span>
+                        </span>
+                    </td>
+                    <td>
+                        <input
+                            type="text"
+                            class="scaling-table-input scaling-row-dice"
+                            data-level="${tier.levelNumber}"
+                            placeholder="e.g. 2d8"
+                            value="${escapeHtml(rowDice)}"
+                            autocomplete="off"
+                        />
+                    </td>
+                    <td>
+                        <input
+                            type="text"
+                            class="scaling-table-input scaling-row-mod"
+                            data-level="${tier.levelNumber}"
+                            placeholder="e.g. +3 or +MOD"
+                            value="${escapeHtml(rowMod)}"
+                            autocomplete="off"
+                        />
+                    </td>
+                    <td>
+                        <span class="scaling-preview-pill">${escapeHtml(preview)}</span>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    function updateCustomSpellScalingPreviews() {
+        if (!customSpellScalingTbody) return;
+        const damageType = customSpellDamageType?.value || "Fire";
+        customSpellScalingTbody.querySelectorAll<HTMLTableRowElement>("tr[data-level]").forEach(tr => {
+            const dice = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value || "";
+            const mod = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value || "";
+            const previewEl = tr.querySelector<HTMLElement>(".scaling-preview-pill");
+            if (previewEl) {
+                previewEl.textContent = computeDamageRowPreview(dice, mod, damageType);
+            }
+        });
+    }
+
     function openCustomSpellModal() {
         if (!customSpellModal) return;
         if (customSpellStatus) {
@@ -1488,11 +1714,17 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
     function closeCustomSpellModal() {
         if (!customSpellModal) return;
+        if (markupGuideModal && !markupGuideModal.classList.contains("hidden")) {
+            closeMarkupGuideModal();
+        }
+        resetCustomSpellImageState();
+        resetCustomSpellDamageState();
         customSpellModal.classList.remove("visible");
         customSpellModal.classList.add("hidden");
         customSpellModal.setAttribute("aria-hidden", "true");
         const anyOtherModalOpen = [
             modalBackdrop,
+            markupGuideModal,
             itemModalBackdrop,
             actionModalBackdrop,
             conditionsModalBackdrop,
@@ -1503,6 +1735,36 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (!anyOtherModalOpen) {
             document.body.style.overflow = "";
         }
+    }
+
+    function openMarkupGuideModal() {
+        if (!markupGuideModal) return;
+        markupGuideModal.classList.remove("hidden");
+        markupGuideModal.classList.add("visible");
+        markupGuideModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        markupGuideCloseBtn?.focus();
+    }
+
+    function closeMarkupGuideModal() {
+        if (!markupGuideModal) return;
+        markupGuideModal.classList.remove("visible");
+        markupGuideModal.classList.add("hidden");
+        markupGuideModal.setAttribute("aria-hidden", "true");
+        const anyOtherModalOpen = [
+            modalBackdrop,
+            customSpellModal,
+            itemModalBackdrop,
+            actionModalBackdrop,
+            conditionsModalBackdrop,
+            conditionDetailBackdrop,
+            manageSpellsBackdrop,
+            manageItemsBackdrop
+        ].some(m => m && !m.classList.contains("hidden"));
+        if (!anyOtherModalOpen) {
+            document.body.style.overflow = "";
+        }
+        customSpellGuideBtn?.focus();
     }
 
     async function openItemModal(itemName: string, itemId?: number | string, itemType?: string) {
@@ -1713,10 +1975,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalActionRange) modalActionRange.textContent = action.rangeOrReach || "—";
         if (modalActionHitDc) modalActionHitDc.textContent = action.hitOrDc || "—";
         if (modalActionDamage) {
-            modalActionDamage.innerHTML = linkifyConditionAndSpellTags(action.damageOrEffect || "—", {
+            const resolved = resolveActionSpellDamage(action, activeCharacter);
+            const badgeHtml = resolved.isScaled && resolved.scaledTierLabel
+                ? ` <span class="action-scaling-badge" title="Scaled for ${resolved.scaledTierLabel}">(${resolved.scaledTierLabel})</span>`
+                : "";
+            modalActionDamage.innerHTML = linkifyConditionAndSpellTags(resolved.damageOrEffect || "—", {
                 character: activeCharacter,
                 entityName: action.name
-            });
+            }) + badgeHtml;
         }
         if (modalActionNotes) {
             modalActionNotes.innerHTML = renderActionNotesHtml(action.notes || "");
@@ -1854,6 +2120,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
     ctx.closeSpellModal = closeSpellModal;
     ctx.openCustomSpellModal = openCustomSpellModal;
     ctx.closeCustomSpellModal = closeCustomSpellModal;
+    ctx.openMarkupGuideModal = openMarkupGuideModal;
+    ctx.closeMarkupGuideModal = closeMarkupGuideModal;
     ctx.openManageSpellsModal = openManageSpellsModal;
     ctx.closeManageSpellsModal = closeManageSpellsModal;
     ctx.openManageItemsModal = openManageItemsModal;
@@ -2044,6 +2312,180 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
     });
 
+    customSpellGuideBtn?.addEventListener("click", openMarkupGuideModal);
+    markupGuideCloseBtn?.addEventListener("click", closeMarkupGuideModal);
+    markupGuideDoneBtn?.addEventListener("click", closeMarkupGuideModal);
+    markupGuideModal?.addEventListener("click", (event) => {
+        if (event.target === markupGuideModal) {
+            closeMarkupGuideModal();
+        }
+    });
+
+    markupGuideCopyBtn?.addEventListener("click", async () => {
+        const textToCopy = markupGuideExampleText?.textContent || "";
+        if (!textToCopy) return;
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            const originalHtml = markupGuideCopyBtn.innerHTML;
+            markupGuideCopyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            markupGuideCopyBtn.classList.add("copied");
+            setTimeout(() => {
+                markupGuideCopyBtn.innerHTML = originalHtml;
+                markupGuideCopyBtn.classList.remove("copied");
+            }, 1800);
+        } catch {
+            const descInput = sheet.querySelector<HTMLTextAreaElement>("#custom-spell-description");
+            if (descInput && !descInput.value) {
+                descInput.value = textToCopy;
+            }
+        }
+    });
+
+    customSpellUploadTriggerBtn?.addEventListener("click", () => {
+        customSpellFileInput?.click();
+    });
+
+    customSpellFileInput?.addEventListener("change", async () => {
+        const file = customSpellFileInput.files?.[0];
+        if (!file) return;
+
+        if (!el.isAuth) {
+            if (customSpellUploadStatus) {
+                customSpellUploadStatus.className = "custom-spell-upload-status is-error";
+                customSpellUploadStatus.classList.remove("hidden");
+                customSpellUploadStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Log in to upload files directly, or paste an external image URL.';
+            }
+            return;
+        }
+
+        if (customSpellUploadTriggerBtn) customSpellUploadTriggerBtn.disabled = true;
+        if (customSpellUploadStatus) {
+            customSpellUploadStatus.className = "custom-spell-upload-status is-loading";
+            customSpellUploadStatus.classList.remove("hidden");
+            customSpellUploadStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading image...';
+        }
+
+        try {
+            const filePath = await FileService.uploadFile(file, "spells");
+            if (customSpellImgInput) {
+                customSpellImgInput.value = filePath;
+            }
+            updateCustomSpellImagePreview(filePath);
+            if (customSpellUploadStatus) {
+                customSpellUploadStatus.className = "custom-spell-upload-status is-success";
+                customSpellUploadStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Image uploaded!';
+            }
+        } catch (err: any) {
+            if (customSpellUploadStatus) {
+                customSpellUploadStatus.className = "custom-spell-upload-status is-error";
+                customSpellUploadStatus.textContent = err.message || "Failed to upload image.";
+            }
+        } finally {
+            if (customSpellUploadTriggerBtn) customSpellUploadTriggerBtn.disabled = false;
+            customSpellFileInput.value = "";
+        }
+    });
+
+    customSpellImgInput?.addEventListener("input", () => {
+        updateCustomSpellImagePreview(customSpellImgInput.value);
+        if (customSpellUploadStatus) {
+            customSpellUploadStatus.classList.add("hidden");
+            customSpellUploadStatus.textContent = "";
+        }
+    });
+
+    customSpellClearImgBtn?.addEventListener("click", () => {
+        if (customSpellImgInput) customSpellImgInput.value = "";
+        updateCustomSpellImagePreview("");
+        if (customSpellUploadStatus) {
+            customSpellUploadStatus.classList.add("hidden");
+            customSpellUploadStatus.textContent = "";
+        }
+    });
+
+    customSpellHasDamage?.addEventListener("change", () => {
+        if (customSpellHasDamage.checked) {
+            customSpellDamagePanel?.classList.remove("hidden");
+            renderCustomSpellScalingRows();
+        } else {
+            customSpellDamagePanel?.classList.add("hidden");
+        }
+    });
+
+    customSpellLevelInput?.addEventListener("change", () => {
+        if (customSpellHasDamage?.checked) {
+            renderCustomSpellScalingRows();
+        }
+    });
+
+    customSpellScalingType?.addEventListener("change", () => {
+        if (customSpellHasDamage?.checked) {
+            renderCustomSpellScalingRows();
+        }
+    });
+
+    customSpellDamageType?.addEventListener("change", () => {
+        updateCustomSpellScalingPreviews();
+    });
+
+    customSpellDamageDice?.addEventListener("input", () => {
+        const rows = customSpellScalingTbody?.querySelectorAll<HTMLTableRowElement>("tr[data-level]");
+        let allEmpty = true;
+        rows?.forEach(tr => {
+            const d = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value.trim();
+            if (d) allEmpty = false;
+        });
+        if (allEmpty) {
+            renderCustomSpellScalingRows({ resetToBase: true });
+        } else {
+            const firstRow = rows?.[0];
+            const firstInput = firstRow?.querySelector<HTMLInputElement>(".scaling-row-dice");
+            if (firstInput && !firstInput.hasAttribute("data-user-edited")) {
+                firstInput.value = customSpellDamageDice.value;
+            }
+            updateCustomSpellScalingPreviews();
+        }
+    });
+
+    customSpellDamageMod?.addEventListener("input", () => {
+        const rows = customSpellScalingTbody?.querySelectorAll<HTMLTableRowElement>("tr[data-level]");
+        let allEmpty = true;
+        rows?.forEach(tr => {
+            const m = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value.trim();
+            if (m) allEmpty = false;
+        });
+        if (allEmpty) {
+            renderCustomSpellScalingRows({ resetToBase: true });
+        } else {
+            updateCustomSpellScalingPreviews();
+        }
+    });
+
+    customSpellAutoscaleBtn?.addEventListener("click", () => {
+        renderCustomSpellScalingRows({ autoScale: true });
+    });
+
+    customSpellResetScalingBtn?.addEventListener("click", () => {
+        renderCustomSpellScalingRows({ resetToBase: true });
+    });
+
+    customSpellScalingTbody?.addEventListener("input", (e) => {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.classList.contains("scaling-row-dice") || target.classList.contains("scaling-row-mod"))) {
+            target.setAttribute("data-user-edited", "true");
+            const tr = target.closest("tr");
+            if (tr) {
+                const dice = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value || "";
+                const mod = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value || "";
+                const previewEl = tr.querySelector<HTMLElement>(".scaling-preview-pill");
+                const damageType = customSpellDamageType?.value || "Fire";
+                if (previewEl) {
+                    previewEl.textContent = computeDamageRowPreview(dice, mod, damageType);
+                }
+            }
+        }
+    });
+
     conditionsModalCloseBtn?.addEventListener("click", closeConditionsModal);
     conditionsModalDoneBtn?.addEventListener("click", closeConditionsModal);
     conditionsModalBackdrop?.addEventListener("click", (event) => {
@@ -2133,6 +2575,74 @@ export function initModalsController(ctx: CharacterSheetContext) {
             return;
         }
 
+        const imageUrl = customSpellImgInput?.value.trim() || undefined;
+
+        const hasDamage = !!customSpellHasDamage?.checked;
+        const baseDamageDice = customSpellDamageDice?.value.trim() || "";
+        const damageType = customSpellDamageType?.value || "Fire";
+        const baseDamageMod = customSpellDamageMod?.value.trim() || "";
+
+        interface ScalingRowData {
+            level: number;
+            label: string;
+            dice: string;
+            modifier: string;
+        }
+
+        const scalingRows: ScalingRowData[] = [];
+        if (hasDamage && customSpellScalingTbody) {
+            customSpellScalingTbody.querySelectorAll<HTMLTableRowElement>("tr[data-level]").forEach(tr => {
+                const lvl = Number(tr.getAttribute("data-level"));
+                const label = tr.querySelector(".scaling-level-label")?.textContent?.trim() || `Level ${lvl}`;
+                const dice = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value.trim() || "";
+                const mod = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value.trim() || "";
+                if (dice || mod) {
+                    scalingRows.push({ level: lvl, label, dice, modifier: mod });
+                }
+            });
+        }
+
+        let combinedDescription = descInput.value.trim();
+
+        const scalingMode = customSpellScalingType?.value || "auto";
+        const isCharacterScaling = scalingMode === "character" || (scalingMode === "auto" && Number(levelSelect?.value || "0") === 0);
+
+        if (hasDamage && (baseDamageDice || scalingRows.length > 0)) {
+            const baseModStr = baseDamageMod ? (baseDamageMod.startsWith("+") || baseDamageMod.startsWith("-") ? ` ${baseDamageMod}` : ` +${baseDamageMod}`) : "";
+            const baseTotalStr = baseDamageDice ? `${baseDamageDice}${baseModStr} ${damageType}` : damageType;
+            const colHeader = isCharacterScaling ? "Character Level" : "Casting Level";
+
+            const tableRowsHtml = scalingRows.map(r => {
+                const formattedMod = r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? r.modifier : `+${r.modifier}`) : "—";
+                const totalText = r.dice ? `${r.dice}${r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? ` ${r.modifier}` : ` +${r.modifier}`) : ""} ${damageType}`.trim() : "—";
+                return `<tr><td><strong>${escapeHtml(r.label)}</strong></td><td>${escapeHtml(r.dice || "—")}</td><td>${escapeHtml(formattedMod)}</td><td><span class="damage-total-badge">${escapeHtml(totalText)}</span></td></tr>`;
+            }).join("");
+
+            const damageBlockHtml = `
+<div class="spell-damage-scaling-block">
+    <div class="spell-damage-summary-badge">
+        <i class="fa-solid fa-burst"></i> <strong>Damage:</strong> ${escapeHtml(baseTotalStr)}
+    </div>
+    <div class="spell-scaling-table-container">
+        <table class="spell-scaling-table">
+            <thead>
+                <tr>
+                    <th>${escapeHtml(colHeader)}</th>
+                    <th>Damage Dice</th>
+                    <th>Modifier</th>
+                    <th>Total Damage</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRowsHtml}
+            </tbody>
+        </table>
+    </div>
+</div>`.trim();
+
+            combinedDescription = `${combinedDescription}\n\n${damageBlockHtml}`;
+        }
+
         const spellPayload = {
             name: nameInput.value.trim(),
             level: Number(levelSelect?.value || "0"),
@@ -2143,9 +2653,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
             components: componentsInput?.value.trim() || "V, S",
             concentration: !!concCheck?.checked,
             ritual: !!ritualCheck?.checked,
-            description: descInput.value.trim(),
+            description: combinedDescription,
+            imageUrl,
             source: "Custom Homebrew",
-            sourceTier: "Custom Database"
+            sourceTier: "Custom Database",
+            damageDice: baseDamageDice || undefined,
+            damageType: hasDamage ? damageType : undefined,
+            damageModifier: baseDamageMod || undefined,
+            damageScaling: scalingRows.length > 0 ? scalingRows : undefined
         };
 
         if (submitBtn) {
@@ -2169,8 +2684,13 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 concentration: spellPayload.concentration,
                 ritual: spellPayload.ritual,
                 description: spellPayload.description,
+                imageUrl: spellPayload.imageUrl,
                 source: "Custom Homebrew",
-                id: savedSpell?.id
+                id: savedSpell?.id,
+                damageDice: baseDamageDice || undefined,
+                damageType: hasDamage ? damageType : undefined,
+                damageModifier: baseDamageMod || undefined,
+                damageScaling: scalingRows.length > 0 ? scalingRows : undefined
             };
 
             activeCharacter.spells.unshift(newSpellDef);
@@ -2180,6 +2700,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
             setTimeout(() => {
                 closeCustomSpellModal();
                 customSpellForm.reset();
+                resetCustomSpellImageState();
+                resetCustomSpellDamageState();
             }, 800);
         } catch (error: any) {
             console.error("Failed to create custom spell:", error);
@@ -2195,6 +2717,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
     // Global escape key handler
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
+            if (markupGuideModal && !markupGuideModal.classList.contains("hidden")) {
+                closeMarkupGuideModal();
+                return;
+            }
             if (conditionDetailBackdrop && !conditionDetailBackdrop.classList.contains("hidden")) {
                 closeConditionDetailModal();
                 return;
@@ -2239,6 +2765,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
         closeActionModal,
         openCustomSpellModal,
         closeCustomSpellModal,
+        openMarkupGuideModal,
+        closeMarkupGuideModal,
         openManageSpellsModal,
         closeManageSpellsModal,
         openManageItemsModal,
