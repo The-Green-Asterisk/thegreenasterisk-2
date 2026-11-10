@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BACKGROUNDS_2024, CLASSES_2024 } from "../../../src/rules/dnd5e_2024";
 import { CharacterCreatorController } from "../../../src/views/characterCreator/characterCreator.ctrl";
+import { updateCreatorTitle } from "../../../src/views/characterCreator/controllers/navigation.ctrl";
 import { serverRulesClasses } from "./serverRulesClasses";
 
 describe("CharacterCreatorController", () => {
@@ -19,6 +20,18 @@ describe("CharacterCreatorController", () => {
         // Class rules come from rule_classes in the app; use the same seeded data here
         ctrl.classes = serverRulesClasses();
         startAsFighter(ctrl);
+    });
+
+    it("titles the page with the step, and with the character when editing a saved one", () => {
+        if (!document.querySelector("title")) document.head.appendChild(document.createElement("title"));
+        updateCreatorTitle(ctrl, 1);
+        expect(document.title).toBe("Step 1 of 9: Identity — Character Creator | The Green Asterisk");
+        updateCreatorTitle(ctrl, 9);
+        expect(document.title).toBe("Step 9 of 9: Review — Character Creator | The Green Asterisk");
+        ctrl.state.name = "Test Hero";
+        ctrl.state.savedId = 7;
+        updateCreatorTitle(ctrl, 3);
+        expect(document.title).toBe("Step 3 of 9: Class — Editing Test Hero | The Green Asterisk");
     });
 
     it("initializes with default starting state", () => {

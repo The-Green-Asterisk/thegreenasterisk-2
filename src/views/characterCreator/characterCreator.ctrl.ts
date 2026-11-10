@@ -46,6 +46,7 @@ import {
     bindNavigationEvents,
     CharacterCreatorContext,
     goToStep,
+    updateCreatorTitle,
     hideAlert,
     initAbilitiesController,
     initBackgroundController,
@@ -803,6 +804,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
 
     // Step Rendering methods
     public renderStep(step: number, preserveScroll: boolean = true): void {
+        updateCreatorTitle(this, step);
         const panelsContainer = document.getElementById("creator-step-panels");
         if (!panelsContainer) return;
         const prevScrollY = typeof window !== "undefined" ? window.scrollY : 0;

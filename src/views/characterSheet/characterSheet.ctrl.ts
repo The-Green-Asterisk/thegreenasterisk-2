@@ -41,6 +41,19 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     // Resolve initial ID from argument, query parameters, or path
     let activeCharacterId = resolveInitialCharacterId(initialParams);
 
+    /**
+     * The page title (WCAG 2.4.2): the character's name once one is loaded; the plain sheet
+     * title before one loads or after it's cleared.
+     */
+    function updateSheetTitle() {
+        const name = activeCharacter?.name?.trim();
+        try {
+            el.title.textContent = name
+                ? `${name} — Character Sheet | The Green Asterisk`
+                : "Character Sheet | The Green Asterisk";
+        } catch { }
+    }
+
     // Dynamic state
     let activeCharacter: CharacterData | null = null;
     let activeRawDndBeyondPayload: any = null;
@@ -58,6 +71,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     let autoSaveQueued = false;
 
     const dynamicContainer = sheet.querySelector<HTMLElement>("#character-sheet-dynamic-content");
+    updateSheetTitle();
     const statusMsg = sheet.querySelector<HTMLElement>("#character-status-message");
     const importWarning = sheet.querySelector<HTMLElement>("#character-import-warning");
     const importWarningText = sheet.querySelector<HTMLElement>("#character-import-warning-text");
@@ -1424,6 +1438,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const editModeCtrl = initEditModeController(ctx);
 
     function renderActiveCharacterView() {
+        updateSheetTitle();
         if (!activeCharacter || !dynamicContainer) return;
         const previousActiveTabTarget = sheet
             .querySelector<HTMLButtonElement>(".tab-btn.active")
@@ -1440,11 +1455,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeCharacter.spells.forEach(spell => {
                 spellMap.set(spell.name.toLowerCase(), spell);
             });
-
-            // Set document title
-            try {
-                el.title.textContent = `${activeCharacter.name} — Character Sheet | The Green Asterisk`;
-            } catch { }
 
             // Run each component's dedicated controller
             initTabsController(ctx);

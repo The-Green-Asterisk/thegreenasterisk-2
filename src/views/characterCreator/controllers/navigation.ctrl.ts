@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterCreatorContext } from "./context";
 
 import {
@@ -176,6 +177,21 @@ export function validateCurrentStep(ctx: CharacterCreatorContext): boolean {
 export function validateAndAdvance(ctx: CharacterCreatorContext): void {
     if (!validateCurrentStep(ctx)) return;
     goToStep(ctx, ctx.state.currentStep + 1);
+}
+
+const STEP_NAMES = ["Identity", "Species", "Class", "Background", "Abilities", "Skills", "Equipment", "Spells", "Review"];
+
+/**
+ * The page title for the creator's current step (WCAG 2.4.2), e.g. "Step 2 of 9: Species — Character Creator | The
+ * Green Asterisk", naming the character when editing a saved one.
+ */
+export function updateCreatorTitle(ctx: CharacterCreatorContext, renderedStep?: number): void {
+    const step = Math.min(Math.max(renderedStep || ctx.state.currentStep || 1, 1), STEP_NAMES.length);
+    const name = (ctx.state.name || "").trim();
+    const what = ctx.state.savedId ? `Editing ${name || "Character"}` : "Character Creator";
+    try {
+        el.title.textContent = `Step ${step} of ${STEP_NAMES.length}: ${STEP_NAMES[step - 1]} — ${what} | The Green Asterisk`;
+    } catch { }
 }
 
 export function goToStep(ctx: CharacterCreatorContext, step: number): void {
