@@ -1313,13 +1313,18 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     return characterPayload;
 }
 
+/** A save is on its way; further clicks are ignored until it finishes. */
+let submitInFlight = false;
+
 export async function submitCharacter(ctx: CharacterCreatorContext): Promise<void> {
+    if (submitInFlight) return;
     if (!ctx.state.name.trim()) {
         ctx.goToStep(1);
         ctx.showAlert("Please enter a character name.");
         return;
     }
 
+    submitInFlight = true;
     const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -1367,5 +1372,7 @@ export async function submitCharacter(ctx: CharacterCreatorContext): Promise<voi
                 ? `<i class="fa-solid fa-floppy-disk"></i> Save Changes`
                 : `<i class="fa-solid fa-check"></i> Create Character`;
         }
+    } finally {
+        submitInFlight = false;
     }
 }

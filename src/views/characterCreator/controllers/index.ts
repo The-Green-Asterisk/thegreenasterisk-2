@@ -8,4 +8,3 @@ export * from "./abilities.ctrl";
 export * from "./skills.ctrl";
 export * from "./equipment.ctrl";
 export * from "./spells.ctrl";
-export * from "./review.ctrl";

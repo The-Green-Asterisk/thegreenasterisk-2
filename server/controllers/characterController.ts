@@ -372,14 +372,24 @@ export default class CharacterController extends BaseController {
             }
 
             const parsed = this.tryParsePayload(record.payload);
-            const character = (record.vitals || (record.abilities && record.abilities.length > 0))
+            // Overlapping saves used to leave a copy of the character's rows per save (three CHA cards, each class
+            // three times); the saved payload is whole, so read that and rewrite the rows from it
+            const duplicatedRows = this.hasDuplicatedRelationalRows(record);
+            if (duplicatedRows && parsed) this.dedupeCharacterLists(parsed);
+            if (duplicatedRows && parsed && Array.isArray(parsed.abilities) && parsed.abilities.length > 0) {
+                void this.syncCharacterRelationalEntitiesInOrder(record, parsed)
+                    .catch(err => console.warn("Could not repair duplicated character rows:", err));
+            }
+            const character = !(duplicatedRows && parsed && Array.isArray(parsed.abilities) && parsed.abilities.length > 0) &&
+                (record.vitals || (record.abilities && record.abilities.length > 0))
                 ? this.hydrateFromRelationalEntities(record, parsed)
                 : {
                     ...(parsed && typeof parsed === "object" ? parsed : {}),
                     savedCharacterId: record.id
                 };
 
-            let autoHealedPayload = false;
+            // A repaired character's payload is rewritten without the copies too
+            let autoHealedPayload = duplicatedRows;
 
             // Auto-heal missing or truncated spell slots for spellcasting characters
             if (character && Array.isArray(character.classes) && character.classes.length > 0) {
@@ -783,7 +793,7 @@ export default class CharacterController extends BaseController {
             record.payload = JSON.stringify(payloadToSave);
 
             const saved = await repo.save(record);
-            await this.syncCharacterRelationalEntities(saved, payloadToSave);
+            await this.syncCharacterRelationalEntitiesInOrder(saved, payloadToSave);
             const parsed = this.tryParsePayload(saved.payload) || payloadToSave;
 
             if (Array.isArray((inputCharacter as any).spells) && (inputCharacter as any).spells.length > 0) {
@@ -1490,6 +1500,63 @@ export default class CharacterController extends BaseController {
             classResources,
             featureChoices
         };
+    }
+
+    /** Whether a character's rows hold the same ability, class, or skill more than once (overlapping saves). */
+    public static hasDuplicatedRelationalRows(record: Pick<SavedCharacter, "abilities" | "classes" | "skills">): boolean {
+        const dup = (names: Array<string | undefined>) => {
+            const keys = names.map(n => String(n || "").toLowerCase()).filter(Boolean);
+            return new Set(keys).size < keys.length;
+        };
+        return dup((record.abilities || []).map(a => a.abbr || a.name)) ||
+            dup((record.classes || []).map(c => c.name)) ||
+            dup((record.skills || []).map(s => s.name));
+    }
+
+    /**
+     * Drops repeated entries a duplicated save copied into a character: abilities by abbreviation, classes and skills
+     * by name, and exact copies in the other lists.
+     */
+    public static dedupeCharacterLists(character: any): void {
+        const by = (list: any[], key: (x: any) => string) => {
+            const seen = new Set<string>();
+            return list.filter(x => {
+                const k = key(x);
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            });
+        };
+        const lower = (v: unknown) => String(v || "").toLowerCase();
+        if (Array.isArray(character.abilities)) character.abilities = by(character.abilities, a => lower(a?.abbr || a?.name));
+        if (Array.isArray(character.classes)) character.classes = by(character.classes, c => lower(c?.name));
+        if (Array.isArray(character.skills)) character.skills = by(character.skills, s => lower(s?.name));
+        for (const k of ["features", "spells", "weapons", "equipment", "actions", "classResources"]) {
+            if (Array.isArray(character[k])) character[k] = by(character[k], x => JSON.stringify(x));
+        }
+        if (Array.isArray(character.classes) && character.classes.length > 0) {
+            character.level = character.classes.reduce((sum: number, c: any) => sum + (Number(c?.level) || 0), 0) || character.level;
+        }
+    }
+
+    /** The pending relational sync for each saved character, so saves of one character run one after another. */
+    private static relationalSyncChains = new Map<number, Promise<void>>();
+
+    /**
+     * Saves of the same character overlapping (a double-submitted form, two open tabs) would each delete the
+     * character's rows and then add their own, leaving one copy per save; run them one at a time instead.
+     */
+    private static async syncCharacterRelationalEntitiesInOrder(savedCharacter: SavedCharacter, data: any) {
+        const id = savedCharacter?.id;
+        if (!id) return this.syncCharacterRelationalEntities(savedCharacter, data);
+        const previous = this.relationalSyncChains.get(id) || Promise.resolve();
+        const next = previous.catch(() => { }).then(() => this.syncCharacterRelationalEntities(savedCharacter, data));
+        this.relationalSyncChains.set(id, next);
+        try {
+            await next;
+        } finally {
+            if (this.relationalSyncChains.get(id) === next) this.relationalSyncChains.delete(id);
+        }
     }
 
     private static async syncCharacterRelationalEntities(savedCharacter: SavedCharacter, data: any) {

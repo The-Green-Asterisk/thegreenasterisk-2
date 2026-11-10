@@ -53,7 +53,6 @@ import {
     initClassController,
     initEquipmentController,
     initIdentityController,
-    initReviewController,
     initSkillsController,
     initSpeciesController,
     initSpellsController,
@@ -918,9 +917,6 @@ export class CharacterCreatorController implements CharacterCreatorContext {
                 break;
             case 8:
                 initSpellsController(this);
-                break;
-            case 9:
-                initReviewController(this);
                 break;
         }
     }
