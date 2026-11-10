@@ -576,13 +576,17 @@ describe("CharacterCreatorController", () => {
             data: {
                 stats: [{ id: 1, value: 8 }, { id: 2, value: 14 }, { id: 3, value: 12 }, { id: 4, value: 10 }, { id: 5, value: 13 }, { id: 6, value: 15 }],
                 classes: [
-                    { definition: { name: "Bard" }, classFeatures: [
-                        { definition: { id: 101, name: "Ability Score Improvement", requiredLevel: 4 } },
-                        { definition: { id: 102, name: "8: Ability Score Improvement", requiredLevel: 8 } }
-                    ] },
-                    { definition: { name: "Warlock" }, classFeatures: [
-                        { definition: { id: 201, name: "Ability Score Improvement", requiredLevel: 4 } }
-                    ] }
+                    {
+                        definition: { name: "Bard" }, classFeatures: [
+                            { definition: { id: 101, name: "Ability Score Improvement", requiredLevel: 4 } },
+                            { definition: { id: 102, name: "8: Ability Score Improvement", requiredLevel: 8 } }
+                        ]
+                    },
+                    {
+                        definition: { name: "Warlock" }, classFeatures: [
+                            { definition: { id: 201, name: "Ability Score Improvement", requiredLevel: 4 } }
+                        ]
+                    }
                 ],
                 feats: [
                     feat(9, 900, "Entertainer Ability Score Improvements", ["__INITIAL_ASI"]),
@@ -591,11 +595,13 @@ describe("CharacterCreatorController", () => {
                     feat(201, 920, "Ability Score Improvement", ["General"]),
                     feat(77, 930, "Faction Renown", ["__DISGUISE_FEAT"])
                 ],
-                modifiers: { feat: [
-                    bonus(900, "charisma-score", 2), bonus(900, "dexterity-score", 1),
-                    bonus(910, "charisma-score", 1),
-                    bonus(920, "constitution-score", 1), bonus(920, "wisdom-score", 1)
-                ] }
+                modifiers: {
+                    feat: [
+                        bonus(900, "charisma-score", 2), bonus(900, "dexterity-score", 1),
+                        bonus(910, "charisma-score", 1),
+                        bonus(920, "constitution-score", 1), bonus(920, "wisdom-score", 1)
+                    ]
+                }
             }
         });
 
@@ -3577,6 +3583,79 @@ describe("CharacterCreatorController", () => {
             expect(revivify).toBeDefined();
             expect(revivify.source).toBe("Bard");
             expect(revivify.prepared).toBe(true);
+        });
+    });
+
+    describe("Exit to Sheet link", () => {
+        it("links to /character-sheet when no character is loaded", async () => {
+            const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+            document.body.innerHTML = "";
+            document.body.appendChild(characterCreatorTemplate());
+
+            ctrl.updateExitLink();
+            const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn");
+            expect(exitBtn).not.toBeNull();
+            expect(exitBtn?.getAttribute("href")).toBe("/character-sheet");
+        });
+
+        it("links to /character-sheet/:id when Darvell is loaded", async () => {
+            const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({ character: null });
+
+            document.body.innerHTML = "";
+            document.body.appendChild(characterCreatorTemplate());
+
+            await ctrl.loadCharacter("138310322");
+
+            const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn");
+            expect(exitBtn?.getAttribute("href")).toBe("/character-sheet/138310322");
+        });
+
+        it("links to /character-sheet/:siteCharacterId when a saved site character is loaded", async () => {
+            const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({
+                character: {
+                    name: "Saved Hero",
+                    siteCharacterId: "tga-test1234",
+                    savedCharacterId: 88
+                },
+                savedCharacter: {
+                    id: 88,
+                    siteCharacterId: "tga-test1234"
+                }
+            });
+
+            document.body.innerHTML = "";
+            document.body.appendChild(characterCreatorTemplate());
+
+            await ctrl.loadCharacter("tga-test1234");
+
+            const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn");
+            expect(exitBtn?.getAttribute("href")).toBe("/character-sheet/tga-test1234");
+        });
+
+        it("links to /character-sheet/:savedId when a character with numeric savedId is loaded", async () => {
+            const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({
+                character: {
+                    name: "Saved Hero",
+                    savedCharacterId: 42
+                },
+                savedCharacter: {
+                    id: 42
+                }
+            });
+
+            document.body.innerHTML = "";
+            document.body.appendChild(characterCreatorTemplate());
+
+            await ctrl.loadCharacter(42);
+
+            const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn");
+            expect(exitBtn?.getAttribute("href")).toBe("/character-sheet/42");
         });
     });
 });

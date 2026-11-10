@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { setClassRules } from "../../../src/services/classRules";
-import { serverRulesClasses } from "../views/serverRulesClasses";
 import { applyProgressionChoiceOption, applyStatModifier, evaluateCharacterStatModifiers } from "../../../src/rules/dnd5e_2024/statModifierEvaluator";
+import { setClassRules } from "../../../src/services/classRules";
 import { CharacterData } from "../../../src/views/characterSheet/characterData";
+import { serverRulesClasses } from "../views/serverRulesClasses";
 
 function createMockCharacter(): CharacterData {
     return {
@@ -460,6 +460,96 @@ describe("StatModifierEvaluator", () => {
             expect(char.vitals.armorClass).toBe(18);
             expect(char.vitals.speed).toBe("40 ft.");
             expect(char.spells.some(s => s.name === "Shield")).toBe(true);
+        });
+
+        it("applies and reverts special speeds (climb, swim, fly)", () => {
+            const char = createMockCharacter();
+            expect(char.vitals.speed).toBe("30 ft.");
+
+            // Climb speed = walk speed
+            applyStatModifier(char, { target: "vitals.climb", type: "set", value: "walk" }, 1);
+            expect(char.vitals.speed).toBe("30 ft. (Climb 30 ft.)");
+
+            // Swim speed = 20 ft.
+            applyStatModifier(char, { target: "vitals.swim", type: "set", value: 20 }, 1);
+            expect(char.vitals.speed).toBe("30 ft. (Climb 30 ft., Swim 20 ft.)");
+
+            // Fly speed = 60 ft.
+            applyStatModifier(char, { target: "speeds.fly", type: "set", value: 60 }, 1);
+            expect(char.vitals.speed).toBe("30 ft. (Climb 30 ft., Swim 20 ft., Fly 60 ft.)");
+
+            // Revert climb
+            applyStatModifier(char, { target: "vitals.climb", type: "set", value: "walk" }, -1);
+            expect(char.vitals.speed).toBe("30 ft. (Swim 20 ft., Fly 60 ft.)");
+
+            // Revert all
+            applyStatModifier(char, { target: "vitals.swim", type: "set", value: 20 }, -1);
+            applyStatModifier(char, { target: "speeds.fly", type: "set", value: 60 }, -1);
+            expect(char.vitals.speed).toBe("30 ft.");
+        });
+
+        it("applies and reverts GWF damage floor and TWF off-hand ability mod", () => {
+            const char = createMockCharacter();
+            char.weapons = [
+                { name: "Greatsword", category: "Martial Melee", properties: ["Two-Handed", "Heavy"], damage: "2d6+3 Slashing" } as any,
+                { name: "Shortsword", category: "Martial Melee", properties: ["Light", "Finesse"], damage: "1d6 Piercing" } as any
+            ];
+
+            // GWF floor: treat 1 or 2 as 3
+            applyStatModifier(char, { target: "attacks.two_handed_damage_floor", type: "bonus", value: 3 }, 1);
+            expect(char.weapons[0].properties).toContain("GWF (min 3 on damage dice)");
+
+            // TWF: off-hand ability mod
+            applyStatModifier(char, { target: "damage.offhand_ability_mod", type: "bonus", value: 1 }, 1);
+            expect(char.weapons[1].properties).toContain("TWF (adds ability mod to off-hand damage)");
+
+            // Revert
+            applyStatModifier(char, { target: "attacks.two_handed_damage_floor", type: "bonus", value: 3 }, -1);
+            expect(char.weapons[0].properties).not.toContain("GWF (min 3 on damage dice)");
+
+            applyStatModifier(char, { target: "damage.offhand_ability_mod", type: "bonus", value: 1 }, -1);
+            expect(char.weapons[1].properties).not.toContain("TWF (adds ability mod to off-hand damage)");
+        });
+
+        it("applies and reverts cantrip damage bonus and action grants", () => {
+            const char = createMockCharacter();
+            char.actions = [
+                { name: "Sacred Flame", spellName: "Sacred Flame", type: "Action", rangeOrReach: "60 ft.", hitOrDc: "DC 14", damageOrEffect: "1d8 Radiant", notes: "" }
+            ];
+
+            // Potent Spellcasting adds WIS (+1) to cantrip damage
+            applyStatModifier(char, { target: "damage.cantrips", type: "bonus", value: 1 }, 1);
+            expect(char.actions[0].damageOrEffect).toBe("1d8 + 1 Radiant");
+
+            // Revert cantrip damage
+            applyStatModifier(char, { target: "damage.cantrips", type: "bonus", value: 1 }, -1);
+            expect(char.actions[0].damageOrEffect).toBe("1d8 Radiant");
+
+            // Action grant (Protection reaction)
+            applyProgressionChoiceOption(char, {
+                id: "protection",
+                name: "Protection",
+                description: "Impose disadvantage on attack against target within 5 ft.",
+                actionGrant: {
+                    name: "Protection",
+                    type: "Reaction",
+                    range: "5 ft.",
+                    notes: "Impose disadvantage on attack roll against target within 5 ft."
+                }
+            }, 1);
+            expect(char.actions.some(a => a.name === "Protection" && a.type === "Reaction")).toBe(true);
+
+            // Revert action grant
+            applyProgressionChoiceOption(char, {
+                id: "protection",
+                name: "Protection",
+                description: "Impose disadvantage on attack against target within 5 ft.",
+                actionGrant: {
+                    name: "Protection",
+                    type: "Reaction"
+                }
+            }, -1);
+            expect(char.actions.some(a => a.name === "Protection")).toBe(false);
         });
     });
 });
