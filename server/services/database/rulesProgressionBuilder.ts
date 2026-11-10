@@ -1405,7 +1405,7 @@ export const PSI_WARRIOR_THRUST_OPTIONS: ProgressionChoiceOption[] = [
 ];
 
 export const DIVINER_THIRD_EYE_OPTIONS: ProgressionChoiceOption[] = [
-    { id: "darkvision", name: "Darkvision", description: "Gain Darkvision 60 feet until next rest.", modifiers: [{ target: "vitals.darkvision", type: "set", value: 60, description: "Darkvision 60 ft." }] },
+    { id: "darkvision", name: "Darkvision", description: "Gain Darkvision with a range of 120 feet until your next rest.", modifiers: [{ target: "vitals.darkvision", type: "set", value: 120, description: "Darkvision 120 ft." }] },
     { id: "ethereal-sight", name: "Ethereal Sight", description: "See into the Ethereal Plane within 60 feet." },
     { id: "greater-comprehension", name: "Greater Comprehension", description: "Read any language." },
     { id: "see-invisibility", name: "See Invisibility", description: "See invisible creatures within 10 feet." }
