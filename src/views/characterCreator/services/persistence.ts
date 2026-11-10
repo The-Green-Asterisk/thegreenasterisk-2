@@ -159,11 +159,10 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
             ctx.state.siteCharacterId = String(siteCharacterId);
         }
 
-        // Keep what the creator doesn't edit (details, notes, currency, campaign, companions) for when it saves
+        // Keep what the creator doesn't edit (campaign, companions) for when it saves
         ctx.loadedExtras = Object.fromEntries(
-            ["details", "notes", "currency", "campaign", "companions"].filter((k) => char[k] !== undefined).map((k) => [k, char[k]])
+            ["campaign", "companions"].filter((k) => char[k] !== undefined).map((k) => [k, char[k]])
         );
-        if (!ctx.state.gender && typeof char.details?.gender === "string") ctx.state.gender = char.details.gender;
 
         const isDndBeyond = (response?.savedCharacter?.source || char.source) === "dndbeyond";
         const externalId: string | undefined = response?.savedCharacter?.externalCharacterId
@@ -495,6 +494,15 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
 
         // Ensure class/subclass progression spells never occupy the base cantrip/prepared allotment
         ctx.sanitizeSpellSelections();
+
+        // Details, personality and notes, and coins as the character has them now (the sheet changes coins in play)
+        if (char.details && typeof char.details === "object") {
+            const { gender, ...rest } = char.details;
+            if (typeof gender === "string" && gender) ctx.state.gender = gender;
+            ctx.state.details = { ...rest };
+        }
+        if (char.notes && typeof char.notes === "object") ctx.state.notes = { ...char.notes };
+        if (char.currency && typeof char.currency === "object") ctx.state.currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...char.currency };
 
         const submitBtn = document.getElementById("creator-submit-btn");
         if (submitBtn) {
@@ -1287,9 +1295,16 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         applyProgressionChoiceOption(characterPayload, opt, 1);
     }
 
-    // What the creator doesn't edit, from the loaded character; the gender it does edit
+    // Details (gender included), personality and notes, and coins from the creator; campaign and companions from the
+    // loaded character, which the creator doesn't edit
     Object.assign(characterPayload, ctx.loadedExtras || {});
-    if (ctx.state.gender) characterPayload.details = { ...(characterPayload.details || {}), gender: ctx.state.gender };
+    const details = Object.fromEntries(
+        Object.entries({ ...(ctx.state.details || {}), gender: ctx.state.gender }).filter(([, v]) => v !== undefined && v !== "" && v !== null)
+    );
+    if (Object.keys(details).length > 0) characterPayload.details = details;
+    const notes = Object.fromEntries(Object.entries(ctx.state.notes || {}).filter(([, v]) => typeof v === "string" && v.trim()));
+    if (Object.keys(notes).length > 0) characterPayload.notes = notes;
+    if (ctx.state.currency) characterPayload.currency = { ...ctx.state.currency };
 
     return characterPayload;
 }

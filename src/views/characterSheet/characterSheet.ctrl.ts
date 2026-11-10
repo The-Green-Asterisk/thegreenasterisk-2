@@ -1,3 +1,4 @@
+import { restoreUsePips } from "./components/usesTracker";
 import el from "@elements";
 import { delData, getData, postData, putData } from "@services/request";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
@@ -24,6 +25,7 @@ import {
     initLoaderBarController,
     initModalsController,
     initResourcesController,
+    initDetailsController,
     initSkillsController,
     initSpellsController,
     initTabsController,
@@ -439,7 +441,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             if (!resKey) return;
             const resPips = tracker.querySelectorAll<HTMLButtonElement>(".pip");
             const resActive = tracker.querySelectorAll<HTMLButtonElement>(".pip.active").length;
-            const countEl = tracker.querySelector<HTMLElement>(`#count-${resKey}`);
+            const countEl = tracker.querySelector<HTMLElement>(".slot-count");
             if (countEl && resPips.length) {
                 countEl.textContent = `${resActive} / ${resPips.length}`;
             }
@@ -837,12 +839,13 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         });
         initWeaponsController(ctx);
 
-        // Update Actions tab weapon attacks
-        const actionsContainer = sheet.querySelector<HTMLElement>("#tab-actions .actions-container");
-        if (actionsContainer) {
-            actionsContainer.innerHTML = renderActions(char);
+        // Update the Actions tab's action cards (the weapon attacks above it are a .weapons-grid)
+        const actionsGrid = sheet.querySelector<HTMLElement>("#tab-actions .actions-grid");
+        if (actionsGrid) {
+            actionsGrid.innerHTML = renderActions(char);
             initActionsController(ctx);
         }
+        restoreUsePips(sheet, char);
     }
 
     function recalculateFromRawPayload() {
@@ -1471,6 +1474,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             initEquipmentController(ctx);
             initFeaturesController(ctx);
             initResourcesController(ctx);
+            initDetailsController(ctx);
 
             applyTrackerSnapshot();
             updateHpDisplay();

@@ -1,3 +1,5 @@
+import { renderUsesTracker } from "./usesTracker";
+import { itemChargesKey } from "../dndBeyondExtras";
 import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
 import { checkItemRequiresAttunement, isMundaneEquipment } from "../services/magicItemBonuses";
@@ -59,7 +61,8 @@ export function renderWeapons(data: CharacterData): string {
                </button>`
             : '';
 
-        return `
+        const charges = w.charges ? renderUsesTracker(w.name, itemChargesKey(w), w.charges.max, w.charges.resetOn, w.charges.resetLabel) : '';
+        const card = `
             <div class="weapon-card ${w.equipped ? 'is-equipped' : ''} clickable-weapon-card" data-weapon-name="${encodeURIComponent(w.name)}" data-weapon-id="${w.definitionId || w.id || ''}" data-weapon-type="Weapon" tabindex="0" role="button" title="Click to view details and tiered info">
                 <div class="weapon-card-header">
                     <div class="weapon-title-group">
@@ -103,5 +106,7 @@ export function renderWeapons(data: CharacterData): string {
                 ${w.notes ? `<div class="weapon-notes">${linkifyConditionAndSpellTags(w.notes, { character: data, entityName: w.name, sourceName: w.category })}</div>` : ''}
             </div>
         `;
+        // Charges sit beside the card, not inside it, since the card itself is a button
+        return charges ? `<div class="card-with-uses">${card}${charges}</div>` : card;
     }).join('');
 }

@@ -15,3 +15,4 @@ export * from './spells';
 export * from './vitals';
 export * from './weapons';
 
+export * from './details';

@@ -338,6 +338,18 @@ export function renderSavingThrowNotes(data: CharacterData): string {
         `);
     }
 
+    // Other defenses (damage immunities and vulnerabilities, e.g. added on D&D Beyond), not already listed above
+    const otherDefenses = (data.proficiencies?.defenses || [])
+        .filter(d => !resistances.some(r => d.toLowerCase().startsWith(`${String(r).toLowerCase()} (resistance`)));
+    if (otherDefenses.length > 0) {
+        blocks.push(`
+            <div class="saving-throw-notes-row other-defenses-row" aria-label="Other Defenses">
+                <span class="saving-throw-notes-label"><i class="fa-solid fa-shield" aria-hidden="true"></i> Defenses:</span>
+                <span class="saving-throw-notes-text">${otherDefenses.join(", ")}</span>
+            </div>
+        `);
+    }
+
     if (immunities.length > 0) {
         blocks.push(`
             <div class="saving-throw-notes-row condition-immunities-row" aria-label="Condition Immunities">

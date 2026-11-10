@@ -55,6 +55,10 @@ export interface CreatorState {
     avatarUrl: string;
     speciesId: string;
     lineageId: string;
+    /** Details besides gender (faith, age, height, ...), personality and notes, and coins */
+    details?: { faith?: string; age?: string; height?: string; weight?: string; hair?: string; eyes?: string; skin?: string; lifestyle?: string; experiencePoints?: number };
+    notes?: Record<string, string>;
+    currency?: { cp: number; sp: number; ep: number; gp: number; pp: number };
     /** Skills or feats picked through species traits (Skillful, Versatile, Keen Senses), by trait slug */
     speciesChoices: Record<string, string[]>;
     classId: string;

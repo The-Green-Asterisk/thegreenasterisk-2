@@ -1,6 +1,14 @@
 import { BASE_ARMOR_2024, BASE_WEAPONS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
 
+const COINS: Array<{ key: "pp" | "gp" | "ep" | "sp" | "cp"; label: string }> = [
+    { key: "pp", label: "Platinum (pp)" },
+    { key: "gp", label: "Gold (gp)" },
+    { key: "ep", label: "Electrum (ep)" },
+    { key: "sp", label: "Silver (sp)" },
+    { key: "cp", label: "Copper (cp)" }
+];
+
 export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
     const cls = ctx.classes.find((c) => c.id === ctx.state.classId) || ctx.classes[0];
     const effectiveStr = ctx.getEffectiveAbilityScore("str");
@@ -15,6 +23,17 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                 <h3 class="panel-title">Starting Equipment & Armor</h3>
                 <p class="panel-desc">Select starting weapons, armor, and gear. Stat requirements and class proficiencies are evaluated live.</p>
             </div>
+
+            <fieldset class="creator-detail-box creator-fieldset">
+                <legend><h4>Coins</h4></legend>
+                <div class="creator-currency-grid">
+                    ${COINS.map((coin) => `
+                        <div class="creator-form-group">
+                            <label class="creator-label" for="char-coin-${coin.key}">${coin.label}</label>
+                            <input type="number" id="char-coin-${coin.key}" class="creator-input char-coin-input" data-coin="${coin.key}" min="0" step="1" inputmode="numeric" value="${Math.max(0, Number(ctx.state.currency?.[coin.key]) || 0)}" />
+                        </div>`).join("")}
+                </div>
+            </fieldset>
 
             ${cls && cls.startingEquipmentOptions && cls.startingEquipmentOptions.length > 0 ? `
                 <div class="starting-packages-section">

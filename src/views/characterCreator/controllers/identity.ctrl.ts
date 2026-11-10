@@ -14,6 +14,21 @@ export function initIdentityController(ctx: CharacterCreatorContext): void {
         ctx.state.alignment = (e.target as HTMLSelectElement).value;
     });
 
+    document.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".char-detail-input").forEach((input) => {
+        const update = () => {
+            const key = input.getAttribute("data-detail");
+            if (key) ctx.state.details = { ...(ctx.state.details || {}), [key]: input.value };
+        };
+        input.addEventListener("input", update);
+        input.addEventListener("change", update);
+    });
+    document.querySelectorAll<HTMLTextAreaElement>(".char-note-input").forEach((input) => {
+        input.addEventListener("input", () => {
+            const key = input.getAttribute("data-note");
+            if (key) ctx.state.notes = { ...(ctx.state.notes || {}), [key]: input.value };
+        });
+    });
+
     const genderInput = document.getElementById("char-gender-input") as HTMLInputElement;
     genderInput?.addEventListener("input", (e) => {
         ctx.state.gender = (e.target as HTMLInputElement).value;

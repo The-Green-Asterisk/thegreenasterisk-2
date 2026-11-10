@@ -70,8 +70,17 @@ export interface FeatureItem {
     level?: number;
 }
 
+/** An item's limited uses (e.g. a wand's charges): how many, how many are spent on import, and when they come back. */
+export interface ItemCharges {
+    max: number;
+    used: number;
+    resetOn: "short" | "long" | "dawn" | "manual";
+    resetLabel?: string;
+}
+
 export interface EquipmentItem {
     id?: number;
+    charges?: ItemCharges;
     definitionId?: number;
     name: string;
     quantity: number;
@@ -89,6 +98,7 @@ export interface EquipmentItem {
 
 export interface WeaponItem {
     id?: number;
+    charges?: ItemCharges;
     definitionId?: number;
     name: string;
     quantity: number;

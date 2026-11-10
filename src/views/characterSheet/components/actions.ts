@@ -1,3 +1,4 @@
+import { renderUsesTracker, resourceForAction } from "./usesTracker";
 import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
 
@@ -8,7 +9,10 @@ export function renderActions(data: CharacterData): string {
                 <i class="fa-solid fa-wand-magic-sparkles"></i> View Spell
                </button>`
             : '';
-        return `
+        // Uses of the resource the action spends (mirrors that resource's pips), beside the card since it's a button
+        const resource = resourceForAction(data, action);
+        const uses = resource ? renderUsesTracker(action.name, resource.key, resource.total, resource.resetOn) : '';
+        const card = `
             <div
                 class="action-card clickable-action-card ${action.spellName ? 'has-spell' : ''}"
                 data-action-index="${index}"
@@ -33,5 +37,6 @@ export function renderActions(data: CharacterData): string {
                 <div class="action-card-footer-hint"><i class="fa-solid fa-expand"></i> Click for full details</div>
             </div>
         `;
+        return uses ? `<div class="card-with-uses">${card}${uses}</div>` : card;
     }).join('');
 }

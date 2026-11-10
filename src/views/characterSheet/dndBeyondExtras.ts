@@ -1,4 +1,4 @@
-import { ActionItem, CharacterData, ClassResource, EquipmentItem } from "./characterData";
+import { ActionItem, CharacterData, ClassResource, EquipmentItem, ItemCharges } from "./characterData";
 
 /**
  * Reads the parts of a D&D Beyond character that aren't stats: character details, personality and notes, currency,
@@ -211,4 +211,38 @@ export function readTrackingState(
     };
 
     return { slotPips, resourcePips, deathSaves, heroicInspiration: !!raw?.inspiration };
+}
+
+/** Pips for items' charges spent on D&D Beyond, by itemChargesKey. */
+export function readItemChargePips(items: Array<{ id?: number; name: string; charges?: ItemCharges }>): Record<string, boolean[]> {
+    const out: Record<string, boolean[]> = {};
+    for (const item of items) {
+        if (item.charges && item.charges.used > 0) out[itemChargesKey(item)] = pips(item.charges.max, item.charges.used);
+    }
+    return out;
+}
+
+/**
+ * An inventory item's limited uses from D&D Beyond (limitedUse, chargesUsed), or undefined for none and for single-use
+ * consumables (a potion's one use is its quantity).
+ */
+export function readItemCharges(inv: any): ItemCharges | undefined {
+    const raw = inv?.limitedUse || (Array.isArray(inv?.definition?.limitedUse) ? inv.definition.limitedUse[0] : inv?.definition?.limitedUse);
+    const max = Number(raw?.maxUses) || 0;
+    const resetType = String(raw?.resetType || "").replace(/\s+/g, "").toLowerCase();
+    if (max <= 0 || (resetType === "consumable" && max <= 1)) return undefined;
+    const resetOn: ItemCharges["resetOn"] = resetType.includes("short") ? "short"
+        : resetType.includes("long") ? "long"
+            : resetType.includes("dawn") ? "dawn" : "manual";
+    return {
+        max,
+        used: Math.min(max, Math.max(Number(raw?.numberUsed) || 0, Number(inv?.chargesUsed) || 0)),
+        resetOn,
+        resetLabel: text(raw?.resetTypeDescription)
+    };
+}
+
+/** The tracking key for an item's charges: by its D&D Beyond id, else its name. */
+export function itemChargesKey(item: { id?: number; name: string }): string {
+    return `item-${item.id ?? String(item.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }

@@ -18,7 +18,7 @@ import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
 import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
-import { readCampaign, readCompanions, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
+import { readCampaign, readCompanions, readItemCharges, readItemChargePips, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
@@ -1916,7 +1916,8 @@ export function parseDndBeyondCharacter(
             isMagic: isMundaneEquipment(def?.name) ? false : (isPotion ? true : !!def?.magic),
             description: def?.description || def?.snippet || undefined,
             imageUrl: def?.largeAvatarUrl || def?.avatarUrl || undefined,
-            notes: def?.description || def?.snippet || undefined
+            notes: def?.description || def?.snippet || undefined,
+            charges: readItemCharges(i)
         };
     });
 
@@ -2006,6 +2007,7 @@ export function parseDndBeyondCharacter(
         }
 
         return {
+            charges: readItemCharges(item),
             id: item.id,
             definitionId: def.id,
             name: def.name,
@@ -2326,6 +2328,10 @@ export function parseDndBeyondCharacter(
 
     // What the player has already used on D&D Beyond: slots, limited uses, death saves
     result.trackingState = readTrackingState(raw, spellSlots, classResources);
+    result.trackingState.resourcePips = {
+        ...result.trackingState.resourcePips,
+        ...readItemChargePips([...result.equipment, ...(result.weapons || [])])
+    };
     result.vitals.deathSaves = { ...result.trackingState.deathSaves! };
 
     applyGrantedWeapons(result);

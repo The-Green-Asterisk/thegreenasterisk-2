@@ -3062,4 +3062,76 @@ describe('Frontend View Templates', () => {
         expect(char.trackingState?.resourcePips?.[`res-${arIdx}`]).toEqual([false]);
         expect(char.vitals.deathSaves).toEqual({ successes: 1, failures: 2, isStable: false });
     });
+
+    it('shows details, notes, currency, companions, and uses on the sheet, without the campaign', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
+        const { initResourcesController } = await import('../../../src/views/characterSheet/controllers/resources.ctrl');
+        const { initDetailsController } = await import('../../../src/views/characterSheet/controllers/details.ctrl');
+        const char = parseDndBeyondCharacter({
+            id: 5, name: 'Shown', modifiers: {}, spells: {},
+            stats: [1, 2, 3, 4, 5, 6].map(id => ({ id, value: 12 })),
+            classes: [{ level: 3, definition: { name: 'Wizard' } }],
+            faith: 'The <b>Lady</b>', lifestyleId: 4,
+            traits: { bonds: 'My spellbook\nAnd my cat' },
+            notes: { backstory: 'Raised in a library' },
+            currencies: { cp: 1, sp: 2, ep: 0, gp: 30, pp: 0 },
+            campaign: { name: 'Secret Campaign Name' },
+            creatures: [{ name: 'Pip', isActive: true, definition: { name: 'Owl', armorClass: 11, averageHitPoints: 1 } }],
+            inventory: [{ id: 801, quantity: 1, equipped: false, definition: { id: 9001, name: 'Wand of Magic Missiles', filterType: 'Wand', magic: true }, limitedUse: { maxUses: 7, numberUsed: 3, resetType: 'Dawn', resetTypeDescription: 'Regains 1d6+1 charges at dawn' } }],
+            actions: { class: [{ name: 'Arcane Recovery', limitedUse: { maxUses: 1, numberUsed: 0, resetType: 2 } }] }
+        });
+        const html = renderSheetContent(char);
+        const sheet = document.createElement('div');
+        sheet.innerHTML = html;
+
+        // Details & Notes tab: escaped text, line breaks kept, coins editable, companion listed, no campaign
+        const pane = sheet.querySelector('#tab-details')!;
+        expect(sheet.querySelector('#btn-tab-details')?.getAttribute('role')).toBe('tab');
+        expect(pane.innerHTML).toContain('The &lt;b&gt;Lady&lt;/b&gt;');
+        expect(pane.textContent).toContain('Modest');
+        expect(pane.innerHTML).toContain('My spellbook<br>And my cat');
+        expect(pane.textContent).toContain('Raised in a library');
+        expect((pane.querySelector('#currency-gp') as HTMLInputElement).value).toBe('30');
+        expect(pane.querySelector('label[for="currency-gp"]')).toBeTruthy();
+        expect(pane.textContent).toContain('Pip');
+        expect(sheet.textContent).not.toContain('Secret Campaign Name');
+
+        // Item charges beside the item, outside its button card; 3 of 7 spent
+        const wandUses = sheet.querySelector('.equipment-grid .card-with-uses .inline-uses') as HTMLElement;
+        expect(wandUses).toBeTruthy();
+        expect(wandUses.closest('[role="button"]')).toBeNull();
+        expect(wandUses.querySelectorAll('.pip').length).toBe(7);
+        expect(char.trackingState?.resourcePips?.['item-801']).toEqual([true, true, true, true, false, false, false]);
+
+        // The action's uses mirror the resource's pips
+        const arIdx = (char.classResources || []).findIndex(r => r.name === 'Arcane Recovery');
+        const key = `res-${arIdx}`;
+        const actionUses = sheet.querySelector(`.actions-grid .inline-uses[data-resource-key="${key}"]`);
+        expect(actionUses).toBeTruthy();
+
+        const ctx: any = {
+            sheet, getCharacter: () => char, updateSlotCounters: () => { }, persistTrackerSnapshot: () => { },
+            setCurrentHp: () => { }, setTempHp: () => { }, getMaxHp: () => 1, updateHpDisplay: () => { },
+            scheduleDebouncedAutoSave: () => { }
+        };
+        initResourcesController(ctx);
+        (actionUses!.querySelector('.pip') as HTMLButtonElement).click();
+        const twins = sheet.querySelectorAll(`.pip[data-resource-key="${key}"][data-pip-idx="0"]`);
+        expect(twins.length).toBe(2);
+        twins.forEach(p => expect(p.classList.contains('active')).toBe(false));
+
+        // A long rest restores the action but not the wand's dawn charges
+        sheet.querySelectorAll('.inline-uses[data-resource-key="item-801"] .pip').forEach(p => p.classList.remove('active'));
+        (sheet.querySelector('#long-rest-btn') as HTMLButtonElement).click();
+        twins.forEach(p => expect(p.classList.contains('active')).toBe(true));
+        expect(sheet.querySelectorAll('.inline-uses[data-resource-key="item-801"] .pip.active').length).toBe(0);
+
+        // Coins edited on the sheet save to the character
+        initDetailsController(ctx);
+        const gp = sheet.querySelector('#currency-gp') as HTMLInputElement;
+        gp.value = '12';
+        gp.dispatchEvent(new Event('change'));
+        expect(char.currency?.gp).toBe(12);
+    });
 });

@@ -891,6 +891,31 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.state.speciesChoices?.["keen-senses"]).toEqual(["Survival"]);
         });
 
+        it("edits details, personality, and coins in the creator and saves them", () => {
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.renderStep(1);
+            const faith = document.getElementById("char-detail-faith") as HTMLInputElement;
+            expect(document.querySelector('label[for="char-detail-faith"]')).toBeTruthy();
+            faith.value = "Tempus";
+            faith.dispatchEvent(new Event("input"));
+            const lifestyle = document.getElementById("char-detail-lifestyle") as HTMLSelectElement;
+            lifestyle.value = "Modest";
+            lifestyle.dispatchEvent(new Event("change"));
+            const bonds = document.getElementById("char-note-bonds") as HTMLTextAreaElement;
+            bonds.value = "My squad";
+            bonds.dispatchEvent(new Event("input"));
+
+            ctrl.renderStep(7);
+            const gp = document.getElementById("char-coin-gp") as HTMLInputElement;
+            gp.value = "25";
+            gp.dispatchEvent(new Event("change"));
+
+            const payload = ctrl.buildPayload();
+            expect(payload.details).toMatchObject({ faith: "Tempus", lifestyle: "Modest" });
+            expect(payload.notes).toEqual({ bonds: "My squad" });
+            expect(payload.currency).toEqual({ cp: 0, sp: 0, ep: 0, gp: 25, pp: 0 });
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };

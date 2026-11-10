@@ -1,3 +1,4 @@
+import { restoreUsePips } from "../components/usesTracker";
 import { getData, postData } from "@services/request";
 import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
 import { renderEquipment } from "../components/equipment";
@@ -859,6 +860,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         initWeaponsController(ctx);
         initEquipmentController(ctx);
+        restoreUsePips(sheet, activeCharacter);
     }
 
     function renderManageCurrentItemsPanel() {

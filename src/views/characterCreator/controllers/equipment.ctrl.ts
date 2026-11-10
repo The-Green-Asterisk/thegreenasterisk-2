@@ -2,6 +2,16 @@ import { BASE_ARMOR_2024, BASE_WEAPONS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "./context";
 
 export function initEquipmentController(ctx: CharacterCreatorContext): void {
+    document.querySelectorAll<HTMLInputElement>(".char-coin-input").forEach((input) => {
+        input.addEventListener("change", () => {
+            const coin = input.getAttribute("data-coin") as "cp" | "sp" | "ep" | "gp" | "pp" | null;
+            if (!coin) return;
+            const value = Math.max(0, Math.floor(Number(input.value) || 0));
+            input.value = String(value);
+            ctx.state.currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(ctx.state.currency || {}), [coin]: value };
+        });
+    });
+
     // Equip starting equipment package buttons
     document.querySelectorAll(".equip-package-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {

@@ -15,3 +15,4 @@ export * from "./tabs.ctrl";
 export * from "./vitals.ctrl";
 export * from "./weapons.ctrl";
 
+export * from "./details.ctrl";

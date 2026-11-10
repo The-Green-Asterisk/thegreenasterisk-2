@@ -1,3 +1,5 @@
+import { renderUsesTracker } from "./usesTracker";
+import { itemChargesKey } from "../dndBeyondExtras";
 import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
 import { checkItemRequiresAttunement, isMundaneEquipment } from "../services/magicItemBonuses";
@@ -36,7 +38,8 @@ export function renderEquipment(data: CharacterData): string {
         const isMagic = isMundaneEquipment(item.name) ? false : !!item.isMagic;
         const magicBadge = isMagic ? '<span class="item-badge magic"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>' : '';
         const rarityBadge = !isMagic ? '' : (item.rarity && item.rarity !== 'Common' ? `<span class="item-badge rarity-${item.rarity.toLowerCase().replace(/\s+/g, '-')}">${item.rarity}</span>` : '');
-        return `
+        const charges = item.charges ? renderUsesTracker(item.name, itemChargesKey(item), item.charges.max, item.charges.resetOn, item.charges.resetLabel) : '';
+        const card = `
             <div class="equipment-row clickable-item-card" data-item-name="${encodeURIComponent(item.name)}" data-item-id="${item.definitionId || item.id || ''}" data-item-type="${item.type || ''}" tabindex="0" role="button" title="Click to view details and tiered info">
                 <div class="item-info">
                     <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon"></i> ${item.name}</span>
@@ -56,5 +59,7 @@ export function renderEquipment(data: CharacterData): string {
                 ${item.notes ? `<div class="item-notes">${linkifyConditionAndSpellTags(item.notes, { character: data, entityName: item.name, sourceName: item.type })}</div>` : ''}
             </div>
         `;
+        // Charges sit beside the card, not inside it, since the card itself is a button
+        return charges ? `<div class="card-with-uses">${card}${charges}</div>` : card;
     }).join('');
 }

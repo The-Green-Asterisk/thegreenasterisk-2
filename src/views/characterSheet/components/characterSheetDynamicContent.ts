@@ -1,6 +1,7 @@
 import { CharacterData } from "../characterData";
 import { renderAbilityCards } from "./abilities";
 import { renderActions } from "./actions";
+import { renderDetailsAndNotes } from "./details";
 import { renderEquipment } from "./equipment";
 import { renderFeatures } from "./features";
 import { renderHeroSection } from "./hero";
@@ -67,6 +68,9 @@ export function renderSheetContent(data: CharacterData): string {
                 </button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-equipment" id="btn-tab-equipment">
                     <i class="fa-solid fa-shield"></i> Equipment & Proficiencies
+                </button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-details" id="btn-tab-details">
+                    <i class="fa-solid fa-book-open" aria-hidden="true"></i> Details & Notes
                 </button>
             </div>
 
@@ -211,6 +215,10 @@ export function renderSheetContent(data: CharacterData): string {
                         ${renderEquipment(data)}
                     </div>
                 </div>
+            </div>
+
+            <div class="tab-pane" id="tab-details" role="tabpanel" aria-labelledby="btn-tab-details">
+                ${renderDetailsAndNotes(data)}
             </div>
         </section>
     `;
