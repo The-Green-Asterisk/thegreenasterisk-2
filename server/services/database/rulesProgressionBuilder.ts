@@ -416,6 +416,7 @@ export const FIGHTING_STYLE_OPTIONS: ProgressionChoiceOption[] = [
                 target: "vitals.ac",
                 type: "bonus",
                 value: 1,
+                requires: "armor",
                 condition: "wearing armor",
                 description: "+1 bonus to Armor Class while wearing armor"
             }
@@ -1162,6 +1163,8 @@ export const DRUID_LAND_BIOMES: ProgressionChoiceOption[] = [
 export const BARBARIAN_ASPECTS: ProgressionChoiceOption[] = [
     { id: "elephant", name: "Aspect of the Elephant", description: "Advantage on Athletics checks and carrying capacity doubled.", modifiers: [{ target: "skills.athletics", type: "advantage", description: "Advantage on Athletics checks" }] },
     { id: "owl", name: "Aspect of the Owl", description: "Gain Darkvision 60 ft. and Advantage on Perception checks.", modifiers: [{ target: "vitals.darkvision", type: "bonus", value: 60, description: "Gain Darkvision 60 ft." }, { target: "skills.perception", type: "advantage", description: "Advantage on Perception checks" }] },
+    { id: "panther", name: "Aspect of the Panther", description: "Gain climbing speed equal to walking speed.", modifiers: [{ target: "vitals.climb", type: "set", value: "walk", description: "Climbing speed equals walking speed" }] },
+    { id: "pike", name: "Aspect of the Pike", description: "Gain swimming speed equal to walking speed.", modifiers: [{ target: "vitals.swim", type: "set", value: "walk", description: "Swimming speed equals walking speed" }] },
     { id: "spider", name: "Aspect of the Spider", description: "Gain climbing speed equal to walking speed.", modifiers: [{ target: "vitals.climb", type: "set", value: "walk", description: "Climbing speed equals walking speed" }] },
     { id: "wolf", name: "Aspect of the Wolf", description: "Track creatures at fast pace and move stealthily at normal pace.", modifiers: [{ target: "skills.stealth", type: "advantage", description: "Stealth advantage at normal travel pace" }] }
 ];

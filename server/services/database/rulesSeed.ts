@@ -7346,6 +7346,14 @@ export const SEED_GENERAL_FEATS = [
             "str",
             "dex"
         ],
+        "modifiers": [
+            {
+                "target": "vitals.climb",
+                "type": "set",
+                "value": "walk",
+                "description": "Climb Speed equal to Speed"
+            }
+        ],
         "benefits": [
             "Ability Score Increase: Increase your Strength or Dexterity score by 1, to a maximum of 20.",
             "Climb Speed: You gain a Climb Speed equal to your Speed.",
