@@ -7,6 +7,7 @@ import { rangeFeet, resolveSenses, senseGrantsFrom, writeSenses } from "../../ru
 import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSenseGrants, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
+import { extractSpellDamageInfo, getSpellDamageDisplay } from "../../services/spellDamage";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import {
     AbilityScore,
@@ -1444,6 +1445,16 @@ export function parseDndBeyondCharacter(
         const isAlwaysPrepared = s.alwaysPrepared === true ||
             (!isFromClassSpells && s.countsAsKnownSpell === false);
 
+        const damageInfo = extractSpellDamageInfo({
+            level: Number(def.level) || 0,
+            description: def.description || def.snippet || "",
+            damageDice: def.damageDice,
+            damageType: def.damageType,
+            damageModifier: def.damageModifier,
+            damageScaling: def.damageScaling,
+            modifiers: def.modifiers || s.modifiers
+        });
+
         const spellDef: SpellDefinition = {
             id: def.id,
             name: def.name,
@@ -1459,7 +1470,11 @@ export function parseDndBeyondCharacter(
             description: def.description || def.snippet || "<p>No description provided.</p>",
             imageUrl: def.avatarUrl || def.largeAvatarUrl || undefined,
             isLegacy: isLegacy || undefined,
-            alwaysPrepared: isAlwaysPrepared ? true : undefined
+            alwaysPrepared: isAlwaysPrepared ? true : undefined,
+            damageDice: damageInfo.damageDice,
+            damageType: damageInfo.damageType,
+            damageModifier: damageInfo.damageModifier,
+            damageScaling: damageInfo.damageScaling
         };
 
         // Track every copy D&D Beyond lists, by where it came from, to report duplicates on import; and whether any
@@ -1587,12 +1602,33 @@ export function parseDndBeyondCharacter(
             }
 
             let damageOrEffect = "Spell Effect";
-            if (baseDmgDie) {
+            if (isEb) {
+                const beamCount = totalLevel >= 17 ? 4 : totalLevel >= 11 ? 3 : totalLevel >= 5 ? 2 : 1;
                 const bonusStr = cantripBonus !== 0 ? (cantripBonus >= 0 ? ` + ${cantripBonus}` : ` - ${Math.abs(cantripBonus)}`) : "";
-                damageOrEffect = `${baseDmgDie}${bonusStr} ${baseDmgType}`.trim();
-            } else if (cantripBonus !== 0) {
-                damageOrEffect = `+${cantripBonus} Damage`;
+                damageOrEffect = beamCount > 1
+                    ? `${beamCount} beams • 1d10${bonusStr} Force each`
+                    : `1d10${bonusStr} Force`.trim();
+            } else {
+                const scaledDamage = getSpellDamageDisplay(spell, 0, totalLevel);
+                if (scaledDamage) {
+                    const scaledParts = scaledDamage.match(/^(\d+d\d+)(?:\s*([+-]\s*\d+))?(?:\s+([A-Za-z]+))?/);
+                    const dice = scaledParts ? scaledParts[1] : (dmgMatch ? dmgMatch[1] : "");
+                    const type = scaledParts && scaledParts[3] ? scaledParts[3] : (baseDmgType || "");
+                    const existingMod = scaledParts && scaledParts[2] ? parseInt(scaledParts[2].replace(/\s+/g, ""), 10) : 0;
+                    const totalBonus = existingMod + cantripBonus;
+                    const bonusStr = totalBonus !== 0 ? (totalBonus >= 0 ? ` + ${totalBonus}` : ` - ${Math.abs(totalBonus)}`) : "";
+                    damageOrEffect = `${dice}${bonusStr} ${type}`.trim();
+                } else if (baseDmgDie) {
+                    const bonusStr = cantripBonus !== 0 ? (cantripBonus >= 0 ? ` + ${cantripBonus}` : ` - ${Math.abs(cantripBonus)}`) : "";
+                    damageOrEffect = `${baseDmgDie}${bonusStr} ${baseDmgType}`.trim();
+                } else if (cantripBonus !== 0) {
+                    damageOrEffect = `+${cantripBonus} Damage`;
+                }
             }
+            if (spell.name.toLowerCase() === "vicious mockery" && !damageOrEffect.includes("Disadvantage")) {
+                damageOrEffect = `${damageOrEffect} + Disadvantage`;
+            }
+
             actions.push({
                 name: spell.name,
                 type: spell.castingTime.toLowerCase().includes("bonus")
