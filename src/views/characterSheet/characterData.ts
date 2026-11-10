@@ -20,6 +20,12 @@ export interface SpellDefinition {
     alwaysPrepared?: boolean;
     /** Feature that put this spell on a class it isn't normally on (e.g. "Magical Secrets"). */
     viaFeature?: string;
+    damageDice?: string;
+    damageType?: string;
+    damageModifier?: string;
+    damageScaling?: Array<{ level: number | string; label: string; dice: string; modifier: string }>;
+    /** Slot level at which this spell is being cast/displayed (for upcast spell entries). */
+    castAtLevel?: number;
 }
 
 export interface AbilityScore {

@@ -41,6 +41,18 @@ export class Spell {
     @Column({ type: "text" })
     description!: string;
 
+    @Column({ type: "varchar", length: 255, nullable: true })
+    damageDice?: string;
+
+    @Column({ type: "varchar", length: 100, nullable: true })
+    damageType?: string;
+
+    @Column({ type: "varchar", length: 100, nullable: true })
+    damageModifier?: string;
+
+    @Column({ type: "text", nullable: true })
+    damageScaling?: string;
+
     @Column({ type: "text", nullable: true })
     classes?: string;
 

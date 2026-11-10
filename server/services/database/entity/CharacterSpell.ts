@@ -52,6 +52,18 @@ export class CharacterSpell {
 
     @Column({ type: "text", nullable: true })
     description?: string;
+
+    @Column({ type: "varchar", length: 255, nullable: true })
+    damageDice?: string;
+
+    @Column({ type: "varchar", length: 100, nullable: true })
+    damageType?: string;
+
+    @Column({ type: "varchar", length: 100, nullable: true })
+    damageModifier?: string;
+
+    @Column({ type: "text", nullable: true })
+    damageScaling?: string;
 }
 
 export default CharacterSpell;
