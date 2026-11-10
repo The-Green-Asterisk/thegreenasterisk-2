@@ -82,3 +82,14 @@ export function findClassOption(kind: string, optId: string, customOptions?: Fea
     }
     return undefined;
 }
+
+/** Finds a class or subclass choice option by its name (e.g. a fighting style or invocation D&D Beyond lists by name). */
+export function findClassOptionByName(name: string): FeatureOption | undefined {
+    const key = String(name || "").trim().toLowerCase();
+    if (!key) return undefined;
+    for (const src of allChoiceSources(getClassRules())) {
+        const found = (src.choice.options || []).find((o) => o.name.toLowerCase() === key);
+        if (found) return found;
+    }
+    return undefined;
+}

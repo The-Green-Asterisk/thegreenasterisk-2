@@ -2998,4 +2998,25 @@ describe('Frontend View Templates', () => {
         expect(names).toContain('Breath Weapon:3');
         expect(names).toContain('Draconic Flight:1');
     });
+
+    it('applies feat fallbacks from the feat data when D&D Beyond sends no modifiers', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const char = parseDndBeyondCharacter({
+            id: 3, name: 'Feats', modifiers: {}, inventory: [], spells: {},
+            stats: [1, 2, 3, 4, 5, 6].map(id => ({ id, value: 10 })),
+            race: { fullName: 'Human', baseName: 'Human', weightSpeeds: { normal: { walk: 30 } } },
+            classes: [{ level: 4, definition: { name: 'Fighter' } }],
+            feats: ['Speedy', 'Skulker', 'War Caster', 'Lucky', 'Tough'].map((name, i) => ({ definition: { id: 900 + i, name } }))
+        });
+        expect(char.vitals.speed).toBe('40 ft.');
+        expect(char.vitals.blindsight).toBe('10 ft.');
+        expect(char.savingThrowNotes?.some((n: string) => /concentration/i.test(n))).toBe(true);
+        expect(char.classResources?.find((r: any) => r.name === 'Luck Points')?.total).toBe(2);
+    });
+
+    it('counts Pact of the Tome spells as uncounted from the class rules, not by name', async () => {
+        const { isCharacterBonusSpell } = await import('../../../src/views/characterSheet/components/spells');
+        expect(isCharacterBonusSpell({ name: 'Guidance', level: 0, source: 'Warlock / Pact of the Tome' } as any)).toBe(true);
+        expect(isCharacterBonusSpell({ name: 'Shield', level: 1, source: 'Wizard' } as any)).toBe(false);
+    });
 });

@@ -283,6 +283,7 @@ export interface SpellPick {
     maxLevel?: "castable";         // or: up to the highest level the granting class can cast (plus cantrips if 0 is in levels)
     orRitual?: boolean;            // also allow ritual spells of any level
     sourceAliases?: string[];      // lower-case source text older saves used for these spells
+    countsAgainstLimit?: boolean;  // true when the picks use the class's cantrip/prepared numbers (default: they don't)
 }
 
 export interface ProgressionFeature {

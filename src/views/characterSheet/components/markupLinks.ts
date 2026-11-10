@@ -2,7 +2,7 @@ import { CharacterData, DEFAULT_DND55_CONDITIONS } from "../characterData";
 import { resolveClassResources, resolveClassScaleValues } from "../../../rules/dnd5e_2024/classResources";
 import { AbilityName, ClassDefinition, ProgressionLevel } from "../../../rules/dnd5e_2024/types";
 import { resolveRuleClass } from "../classChoiceDecisions";
-import { findSpeciesRule } from "../../../services/classRules";
+import { findFeatRule, findSpeciesRule } from "../../../services/classRules";
 import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, speciesScaleValue, traitBaseName } from "../../../rules/dnd5e_2024/speciesRules";
 
 const EXACT_CONDITION_NAMES: string[] = DEFAULT_DND55_CONDITIONS.map(c => c.name);
@@ -591,16 +591,16 @@ function inferLimitedUseFromContext(ctx?: TemplatePlaceholderContext): string {
     const speciesResource = resolveSpeciesResources(sp.species, sp.lineage, totalLvl, profBonus, ab => getAbilityMod(char, ab))
         .find(r => [r.name, ...r.aliases].some(n => entityMatchesName(nameLower, n)));
     if (speciesResource) return String(speciesResource.total);
-    if (nameLower.includes("luck") || nameLower.includes("lucky")) {
-        return String(profBonus);
+    // Feats (feat data): a tracked resource (e.g. Lucky) or a use count (e.g. Fey Touched's free casting), by the
+    // entity's name or its source's (a spell a feat grants)
+    const feat = findFeatRule(String(ctx?.entityName || "")) || findFeatRule(String(ctx?.entityName || "").split(":")[0]) ||
+        findFeatRule(String(ctx?.sourceName || ""));
+    if (feat?.resource) {
+        const total = String(feat.resource.total).replace(/\{\{pb\}\}/gi, String(profBonus)).replace(/\{\{level\}\}/gi, String(totalLvl));
+        if (Number(total) > 0) return total;
     }
-    if (
-        nameLower.includes("fey touched") ||
-        nameLower.includes("shadow touched") ||
-        nameLower.includes("magic initiate") ||
-        nameLower.includes("misty step")
-    ) {
-        return "1";
+    if (feat?.limitedUse !== undefined) {
+        return String(feat.limitedUse).replace(/\{\{pb\}\}/gi, String(profBonus));
     }
     // A feature of a spellcasting class: its spellcasting ability modifier (minimum 1)
     const sourceClass = ruleClasses.find(rc =>

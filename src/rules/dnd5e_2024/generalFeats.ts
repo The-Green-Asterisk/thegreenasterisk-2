@@ -166,6 +166,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "fey-touched",
+        limitedUse: 1,
         name: "Fey Touched",
         description: "Your exposure to the Feywild has granted you misty step and an additional spell.",
         category: "general",
@@ -281,6 +282,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "medium-armor-master",
+        modifiers: [{ target: "vitals.ac.mediumArmorMaxDex", type: "set", value: 3, description: "Add up to +3 Dexterity to AC in Medium armor" }],
         name: "Medium Armor Master",
         description: "You have practiced moving stealthily and swiftly in medium armor.",
         category: "general",
@@ -472,6 +474,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "shadow-touched",
+        limitedUse: 1,
         name: "Shadow Touched",
         description: "Your exposure to the Shadowfell has granted you invisibility and an additional spell.",
         category: "general",
@@ -526,6 +529,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "skulker",
+        modifiers: [{ target: "vitals.blindsight", type: "set", value: 10, description: "Blindsight 10 ft." }],
         name: "Skulker",
         description: "You are expert at slinking through shadows and striking unseen.",
         category: "general",
@@ -553,6 +557,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "speedy",
+        modifiers: [{ target: "vitals.speed", type: "bonus", value: 10, description: "+10 ft. Speed" }],
         name: "Speedy",
         description: "You are exceptionally swift and agile, dodging through enemy lines.",
         category: "general",
@@ -607,6 +612,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "war-caster",
+        modifiers: [{ target: "saves.con", type: "advantage", condition: "concentration", description: "Advantage on Constitution saves to maintain Concentration" }],
         name: "War Caster",
         description: "You have practiced casting spells in the midst of combat.",
         category: "general",
@@ -869,6 +875,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "boon-of-speed",
+        modifiers: [{ target: "vitals.speed", type: "bonus", value: 30, description: "+30 ft. Speed" }],
         name: "Boon of Speed",
         description: "Your Speed increases by 30 feet, and you can Disengage as a Bonus Action.",
         category: "epic-boon",
@@ -910,6 +917,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "boon-of-truesight",
+        modifiers: [{ target: "vitals.truesight", type: "set", value: 60, description: "Truesight 60 ft." }],
         name: "Boon of Truesight",
         description: "You gain Truesight with a range of 60 feet.",
         category: "epic-boon",

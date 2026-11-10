@@ -11,15 +11,17 @@ import {
     WEAPON_MASTERIES
 } from "../../../rules/dnd5e_2024";
 import { featureUsage } from "../../../rules/dnd5e_2024/featureUsage";
+import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
 import { detectLineage, resolveSpeciesResources, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
 import { ALL_SKILLS } from "../characterCreator.types";
-import { currentLineage, getSpeciesFeatPicks, hasOriginOrSpeciesFeat } from "./speciesChoices";
+import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
+import { resolveFeatResources } from "../../../rules/dnd5e_2024/featRules";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
 import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
-import { distributeImportedSkills, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
+import { distributeImportedSkills, getCharacterFeats, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
 import { CharacterCreatorContext } from "../controllers/context";
-import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, resolveSpellBucketKey } from "./spellReconciliation";
+import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, getSpellFeat, resolveSpellBucketKey } from "./spellReconciliation";
 
 function getSpellDef(ctx: CharacterCreatorContext, spNameOrId: string): RuleSpellDefinition | undefined {
     if (!spNameOrId) return undefined;
@@ -171,7 +173,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                     ctx.state.classes = char.classes.map((c: any) => {
                         const clsName = (c.name || "").toLowerCase();
                         const matchedCls = ctx.classes.find((x) => x.name.toLowerCase() === clsName || x.id === clsName);
-                        const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
+                        const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : ctx.classes[0]?.id || "");
                         let subclassId = "";
                         if (c.subclass && matchedCls) {
                             const subName = String(c.subclass).toLowerCase().trim();
@@ -219,7 +221,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                 ctx.state.classes = char.classes.map((c: any) => {
                     const clsName = (c.name || "").toLowerCase();
                     const matchedCls = ctx.classes.find((x) => x.name.toLowerCase() === clsName || x.id === clsName);
-                    const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : "fighter");
+                    const classId = matchedCls?.id || (c.id ? String(c.id).toLowerCase() : ctx.classes[0]?.id || "");
                     let subclassId = "";
                     if (c.subclass && matchedCls) {
                         const subName = String(c.subclass).toLowerCase().trim();
@@ -244,7 +246,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                 }
                 ctx.syncStateClassProperties();
             } else {
-                ctx.state.classes = [{ classId: "fighter", level: Number(char.level) || 1, subclassId: "" }];
+                ctx.state.classes = [{ classId: ctx.classes[0]?.id || "", level: Number(char.level) || 1, subclassId: "" }];
                 ctx.syncStateClassProperties();
             }
 
@@ -460,6 +462,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                     list.forEach((n) => featureChosenSet.add(n.toLowerCase()));
                 }
             }
+            const uncountedSources = uncountedClassSpellSources(ctx.classes);
             const nonClassSpellNames = new Set<string>(
                 char.spells
                     .filter((s: any) => {
@@ -470,7 +473,8 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                             // a species or lineage name (species data)
                             ctx.species.some((sp) => src.includes(sp.name.toLowerCase()) ||
                                 (sp.lineages || []).some((l) => src.includes(l.name.toLowerCase().split(/[ (]/)[0]))) ||
-                            src.includes("pact of the tome")
+                            // a class spell pick that doesn't use the class's numbers (class rules, e.g. Pact of the Tome)
+                            uncountedSources.some((label) => src.includes(label))
                         );
                     })
                     .map((s: any) => String(s?.name || "").toLowerCase())
@@ -1013,8 +1017,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         resourcesPayload.push({ name: r.name, total: r.total, resetOn: r.resetOn, ...(r.dieOrType ? { dieOrType: r.dieOrType } : {}), currentUsed: 0 });
     }
 
-    if (hasOriginOrSpeciesFeat(ctx, "lucky")) {
-        resourcesPayload.push({ name: "Luck Points", total: pb, resetOn: "long", currentUsed: 0 });
+    // Feat resources (e.g. Lucky's Luck Points)
+    for (const r of resolveFeatResources(getCharacterFeats(ctx), pb, ctx.getTotalLevel() || 1)) {
+        resourcesPayload.push({ name: r.name, total: r.total, resetOn: r.resetOn, currentUsed: 0 });
     }
 
     // Passive scores
@@ -1057,7 +1062,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             };
         });
 
-    const usage = featureUsage(ctx.classes, ctx.species);
+    const usage = featureUsage(ctx.classes, ctx.species, [...ctx.originFeats, ...ctx.generalFeats]);
     const inferFeatureActionType = (name: string, desc: string): "Action" | "Bonus Action" | "Reaction" | null => {
         const n = (name || "").toLowerCase().trim();
         const d = (desc || "").toLowerCase();
@@ -1076,8 +1081,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             n.startsWith("fighting style:") ||
             // Class picks, stat-only features, and passive species traits (rules data)
             usage.passive.has(n) ||
-            usage.passive.has(base) ||
-            n === "alert"
+            usage.passive.has(base)
         ) {
             return null;
         }
@@ -1165,7 +1169,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             label: `Pact Magic (${slotsResult.pactSlotLevel}${getOrdinalSuffix(slotsResult.pactSlotLevel)} Level)`
         };
     }
-    if (Object.keys(spellSlotsPayload).length === 0 && ctx.state.originFeatId.startsWith("magic-initiate")) {
+    if (Object.keys(spellSlotsPayload).length === 0 && getSpellFeat(ctx)) {
         spellSlotsPayload.level1 = {
             level: 1,
             total: 1,

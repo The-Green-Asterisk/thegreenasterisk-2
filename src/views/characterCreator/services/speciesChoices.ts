@@ -67,9 +67,4 @@ export function getSpeciesFeatPicks(ctx: CharacterCreatorContext): Array<{ featI
     return out;
 }
 
-/** Whether the character has this feat as their origin feat or through a species trait. */
-export function hasOriginOrSpeciesFeat(ctx: CharacterCreatorContext, featId: string): boolean {
-    return ctx.state.originFeatId === featId || getSpeciesFeatPicks(ctx).some((p) => p.featId === featId);
-}
-
 export { traitBaseName, traitSlug };

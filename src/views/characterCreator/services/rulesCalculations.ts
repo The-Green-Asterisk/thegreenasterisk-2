@@ -1,5 +1,7 @@
 import { speciesMaxHpBonus } from "../../../rules/dnd5e_2024/speciesRules";
-import { currentLineage, currentSpecies, hasOriginOrSpeciesFeat } from "./speciesChoices";
+import { currentLineage, currentSpecies } from "./speciesChoices";
+import { getCharacterFeats } from "./skillRules";
+import { featBonus } from "../../../rules/dnd5e_2024/featRules";
 import {
     AbilityName,
     BASE_ARMOR_2024,
@@ -255,9 +257,8 @@ export function getMaxHp(ctx: CharacterCreatorContext): number {
 
     const totalLevel = ctx.getTotalLevel();
     // Tough feat bonus (+2 HP per level)
-    if (hasOriginOrSpeciesFeat(ctx, "tough")) {
-        hp += 2 * totalLevel;
-    }
+    // Feats (e.g. Tough: +2 per level)
+    hp += featBonus(getCharacterFeats(ctx), "vitals.maxHp", totalLevel, getProficiencyBonus(ctx));
 
     // Species and lineage hit point bonuses (e.g. Dwarven Toughness: +1 per level)
     hp += speciesMaxHpBonus(currentSpecies(ctx), currentLineage(ctx), totalLevel);
@@ -302,9 +303,8 @@ export function getArmorClass(ctx: CharacterCreatorContext): number {
 export function getInitiative(ctx: CharacterCreatorContext): number {
     let init = getAbilityModifier(ctx, "dex");
     // Alert origin feat adds proficiency bonus
-    if (hasOriginOrSpeciesFeat(ctx, "alert")) {
-        init += getProficiencyBonus(ctx);
-    }
+    // Feats (e.g. Alert: + Proficiency Bonus)
+    init += featBonus(getCharacterFeats(ctx), "vitals.initiative", ctx.getTotalLevel() || 1, getProficiencyBonus(ctx));
     // Class features that add an ability modifier to Initiative (e.g. Dread Ambusher)
     for (const m of getProgressionModifiers(ctx)) {
         if (m.target === "vitals.initiative" && m.type === "ability_mod" && m.abilitySource) {
@@ -317,8 +317,9 @@ export function getInitiative(ctx: CharacterCreatorContext): number {
 export function getSpeed(ctx: CharacterCreatorContext): number {
     const species = ctx.species.find((s) => s.id === ctx.state.speciesId);
     let speed = species?.speed || 30;
-    // Lineage speed bonus (e.g. Wood Elf's Fleet of Foot)
+    // Lineage speed bonus (e.g. Wood Elf's Fleet of Foot) and feats (e.g. Speedy)
     speed += Number(currentLineage(ctx)?.speedBonus) || 0;
+    speed += featBonus(getCharacterFeats(ctx), "vitals.speed", ctx.getTotalLevel() || 1, getProficiencyBonus(ctx));
     // Class and subclass features (e.g. Fast Movement, Unarmored Movement, Roving), when their armor condition is met
     const armorCategory = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor)?.category || null;
     for (const m of getProgressionModifiers(ctx)) {

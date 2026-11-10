@@ -84,12 +84,13 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         speciesId: SPECIES_2024[0]?.id || "",
         lineageId: "",
         speciesChoices: {},
-        classId: "fighter",
+        // The first class in the class rules; its picks start empty
+        classId: CLASSES_2024[0]?.id || "",
         subclassId: "",
         classes: [
-            { classId: "fighter", level: 1, subclassId: "" }
+            { classId: CLASSES_2024[0]?.id || "", level: 1, subclassId: "" }
         ],
-        weaponMasteries: ["Longsword", "Greatsword", "Shortbow"],
+        weaponMasteries: [],
         backgroundId: "soldier",
         backgroundOption: "two-and-one",
         bgStatA: "str",
@@ -107,9 +108,9 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             cha: 8
         },
         asiChoices: {},
-        fightingStyle: "defense",
-        divineOrder: "protector",
-        primalOrder: "warden",
+        fightingStyle: "",
+        divineOrder: "",
+        primalOrder: "",
         metamagic: [],
         invocations: [],
         maneuvers: [],
@@ -510,7 +511,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public syncStateClassProperties(): void {
         if (!Array.isArray(this.state.classes) || this.state.classes.length === 0) {
             this.state.classes = [{
-                classId: this.state.classId || "fighter",
+                classId: this.state.classId || this.classes[0]?.id || "",
                 level: this.state.level || 1,
                 subclassId: this.state.subclassId || ""
             }];

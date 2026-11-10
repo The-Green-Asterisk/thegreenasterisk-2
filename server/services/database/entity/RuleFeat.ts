@@ -29,6 +29,9 @@ export class RuleFeat {
     @Column({ type: "text", nullable: true }) // JSON array of FeatSkillPick: [{ count, from?, mode }]
     skillPicksJson?: string;
 
+    @Column({ type: "text", nullable: true }) // JSON FeatMechanics: { modifiers?, resource?, limitedUse?, spellList?, defaultSpellAbility? }
+    mechanicsJson?: string;
+
     @Column({ type: "boolean", default: false })
     isEpicBoon!: boolean;
 

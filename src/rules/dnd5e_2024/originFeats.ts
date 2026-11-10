@@ -3,6 +3,7 @@ import { OriginFeatDefinition } from "./types";
 export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     {
         id: "alert",
+        modifiers: [{ target: "vitals.initiative", type: "bonus", value: "{{pb}}", description: "Add your Proficiency Bonus to Initiative" }],
         name: "Alert",
         description: "Always on the lookout for danger, you gain a bonus to initiative and can swap initiative rolls with willing allies.",
         benefits: [
@@ -31,6 +32,7 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     },
     {
         id: "lucky",
+        resource: { name: "Luck Points", total: "{{pb}}", resetOn: "long" },
         name: "Lucky",
         description: "You have an inexplicable streak of luck that seems to kick in at just the right moment.",
         benefits: [
@@ -41,6 +43,7 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     },
     {
         id: "magic-initiate-cleric",
+        spellList: "Cleric", spellCantrips: 2, spellLevel1: 1, defaultSpellAbility: "wis", limitedUse: 1,
         name: "Magic Initiate (Cleric)",
         description: "You learn the basics of clerical divine magic.",
         benefits: [
@@ -52,6 +55,7 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     },
     {
         id: "magic-initiate-druid",
+        spellList: "Druid", spellCantrips: 2, spellLevel1: 1, defaultSpellAbility: "wis", limitedUse: 1,
         name: "Magic Initiate (Druid)",
         description: "You learn the basics of primal druidic magic.",
         benefits: [
@@ -63,6 +67,7 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     },
     {
         id: "magic-initiate-wizard",
+        spellList: "Wizard", spellCantrips: 2, spellLevel1: 1, defaultSpellAbility: "int", limitedUse: 1,
         name: "Magic Initiate (Wizard)",
         description: "You learn the basics of arcane wizardly magic.",
         benefits: [
@@ -111,6 +116,7 @@ export const ORIGIN_FEATS_2024: OriginFeatDefinition[] = [
     },
     {
         id: "tough",
+        modifiers: [{ target: "vitals.maxHp", type: "bonus", perClassLevel: 2, description: "+2 Hit Points per character level" }],
         name: "Tough",
         description: "Your Hit Point maximum increases, making you resilient against lethal blows.",
         benefits: [

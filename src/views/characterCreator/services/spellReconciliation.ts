@@ -3,6 +3,7 @@ import {
     CLASSES_2024,
     CLASS_SPELL_PRIORITIES,
     MulticlassCasterClassInfo,
+    OriginFeatDefinition,
     RuleSpellDefinition,
     SPELLS_2024,
     calculateMulticlassSpellSlots,
@@ -48,7 +49,7 @@ export function getMaxCantrips(ctx: CharacterCreatorContext): number {
     }
 
     // Origin Feat bonus: Magic Initiate grants 2 cantrips
-    if (ctx.state.originFeatId.startsWith("magic-initiate")) {
+    if (!!getSpellFeat(ctx)) {
         count += 2;
     }
 
@@ -63,7 +64,7 @@ export function getMaxPreparedSpells(ctx: CharacterCreatorContext): number {
     }
 
     // Origin Feat bonus: Magic Initiate grants 1 prepared 1st-level spell
-    if (ctx.state.originFeatId.startsWith("magic-initiate")) {
+    if (!!getSpellFeat(ctx)) {
         count += 1;
     }
 
@@ -92,20 +93,19 @@ export function getAllowedSpellClasses(ctx: CharacterCreatorContext): string[] {
             }
         }
     }
-    if (ctx.state.originFeatId === "magic-initiate-cleric" && !list.includes("Cleric")) list.push("Cleric");
-    if (ctx.state.originFeatId === "magic-initiate-druid" && !list.includes("Druid")) list.push("Druid");
-    if (ctx.state.originFeatId === "magic-initiate-wizard" && !list.includes("Wizard")) list.push("Wizard");
+    const featList = getSpellFeat(ctx)?.spellList;
+    if (featList && !list.includes(featList)) list.push(featList);
     return list;
 }
 
 export function getMaxSpellLevel(ctx: CharacterCreatorContext): number {
     const infos = getSpellcasterInfos(ctx);
     if (infos.length === 0) {
-        if (ctx.state.originFeatId.startsWith("magic-initiate")) return 1;
+        if (!!getSpellFeat(ctx)) return 1;
         return 0;
     }
     let maxLvl = Math.max(...infos.map((i) => i.maxSpellLevel), 0);
-    if (ctx.state.originFeatId.startsWith("magic-initiate") && maxLvl < 1) {
+    if (!!getSpellFeat(ctx) && maxLvl < 1) {
         maxLvl = 1;
     }
     return maxLvl;
@@ -121,14 +121,8 @@ export function getAvailableSpells(ctx: CharacterCreatorContext): {
         return { cantrips: [], leveledSpells: [], spellsLvl1: [] };
     }
     const infos = getSpellcasterInfos(ctx);
-    const hasMagicInitiate = ctx.state.originFeatId.startsWith("magic-initiate");
-    const miClass = ctx.state.originFeatId === "magic-initiate-cleric"
-        ? "Cleric"
-        : ctx.state.originFeatId === "magic-initiate-druid"
-            ? "Druid"
-            : ctx.state.originFeatId === "magic-initiate-wizard"
-                ? "Wizard"
-                : "";
+    const hasMagicInitiate = !!getSpellFeat(ctx);
+    const miClass = getMagicInitiateClass(ctx);
 
     // Base caster classes that provide cantrips (unless an expanded spell list explicitly enables cantrips)
     const cantripClasses: string[] = [];
@@ -307,11 +301,14 @@ export function getProgressionGrantedSpellNames(ctx: CharacterCreatorContext): S
 
 export const MAGIC_INITIATE_BUCKET_KEY = "magic-initiate";
 
+/** The origin feat when it grants spells from a class list (feat data spellList, e.g. Magic Initiate). */
+export function getSpellFeat(ctx: CharacterCreatorContext): OriginFeatDefinition | undefined {
+    const feat = ctx.originFeats.find((f) => f.id === ctx.state.originFeatId);
+    return feat?.spellList ? feat : undefined;
+}
+
 function getMagicInitiateClass(ctx: CharacterCreatorContext): string {
-    if (ctx.state.originFeatId === "magic-initiate-cleric") return "Cleric";
-    if (ctx.state.originFeatId === "magic-initiate-druid") return "Druid";
-    if (ctx.state.originFeatId === "magic-initiate-wizard") return "Wizard";
-    return "";
+    return getSpellFeat(ctx)?.spellList || "";
 }
 
 function getClassSpellLists(ctx: CharacterCreatorContext, info: MulticlassCasterClassInfo): {
@@ -408,12 +405,12 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
         buckets.push({
             key: MAGIC_INITIATE_BUCKET_KEY,
             kind: "feat",
-            label: `Magic Initiate (${miClass})`,
-            sourceLabel: `Magic Initiate (${miClass})`,
+            label: getSpellFeat(ctx)!.name,
+            sourceLabel: getSpellFeat(ctx)!.name,
             level: 0,
-            ability: miClass === "Wizard" ? "int" : "wis",
-            maxCantrips: 2,
-            maxPrepared: 1,
+            ability: getSpellFeat(ctx)!.defaultSpellAbility || "int",
+            maxCantrips: getSpellFeat(ctx)!.spellCantrips || 0,
+            maxPrepared: getSpellFeat(ctx)!.spellLevel1 || 0,
             maxSpellLevel: 1,
             priorityKey: miClass.toLowerCase(),
             baseList: miClass,
@@ -426,12 +423,13 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
 }
 
 /**
- * Resolves a saved spell's source (a class name, or a Magic Initiate label) to its spell bucket key.
+ * Resolves a saved spell's source (a class name, or a spell-granting feat's name) to its spell bucket key.
  */
 export function resolveSpellBucketKey(ctx: CharacterCreatorContext, source: string): string | null {
     const src = String(source || "").trim().toLowerCase();
     if (!src) return null;
-    if (src.startsWith("magic initiate")) return MAGIC_INITIATE_BUCKET_KEY;
+    // A spell-granting feat's spells (feat data spellList), saved under the feat's name, e.g. "Magic Initiate (Cleric)"
+    if (ctx.originFeats.some((f) => f.spellList && src.startsWith(f.name.toLowerCase().split(" (")[0]))) return MAGIC_INITIATE_BUCKET_KEY;
     for (const c of ctx.state.classes || []) {
         const def = ctx.classes.find((x) => x.id === c.classId);
         if (src === c.classId.toLowerCase() || src === (def?.name || "").toLowerCase()) return c.classId;
@@ -649,9 +647,7 @@ export function getSpellcastingAbility(ctx: CharacterCreatorContext): AbilityNam
         if (primary) return primary.ability;
         return infos[0].ability;
     }
-    if (ctx.state.originFeatId === "magic-initiate-wizard") return "int";
-    if (ctx.state.originFeatId === "magic-initiate-cleric" || ctx.state.originFeatId === "magic-initiate-druid") return "wis";
-    return null;
+    return getSpellFeat(ctx)?.defaultSpellAbility ?? null;
 }
 
 export function getSpellSaveDc(ctx: CharacterCreatorContext, abilityOverride?: AbilityName): number | null {
@@ -684,7 +680,7 @@ export function getSpellSlotsSummary(ctx: CharacterCreatorContext): string {
         parts.push(`${slotsResult.pactSlotCount} × Lvl ${slotsResult.pactSlotLevel} (Pact Magic)`);
     }
 
-    if (parts.length === 0 && ctx.state.originFeatId.startsWith("magic-initiate")) {
+    if (parts.length === 0 && !!getSpellFeat(ctx)) {
         return "1 × Lvl 1 (1/Long Rest from Feat)";
     }
 

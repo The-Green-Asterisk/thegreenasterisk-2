@@ -81,6 +81,11 @@ function findFeat(ctx: CharacterCreatorContext, featId: string): OriginFeatDefin
     return ctx.originFeats.find((f) => f.id === featId) || ctx.generalFeats.find((f) => f.id === featId);
 }
 
+/** Every feat the character has: the origin feat, feats from species traits (e.g. Versatile), and ASI-slot feats. */
+export function getCharacterFeats(ctx: CharacterCreatorContext): Array<OriginFeatDefinition | GeneralFeatDefinition> {
+    return getTakenFeats(ctx).map((t) => t.feat);
+}
+
 /** The origin feat, feats from species traits (e.g. Versatile), and feats taken in Ability Score Improvement slots. */
 function getTakenFeats(ctx: CharacterCreatorContext): TakenFeat[] {
     const taken: TakenFeat[] = [];

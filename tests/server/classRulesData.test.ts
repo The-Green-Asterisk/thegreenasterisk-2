@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import cache from "../../server/cache";
 import AppDataSource from "../../server/services/database";
 import RuleClass from "../../server/services/database/entity/RuleClass";
+import RuleFeat from "../../server/services/database/entity/RuleFeat";
 import RuleSubclass from "../../server/services/database/entity/RuleSubclass";
 import { buildClassProgression, buildSubclassProgression } from "../../server/services/database/rulesProgressionBuilder";
-import { SEED_CLASSES } from "../../server/services/database/rulesSeed";
+import { featMechanicsJson } from "../../server/services/database/featMechanics";
+import { SEED_CLASSES, SEED_GENERAL_FEATS, SEED_ORIGIN_FEATS } from "../../server/services/database/rulesSeed";
 import {
     classFeatureUsage,
     expectedClassResourceTotals,
@@ -15,6 +17,9 @@ import {
 describe("classRulesData", () => {
     beforeEach(async () => {
         cache.del("class_rules_data");
+        cache.del("species_traits_data");
+        cache.del("feat_mechanics_data");
+        const featRows = ([...SEED_ORIGIN_FEATS, ...SEED_GENERAL_FEATS] as any[]).map((f) => ({ name: f.name, mechanicsJson: featMechanicsJson(f) }));
         vi.restoreAllMocks();
         const classRows = (SEED_CLASSES as any[]).map((c) => ({
             slug: c.id,
@@ -30,7 +35,7 @@ describe("classRulesData", () => {
         })));
         Object.defineProperty(AppDataSource, "isInitialized", { value: true, configurable: true });
         vi.spyOn(AppDataSource, "getRepository").mockImplementation(((entity: any) => ({
-            find: async () => (entity === RuleClass ? classRows : entity === RuleSubclass ? subRows : [])
+            find: async () => (entity === RuleClass ? classRows : entity === RuleSubclass ? subRows : entity === RuleFeat ? featRows : [])
         })) as any);
         await loadClassRulesData();
     });
@@ -53,6 +58,8 @@ describe("classRulesData", () => {
         expect(usage.grantTypes.get("cosmic omen")).toBe("Reaction");
         expect(usage.passive.has("divine order")).toBe(true);
         expect(usage.passive.has("unarmored defense")).toBe(true);
+        expect(usage.passive.has("alert")).toBe(true);
+        expect(usage.active.has("lucky")).toBe(true);
     });
 
     it("lists class features with their levels", () => {

@@ -1122,9 +1122,7 @@ export default class CharacterController extends BaseController {
             n.startsWith("fighting style:") ||
             // Class picks, stat-only features, and passive species traits (rules data)
             usage.passive.has(n) ||
-            usage.passive.has(base) ||
-            // Feats
-            n === "alert"
+            usage.passive.has(base)
         ) {
             return null;
         }

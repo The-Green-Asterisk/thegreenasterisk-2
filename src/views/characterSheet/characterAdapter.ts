@@ -10,10 +10,12 @@ import {
     WeaponItem
 } from "./characterData";
 import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
-import { findClassRule, findSpeciesRule, getClassRules, getSpeciesRules } from "../../services/classRules";
+import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
+import { featBonus, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
+import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
 import { detectLineage, resolveSpeciesResources, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
-import { AbilityName, ClassDefinition, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
+import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
@@ -461,12 +463,28 @@ export function parseDndBeyondCharacter(
         ? String(martialArtsClass.def.scalingTraits.martialArtsDieByLevel[Math.min(martialArtsClass.level, 20)] || "")
         : "";
 
-    // Class levels & features lookup helpers
-    const hasFeat = (featKeyword: string): boolean => {
-        return (raw.feats || []).some((f: any) =>
-            (f.definition?.name || "").toLowerCase().includes(featKeyword.toLowerCase())
-        );
+    // The character's feats and class options (fighting styles, invocations) with their mechanics: feat rules, or the
+    // class option of that name
+    const featLikeNames: string[] = [
+        ...(raw.feats || []).map((f: any) => f?.definition?.name),
+        ...(raw.options?.feat || []).map((o: any) => o?.definition?.name),
+        ...(raw.options?.class || []).map((o: any) => o?.definition?.name)
+    ].filter(Boolean);
+    const featMechanics: Array<FeatMechanics & { name: string }> = [];
+    for (const n of featLikeNames) {
+        const feat = findFeatRule(n);
+        const opt = feat ? undefined : findClassOptionByName(n);
+        if (feat) featMechanics.push(feat);
+        else if (opt) featMechanics.push({ name: opt.name, modifiers: opt.modifiers });
+    }
+    const featMods = (target: string, type?: string) => featModifiers(featMechanics, target, type);
+    const hasConcentrationAdvantage = featMods("saves.con", "advantage").some(m => /concentration/i.test(String(m.condition || "")));
+    const featSense = (target: string): string | undefined => {
+        const v = featMods(target, "set")[0]?.value;
+        return v === undefined ? undefined : typeof v === "number" ? `${v} ft.` : String(v);
     };
+
+    // Class levels & features lookup helpers
     const hasClassFeatureOrOption = (featureKeyword: string): boolean => {
         const kw = featureKeyword.toLowerCase();
         if (extractedFeaturesResult.hasFightingStyleDecision) {
@@ -591,8 +609,7 @@ export function parseDndBeyondCharacter(
                     m.friendlySubtypeName?.toLowerCase().includes("concentration") ||
                     m.subType?.toLowerCase().includes("concentration")
             ) ||
-                hasFeat("War Caster") ||
-                hasClassFeatureOrOption("Eldritch Mind"))
+                hasConcentrationAdvantage)
         ) {
             saveNotes.push("Advantage on Concentration");
         }
@@ -655,7 +672,7 @@ export function parseDndBeyondCharacter(
     });
 
     if (
-        (hasFeat("War Caster") || hasClassFeatureOrOption("Eldritch Mind")) &&
+        hasConcentrationAdvantage &&
         !savingThrowNotes.some(n => n.toLowerCase().includes("concentration"))
     ) {
         savingThrowNotes.push("Advantage on Constitution saves (to maintain Concentration)");
@@ -726,11 +743,10 @@ export function parseDndBeyondCharacter(
         hpPerLevelBonus += perLevelVal * applicableLevels;
     }
 
-    // Fallbacks if simplified payloads include Tough feat or Draconic Sorcerer without raw modifier entries
+    // Fallbacks if simplified payloads lack the raw modifier entries: feats (e.g. Tough) and class features (e.g.
+    // Draconic Resilience)
     if (hpPerLevelMods.length === 0) {
-        if (hasFeat("Tough")) {
-            hpPerLevelBonus += 2 * totalLevel;
-        }
+        hpPerLevelBonus += featBonus(featMechanics, "vitals.maxHp", totalLevel, profBonus);
         for (const m of ruleMods("vitals.maxHp", "bonus")) {
             hpPerLevelBonus += modifierNumber(m);
         }
@@ -830,9 +846,9 @@ export function parseDndBeyondCharacter(
             addDexToAc = true;
             maxDexBonus = Infinity;
         } else if (armorTypeId === 2) {
-            // Medium Armor (base max +2, or +3 with Medium Armor Master)
+            // Medium Armor (base max +2, or what a feat raises it to, e.g. Medium Armor Master)
             addDexToAc = true;
-            maxDexBonus = hasFeat("Medium Armor Master") ? 3 : 2;
+            maxDexBonus = Number(featMods("vitals.ac.mediumArmorMaxDex", "set")[0]?.value) || 2;
         } else if (armorTypeId === 3) {
             // Heavy Armor
             addDexToAc = false;
@@ -1047,14 +1063,10 @@ export function parseDndBeyondCharacter(
 
     walkSpeed += speedBonus + unarmoredMoveBonus;
 
-    // Feat-based speed bonuses fallback (Speedy/Mobile +10 ft, Boon of Speed +30 ft) if not already included in modifiers
-    const hasBoonOfSpeed = hasFeat("Boon of Speed") || (features || []).some((f: any) => /boon of speed/i.test(f.name || ""));
-    if (hasBoonOfSpeed && !allMods.some(m => /boon of speed/i.test(m.friendlySubtypeName || ""))) {
-        walkSpeed += 30;
-    }
-    const hasSpeedy = hasFeat("Speedy") || hasFeat("Mobile") || (features || []).some((f: any) => /^(speedy|mobile)$/i.test(f.name || ""));
-    if (hasSpeedy && !allMods.some(m => /(speedy|mobile)/i.test(m.friendlySubtypeName || ""))) {
-        walkSpeed += 10;
+    // Feat speed bonuses (e.g. Speedy, Boon of Speed) if D&D Beyond listed no feat speed modifiers
+    const hasFeatSpeedMods = allMods.some(m => m._sourceKey === "feat" && ["speed", "speed-walking"].includes(String(m.subType)));
+    if (!hasFeatSpeedMods) {
+        walkSpeed += featBonus(featMechanics, "vitals.speed", totalLevel, profBonus);
     }
 
     // Custom walking speed override from customSpeeds (movementId 1 = Walk)
@@ -1131,15 +1143,9 @@ export function parseDndBeyondCharacter(
             }
         }
 
-        // 4. Feat fallbacks (e.g. Boon of Truesight -> 60 ft., Blind Fighting -> 10 ft., Skulker -> 10 ft.)
-        if (senseName === "truesight") {
-            const hasTruesightFeat = hasFeat("Boon of Truesight") || (features || []).some((f: any) => /boon of truesight/i.test(f.name || ""));
-            if (hasTruesightFeat) return "60 ft.";
-        }
-        if (senseName === "blindsight") {
-            const hasBlindsightFeat = hasFeat("Blind Fighting") || hasFeat("Skulker") || (features || []).some((f: any) => /blind fighting|skulker/i.test(f.name || ""));
-            if (hasBlindsightFeat) return "10 ft.";
-        }
+        // 4. Feats and fighting styles (e.g. Boon of Truesight, Skulker, Blind Fighting), from their data
+        const fromFeat = featSense(`vitals.${senseName}`);
+        if (fromFeat) return fromFeat;
 
         return fallback;
     };
@@ -2094,10 +2100,10 @@ export function parseDndBeyondCharacter(
         }
     }
 
-    // 6. Feat: Lucky
-    const luckUses = getActionMaxUses("Lucky") ?? getActionMaxUses("Luck Points");
-    if (luckUses != null || hasFeat("Lucky")) {
-        addResourceIfMissing("Luck Points", luckUses ?? profBonus, "long");
+    // Feat resources (e.g. Lucky's Luck Points); D&D Beyond's own count wins when it lists the action
+    for (const r of resolveFeatResources(featMechanics, profBonus, totalLevel)) {
+        const featName = featMechanics.find(f => (f.resource?.name || f.name) === r.name)?.name || r.name;
+        addResourceIfMissing(r.name, getActionMaxUses(r.name) ?? getActionMaxUses(featName) ?? r.total, r.resetOn);
     }
 
     // Merge any resources already present in raw.classResources (e.g. from site character)
@@ -2290,6 +2296,10 @@ export function computeSpellSlotsFromRules(classes: Array<{ name: string; level:
     };
 }
 
+const ABILITY_FULL_NAMES: Record<string, string> = {
+    STR: "strength", DEX: "dexterity", CON: "constitution", INT: "intelligence", WIS: "wisdom", CHA: "charisma"
+};
+
 export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload?: any): void {
     if (!character || !Array.isArray(character.abilities)) return;
 
@@ -2307,19 +2317,24 @@ export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload
             const desc = (feat.description || "").toLowerCase();
             const text = `${name} ${desc}`;
 
-            // Specific known feat bonuses
-            if (name === "actor" || name.includes("actor")) {
-                featureBonuses.CHA += 1;
+            // A feat's +1 (feat data allowedStats): the ability the text names, else the highest of the allowed ones
+            const featRule = findFeatRule(feat.name);
+            const allowed = ((featRule as any)?.allowedStats || []).map((ab: string) => ab.toUpperCase());
+            // A background's ability increases (background data allowedAbilities): +2 and +1 to the two highest
+            const background = getBackgroundRules().find(bg => name.includes(bg.name.toLowerCase()) && text.includes("ability score"));
+            const bgAllowed = (background?.allowedAbilities || []).map(ab => String(ab).toUpperCase());
+            const byScore = (abbrs: string[]) => [...abbrs].sort((x, y) =>
+                (character.abilities.find(a => a.abbr === y)?.score || 0) - (character.abilities.find(a => a.abbr === x)?.score || 0));
+            if (featRule && allowed.length > 0) {
+                const named = allowed.filter((abbr: string) => desc.includes(ABILITY_FULL_NAMES[abbr]));
+                featureBonuses[named.length === 1 ? named[0] : byScore(allowed)[0]] += 1;
+                continue;
             }
-            if (name.includes("boon of fate")) {
-                featureBonuses.CHA += 1;
-            }
-            if (name.includes("war caster") && (text.includes("charisma") || text.includes("score increase") || !text.includes("wisdom"))) {
-                featureBonuses.CHA += 1;
-            }
-            if (name.includes("entertainer ability score") || (name.includes("entertainer") && text.includes("ability score"))) {
-                featureBonuses.CHA += 2;
-                featureBonuses.DEX += 1;
+            if (background && bgAllowed.length >= 2) {
+                const [first, second] = byScore(bgAllowed);
+                featureBonuses[first] += 2;
+                featureBonuses[second] += 1;
+                continue;
             }
 
             // General regex matching: e.g. "Charisma score increases by 2", "+1 Charisma", "increase your Charisma score by 1"
@@ -2333,12 +2348,6 @@ export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload
             ];
 
             for (const [abbr, regex] of statRegexes) {
-                if (abbr === "CHA" && (name.includes("actor") || name.includes("boon of fate") || name.includes("war caster") || name.includes("entertainer"))) {
-                    continue;
-                }
-                if (abbr === "DEX" && name.includes("entertainer")) {
-                    continue;
-                }
                 const match = regex.exec(text);
                 if (match) {
                     const val = Number(match[1] || match[2]) || 0;

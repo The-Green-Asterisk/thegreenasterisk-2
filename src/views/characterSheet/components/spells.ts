@@ -1,5 +1,6 @@
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
-import { findClassRule, getSpeciesRules } from "../../../services/classRules";
+import { findClassRule, getClassRules, getFeatRules, getSpeciesRules } from "../../../services/classRules";
+import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -23,7 +24,8 @@ export function isCharacterBonusSpell(spell: SpellDefinition): boolean {
     const src = (spell.source || "").toLowerCase();
     return (
         isCharacterSpeciesSpell(spell) ||
-        src.includes("pact of the tome")
+        // a class spell pick that doesn't use the class's numbers (class rules, e.g. Pact of the Tome)
+        uncountedClassSpellSources(getClassRules()).some(label => src.includes(label))
     );
 }
 
@@ -51,7 +53,7 @@ export interface SheetSpellcastingBreakdown {
 
 /**
  * Spells that never count against a class's cantrip or prepared spell limits: always-prepared spells (subclass,
- * feature, and feat spells), species spells, and spells granted by a class feature such as Pact of the Tome.
+ * feature, and feat spells), species spells, and class spell picks that don't use the class's numbers (class rules).
  */
 export function isCharacterUncountedSpell(spell: SpellDefinition): boolean {
     if (spell.alwaysPrepared === true || isCharacterBonusSpell(spell)) return true;
@@ -59,8 +61,8 @@ export function isCharacterUncountedSpell(spell: SpellDefinition): boolean {
     return (
         src.includes(" / ") ||
         src.includes("feat") ||
-        src.startsWith("magic initiate") ||
-        src.startsWith("fighting style") ||
+        // a feat's name (feat data, e.g. Magic Initiate)
+        getFeatRules().some(f => src.startsWith(f.name.toLowerCase().split(" (")[0])) ||
         src === "item" ||
         src === "background"
     );
@@ -133,9 +135,11 @@ export function getCharacterSpellcastingBreakdown(data: CharacterData): SheetSpe
         c.isPreparedOverLimit = c.currentPrepared > c.maxPrepared || c.aboveMaxLevel.length > 0;
     });
 
-    // Characters saved before Magic Initiate spells had their own source stored them as generic class spells
-    const hasMagicInitiateFeat = (data.features || []).some(f => f.name.toLowerCase().includes("magic initiate"));
-    const hasMagicInitiateSpells = (data.spells || []).some(s => (s.source || "").toLowerCase().startsWith("magic initiate"));
+    // Characters saved before spell-granting feats' spells (feat data spellList, e.g. Magic Initiate) had their own
+    // source stored them as generic class spells
+    const spellFeatNames = getFeatRules().filter(f => f.spellList).map(f => f.name.toLowerCase().split(" (")[0]);
+    const hasMagicInitiateFeat = (data.features || []).some(f => spellFeatNames.some(n => f.name.toLowerCase().includes(n)));
+    const hasMagicInitiateSpells = (data.spells || []).some(s => spellFeatNames.some(n => (s.source || "").toLowerCase().startsWith(n)));
 
     return {
         classes,

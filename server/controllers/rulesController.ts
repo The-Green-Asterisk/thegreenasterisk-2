@@ -23,6 +23,7 @@ import {
     SEED_SPECIES
 } from "../services/database/rulesSeed";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
+import { featMechanicsJson } from "../services/database/featMechanics";
 import { findServerClassRule, loadClassRulesData } from "../services/classRulesData";
 import BaseController from "./baseController";
 import SpellController from "./spellController";
@@ -499,6 +500,7 @@ export default class RulesController extends BaseController {
                     benefitsJson: JSON.stringify(ofeat.benefits || []),
                     statOptionsJson: (ofeat as any).spellcastingAbilityOptions ? JSON.stringify((ofeat as any).spellcastingAbilityOptions) : undefined,
                     skillPicksJson: (ofeat as any).skillPicks ? JSON.stringify((ofeat as any).skillPicks) : undefined,
+                    mechanicsJson: featMechanicsJson(ofeat),
                     isEpicBoon: false,
                     source: "2024 Core Rules"
                 }));
@@ -511,6 +513,7 @@ export default class RulesController extends BaseController {
                     benefitsJson: JSON.stringify(gfeat.benefits || []),
                     statOptionsJson: JSON.stringify(gfeat.allowedStats || gfeat.statOptions || []),
                     skillPicksJson: gfeat.skillPicks ? JSON.stringify(gfeat.skillPicks) : undefined,
+                    mechanicsJson: featMechanicsJson(gfeat),
                     isEpicBoon: !!gfeat.isEpicBoon,
                     source: "2024 Core Rules"
                 }));
@@ -791,7 +794,8 @@ export default class RulesController extends BaseController {
                     name: rf.name,
                     description: rf.description,
                     benefits: this.safeParse(rf.benefitsJson, []),
-                    skillPicks: this.safeParse(rf.skillPicksJson, undefined)
+                    skillPicks: this.safeParse(rf.skillPicksJson, undefined),
+                    ...this.safeParse(rf.mechanicsJson, {})
                 }));
 
             const generalFeats = dbFeats
@@ -805,7 +809,8 @@ export default class RulesController extends BaseController {
                     benefits: this.safeParse(rf.benefitsJson, []),
                     allowedStats: this.safeParse(rf.statOptionsJson, ["str", "dex", "con", "int", "wis", "cha"]),
                     isEpicBoon: rf.isEpicBoon,
-                    skillPicks: this.safeParse(rf.skillPicksJson, undefined)
+                    skillPicks: this.safeParse(rf.skillPicksJson, undefined),
+                    ...this.safeParse(rf.mechanicsJson, {})
                 }));
 
             const allSubclasses = loadedSubclasses.length > 0

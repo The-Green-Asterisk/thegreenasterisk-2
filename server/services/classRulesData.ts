@@ -1,6 +1,7 @@
 import cache from "../cache";
 import AppDataSource from "./database";
 import RuleClass from "./database/entity/RuleClass";
+import RuleFeat from "./database/entity/RuleFeat";
 import RuleSpecies from "./database/entity/RuleSpecies";
 import RuleSubclass from "./database/entity/RuleSubclass";
 
@@ -32,6 +33,7 @@ const CACHE_KEY = "class_rules_data";
 const SPECIES_CACHE_KEY = "species_traits_data";
 let lastLoaded: ServerClassRule[] = [];
 let lastSpeciesTraits: SpeciesTraitData[] = [];
+let lastFeatMechanics: Array<{ name: string; modifiers?: unknown[]; resource?: unknown; limitedUse?: unknown }> = [];
 
 const slugify = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
@@ -49,6 +51,7 @@ export async function loadClassRulesData(): Promise<ServerClassRule[]> {
     const cached = cache.get<ServerClassRule[]>(CACHE_KEY);
     if (cached) {
         lastSpeciesTraits = cache.get<SpeciesTraitData[]>(SPECIES_CACHE_KEY) || lastSpeciesTraits;
+        lastFeatMechanics = cache.get<typeof lastFeatMechanics>("feat_mechanics_data") || lastFeatMechanics;
         return (lastLoaded = cached);
     }
     if (!AppDataSource.isInitialized) return lastLoaded;
@@ -77,6 +80,9 @@ export async function loadClassRulesData(): Promise<ServerClassRule[]> {
             ...parse<Array<{ traits?: SpeciesTraitData[] }>>(sp.lineagesJson, []).flatMap((l) => l?.traits || [])
         ]).filter((t) => t?.name);
         cache.set(SPECIES_CACHE_KEY, lastSpeciesTraits, 600);
+        const feats = await AppDataSource.getRepository(RuleFeat).find();
+        lastFeatMechanics = feats.map((f) => ({ name: f.name, ...parse<Record<string, unknown>>(f.mechanicsJson, {}) }));
+        cache.set("feat_mechanics_data", lastFeatMechanics, 600);
     } catch (err) {
         console.warn("Could not load class rules:", err);
     }
@@ -134,6 +140,12 @@ export function classFeatureUsage(): { active: Set<string>; passive: Set<string>
         } else if (!t.grantedSpells?.length && !t.scaleValues?.length) {
             passive.add(name);
         }
+    }
+    // Feats: ones with uses are active; ones that only change stats are passive (e.g. Alert)
+    for (const f of lastFeatMechanics) {
+        const name = String(f.name).toLowerCase();
+        if (f.resource || f.limitedUse !== undefined) active.add(name);
+        else if (Array.isArray(f.modifiers) && f.modifiers.length > 0) passive.add(name);
     }
     return { active, passive, grantTypes };
 }

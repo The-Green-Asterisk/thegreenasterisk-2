@@ -7166,6 +7166,7 @@ export const SEED_BACKGROUNDS = [
 export const SEED_ORIGIN_FEATS = [
     {
         "id": "alert",
+        "modifiers": [{ "target": "vitals.initiative", "type": "bonus", "value": "{{pb}}", "description": "Add your Proficiency Bonus to Initiative" }],
         "name": "Alert",
         "description": "Always on the lookout for danger, you gain a bonus to initiative and can swap initiative rolls with willing allies.",
         "benefits": [
@@ -7194,6 +7195,7 @@ export const SEED_ORIGIN_FEATS = [
     },
     {
         "id": "lucky",
+        "resource": { "name": "Luck Points", "total": "{{pb}}", "resetOn": "long" },
         "name": "Lucky",
         "description": "You have an inexplicable streak of luck that seems to kick in at just the right moment.",
         "benefits": [
@@ -7204,6 +7206,7 @@ export const SEED_ORIGIN_FEATS = [
     },
     {
         "id": "magic-initiate-cleric",
+        "spellList": "Cleric", "defaultSpellAbility": "wis", "spellCantrips": 2, "spellLevel1": 1, "limitedUse": 1,
         "name": "Magic Initiate (Cleric)",
         "description": "You learn the basics of clerical divine magic.",
         "benefits": [
@@ -7219,6 +7222,7 @@ export const SEED_ORIGIN_FEATS = [
     },
     {
         "id": "magic-initiate-druid",
+        "spellList": "Druid", "defaultSpellAbility": "wis", "spellCantrips": 2, "spellLevel1": 1, "limitedUse": 1,
         "name": "Magic Initiate (Druid)",
         "description": "You learn the basics of primal druidic magic.",
         "benefits": [
@@ -7234,6 +7238,7 @@ export const SEED_ORIGIN_FEATS = [
     },
     {
         "id": "magic-initiate-wizard",
+        "spellList": "Wizard", "defaultSpellAbility": "int", "spellCantrips": 2, "spellLevel1": 1, "limitedUse": 1,
         "name": "Magic Initiate (Wizard)",
         "description": "You learn the basics of arcane wizardly magic.",
         "benefits": [
@@ -7286,6 +7291,7 @@ export const SEED_ORIGIN_FEATS = [
     },
     {
         "id": "tough",
+        "modifiers": [{ "target": "vitals.maxHp", "type": "bonus", "perClassLevel": 2, "description": "+2 Hit Points per character level" }],
         "name": "Tough",
         "description": "Your Hit Point maximum increases, making you resilient against lethal blows.",
         "benefits": [
@@ -7494,6 +7500,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "fey-touched",
+        "limitedUse": 1,
         "name": "Fey Touched",
         "description": "Your exposure to the Feywild has granted you misty step and an additional spell.",
         "category": "general",
@@ -7635,6 +7642,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "medium-armor-master",
+        "modifiers": [{ "target": "vitals.ac.mediumArmorMaxDex", "type": "set", "value": 3, "description": "Add up to +3 Dexterity to AC in Medium armor" }],
         "name": "Medium Armor Master",
         "description": "You have practiced moving stealthily and swiftly in medium armor.",
         "category": "general",
@@ -7867,6 +7875,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "shadow-touched",
+        "limitedUse": 1,
         "name": "Shadow Touched",
         "description": "Your exposure to the Shadowfell has granted you invisibility and an additional spell.",
         "category": "general",
@@ -7936,6 +7945,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "skulker",
+        "modifiers": [{ "target": "vitals.blindsight", "type": "set", "value": 10, "description": "Blindsight 10 ft." }],
         "name": "Skulker",
         "description": "You are expert at slinking through shadows and striking unseen.",
         "category": "general",
@@ -7968,6 +7978,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "speedy",
+        "modifiers": [{ "target": "vitals.speed", "type": "bonus", "value": 10, "description": "+10 ft. Speed" }],
         "name": "Speedy",
         "description": "You are exceptionally swift and agile, dodging through enemy lines.",
         "category": "general",
@@ -8037,6 +8048,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "war-caster",
+        "modifiers": [{ "target": "saves.con", "type": "advantage", "condition": "concentration", "description": "Advantage on Constitution saves to maintain Concentration" }],
         "name": "War Caster",
         "description": "You have practiced casting spells in the midst of combat.",
         "category": "general",
@@ -8340,6 +8352,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "boon-of-speed",
+        "modifiers": [{ "target": "vitals.speed", "type": "bonus", "value": 30, "description": "+30 ft. Speed" }],
         "name": "Boon of Speed",
         "description": "Your Speed increases by 30 feet, and you can Disengage as a Bonus Action.",
         "category": "epic-boon",
@@ -8395,6 +8408,7 @@ export const SEED_GENERAL_FEATS = [
     },
     {
         "id": "boon-of-truesight",
+        "modifiers": [{ "target": "vitals.truesight", "type": "set", "value": 60, "description": "Truesight 60 ft." }],
         "name": "Boon of Truesight",
         "description": "You gain Truesight with a range of 60 feet.",
         "category": "epic-boon",

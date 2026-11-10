@@ -2,13 +2,15 @@ import { CLASSES_2024 } from "../rules/dnd5e_2024/classes";
 import { GENERAL_FEATS_2024 } from "../rules/dnd5e_2024/generalFeats";
 import { ORIGIN_FEATS_2024 } from "../rules/dnd5e_2024/originFeats";
 import { SPECIES_2024 } from "../rules/dnd5e_2024/species";
+import { BACKGROUNDS_2024 } from "../rules/dnd5e_2024/backgrounds";
 import { findSpecies } from "../rules/dnd5e_2024/speciesRules";
-import { ClassDefinition, GeneralFeatDefinition, OriginFeatDefinition, SpeciesDefinition } from "../rules/dnd5e_2024/types";
+import { BackgroundDefinition, ClassDefinition, GeneralFeatDefinition, OriginFeatDefinition, SpeciesDefinition } from "../rules/dnd5e_2024/types";
 import { getData } from "./request";
 
 let classRules: ClassDefinition[] | null = null;
 let featRules: Array<OriginFeatDefinition | GeneralFeatDefinition> | null = null;
 let speciesRules: SpeciesDefinition[] | null = null;
+let backgroundRules: BackgroundDefinition[] | null = null;
 let loading: Promise<ClassDefinition[]> | null = null;
 
 /**
@@ -32,6 +34,7 @@ export function loadClassRules(): Promise<ClassDefinition[]> {
                 const feats = [...(Array.isArray(rules?.originFeats) ? rules.originFeats : []), ...(Array.isArray(rules?.generalFeats) ? rules.generalFeats : [])];
                 setFeatRules(feats);
                 if (Array.isArray(rules?.species)) setSpeciesRules(rules.species);
+                if (Array.isArray(rules?.backgrounds) && rules.backgrounds.length > 0) backgroundRules = rules.backgrounds;
                 return getClassRules();
             })
             .catch(() => getClassRules());
@@ -67,6 +70,11 @@ export function setSpeciesRules(species: SpeciesDefinition[] | null): void {
 /** Finds a species by id or name, including names that carry a lineage ("Wood Elf", "Infernal Tiefling"). */
 export function findSpeciesRule(text: string): SpeciesDefinition | undefined {
     return findSpecies(getSpeciesRules(), text);
+}
+
+/** The background rules (rule_backgrounds, as served by /get-rules) once loaded; until then the offline copy. */
+export function getBackgroundRules(): BackgroundDefinition[] {
+    return backgroundRules || BACKGROUNDS_2024;
 }
 
 /** Finds a class by id or name. */

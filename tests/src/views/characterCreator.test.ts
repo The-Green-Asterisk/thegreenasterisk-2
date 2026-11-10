@@ -6,17 +6,29 @@ import { serverRulesClasses } from "./serverRulesClasses";
 describe("CharacterCreatorController", () => {
     let ctrl: CharacterCreatorController;
 
+    /** These tests start from a level 1 Fighter (the app starts from the first class in the class rules). */
+    const startAsFighter = (c: CharacterCreatorController) => {
+        c.state.classId = "fighter";
+        c.state.classes = [{ classId: "fighter", level: 1, subclassId: "" }];
+    };
+
     beforeEach(() => {
         ctrl = new CharacterCreatorController();
         // Class rules come from rule_classes in the app; use the same seeded data here
         ctrl.classes = serverRulesClasses();
+        startAsFighter(ctrl);
     });
 
     it("initializes with default starting state", () => {
-        expect(ctrl.state.currentStep).toBe(1);
-        expect(ctrl.state.level).toBe(1);
-        expect(ctrl.state.speciesId).toBe("human");
-        expect(ctrl.state.classId).toBe("fighter");
+        const fresh = new CharacterCreatorController();
+        expect(fresh.state.currentStep).toBe(1);
+        expect(fresh.state.level).toBe(1);
+        expect(fresh.state.speciesId).toBe("human");
+        // The first class in the class rules, with no class picks made for the player
+        expect(fresh.state.classId).toBe(CLASSES_2024[0].id);
+        expect(fresh.state.classes).toEqual([{ classId: CLASSES_2024[0].id, level: 1, subclassId: "" }]);
+        expect(fresh.state.weaponMasteries).toEqual([]);
+        expect(fresh.state.fightingStyle).toBe("");
         expect(ctrl.state.backgroundId).toBe("soldier");
     });
 
@@ -794,6 +806,24 @@ describe("CharacterCreatorController", () => {
             expect(select.querySelector('option[value="tough"]')?.hasAttribute("selected")).toBe(true);
         });
 
+        it("applies feat effects from the feat data (Tough, Alert, Speedy, Lucky)", () => {
+            setup([{ classId: "fighter", level: 4 }]);
+            ctrl.state.originFeatId = "tough";
+            ctrl.state.asiChoices = {};
+            const baseInit = ctrl.getAbilityModifier("dex");
+            const toughHp = ctrl.getMaxHp();
+            ctrl.state.originFeatId = "alert";
+            expect(toughHp - ctrl.getMaxHp()).toBe(8);
+            expect(ctrl.getInitiative()).toBe(baseInit + ctrl.getProficiencyBonus());
+
+            ctrl.state.asiChoices = { "fighter-4": { type: "feat", featId: "speedy", statA: "dex" } };
+            expect(ctrl.getSpeed()).toBe(40);
+
+            ctrl.state.originFeatId = "lucky";
+            const luck = ctrl.buildPayload().classResources.find((r: any) => r.name === "Luck Points");
+            expect(luck.total).toBe(ctrl.getProficiencyBonus());
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };
@@ -1124,6 +1154,7 @@ describe("CharacterCreatorController", () => {
     it("allows selecting class, subclass, and feature choices on the primary class", () => {
         const ctrl = new CharacterCreatorController();
         ctrl.classes = serverRulesClasses();
+        startAsFighter(ctrl);
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
 
         ctrl.renderStep(3);

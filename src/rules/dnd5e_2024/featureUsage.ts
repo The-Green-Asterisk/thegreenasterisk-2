@@ -1,5 +1,5 @@
 import { traitBaseName } from "./speciesRules";
-import { ClassDefinition, ProgressionLevel, SpeciesDefinition } from "./types";
+import { ClassDefinition, FeatMechanics, ProgressionLevel, SpeciesDefinition } from "./types";
 
 export interface FeatureUsage {
     /** Features that spend a resource or grant an action */
@@ -12,10 +12,10 @@ export interface FeatureUsage {
 
 /**
  * Which class, subclass, and species features are used actively and which are passive, lower-case, from the rules
- * data: class resources (and their aliases), granted actions, choices, and stat-only features; species traits with
- * limited uses, and those that only change stats or senses.
+ * data: class resources (and their aliases), granted actions, choices, and stat-only features; species traits and
+ * feats with limited uses, and those that only change stats or senses.
  */
-export function featureUsage(classes: ClassDefinition[], species: SpeciesDefinition[]): FeatureUsage {
+export function featureUsage(classes: ClassDefinition[], species: SpeciesDefinition[], feats: Array<FeatMechanics & { name: string }> = []): FeatureUsage {
     const active = new Set<string>();
     const passive = new Set<string>();
     const grantTypes = new Map<string, string>();
@@ -49,6 +49,12 @@ export function featureUsage(classes: ClassDefinition[], species: SpeciesDefinit
                 passive.add(name);
             }
         }
+    }
+    // Feats: ones with uses are active; ones that only change stats are passive (e.g. Alert)
+    for (const f of feats) {
+        const name = f.name.toLowerCase();
+        if (f.resource || f.limitedUse !== undefined) active.add(name);
+        else if ((f.modifiers || []).length > 0) passive.add(name);
     }
     return { active, passive, grantTypes };
 }

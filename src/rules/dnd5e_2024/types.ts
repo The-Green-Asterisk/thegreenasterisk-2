@@ -67,7 +67,22 @@ export interface FeatSkillPick {
     mode: "proficiency" | "proficiency-or-expertise" | "expertise";
 }
 
-export interface OriginFeatDefinition {
+/**
+ * A feat's mechanics, so nothing is keyed on feat names: stat modifiers (perClassLevel counts character levels; a
+ * "{{pb}}" value is the Proficiency Bonus), a resource to track, a use count to show without tracking, and the spell
+ * list and default ability of a feat that grants spells.
+ */
+export interface FeatMechanics {
+    modifiers?: StatModifier[];
+    resource?: { name?: string; total: number | string; resetOn: "short" | "long" };
+    limitedUse?: number | string;
+    spellList?: string;
+    defaultSpellAbility?: AbilityName;
+    spellCantrips?: number;        // cantrips the feat lets you learn from spellList
+    spellLevel1?: number;          // level 1 spells it lets you learn from spellList
+}
+
+export interface OriginFeatDefinition extends FeatMechanics {
     id: string;
     name: string;
     description: string;
@@ -77,7 +92,7 @@ export interface OriginFeatDefinition {
     spellcastingAbilityOptions?: AbilityName[];
 }
 
-export interface GeneralFeatDefinition {
+export interface GeneralFeatDefinition extends FeatMechanics {
     id: string;
     name: string;
     description: string;
@@ -250,6 +265,7 @@ export interface SpellPick {
     maxLevel?: "castable";         // or: up to the highest level the granting class can cast (plus cantrips if 0 is in levels)
     orRitual?: boolean;            // also allow ritual spells of any level
     sourceAliases?: string[];      // lower-case source text older saves used for these spells
+    countsAgainstLimit?: boolean;  // true when the picks use the class's cantrip/prepared numbers (default: they don't)
 }
 
 export interface ProgressionFeature {
