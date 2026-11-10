@@ -6,8 +6,8 @@ import {
 } from "./characterData";
 import { applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
 import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
-import { classChoiceDecisionIds, classChoiceModifiers, classChoiceOptions, findChoiceOption, matchClassChoice, unlockedClassChoices } from "./classChoiceDecisions";
-import { GeneralFeatDefinition, SpeciesDefinition, SpeciesTrait } from "../../rules/dnd5e_2024/types";
+import { allRuleClassChoices, classChoiceDecisionIds, classChoiceModifiers, classChoiceOptions, findChoiceOption, matchClassChoice, unlockedClassChoices } from "./classChoiceDecisions";
+import { GeneralFeatDefinition, SpeciesDefinition, SpeciesTrait, StatModifier } from "../../rules/dnd5e_2024/types";
 import { detectLineage, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { findFeatRule, getSpeciesRules, getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
 
@@ -69,19 +69,6 @@ export const DAMAGE_RESISTANCE_TYPES: Array<{ key: string; label: string }> = [
     { key: "psychic", label: "Psychic" },
     { key: "radiant", label: "Radiant" },
     { key: "thunder", label: "Thunder" }
-];
-
-export const FIGHTING_STYLE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "fighting-style:archery", label: "Archery (+2 Ranged Weapon Attacks)" },
-    { value: "fighting-style:defense", label: "Defense (+1 Armor Class)" },
-    { value: "fighting-style:dueling", label: "Dueling (+2 One-Handed Melee Damage)" },
-    { value: "fighting-style:great-weapon", label: "Great Weapon Fighting (2H Damage Floor)" },
-    { value: "fighting-style:protection", label: "Protection (Shield Reaction Disadvantage)" },
-    { value: "fighting-style:two-weapon", label: "Two-Weapon Fighting (Off-Hand Ability Mod)" },
-    { value: "fighting-style:thrown", label: "Thrown Weapon Fighting (+2 Thrown Damage)" },
-    { value: "fighting-style:blind-fighting", label: "Blind Fighting (10 ft. Blindsight)" },
-    { value: "fighting-style:interception", label: "Interception (Reduce Damage by 1d10 + PB)" },
-    { value: "fighting-style:unarmed", label: "Unarmed Fighting (1d6/1d8 Unarmed Strikes)" }
 ];
 
 function slugifyKey(input: string): string {
@@ -282,26 +269,6 @@ export function decisionValueToModifiers(selectedValue: string, sourceKey = "fea
         ];
     }
 
-    if (kind === "fighting-style") {
-        const style = parts[1];
-        if (style === "archery") {
-            return [{ type: "bonus", subType: "ranged-weapon-attacks", value: 2, fixedValue: 2, isGranted: true, _sourceKey: sourceKey }];
-        }
-        if (style === "defense") {
-            return [{ type: "bonus", subType: "armor-class", value: 1, fixedValue: 1, isGranted: true, _sourceKey: sourceKey }];
-        }
-        if (style === "dueling") {
-            return [{ type: "bonus", subType: "one-handed-melee-attacks", value: 2, fixedValue: 2, isGranted: true, _sourceKey: sourceKey }];
-        }
-        if (style === "thrown") {
-            return [{ type: "bonus", subType: "thrown-weapon-damage", value: 2, fixedValue: 2, isGranted: true, _sourceKey: sourceKey }];
-        }
-        if (style === "blind-fighting") {
-            return [{ type: "set-base", subType: "blindsight", value: 10, fixedValue: 10, isGranted: true, _sourceKey: sourceKey }];
-        }
-        return [];
-    }
-
     if (kind === "resistance") {
         const dmgKey = parts[1];
         const dmgMeta = DAMAGE_RESISTANCE_TYPES.find(d => d.key === dmgKey);
@@ -381,14 +348,6 @@ function mapLabelToCanonicalDecisionValue(
         }
     }
 
-    // Check Fighting Style
-    for (const fsOpt of FIGHTING_STYLE_OPTIONS) {
-        const styleName = fsOpt.label.split("(")[0].trim().toLowerCase();
-        if (lower === styleName || lower.startsWith(styleName) || (hintLower.includes("fighting") && lower.includes(styleName))) {
-            return fsOpt;
-        }
-    }
-
     // Check Damage Resistance
     for (const dmg of DAMAGE_RESISTANCE_TYPES) {
         if (
@@ -408,25 +367,10 @@ function mapLabelToCanonicalDecisionValue(
     return null;
 }
 
-function detectFightingStyleValue(nameOrSubType: string): string | null {
-    const lower = String(nameOrSubType || "").toLowerCase();
-    if (lower.includes("archery") || lower === "ranged-weapon-attacks") return "fighting-style:archery";
-    if (lower.includes("defense") || lower === "armored-armor-class" || lower === "armor-class") return "fighting-style:defense";
-    if (lower.includes("dueling") || lower === "one-handed-melee-attacks") return "fighting-style:dueling";
-    if (lower.includes("great weapon")) return "fighting-style:great-weapon";
-    if (lower.includes("protection")) return "fighting-style:protection";
-    if (lower.includes("two-weapon")) return "fighting-style:two-weapon";
-    if (lower.includes("thrown") || lower === "thrown-weapon-damage") return "fighting-style:thrown";
-    if (lower.includes("blind fighting") || lower === "blindsight") return "fighting-style:blind-fighting";
-    if (lower.includes("interception")) return "fighting-style:interception";
-    if (lower.includes("unarmed fighting")) return "fighting-style:unarmed";
-    return null;
-}
-
 export interface ExtractedFeaturesResult {
     features: FeatureItem[];
-    hasFightingStyleDecision: boolean;
-    activeFightingStyleValues: Set<string>;
+    /** Class choice decisions: the option D&D Beyond (or the default) has and the one selected, by name */
+    classChoiceSelections: Array<{ defaultOptionName?: string; selectedOptionName?: string; selectedModifiers: StatModifier[] }>;
     netAbilityDecisionDelta: Record<number, number>;
 }
 
@@ -563,8 +507,7 @@ export function extractFeaturesAndApplyDecisions(
         return matches;
     };
 
-    let hasFightingStyleDecision = false;
-    const activeFightingStyleValues = new Set<string>();
+    const classChoiceSelections: ExtractedFeaturesResult["classChoiceSelections"] = [];
     // Class and subclass choices the character's levels have unlocked (class rules), and every class feature name
     const classChoices = unlockedClassChoices(
         (raw.classes || []).map((c: any) => ({ name: c.definition?.name, level: Number(c.level) || 1, subclass: c.subclassDefinition?.name }))
@@ -767,14 +710,12 @@ export function extractFeaturesAndApplyDecisions(
             }
         };
 
-        // 0. Class and subclass choices from the class rules (Divine Order, Aspect of the Beast, Scholar, ...); Fighting
-        // Style features are feat picks, handled in step 5
+        // 0. Class and subclass choices from the class rules (Fighting Style, Divine Order, Aspect of the Beast, ...)
         const handledDdbChoiceIds = new Set<string>();
-        const isFightingStyleName =
-            nameLower.includes("fighting style") ||
-            nameLower.includes("fighting initiate") ||
-            FIGHTING_STYLE_OPTIONS.some(o => nameLower === o.label.split("(")[0].trim().toLowerCase());
-        const classMatch = isFightingStyleName ? undefined : matchClassChoice(featureName, classChoices, allClassFeatureNames);
+        // The character's unlocked choices first; else a choice of that exact name in any class's rules (e.g. a Fighting
+        // Style a class gets some other way)
+        const classMatch = matchClassChoice(featureName, classChoices, allClassFeatureNames) ||
+            matchClassChoice(featureName, allRuleClassChoices(), [featureName]);
         if (classMatch) {
             const { choice } = classMatch;
             // D&D Beyond's own pick for this feature: a chosen option definition or a choice's selected label
@@ -815,6 +756,15 @@ export function extractFeaturesAndApplyDecisions(
                 controlled,
                 { toModifiers, savedValue: savedOption ? `${choice.id}:${savedOption.id}` : undefined }
             );
+            const registered = decisions[decisions.length - 1];
+            if (registered) {
+                const selected = findChoiceOption(choice, registered.selectedValue);
+                classChoiceSelections.push({
+                    defaultOptionName: defaultOption?.name,
+                    selectedOptionName: selected?.name,
+                    selectedModifiers: selected?.modifiers || []
+                });
+            }
         }
 
         // 1. Special Case: Resilient Feat (+1 Ability & Saving Throw Proficiency)
@@ -1020,46 +970,13 @@ export function extractFeaturesAndApplyDecisions(
             }
         }
 
-        // 5. Fighting Style Feature or Feat
-        const fsDetectedFromName = detectFightingStyleValue(featureName);
-        const isFightingStyleFeature =
-            nameLower.includes("fighting style") ||
-            nameLower.includes("fighting initiate") ||
-            !!fsDetectedFromName;
-
-        if (isFightingStyleFeature && !classMatch) {
-            const fsMods = featureMods.filter(
-                m =>
-                    !consumedModUids.has(m._modUid) &&
-                    ["ranged-weapon-attacks", "armored-armor-class", "armor-class", "one-handed-melee-attacks", "thrown-weapon-damage", "blindsight"].includes(
-                        String(m.subType || "").toLowerCase()
-                    )
-            );
-            let defaultFs = fsDetectedFromName || "fighting-style:defense";
-            if (!fsDetectedFromName && fsMods.length > 0) {
-                defaultFs = detectFightingStyleValue(fsMods[0].subType) || defaultFs;
-            }
-            registerDecision(
-                "fighting-style:0",
-                "Fighting Style",
-                defaultFs,
-                FIGHTING_STYLE_OPTIONS,
-                fsMods
-            );
-            const activeDec = decisions[decisions.length - 1];
-            if (activeDec) {
-                hasFightingStyleDecision = true;
-                activeFightingStyleValues.add(activeDec.selectedValue);
-            }
-        }
-
         // 7. Damage Resistance / Elemental / Lineage Traits
         const resMods = featureMods.filter(
             m => !consumedModUids.has(m._modUid) && m.type === "resistance"
         );
         // A species trait whose species' lineages each grant a resistance (e.g. Draconic Ancestry, Fiendish Legacy)
         const lineageResistance = (speciesTraitMatch?.species.lineages || []).some(l => (l.modifiers || []).some(m => m.target === "defenses.resistance"));
-        if (resMods.length > 0 || lineageResistance || nameLower.includes("elemental adept")) {
+        if (resMods.length > 0 || lineageResistance) {
             if (resMods.length > 0) {
                 resMods.forEach((m, idx) => {
                     const dmgKey = String(m.subType || "fire").toLowerCase();
@@ -1084,6 +1001,23 @@ export function extractFeaturesAndApplyDecisions(
                     []
                 );
             }
+        }
+
+        // 7b. A feat's own picks with no stat effect (feat data choices, e.g. Elemental Adept's damage type); D&D Beyond's
+        // pick, if one of its choices names an option, is the default
+        const featRuleForChoices = category === "feat" ? findFeatRule(featureName) : undefined;
+        for (const fc of featRuleForChoices?.choices || []) {
+            const options = fc.options.map(o => ({ value: `${fc.id}:${o.toLowerCase()}`, label: o }));
+            const ddbLabels = featureChoices.flatMap((c: any) => {
+                const rawOpts = Array.isArray(c.options) ? c.options : choiceDefsMap.get(`${c.componentTypeId}-${c.type}`) || [];
+                const picked = rawOpts.find((ro: any) => Number(ro.id) === Number(c.optionValue));
+                if (rawOpts.some((ro: any) => fc.options.some(o => stripHtml(ro.label || ro.name || "").toLowerCase() === o.toLowerCase()))) {
+                    handledDdbChoiceIds.add(String(c.id));
+                }
+                return picked ? [stripHtml(picked.label || picked.name || "")] : [];
+            });
+            const picked = fc.options.find(o => ddbLabels.some((l: string) => l.toLowerCase() === o.toLowerCase()));
+            registerDecision(`${fc.id}:0`, fc.name, picked ? `${fc.id}:${picked.toLowerCase()}` : "none", options, [], { toModifiers: () => [] });
         }
 
         // 8. Any remaining explicit choices in raw.choices[category] with choiceDefinitions
@@ -1427,8 +1361,7 @@ export function extractFeaturesAndApplyDecisions(
 
     return {
         features,
-        hasFightingStyleDecision,
-        activeFightingStyleValues,
+        classChoiceSelections,
         netAbilityDecisionDelta
     };
 }
@@ -1476,22 +1409,11 @@ export function ensureFeatureDecisionsOnCharacterData(character: CharacterData):
                 selectedValue: "none",
                 options: [{ value: "none", label: "— Select Choice —" }, ...buildResilientChoiceOptions()]
             });
-        } else if (nameLower.includes("fighting style")) {
-            let selectedVal = character.featureChoices?.[`${prefix}:fighting-style:0`] || character.creatorState?.fightingStyle;
-            if (!selectedVal || !FIGHTING_STYLE_OPTIONS.some(o => o.value === selectedVal)) {
-                const matched = FIGHTING_STYLE_OPTIONS.find(o => nameLower.includes(o.label.toLowerCase().split(" ")[0]));
-                selectedVal = matched ? matched.value : FIGHTING_STYLE_OPTIONS[0].value;
-            }
-            decisions.push({
-                id: `${prefix}:fighting-style:0`,
-                label: "Fighting Style",
-                selectedValue: selectedVal,
-                options: FIGHTING_STYLE_OPTIONS
-            });
         } else {
             // Class and subclass choices from the class rules
             let dynamicChoiceFound = false;
-            const match = matchClassChoice(feat.name, savedClassChoices, savedFeatureNames);
+            const match = matchClassChoice(feat.name, savedClassChoices, savedFeatureNames) ||
+                matchClassChoice(feat.name, allRuleClassChoices(), [feat.name]);
             if (match) {
                 const { choice } = match;
                 const keys = [choice.id, ...(choice.legacyKeys || [])];
@@ -1715,15 +1637,6 @@ export function applyFeatureDecisionOnCharacterData(
             }
         }
 
-        // Fallbacks for any unregistered edge cases
-        if (kind === "fighting-style") {
-            const style = parts[1];
-            if (style === "defense") {
-                character.vitals.armorClass += sign * 1;
-            } else if (style === "blind-fighting") {
-                character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
-            }
-        }
     };
 
     // Revert old effect and apply new effect

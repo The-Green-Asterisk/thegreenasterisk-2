@@ -1,4 +1,4 @@
-const MECHANICS_KEYS = ["modifiers", "resource", "limitedUse", "spellList", "defaultSpellAbility", "spellCantrips", "spellLevel1"];
+const MECHANICS_KEYS = ["modifiers", "resource", "limitedUse", "spellList", "defaultSpellAbility", "spellCantrips", "spellLevel1", "choices"];
 
 /** A seed feat's mechanics (modifiers, resource, limitedUse, spellList, defaultSpellAbility) as stored JSON. */
 export function featMechanicsJson(feat: any): string | undefined {

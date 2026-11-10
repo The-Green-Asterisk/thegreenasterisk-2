@@ -307,6 +307,18 @@ export function getSpellFeat(ctx: CharacterCreatorContext): OriginFeatDefinition
     return feat?.spellList ? feat : undefined;
 }
 
+/**
+ * The spellcasting ability for the origin feat's spells: the player's pick (state.featSpellAbility) when the feat
+ * allows it (spellcastingAbilityOptions), else the feat's default.
+ */
+export function getSpellFeatAbility(ctx: CharacterCreatorContext): AbilityName | undefined {
+    const feat = getSpellFeat(ctx);
+    if (!feat) return undefined;
+    const picked = ctx.state.featSpellAbility;
+    if (picked && (feat.spellcastingAbilityOptions || []).includes(picked)) return picked;
+    return feat.defaultSpellAbility || feat.spellcastingAbilityOptions?.[0];
+}
+
 function getMagicInitiateClass(ctx: CharacterCreatorContext): string {
     return getSpellFeat(ctx)?.spellList || "";
 }
@@ -408,7 +420,7 @@ export function getSpellBuckets(ctx: CharacterCreatorContext): SpellBucket[] {
             label: getSpellFeat(ctx)!.name,
             sourceLabel: getSpellFeat(ctx)!.name,
             level: 0,
-            ability: getSpellFeat(ctx)!.defaultSpellAbility || "int",
+            ability: getSpellFeatAbility(ctx) || "int",
             maxCantrips: getSpellFeat(ctx)!.spellCantrips || 0,
             maxPrepared: getSpellFeat(ctx)!.spellLevel1 || 0,
             maxSpellLevel: 1,
@@ -647,7 +659,7 @@ export function getSpellcastingAbility(ctx: CharacterCreatorContext): AbilityNam
         if (primary) return primary.ability;
         return infos[0].ability;
     }
-    return getSpellFeat(ctx)?.defaultSpellAbility ?? null;
+    return getSpellFeatAbility(ctx) ?? null;
 }
 
 export function getSpellSaveDc(ctx: CharacterCreatorContext, abilityOverride?: AbilityName): number | null {

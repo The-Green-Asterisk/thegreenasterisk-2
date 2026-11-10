@@ -470,8 +470,16 @@ export function parseDndBeyondCharacter(
         ...(raw.options?.feat || []).map((o: any) => o?.definition?.name),
         ...(raw.options?.class || []).map((o: any) => o?.definition?.name)
     ].filter(Boolean);
+    // A class choice the player changed on the sheet (e.g. Fighting Style) swaps D&D Beyond's option for theirs
+    const overridden = new Set<string>();
     const featMechanics: Array<FeatMechanics & { name: string }> = [];
+    for (const sel of extractedFeaturesResult.classChoiceSelections) {
+        if (!sel.selectedOptionName || sel.selectedOptionName === sel.defaultOptionName) continue;
+        if (sel.defaultOptionName) overridden.add(sel.defaultOptionName.toLowerCase());
+        featMechanics.push({ name: sel.selectedOptionName, modifiers: sel.selectedModifiers });
+    }
     for (const n of featLikeNames) {
+        if (overridden.has(String(n).toLowerCase())) continue;
         const feat = findFeatRule(n);
         const opt = feat ? undefined : findClassOptionByName(n);
         if (feat) featMechanics.push(feat);
@@ -487,12 +495,6 @@ export function parseDndBeyondCharacter(
     // Class levels & features lookup helpers
     const hasClassFeatureOrOption = (featureKeyword: string): boolean => {
         const kw = featureKeyword.toLowerCase();
-        if (extractedFeaturesResult.hasFightingStyleDecision) {
-            if (kw === "archery") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:archery");
-            if (kw === "defense") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:defense");
-            if (kw === "dueling") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:dueling");
-            if (kw === "thrown weapon fighting") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:thrown");
-        }
         if ((raw.options?.class || []).some((o: any) => (o.definition?.name || "").toLowerCase().includes(kw))) {
             return true;
         }
@@ -876,9 +878,11 @@ export function parseDndBeyondCharacter(
             .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "armored-armor-class")
             .reduce((sum, m) => sum + resolveModValue(m), 0);
 
-        // Fallback if Defense Fighting Style is present in options/features without an explicit armored-armor-class modifier
+        // Armor-only AC bonuses from feats and fighting styles (e.g. Defense) when D&D Beyond listed none
         const hasDefenseMod = allMods.some(m => m.subType === "armored-armor-class");
-        const defenseStyleBonus = !hasDefenseMod && hasClassFeatureOrOption("Defense") ? 1 : 0;
+        const defenseStyleBonus = hasDefenseMod ? 0 : featMods("vitals.ac", "bonus")
+            .filter(m => /armor/i.test(String(m.condition || "")))
+            .reduce((sum, m) => sum + (Number(m.value) || 0), 0);
 
         baseArmorClass = armorBase + acDex + armoredBonus + defenseStyleBonus;
     } else {
@@ -1689,7 +1693,7 @@ export function parseDndBeyondCharacter(
         const hasArcheryMod = allMods.some(
             m => m.subType === "ranged-weapon-attacks" || m.subType === "ranged-attacks"
         );
-        const archeryFallback = isRanged && !hasArcheryMod && hasClassFeatureOrOption("Archery") ? 2 : 0;
+        const archeryFallback = isRanged && !hasArcheryMod ? featBonus(featMechanics, "attacks.ranged", totalLevel, profBonus) : 0;
 
         // Dueling Fighting Style bonus (+2 damage to one-handed melee weapons when no other weapons are equipped)
         const qualifiesForDueling = !isRanged && !isTwoHanded && (!isEquipped || totalEquippedWeaponsCount <= 1);
@@ -1703,7 +1707,7 @@ export function parseDndBeyondCharacter(
                 .reduce((sum, m) => sum + getModFlatValue(m), 0)
             : 0;
         const duelingFallback =
-            qualifiesForDueling && duelingModBonus === 0 && hasClassFeatureOrOption("Dueling") ? 2 : 0;
+            qualifiesForDueling && duelingModBonus === 0 ? featBonus(featMechanics, "damage.melee_one_handed", totalLevel, profBonus) : 0;
 
         // Thrown Weapon Fighting bonus
         const thrownModBonus = isThrown
@@ -1712,7 +1716,7 @@ export function parseDndBeyondCharacter(
                 .reduce((sum, m) => sum + getModFlatValue(m), 0)
             : 0;
         const thrownStyleFallback =
-            isThrown && thrownModBonus === 0 && hasClassFeatureOrOption("Thrown Weapon Fighting") ? 2 : 0;
+            isThrown && thrownModBonus === 0 ? featBonus(featMechanics, "damage.thrown", totalLevel, profBonus) : 0;
 
         const globalDmgBonus = allMods
             .filter(m => {

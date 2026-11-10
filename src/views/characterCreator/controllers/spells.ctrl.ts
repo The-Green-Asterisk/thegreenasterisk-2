@@ -1,7 +1,15 @@
 import { getBucketSelection, syncFlatSpellSelections } from "../services/spellReconciliation";
+import { AbilityName } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "./context";
 
 export function initSpellsController(ctx: CharacterCreatorContext): void {
+    const featAbility = document.getElementById("feat-spell-ability-select") as HTMLSelectElement | null;
+    featAbility?.addEventListener("change", () => {
+        ctx.state.featSpellAbility = featAbility.value as AbilityName;
+        ctx.renderStep(ctx.state.currentStep);
+        ctx.updateLiveSummary();
+    });
+
     ctx.sanitizeSpellSelections();
 
     // Spell class filter tabs

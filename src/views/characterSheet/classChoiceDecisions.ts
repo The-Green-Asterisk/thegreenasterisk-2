@@ -1,4 +1,4 @@
-import { findClassRule } from "../../services/classRules";
+import { findClassRule, getClassRules } from "../../services/classRules";
 import { AbilityName, ClassDefinition, ProgressionChoice, ProgressionChoiceOption, ProgressionLevel } from "../../rules/dnd5e_2024/types";
 import { FeatureChoiceOption } from "./characterData";
 
@@ -34,6 +34,23 @@ export function unlockedClassChoices(classes: Array<{ name: string; level: numbe
                 const key = `${choice.id}|${choice.name}`;
                 if (seen.has(key)) continue;
                 seen.add(key);
+                out.push(choice);
+            }
+        }
+    }
+    return out;
+}
+
+/** Every single-pick choice in the class rules, one per name (for features of a class that doesn't have the choice). */
+export function allRuleClassChoices(): ProgressionChoice[] {
+    const seen = new Set<string>();
+    const out: ProgressionChoice[] = [];
+    for (const cls of getClassRules()) {
+        const levels = [...(cls.progression || []), ...(cls.subclasses || []).flatMap((sub) => ((sub as any).progression || []) as ProgressionLevel[])];
+        for (const pl of levels) {
+            for (const choice of pl.choices || []) {
+                if (choice.pool || (choice.options || []).length < 2 || seen.has(choice.name.toLowerCase())) continue;
+                seen.add(choice.name.toLowerCase());
                 out.push(choice);
             }
         }
@@ -88,6 +105,15 @@ export function findChoiceOption(choice: ProgressionChoice, saved?: string): Pro
     );
 }
 
+/** Modifier targets (class rules) and the D&D Beyond modifier subType each one shows up as. */
+const COMBAT_TARGETS: Record<string, string | ((m: { condition?: string }) => string)> = {
+    "attacks.ranged": "ranged-weapon-attacks",
+    "vitals.ac": (m) => (/armor/i.test(String(m.condition || "")) ? "armored-armor-class" : "armor-class"),
+    "damage.melee_one_handed": "one-handed-melee-attacks",
+    "damage.thrown": "thrown-weapon-damage",
+    "vitals.blindsight": "blindsight"
+};
+
 /**
  * D&D Beyond-style modifiers for a chosen option's skill effects (add an ability modifier to a skill, proficiency,
  * Expertise) and damage resistances, so the sheet can swap them when the choice changes.
@@ -99,6 +125,15 @@ export function classChoiceModifiers(option: ProgressionChoiceOption | undefined
         if (target === "defenses.resistance" && typeof m.value === "string") {
             const dmg = m.value.toLowerCase();
             mods.push({ type: "resistance", subType: dmg, friendlySubtypeName: dmg.charAt(0).toUpperCase() + dmg.slice(1), isGranted: true, _sourceKey: sourceKey });
+            continue;
+        }
+        // Combat targets and the D&D Beyond modifier each corresponds to (e.g. a Fighting Style's bonus)
+        const combat = COMBAT_TARGETS[target];
+        if (combat && (m.type === "bonus" || m.type === "set")) {
+            const n = typeof m.value === "number" ? m.value : parseInt(String(m.value), 10);
+            if (!Number.isFinite(n)) continue;
+            const subType = typeof combat === "string" ? combat : combat(m);
+            mods.push({ type: m.type === "set" ? "set-base" : "bonus", subType, value: n, fixedValue: n, isGranted: true, _sourceKey: sourceKey });
             continue;
         }
         if (!target.startsWith("skills.") || target === "skills.unproficient") continue;

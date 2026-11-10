@@ -1,6 +1,27 @@
 import { SPELLS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
-import { getProgressionGrantedSpellNames } from "../services/spellReconciliation";
+import { getProgressionGrantedSpellNames, getSpellFeat, getSpellFeatAbility } from "../services/spellReconciliation";
+
+const ABILITY_LABELS: Record<string, string> = {
+    str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma"
+};
+
+/** A select for the spellcasting ability of the origin feat's spells, when the feat lets the player choose. */
+function renderFeatSpellAbility(ctx: CharacterCreatorContext): string {
+    const feat = getSpellFeat(ctx);
+    const options = feat?.spellcastingAbilityOptions || [];
+    if (!feat || options.length < 2) return "";
+    const current = getSpellFeatAbility(ctx);
+    return `
+            <div class="creator-detail-box">
+                <div class="creator-form-group">
+                    <label class="creator-label" for="feat-spell-ability-select">${feat.name} Spellcasting Ability</label>
+                    <select id="feat-spell-ability-select" class="creator-select">
+                        ${options.map((ab) => `<option value="${ab}" ${ab === current ? "selected" : ""}>${ABILITY_LABELS[ab] || ab.toUpperCase()}</option>`).join("")}
+                    </select>
+                </div>
+            </div>`;
+}
 
 export function renderStep8Spells(ctx: CharacterCreatorContext): string {
     ctx.sanitizeSpellSelections();
@@ -104,6 +125,8 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                     <strong>${slotsSummary}</strong>
                 </div>
             </div>
+
+            ${renderFeatSpellAbility(ctx)}
 
             ${featureSpellSections.length > 0 ? `
                 <div id="feature-spell-choices-section" class="feature-spell-choices-container" style="margin-bottom: 1.25rem;">

@@ -91,13 +91,14 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             { classId: CLASSES_2024[0]?.id || "", level: 1, subclassId: "" }
         ],
         weaponMasteries: [],
-        backgroundId: "soldier",
+        // The first background in the background rules, with its abilities, tool, and origin feat
+        backgroundId: BACKGROUNDS_2024[0]?.id || "",
         backgroundOption: "two-and-one",
-        bgStatA: "str",
-        bgStatB: "con",
-        bgStatC: "dex",
-        bgTool: "Gaming Set",
-        originFeatId: "savage-attacker",
+        bgStatA: BACKGROUNDS_2024[0]?.allowedAbilities[0] || "str",
+        bgStatB: BACKGROUNDS_2024[0]?.allowedAbilities[1] || "dex",
+        bgStatC: BACKGROUNDS_2024[0]?.allowedAbilities[2] || "con",
+        bgTool: BACKGROUNDS_2024[0]?.tool || "",
+        originFeatId: BACKGROUNDS_2024[0]?.originFeatId || "",
         abilityMode: "standard",
         baseAbilities: {
             str: 15,

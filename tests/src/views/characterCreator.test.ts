@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CLASSES_2024 } from "../../../src/rules/dnd5e_2024";
+import { BACKGROUNDS_2024, CLASSES_2024 } from "../../../src/rules/dnd5e_2024";
 import { CharacterCreatorController } from "../../../src/views/characterCreator/characterCreator.ctrl";
 import { serverRulesClasses } from "./serverRulesClasses";
 
@@ -10,6 +10,8 @@ describe("CharacterCreatorController", () => {
     const startAsFighter = (c: CharacterCreatorController) => {
         c.state.classId = "fighter";
         c.state.classes = [{ classId: "fighter", level: 1, subclassId: "" }];
+        // ...with the Soldier background (the app starts from the first background in the background rules)
+        Object.assign(c.state, { backgroundId: "soldier", bgStatA: "str", bgStatB: "con", bgStatC: "dex", bgTool: "Gaming Set", originFeatId: "savage-attacker" });
     };
 
     beforeEach(() => {
@@ -29,7 +31,8 @@ describe("CharacterCreatorController", () => {
         expect(fresh.state.classes).toEqual([{ classId: CLASSES_2024[0].id, level: 1, subclassId: "" }]);
         expect(fresh.state.weaponMasteries).toEqual([]);
         expect(fresh.state.fightingStyle).toBe("");
-        expect(ctrl.state.backgroundId).toBe("soldier");
+        expect(fresh.state.backgroundId).toBe(BACKGROUNDS_2024[0].id);
+        expect(fresh.state.originFeatId).toBe(BACKGROUNDS_2024[0].originFeatId);
     });
 
     it("calculates proficiency bonus correctly by level", () => {
@@ -824,6 +827,25 @@ describe("CharacterCreatorController", () => {
             expect(luck.total).toBe(ctrl.getProficiencyBonus());
         });
 
+        it("lets the player pick a spell-granting origin feat's spellcasting ability", () => {
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.state.originFeatId = "magic-initiate-cleric";
+            expect(ctrl.getSpellcastingAbility()).toBe("wis");
+            ctrl.renderStep(8);
+            const select = document.getElementById("feat-spell-ability-select") as HTMLSelectElement;
+            expect(select).toBeTruthy();
+            expect(document.querySelector('label[for="feat-spell-ability-select"]')?.textContent).toContain("Magic Initiate (Cleric)");
+            expect(Array.from(select.options).map((o) => o.value)).toEqual(["int", "wis", "cha"]);
+            select.value = "cha";
+            select.dispatchEvent(new Event("change"));
+            expect(ctrl.state.featSpellAbility).toBe("cha");
+            expect(ctrl.getSpellcastingAbility()).toBe("cha");
+
+            // A feat without that ability among its options falls back to the feat's default
+            ctrl.state.originFeatId = "savage-attacker";
+            expect(ctrl.getSpellcastingAbility()).toBeNull();
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };
@@ -1246,6 +1268,8 @@ describe("CharacterCreatorController", () => {
     it("smart auto-fills curated class staples and distributes across available spell levels", () => {
         const ctrl = new CharacterCreatorController();
         ctrl.classes = serverRulesClasses();
+        // A background whose origin feat grants no spells (Soldier: Savage Attacker)
+        Object.assign(ctrl.state, { backgroundId: "soldier", originFeatId: "savage-attacker" });
 
         // Level 1 Wizard
         ctrl.state.classId = "wizard";

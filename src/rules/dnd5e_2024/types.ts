@@ -80,6 +80,8 @@ export interface FeatMechanics {
     defaultSpellAbility?: AbilityName;
     spellCantrips?: number;        // cantrips the feat lets you learn from spellList
     spellLevel1?: number;          // level 1 spells it lets you learn from spellList
+    /** Picks with no stat effect for the sheet to record (e.g. Elemental Adept's damage type) */
+    choices?: Array<{ id: string; name: string; options: string[] }>;
 }
 
 export interface OriginFeatDefinition extends FeatMechanics {

@@ -153,6 +153,7 @@ export const GENERAL_FEATS_2024: GeneralFeatDefinition[] = [
     },
     {
         id: "elemental-adept",
+        choices: [{ id: "damage-type", name: "Damage Type", options: ["Acid", "Cold", "Fire", "Lightning", "Thunder"] }],
         name: "Elemental Adept",
         description: "Spells you cast ignore resistance to a chosen damage type (Acid, Cold, Fire, Lightning, or Thunder).",
         category: "general",

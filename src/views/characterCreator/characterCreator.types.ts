@@ -76,6 +76,8 @@ export interface CreatorState {
     bgStatC: AbilityName;
     bgTool: string;
     originFeatId: string;
+    /** Spellcasting ability chosen for the origin feat's spells (e.g. Magic Initiate: Int, Wis, or Cha) */
+    featSpellAbility?: AbilityName;
     abilityMode: "standard" | "pointbuy" | "roll" | "manual";
     baseAbilities: Record<AbilityName, number>;
     /** Keyed by AsiSlot.key ("bard-4"); older saves used total character level and are normalized on use. */

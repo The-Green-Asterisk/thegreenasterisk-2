@@ -320,7 +320,7 @@ describe("Feature Decisions Progression Choice Integration", () => {
         const result = extractFeaturesAndApplyDecisions(raw, [], {});
         const dec = result.features.find(f => f.name === "Superior Hunter's Defense")!.decisions!;
         expect(dec.map(d => d.label)).toEqual(["Superior Hunter's Defense"]);
-        expect(result.hasFightingStyleDecision).toBe(false);
+        expect(result.features.some(f => (f.decisions || []).some(d => d.label === "Fighting Style"))).toBe(false);
     });
 
     it("offers feat skill picks from the feat data (Skilled, Skill Expert, Keen Mind)", () => {
@@ -348,5 +348,17 @@ describe("Feature Decisions Progression Choice Integration", () => {
         const asi = decisions.find(d => d.id.includes(":asi:"))!;
         expect(asi.options.map(o => o.value)).toEqual(["ability:5:1", "ability:6:1"]);
         expect(asi.selectedValue).toBe("ability:6:1");
+    });
+
+    it("records Elemental Adept's damage type from the feat data without granting a resistance", () => {
+        const raw = { classes: [], feats: [{ definition: { id: 960, name: "Elemental Adept" }, componentId: 960 }] };
+        const allMods: any[] = [];
+        const result = extractFeaturesAndApplyDecisions(raw, allMods, { "feat:elemental-adept:0:damage-type:0": "damage-type:cold" });
+        const dec = result.features.find(f => f.name === "Elemental Adept")!.decisions!;
+        // Its +1 ability increase, and the damage type
+        expect(dec.map(d => d.label)).toEqual(["Ability Score Increase (+1)", "Damage Type"]);
+        expect(dec[1].selectedValue).toBe("damage-type:cold");
+        expect(dec[1].options.map(o => o.label)).toEqual(["— Select Choice —", "Acid", "Cold", "Fire", "Lightning", "Thunder"]);
+        expect(allMods.some(m => m.type === "resistance")).toBe(false);
     });
 });

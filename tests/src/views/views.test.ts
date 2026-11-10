@@ -1085,7 +1085,7 @@ describe('Frontend View Templates', () => {
                 class: [
                     { id: 'm-exp-1', componentId: 301, type: 'expertise', subType: 'deception', isGranted: true },
                     { id: 'm-exp-2', componentId: 301, type: 'expertise', subType: 'performance', isGranted: true },
-                    { id: 'm-fs', componentId: 302, type: 'bonus', subType: 'armor-class', value: 1, isGranted: true }
+                    { id: 'm-fs', componentId: 302, type: 'bonus', subType: 'armored-armor-class', value: 1, isGranted: true }
                 ]
             },
             inventory: [],
@@ -1104,7 +1104,7 @@ describe('Frontend View Templates', () => {
         expect(wisInitial.modifier).toBe(1);
         expect(conInitial.score).toBe(14);
         expect(conInitial.proficientSave).toBe(true);
-        expect(initialChar.vitals.armorClass).toBe(13); // 10 + 2 (DEX) + 1 (Defense Fighting Style)
+        expect(initialChar.vitals.armorClass).toBe(12); // 10 + 2 (DEX); Defense's +1 needs armor, and this character has none
 
         // Verify features HTML renders feature cards without sheet-level decision dropdowns
         const featuresHtml = renderFeatures(initialChar);
@@ -1142,7 +1142,8 @@ describe('Frontend View Templates', () => {
         expect(perceptionSkill.proficiency).toBe('expertise');
         expect(perceptionSkill.bonus).toBe(2 + 3 * 2); // WIS (+2) + 2 * PB (6) = +8
         expect(updatedChar.vitals.passivePerception).toBe(18);
-        expect(updatedChar.vitals.armorClass).toBe(12); // Defense (+1 AC) removed
+        expect(updatedChar.vitals.armorClass).toBe(12);
+        expect(updatedChar.features.find(f => f.name === 'Fighting Style')!.decisions![0].selectedValue).toBe('fighting-style:blind-fighting');
         expect(updatedChar.vitals.blindsight).toBe('10 ft.');
 
         // Also verify in-place CharacterData helper works without raw payload
