@@ -159,6 +159,12 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
             ctx.state.siteCharacterId = String(siteCharacterId);
         }
 
+        // Keep what the creator doesn't edit (details, notes, currency, campaign, companions) for when it saves
+        ctx.loadedExtras = Object.fromEntries(
+            ["details", "notes", "currency", "campaign", "companions"].filter((k) => char[k] !== undefined).map((k) => [k, char[k]])
+        );
+        if (!ctx.state.gender && typeof char.details?.gender === "string") ctx.state.gender = char.details.gender;
+
         const isDndBeyond = (response?.savedCharacter?.source || char.source) === "dndbeyond";
         const externalId: string | undefined = response?.savedCharacter?.externalCharacterId
             || (isDndBeyond && /^\d+$/.test(String(char.id || "")) ? String(char.id) : undefined);
@@ -1280,6 +1286,10 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     for (const opt of selectedProgressionOptions) {
         applyProgressionChoiceOption(characterPayload, opt, 1);
     }
+
+    // What the creator doesn't edit, from the loaded character; the gender it does edit
+    Object.assign(characterPayload, ctx.loadedExtras || {});
+    if (ctx.state.gender) characterPayload.details = { ...(characterPayload.details || {}), gender: ctx.state.gender };
 
     return characterPayload;
 }

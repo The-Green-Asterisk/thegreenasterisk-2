@@ -3020,4 +3020,46 @@ describe('Frontend View Templates', () => {
         expect(isCharacterBonusSpell({ name: 'Guidance', level: 0, source: 'Warlock / Pact of the Tome' } as any)).toBe(true);
         expect(isCharacterBonusSpell({ name: 'Shield', level: 1, source: 'Wizard' } as any)).toBe(false);
     });
+
+    it('reads details, notes, currency, campaign, companions, custom entries, and usage from D&D Beyond', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const char = parseDndBeyondCharacter({
+            id: 4, name: 'Everything', modifiers: {}, inventory: [], spells: {},
+            stats: [1, 2, 3, 4, 5, 6].map(id => ({ id, value: 12 })),
+            classes: [{ level: 3, definition: { name: 'Wizard' } }],
+            gender: 'Nonbinary', faith: 'The Lady', age: '120', height: "5'2\"", lifestyleId: 5, currentXp: 900,
+            traits: { personalityTraits: 'Curious', ideals: '', bonds: 'My spellbook', flaws: null, appearance: 'Ink-stained' },
+            notes: { backstory: 'Raised in a library', allies: null, otherNotes: 'Owes a favor' },
+            currencies: { cp: 3, sp: 0, gp: 42, ep: 1, pp: 2 },
+            campaign: { name: 'Curse of the Library', dmUsername: 'not-kept', characters: [{ username: 'not-kept' }] },
+            creatures: [{ name: 'Pip', isActive: true, removedHitPoints: 0, definition: { name: 'Owl', armorClass: 11, averageHitPoints: 1 } }],
+            customProficiencies: [{ name: 'Glassblower Tools', type: 2 }, { name: 'Sylvan', type: 3 }],
+            customDefenseAdjustments: [{ type: 1, adjustmentId: 9 }],
+            customActions: [{ name: 'Inkblot', snippet: 'Blind a creature for a moment', activation: { activationType: 3 } }],
+            customItems: [{ name: 'Lucky Quill', quantity: 1, description: 'Writes by itself' }],
+            spellSlots: [{ level: 1, used: 3 }, { level: 2, used: 1 }],
+            pactMagic: [],
+            deathSaves: { successCount: 1, failCount: 2, isStabilized: false },
+            actions: { class: [{ name: 'Arcane Recovery', limitedUse: { maxUses: 1, numberUsed: 1, resetType: 2 } }] }
+        });
+
+        expect(char.details).toEqual({ gender: 'Nonbinary', faith: 'The Lady', age: '120', height: "5'2\"", lifestyle: 'Comfortable', experiencePoints: 900 });
+        expect(char.notes).toEqual({ personalityTraits: 'Curious', bonds: 'My spellbook', appearance: 'Ink-stained', backstory: 'Raised in a library', otherNotes: 'Owes a favor' });
+        expect(char.currency).toEqual({ cp: 3, sp: 0, ep: 1, gp: 42, pp: 2 });
+        expect(char.campaign).toEqual({ name: 'Curse of the Library' });
+        expect(char.companions).toEqual([{ name: 'Pip', type: 'Owl', armorClass: 11, maxHp: 1, currentHp: 1, notes: undefined }]);
+        expect(char.proficiencies.tools).toContain('Glassblower Tools');
+        expect(char.proficiencies.languages).toContain('Sylvan');
+        expect(char.damageResistances).toContain('Fire');
+        expect(char.actions.find(a => a.name === 'Inkblot')?.type).toBe('Bonus Action');
+        expect(char.equipment.some(e => e.name === 'Lucky Quill')).toBe(true);
+
+        // Usage: 3 of 4 first-level slots and 1 of 2 second-level slots spent, Arcane Recovery used, death saves
+        expect(char.trackingState?.slotPips?.level1).toEqual([true, false, false, false]);
+        expect(char.trackingState?.slotPips?.level2).toEqual([true, false]);
+        const arIdx = (char.classResources || []).findIndex(r => r.name === 'Arcane Recovery');
+        expect(arIdx).toBeGreaterThan(-1);
+        expect(char.trackingState?.resourcePips?.[`res-${arIdx}`]).toEqual([false]);
+        expect(char.vitals.deathSaves).toEqual({ successes: 1, failures: 2, isStable: false });
+    });
 });

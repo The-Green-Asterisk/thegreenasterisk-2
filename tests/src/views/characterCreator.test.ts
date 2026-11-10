@@ -846,6 +846,51 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.getSpellcastingAbility()).toBeNull();
         });
 
+        it("keeps what the creator doesn't edit when it re-saves a loaded character", async () => {
+            const requestModule = await import("../../../src/services/request");
+            vi.spyOn(requestModule, "getData").mockResolvedValue({
+                character: {
+                    id: "keep-extras", name: "Keeper", race: "Human", classes: [{ name: "Fighter", level: 1 }],
+                    details: { gender: "Female", faith: "Tymora" }, notes: { backstory: "A long story" },
+                    currency: { cp: 0, sp: 0, ep: 0, gp: 15, pp: 0 }, campaign: { name: "Saltmarsh" },
+                    companions: [{ name: "Rex", type: "Mastiff" }]
+                }
+            });
+            await ctrl.loadCharacter("keep-extras");
+            expect(ctrl.state.gender).toBe("Female");
+            ctrl.state.gender = "Woman";
+            const payload = ctrl.buildPayload();
+            expect(payload.details).toEqual({ gender: "Woman", faith: "Tymora" });
+            expect(payload.notes).toEqual({ backstory: "A long story" });
+            expect(payload.currency.gp).toBe(15);
+            expect(payload.campaign).toEqual({ name: "Saltmarsh" });
+            expect(payload.companions).toEqual([{ name: "Rex", type: "Mastiff" }]);
+        });
+
+        it("re-reads the feat spell ability, background tool, and species skill picks from D&D Beyond", async () => {
+            const { applyDndBeyondAbilityChoices } = await import("../../../src/views/characterCreator/services/dndBeyondAbilityChoices");
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.state.speciesId = "elf";
+            Object.assign(ctrl.state, { backgroundId: "acolyte", originFeatId: "magic-initiate-cleric" });
+            applyDndBeyondAbilityChoices(ctrl, {
+                stats: [],
+                feats: [{ definition: { id: 77, name: "Magic Initiate (Cleric)", categories: [{ tagName: "Origin" }] }, componentId: 1 }],
+                choices: {
+                    choiceDefinitions: [
+                        { id: "1-2", options: [{ id: 10, label: "Intelligence" }, { id: 11, label: "Charisma" }] },
+                        { id: "3-2", options: [{ id: 20, label: "Insight" }, { id: 21, label: "Survival" }] },
+                        { id: "4-2", options: [{ id: 30, label: "Calligrapher's Supplies" }] }
+                    ],
+                    feat: [{ componentId: 77, componentTypeId: 1, type: 2, optionValue: 11, label: "Choose a spellcasting ability" }],
+                    race: [{ componentId: 5, componentTypeId: 3, type: 2, optionValue: 21, label: "Keen Senses" }],
+                    background: [{ componentId: 6, componentTypeId: 4, type: 2, optionValue: 30, label: "Choose a Tool" }]
+                }
+            });
+            expect(ctrl.state.featSpellAbility).toBe("cha");
+            expect(ctrl.state.bgTool).toBe("Calligrapher's Supplies");
+            expect(ctrl.state.speciesChoices?.["keen-senses"]).toEqual(["Survival"]);
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };

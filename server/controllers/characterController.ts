@@ -1440,7 +1440,8 @@ export default class CharacterController extends BaseController {
                 armor: Array.isArray(fallbackPayload.proficiencies.armor) ? fallbackPayload.proficiencies.armor : [],
                 weapons: Array.isArray(fallbackPayload.proficiencies.weapons) ? fallbackPayload.proficiencies.weapons : [],
                 tools: Array.isArray(fallbackPayload.proficiencies.tools) ? fallbackPayload.proficiencies.tools : [],
-                languages: Array.isArray(fallbackPayload.proficiencies.languages) ? fallbackPayload.proficiencies.languages : ["Common"]
+                languages: Array.isArray(fallbackPayload.proficiencies.languages) ? fallbackPayload.proficiencies.languages : ["Common"],
+                ...(Array.isArray(fallbackPayload.proficiencies.defenses) ? { defenses: fallbackPayload.proficiencies.defenses } : {})
             }
             : {
                 armor: [],

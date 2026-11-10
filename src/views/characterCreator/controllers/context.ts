@@ -17,6 +17,8 @@ export interface CharacterCreatorContext {
     backgrounds: BackgroundDefinition[];
     originFeats: OriginFeatDefinition[];
     generalFeats: GeneralFeatDefinition[];
+    /** Parts of a loaded character the creator doesn't edit (details, notes, currency, campaign, companions), kept on save */
+    loadedExtras?: Record<string, unknown>;
     spells: RuleSpellDefinition[];
     getSpell: (nameOrId: string) => RuleSpellDefinition | undefined;
 

@@ -133,6 +133,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public species: SpeciesDefinition[] = [...SPECIES_2024];
     public backgrounds: BackgroundDefinition[] = [...BACKGROUNDS_2024];
     public originFeats: OriginFeatDefinition[] = [...ORIGIN_FEATS_2024];
+    public loadedExtras?: Record<string, unknown>;
     public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
     public spells: RuleSpellDefinition[] = [...SPELLS_2024];
 

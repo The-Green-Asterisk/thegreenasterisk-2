@@ -247,6 +247,38 @@ export interface CharacterData {
         defenses?: string[];
     };
     spells: SpellDefinition[];
+    /** Physical and background details (D&D Beyond's character details) */
+    details?: {
+        gender?: string;
+        faith?: string;
+        age?: string;
+        hair?: string;
+        eyes?: string;
+        skin?: string;
+        height?: string;
+        weight?: string;
+        lifestyle?: string;
+        experiencePoints?: number;
+    };
+    /** Personality and notes (D&D Beyond's traits and notes) */
+    notes?: {
+        personalityTraits?: string;
+        ideals?: string;
+        bonds?: string;
+        flaws?: string;
+        appearance?: string;
+        backstory?: string;
+        allies?: string;
+        organizations?: string;
+        enemies?: string;
+        personalPossessions?: string;
+        otherHoldings?: string;
+        otherNotes?: string;
+    };
+    currency?: { cp: number; sp: number; ep: number; gp: number; pp: number };
+    campaign?: { name: string };
+    /** Familiars, companions, and other creatures the character has */
+    companions?: Array<{ name: string; type?: string; armorClass?: number; maxHp?: number; currentHp?: number; notes?: string }>;
 }
 
 export const darvellData: CharacterData = {

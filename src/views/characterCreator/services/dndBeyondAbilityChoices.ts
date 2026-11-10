@@ -1,7 +1,9 @@
 import { currentSpeciesTraits, setSpeciesPick } from "./speciesChoices";
 import { getData } from "@services/request";
 import { AbilityName } from "../../../rules/dnd5e_2024";
-import { AsiChoice } from "../characterCreator.types";
+import { ALL_SKILLS, AsiChoice } from "../characterCreator.types";
+
+const SKILL_NAMES = ALL_SKILLS.map((s) => s.name);
 import { CharacterCreatorContext } from "../controllers/context";
 import { getAsiSlots } from "./rulesCalculations";
 
@@ -124,6 +126,60 @@ export function applyDndBeyondAbilityChoices(ctx: CharacterCreatorContext, rawCh
         };
     }
     ctx.state.asiChoices = choices;
+
+    applyDndBeyondPicks(ctx, raw, feats);
+}
+
+/** D&D Beyond's choices for a category (feat, race, background): the component, the prompt, and the picked label. */
+function picksFor(raw: any, category: string): Array<{ componentId: number; label: string; picked: string }> {
+    const defs = new Map<string, Map<number, string>>();
+    for (const cd of raw.choices?.choiceDefinitions || []) {
+        if (cd?.id && Array.isArray(cd.options)) defs.set(String(cd.id), new Map(cd.options.map((o: any) => [Number(o.id), String(o.label || "")])));
+    }
+    return (raw.choices?.[category] || [])
+        .map((c: any) => ({
+            componentId: Number(c?.componentId),
+            label: String(c?.label || ""),
+            picked: defs.get(`${c?.componentTypeId}-${c?.type}`)?.get(Number(c?.optionValue)) || ""
+        }))
+        .filter((p: { picked: string }) => p.picked);
+}
+
+const ABILITY_WORDS: Record<AbilityName, string> = {
+    str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma"
+};
+
+/**
+ * The other picks D&D Beyond records as choices: the origin feat's spellcasting ability (e.g. Magic Initiate), the
+ * background's tool, and skills a species trait lets the player pick (e.g. Skillful, Keen Senses).
+ */
+function applyDndBeyondPicks(ctx: CharacterCreatorContext, raw: any, feats: any[]): void {
+    // Spellcasting ability of a spell-granting origin feat (feat data spellcastingAbilityOptions)
+    const originFeat = ctx.originFeats.find((f) => f.id === ctx.state.originFeatId);
+    const abilityOptions = originFeat?.spellcastingAbilityOptions || [];
+    if (originFeat && abilityOptions.length > 1) {
+        const ddbFeat = feats.find((f) => slug(String(f.definition.name)) === originFeat.id || String(f.definition.name).toLowerCase() === originFeat.name.toLowerCase());
+        const picked = picksFor(raw, "feat")
+            .filter((p) => !ddbFeat || p.componentId === Number(ddbFeat.definition.id))
+            .map((p) => abilityOptions.find((ab) => p.picked.toLowerCase().startsWith(ABILITY_WORDS[ab])))
+            .find(Boolean);
+        if (picked) ctx.state.featSpellAbility = picked;
+    }
+
+    // The background's tool, when D&D Beyond records which one the player picked
+    const background = ctx.backgrounds.find((b) => b.id === ctx.state.backgroundId);
+    const toolPick = picksFor(raw, "background").find((p) => /tool|instrument|gaming|kit|supplies/i.test(p.label));
+    if (background && toolPick) ctx.state.bgTool = toolPick.picked;
+
+    // Skills species traits let the player pick (species data skillPicks)
+    const raceSkillPicks = picksFor(raw, "race").map((p) => p.picked);
+    for (const trait of currentSpeciesTraits(ctx)) {
+        const count = (trait.skillPicks || []).reduce((sum, p) => sum + p.count, 0);
+        if (count === 0) continue;
+        const allowed = (trait.skillPicks || []).flatMap((p) => p.from || []);
+        const skills = raceSkillPicks.filter((name) => SKILL_NAMES.includes(name) && (allowed.length === 0 || allowed.includes(name)));
+        skills.slice(0, count).forEach((skill, i) => setSpeciesPick(ctx, trait, i, skill));
+    }
 }
 
 /**

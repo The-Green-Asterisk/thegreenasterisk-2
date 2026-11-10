@@ -18,6 +18,7 @@ import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
 import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
+import { readCampaign, readCompanions, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
@@ -2110,6 +2111,27 @@ export function parseDndBeyondCharacter(
         addResourceIfMissing(r.name, getActionMaxUses(r.name) ?? getActionMaxUses(featName) ?? r.total, r.resetOn);
     }
 
+    // Any other limited use D&D Beyond lists (e.g. Magical Cunning): maxUses, or uses from an ability modifier or the
+    // Proficiency Bonus; resetType 1 = short rest, otherwise long. Skipped when already tracked under its own name or
+    // the part after a colon ("Awakened Mind: Clairvoyant Combatant").
+    for (const list of Object.values(raw.actions || {})) {
+        for (const a of Array.isArray(list) ? list : []) {
+            const lu = a?.limitedUse;
+            if (!a?.name || !lu) continue;
+            const total = Number(lu.maxUses) > 0
+                ? Number(lu.maxUses)
+                : lu.useProficiencyBonus
+                    ? profBonus
+                    : lu.statModifierUsesId
+                        ? Math.max(1, abilityModsById[Number(lu.statModifierUsesId)] ?? 0)
+                        : 0;
+            const name = String(a.name);
+            const afterColon = name.includes(":") ? name.split(":").slice(1).join(":").trim() : "";
+            if (total <= 0 || existingResourceNames.has(name.toLowerCase()) || (afterColon && existingResourceNames.has(afterColon.toLowerCase()))) continue;
+            addResourceIfMissing(name, total, Number(lu.resetType) === 1 ? "short" : "long");
+        }
+    }
+
     // Merge any resources already present in raw.classResources (e.g. from site character)
     if (Array.isArray(raw.classResources)) {
         raw.classResources.forEach((r: any) => {
@@ -2274,6 +2296,37 @@ export function parseDndBeyondCharacter(
         spells: spellsList,
         duplicateSpells: duplicateSpells.length > 0 ? duplicateSpells : undefined
     };
+
+    // Everything else D&D Beyond knows: details, notes, currency, campaign, companions, and the player's own
+    // proficiencies, defenses, actions, and items
+    result.details = readDetails(raw);
+    result.notes = readNotes(raw);
+    result.currency = readCurrency(raw);
+    result.campaign = readCampaign(raw);
+    result.companions = readCompanions(raw);
+    const customProfs = readCustomProficiencies(raw);
+    (["armor", "weapons", "tools", "languages"] as const).forEach(list => {
+        for (const name of customProfs[list] || []) {
+            if (!result.proficiencies[list].includes(name)) result.proficiencies[list].push(name);
+        }
+    });
+    const customDefenses = readCustomDefenses(raw);
+    for (const r of customDefenses.resistances) if (!damageResistances.includes(r)) damageResistances.push(r);
+    const defenseLabels = [
+        ...customDefenses.immunities.map(n => `${n} (Immunity)`),
+        ...customDefenses.vulnerabilities.map(n => `${n} (Vulnerability)`)
+    ];
+    if (defenseLabels.length > 0) result.proficiencies.defenses = [...(result.proficiencies.defenses || []), ...defenseLabels];
+    for (const a of readCustomActions(raw)) {
+        if (!result.actions.some(x => x.name.toLowerCase() === a.name.toLowerCase())) result.actions.push(a);
+    }
+    for (const item of readCustomItems(raw)) {
+        if (!result.equipment.some(x => x.name.toLowerCase() === item.name.toLowerCase())) result.equipment.push(item);
+    }
+
+    // What the player has already used on D&D Beyond: slots, limited uses, death saves
+    result.trackingState = readTrackingState(raw, spellSlots, classResources);
+    result.vitals.deathSaves = { ...result.trackingState.deathSaves! };
 
     applyGrantedWeapons(result);
     return result;
