@@ -64,6 +64,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const modalActionHitDc = sheet.querySelector<HTMLElement>("#modal-action-hit-dc");
     const modalActionDamage = sheet.querySelector<HTMLElement>("#modal-action-damage");
     const modalActionNotes = sheet.querySelector<HTMLElement>("#modal-action-notes");
+    const modalActionMeta = sheet.querySelector<HTMLElement>("#modal-action-meta");
+    const modalActionFooterSource = sheet.querySelector<HTMLElement>("#modal-action-footer-source");
+    // The control that opened the action/feature dialog, to return focus to when it closes
+    let actionModalOpener: HTMLElement | null = null;
 
     // Custom spell modal elements
     const customSpellModal = sheet.querySelector<HTMLElement>("#custom-spell-modal-container");
@@ -1713,7 +1717,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalActionNotes) {
             modalActionNotes.innerHTML = renderActionNotesHtml(action.notes || "");
         }
+        if (modalActionMeta) modalActionMeta.hidden = false;
+        if (modalActionFooterSource) modalActionFooterSource.textContent = "Action Details";
 
+        actionModalOpener = document.activeElement as HTMLElement | null;
         actionModalBackdrop.classList.remove("hidden");
         actionModalBackdrop.classList.add("visible");
         actionModalBackdrop.setAttribute("aria-hidden", "false");
@@ -1790,11 +1797,40 @@ export function initModalsController(ctx: CharacterSheetContext) {
         actionModalCloseBtn?.focus();
     }
 
+    /** A feature's full text in the details dialog (opened from "Click for more details" on a long feature). */
+    function openFeatureModal(featureIndex: number) {
+        const activeCharacter = ctx.getCharacter();
+        if (!activeCharacter || !actionModalBackdrop) return;
+        const feature = activeCharacter.features?.[featureIndex];
+        if (!feature) return;
+        if (modalActionName) modalActionName.textContent = feature.name || "Feature";
+        if (modalActionType) modalActionType.textContent = [feature.type, feature.source].filter(Boolean).join(" • ") || "Feature";
+        if (modalActionMeta) modalActionMeta.hidden = true;
+        if (modalActionFooterSource) modalActionFooterSource.textContent = "Feature Details";
+        if (modalActionNotes) {
+            modalActionNotes.innerHTML = linkifyConditionAndSpellTags(feature.description || "<p>No additional details.</p>", {
+                character: activeCharacter,
+                entityName: feature.name,
+                sourceName: feature.source,
+                scaleValue: feature.scaleValue,
+                limitedUse: feature.limitedUse
+            });
+        }
+        actionModalOpener = document.activeElement as HTMLElement | null;
+        actionModalBackdrop.classList.remove("hidden");
+        actionModalBackdrop.classList.add("visible");
+        actionModalBackdrop.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        actionModalCloseBtn?.focus();
+    }
+
     function closeActionModal() {
         if (!actionModalBackdrop) return;
         actionModalBackdrop.classList.remove("visible");
         actionModalBackdrop.classList.add("hidden");
         actionModalBackdrop.setAttribute("aria-hidden", "true");
+        if (actionModalOpener && document.contains(actionModalOpener)) actionModalOpener.focus();
+        actionModalOpener = null;
         const anyOtherModalOpen = [
             modalBackdrop,
             itemModalBackdrop,
@@ -1822,6 +1858,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
     ctx.closeItemModal = closeItemModal;
     ctx.openActionModal = openActionModal;
     ctx.closeActionModal = closeActionModal;
+    ctx.openFeatureModal = openFeatureModal;
     ctx.openConditionsModal = openConditionsModal;
     ctx.closeConditionsModal = closeConditionsModal;
     ctx.openConditionDetailModal = openConditionDetailModal;

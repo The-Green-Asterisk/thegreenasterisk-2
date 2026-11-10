@@ -6146,3 +6146,27 @@ el-character-sheet.is-edit-mode .vital-hp .field-lock-btn {
     color: var(--text);
     font-size: 0.85rem;
 }
+
+/* Long features: excerpt plus a button to the full text */
+.feature-more-btn {
+    align-self: flex-start;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    min-height: 24px;
+    border: 1px solid var(--ui-color);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.feature-more-btn:hover {
+    background: var(--surface-alt);
+}
+
+.feature-more-btn:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}

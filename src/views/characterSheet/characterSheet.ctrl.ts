@@ -1383,6 +1383,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         closeItemModal: () => { },
         openActionModal: () => { },
         closeActionModal: () => { },
+        openFeatureModal: () => { },
         openCustomSpellModal: () => { },
         closeCustomSpellModal: () => { },
         openManageSpellsModal: async () => { },

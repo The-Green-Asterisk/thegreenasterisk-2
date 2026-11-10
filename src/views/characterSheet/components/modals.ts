@@ -190,7 +190,7 @@ export function renderModals(): string {
                     </button>
                 </header>
 
-                <div class="spell-modal-meta-grid action-modal-meta-grid">
+                <div class="spell-modal-meta-grid action-modal-meta-grid" id="modal-action-meta">
                     <div class="meta-box">
                         <span class="meta-box-label"><i class="fa-solid fa-arrows-left-right"></i> RANGE / REACH</span>
                         <span class="meta-box-val" id="modal-action-range">—</span>
@@ -210,7 +210,7 @@ export function renderModals(): string {
                 </div>
 
                 <footer class="spell-modal-footer">
-                    <span class="modal-footer-source">Action Details</span>
+                    <span class="modal-footer-source" id="modal-action-footer-source">Action Details</span>
                     <button type="button" class="modal-action-btn" id="modal-action-close-action-btn">Close</button>
                 </footer>
             </div>

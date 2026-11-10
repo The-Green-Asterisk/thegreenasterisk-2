@@ -3172,4 +3172,52 @@ describe('Frontend View Templates', () => {
         sheet.innerHTML = renderSheetContent(char);
         expect(sheet.querySelector('.species-spellcasting-note')?.textContent).toContain('Intelligence');
     });
+
+    it('shows an excerpt and "Click for more details" for long features, opening the full text', async () => {
+        const { renderFeatures } = await import('../../../src/views/characterSheet/components/features');
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { initFeaturesController } = await import('../../../src/views/characterSheet/controllers/features.ctrl');
+        const { initModalsController } = await import('../../../src/views/characterSheet/controllers/modals.ctrl');
+        const longText = `<p>${'Your patron grants you uncanny insight. '.repeat(20)}You can cast <em>Hex</em> once per long rest.</p>`;
+        const char: any = {
+            name: 'Feat Tester', level: 3, classes: [], abilities: [], skills: [], actions: [], equipment: [], spells: [],
+            vitals: { proficiencyBonus: 2 }, spellSlots: {},
+            features: [
+                { name: 'Short Trait', source: 'Species', type: 'Species', description: '<p>You see in the dark.</p>' },
+                { name: 'Long Feature', source: 'Warlock', type: 'Class', description: longText }
+            ]
+        };
+        const sheet = document.createElement('div');
+        sheet.innerHTML = `<div class="features-grid">${renderFeatures(char)}</div>${renderModals()}`;
+        document.body.appendChild(sheet);
+
+        const cards = sheet.querySelectorAll('.feature-card');
+        expect(cards[0].querySelector('.feature-more-btn')).toBeNull();
+        expect(cards[0].textContent).toContain('You see in the dark.');
+        const btn = cards[1].querySelector('.feature-more-btn') as HTMLButtonElement;
+        expect(btn.textContent).toContain('Click for more details');
+        expect(btn.getAttribute('aria-label')).toBe('Click for more details about Long Feature');
+        const excerptText = cards[1].querySelector('.feature-desc-excerpt')!.textContent!;
+        expect(excerptText.endsWith('…')).toBe(true);
+        expect(excerptText).not.toContain('Hex');
+        // The excerpt holds no links (nothing focusable is hidden in cut-off text)
+        expect(cards[1].querySelectorAll('a, button:not(.feature-more-btn)').length).toBe(0);
+
+        const ctx: any = { sheet, dynamicContainer: sheet, getCharacter: () => char, setCharacter: () => { } };
+        initModalsController(ctx);
+        initFeaturesController(ctx);
+        btn.focus();
+        btn.click();
+        const dialog = sheet.querySelector('#action-modal-container') as HTMLElement;
+        expect(dialog.getAttribute('aria-hidden')).toBe('false');
+        expect(sheet.querySelector('#modal-action-name')!.textContent).toBe('Long Feature');
+        expect((sheet.querySelector('#modal-action-meta') as HTMLElement).hidden).toBe(true);
+        expect(sheet.querySelector('#modal-action-notes')!.textContent).toContain('once per long rest');
+        expect(sheet.querySelector('#modal-action-footer-source')!.textContent).toBe('Feature Details');
+
+        (sheet.querySelector('#action-modal-close-btn') as HTMLButtonElement).click();
+        expect(dialog.getAttribute('aria-hidden')).toBe('true');
+        expect(document.activeElement).toBe(btn);
+        sheet.remove();
+    });
 });
