@@ -16,6 +16,7 @@ import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, spe
 import { ALL_SKILLS } from "../characterCreator.types";
 import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
 import { resolveFeatResources } from "../../../rules/dnd5e_2024/featRules";
+import { isImportedCharacter, keepPlayState, mergeImportedCharacter } from "./importLocks";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
 import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
@@ -158,6 +159,11 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
         if (siteCharacterId) {
             ctx.state.siteCharacterId = String(siteCharacterId);
         }
+
+        // The character as loaded (play state, and what the creator doesn't make for imported characters), its locks
+        ctx.loadedCharacter = JSON.parse(JSON.stringify(char));
+        ctx.loadedLocks = { ...(char.lockedFields || {}) };
+        ctx.state.lockChoices = {};
 
         // Keep what the creator doesn't edit (campaign, companions) for when it saves
         ctx.loadedExtras = Object.fromEntries(
@@ -1334,12 +1340,17 @@ export async function submitCharacter(ctx: CharacterCreatorContext): Promise<voi
     }
 
     try {
-        const characterPayload = ctx.buildPayload();
+        const built = ctx.buildPayload();
+        const imported = isImportedCharacter(ctx);
+        // Imported characters stay linked to D&D Beyond, with their locks; every saved character keeps its play state
+        const characterPayload = imported ? mergeImportedCharacter(ctx, built) : built;
+        if (!imported) keepPlayState(ctx.loadedCharacter, characterPayload);
         const saveBody: any = {
-            name: ctx.state.name,
-            source: "site",
+            name: characterPayload.name || ctx.state.name,
+            source: imported ? "dndbeyond" : "site",
             character: characterPayload
         };
+        if (imported) saveBody.externalCharacterId = ctx.state.dndBeyondId;
         const isUpdatingExisting = Boolean(ctx.state.savedId || ctx.state.siteCharacterId);
         if (ctx.state.savedId) {
             saveBody.savedId = ctx.state.savedId;

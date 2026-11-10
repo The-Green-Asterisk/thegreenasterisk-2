@@ -226,7 +226,6 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
 
     function setCharacterActionsVisibility() {
         const activeCharacter = ctx.getCharacter();
-        const isEditMode = ctx.getIsEditMode();
         const hasCharacter = !!activeCharacter;
         const canSave = hasCharacter && el.isAuth;
         const canRefreshFromDndBeyond = hasCharacter && activeCharacter?.source === "dndbeyond";

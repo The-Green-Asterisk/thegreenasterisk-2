@@ -2485,6 +2485,40 @@ export function applyLockedFieldsToRefreshedCharacter(
     }
     if (locks["race"] && sourceWithLocks.race) {
         target.race = sourceWithLocks.race;
+        target.species = sourceWithLocks.species;
+        target.lineage = sourceWithLocks.lineage;
+    }
+    if (locks["avatarUrl"] && sourceWithLocks.avatarUrl !== undefined) {
+        target.avatarUrl = sourceWithLocks.avatarUrl;
+    }
+    // Identity details and notes, field by field ("details.age", "notes.backstory"; gender is "details.gender")
+    for (const section of ["details", "notes"] as const) {
+        for (const key of Object.keys(locks).filter((k) => locks[k] && k.startsWith(`${section}.`))) {
+            const field = key.slice(section.length + 1);
+            const value = (sourceWithLocks[section] as Record<string, unknown> | undefined)?.[field];
+            const next = { ...((target[section] as Record<string, unknown> | undefined) || {}) };
+            if (value === undefined || value === "") delete next[field];
+            else next[field] = value;
+            (target as any)[section] = next;
+        }
+    }
+    if (locks["spells"] && Array.isArray(sourceWithLocks.spells)) {
+        target.spells = JSON.parse(JSON.stringify(sourceWithLocks.spells));
+    }
+    if (locks["equipment"]) {
+        if (Array.isArray(sourceWithLocks.weapons)) target.weapons = JSON.parse(JSON.stringify(sourceWithLocks.weapons));
+        if (Array.isArray(sourceWithLocks.equipment)) target.equipment = JSON.parse(JSON.stringify(sourceWithLocks.equipment));
+        if (typeof sourceWithLocks.vitals?.armorClass === "number") target.vitals.armorClass = sourceWithLocks.vitals.armorClass;
+    }
+    if (locks["feats"] && Array.isArray(sourceWithLocks.features)) {
+        const feats = sourceWithLocks.features.filter((f) => f.type === "Feat");
+        target.features = [...(target.features || []).filter((f) => f.type !== "Feat"), ...JSON.parse(JSON.stringify(feats))];
+    }
+    if (locks["skills"] && Array.isArray(sourceWithLocks.skills)) {
+        target.skills?.forEach((s) => {
+            const src = sourceWithLocks.skills.find((x) => x.name === s.name);
+            if (src) s.proficiency = src.proficiency;
+        });
     }
     if (locks["background"] && sourceWithLocks.background) {
         target.background = sourceWithLocks.background;
@@ -2522,7 +2556,7 @@ export function applyLockedFieldsToRefreshedCharacter(
         }
     });
 
-    if (anyAbilityLocked || locks["classes"]) {
+    if (anyAbilityLocked || locks["classes"] || locks["skills"]) {
         target.skills?.forEach(s => {
             const ab = target.abilities.find(a => a.abbr === s.stat);
             const mod = ab ? ab.modifier : 0;

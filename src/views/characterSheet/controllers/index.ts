@@ -1,7 +1,6 @@
 export * from "./abilities.ctrl";
 export * from "./actions.ctrl";
 export * from "./context";
-export * from "./editMode.ctrl";
 export * from "./equipment.ctrl";
 export * from "./features.ctrl";
 export * from "./fullscreen.ctrl";

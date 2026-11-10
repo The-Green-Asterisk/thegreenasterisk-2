@@ -19,6 +19,12 @@ export interface CharacterCreatorContext {
     generalFeats: GeneralFeatDefinition[];
     /** Parts of a loaded character the creator doesn't edit (details, notes, currency, campaign, companions), kept on save */
     loadedExtras?: Record<string, unknown>;
+    /** The character as loaded, for keeping play state and (when imported from D&D Beyond) what the creator doesn't make */
+    loadedCharacter?: any;
+    /** Fields locked against D&D Beyond refreshes when the character was loaded */
+    loadedLocks?: Record<string, boolean>;
+    /** Each lockable field's value as loaded (importLocks), to tell which ones the player changed */
+    lockSnapshot?: Record<string, string>;
     spells: RuleSpellDefinition[];
     getSpell: (nameOrId: string) => RuleSpellDefinition | undefined;
 

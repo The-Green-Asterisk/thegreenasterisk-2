@@ -1497,102 +1497,8 @@ describe('Frontend View Templates', () => {
         expect(dex.bonus).toBe(1);
     });
 
-    it('only edits the base score in edit mode and stacks all modifiers on top', async () => {
-        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
-        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
-        const { initEditModeController } = await import('../../../src/views/characterSheet/controllers/editMode.ctrl');
-
-        const rawPayload = {
-            id: 138310322,
-            name: 'Darvell',
-            classes: [
-                { level: 9, definition: { name: 'Bard', spellCastingAbilityId: 6 }, subclassDefinition: { name: 'College of Glamour' } },
-                { level: 10, definition: { name: 'Warlock', spellCastingAbilityId: 6 }, subclassDefinition: { name: 'The Great Old One' } }
-            ],
-            stats: [
-                { id: 1, value: 8 },
-                { id: 2, value: 14 },
-                { id: 3, value: 12 },
-                { id: 4, value: 10 },
-                { id: 5, value: 13 },
-                { id: 6, value: 15 }
-            ],
-            modifiers: {
-                class: [
-                    { id: 'c1', type: 'proficiency', subType: 'charisma-saving-throws', isGranted: true }
-                ],
-                feat: [
-                    { id: 'f1', componentId: 1789100, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: true },
-                    { id: 'f2', componentId: 1789112, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: false },
-                    { id: 'f3', componentId: 1789209, type: 'bonus', subType: 'charisma-score', value: 1, isGranted: false },
-                    { id: 'f4', componentId: 1789139, type: 'bonus', subType: 'charisma-score', value: 2, isGranted: false }
-                ]
-            },
-            inventory: [],
-            spells: {}
-        };
-
-        let activeCharacter = parseDndBeyondCharacter(rawPayload);
-        const container = document.createElement('div');
-        container.innerHTML = renderSheetContent(activeCharacter);
-
-        const ctx: any = {
-            sheet: container,
-            dynamicContainer: container,
-            getCharacter: () => activeCharacter,
-            setCharacter: (c: any) => { activeCharacter = c; },
-            updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => {
-                const statId = abilityIndex + 1;
-                const statObj = rawPayload.stats.find(s => s.id === statId);
-                if (statObj) statObj.value = newBaseScore;
-                activeCharacter = parseDndBeyondCharacter(rawPayload);
-            }
-        };
-
-        const editCtrl = initEditModeController(ctx);
-        editCtrl.enableCardLayoutEditors();
-
-        // Charisma is index 5
-        const cards = container.querySelectorAll('.ability-card');
-        const chaCard = cards[5];
-        const chaInput = chaCard.querySelector<HTMLInputElement>('.ability-base-input')!;
-        const chaModEl = chaCard.querySelector<HTMLElement>('.ability-mod')!;
-        const chaSaveEl = chaCard.querySelector<HTMLElement>('.save-val')!;
-        const totalHintEl = chaCard.querySelector<HTMLElement>('.ability-total-hint')!;
-
-        // Value in input is the BASE score (15), hint displays Total: 20 (+5)
-        expect(chaInput.value).toBe('15');
-        expect(totalHintEl.textContent).toContain('Total: 20 (+5)');
-        expect(chaModEl.textContent).toBe('+5');
-        expect(chaSaveEl.textContent).toBe('+11');
-
-        // Edit base score to 14: total should become 14 + 5 = 19, modifier should become +4, save +10
-        chaInput.value = '14';
-        chaInput.dispatchEvent(new Event('input'));
-
-        expect(activeCharacter.abilities[5].baseScore).toBe(14);
-        expect(activeCharacter.abilities[5].score).toBe(19);
-        expect(activeCharacter.abilities[5].modifier).toBe(4);
-        expect(chaModEl.textContent).toBe('+4');
-        expect(chaSaveEl.textContent).toBe('+10');
-        expect(totalHintEl.textContent).toContain('Total: 19 (+5)');
-
-        // Edit base score to 16: total should become 16 + 5 = 21, modifier should become +5, save +11
-        chaInput.value = '16';
-        chaInput.dispatchEvent(new Event('input'));
-
-        expect(activeCharacter.abilities[5].baseScore).toBe(16);
-        expect(activeCharacter.abilities[5].score).toBe(21);
-        expect(activeCharacter.abilities[5].modifier).toBe(5);
-        expect(chaModEl.textContent).toBe('+5');
-        expect(chaSaveEl.textContent).toBe('+11');
-        expect(totalHintEl.textContent).toContain('Total: 21 (+5)');
-    });
-
     it('properly restores baseScore and bonus on a saved character where baseScore was not originally saved', async () => {
         const { ensureBaseScoresOnCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
-        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
-        const { initEditModeController } = await import('../../../src/views/characterSheet/controllers/editMode.ctrl');
 
         // Character object simulating old saved character in DB (no baseScore, no bonus)
         const savedCharFromDb: any = {
@@ -1645,65 +1551,12 @@ describe('Frontend View Templates', () => {
         expect(savedCharFromDb.abilities[5].bonus).toBe(5);
         expect(savedCharFromDb.abilities[1].baseScore).toBe(14);
         expect(savedCharFromDb.abilities[1].bonus).toBe(1);
-
-        const container = document.createElement('div');
-        container.innerHTML = renderSheetContent(savedCharFromDb);
-
-        const ctx: any = {
-            sheet: container,
-            dynamicContainer: container,
-            getCharacter: () => savedCharFromDb,
-            setCharacter: (c: any) => { },
-            updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => {
-                const ab = savedCharFromDb.abilities[abilityIndex];
-                ab.baseScore = newBaseScore;
-                ab.score = newBaseScore + ab.bonus;
-                ab.modifier = Math.floor((ab.score - 10) / 2);
-                ab.save = ab.modifier + (ab.proficientSave ? 6 : 0);
-            }
-        };
-
-        const editCtrl = initEditModeController(ctx);
-        editCtrl.enableCardLayoutEditors();
-
-        const cards = container.querySelectorAll('.ability-card');
-        const chaCard = cards[5];
-        const chaInput = chaCard.querySelector<HTMLInputElement>('.ability-base-input')!;
-        const totalHintEl = chaCard.querySelector<HTMLElement>('.ability-total-hint')!;
-
-        // The input MUST display the base score (15), NOT the total score (20)
-        expect(chaInput.value).toBe('15');
-        expect(totalHintEl.textContent).toContain('Total: 20 (+5)');
-
-        // Editing base to 16 updates total to 21 (+5)
-        chaInput.value = '16';
-        chaInput.dispatchEvent(new Event('input'));
-        expect(savedCharFromDb.abilities[5].baseScore).toBe(16);
-        expect(savedCharFromDb.abilities[5].score).toBe(21);
-        expect(totalHintEl.textContent).toContain('Total: 21 (+5)');
-
-        // Only core stats, name, species, background, alignment, class, and ability base scores should be editable
-        const nameInput = container.querySelector<HTMLInputElement>('.character-name input');
-        const classInput = container.querySelector<HTMLInputElement>('.character-class-input');
-        expect(nameInput).not.toBeNull();
-        expect(nameInput?.value).toBe('Darvell');
-        expect(classInput).not.toBeNull();
-        expect(classInput?.value).toBe('Bard 9 / Warlock 10');
-
-        // Derived stats must NOT have inputs
-        expect(container.querySelector('.vital-ac input')).toBeNull();
-        expect(container.querySelector('.vital-init input')).toBeNull();
-        expect(container.querySelector('.vital-dc input')).toBeNull();
-        expect(container.querySelector('.vital-attack input')).toBeNull();
-        expect(container.querySelector('.skill-bonus input')).toBeNull();
     });
 
-    it('allows locking editable fields so that refreshing from D&D Beyond does not overwrite them', async () => {
+    it('keeps locked fields, identity, skills, feats, spells, and equipment included, when refreshing from D&D Beyond', async () => {
         const { parseDndBeyondCharacter, applyLockedFieldsToRefreshedCharacter } = await import(
             '../../../src/views/characterSheet/characterAdapter'
         );
-        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
-        const { initEditModeController } = await import('../../../src/views/characterSheet/controllers/editMode.ctrl');
 
         // Initial character with custom/edited values and locked fields
         const localChar: any = {
@@ -1734,14 +1587,17 @@ describe('Frontend View Templates', () => {
                 { name: 'Wisdom', abbr: 'WIS', score: 13, baseScore: 13, bonus: 0, modifier: 1, save: 1, proficientSave: false },
                 { name: 'Charisma', abbr: 'CHA', score: 22, baseScore: 17, bonus: 5, modifier: 6, save: 12, proficientSave: true }
             ],
+            avatarUrl: 'https://example.com/custom.png',
+            details: { age: '41', gender: 'Custom' },
+            notes: { backstory: 'Custom backstory' },
             skills: [
                 { name: 'Deception', stat: 'CHA', bonus: 18, proficiency: 'expertise' }
             ],
             spellSlots: {},
-            features: [],
+            features: [{ name: 'Custom Feat', source: 'Feat', type: 'Feat', description: '' }],
             actions: [],
-            spells: [],
-            equipment: [],
+            spells: [{ name: 'Custom Spell', level: 1 }],
+            equipment: [{ name: 'Custom Lute', quantity: 1, equipped: true }],
             weapons: [],
             proficiencies: { armor: [], weapons: [], tools: [], languages: [] },
             lockedFields: {
@@ -1749,50 +1605,17 @@ describe('Frontend View Templates', () => {
                 classes: true,
                 race: true,
                 'vitals.maxHp': true,
-                'abilities.CHA': true
+                'abilities.CHA': true,
+                avatarUrl: true,
+                'details.age': true,
+                'notes.backstory': true,
+                skills: true,
+                feats: true,
+                spells: true,
+                equipment: true
             }
         };
 
-        const container = document.createElement('div');
-        container.innerHTML = renderSheetContent(localChar);
-
-        const ctx: any = {
-            sheet: container,
-            dynamicContainer: container,
-            getCharacter: () => localChar,
-            setCharacter: (c: any) => { },
-            isFieldLocked: (k: string) => !!localChar.lockedFields[k],
-            toggleFieldLock: (k: string) => {
-                localChar.lockedFields[k] = !localChar.lockedFields[k];
-                return localChar.lockedFields[k];
-            },
-            updateAbilityBaseScore: () => { }
-        };
-
-        const editCtrl = initEditModeController(ctx);
-        editCtrl.enableCardLayoutEditors();
-
-        // Check lock button presence and state on editable fields
-        const nameLockBtn = container.querySelector<HTMLButtonElement>('.character-name .field-lock-btn');
-        const classLockBtn = container.querySelector<HTMLButtonElement>('.character-classes .field-lock-btn');
-        const chaLockBtn = container.querySelector<HTMLButtonElement>('.ability-card .ability-lock-btn[data-lock-key="abilities.CHA"]');
-        const maxHpLockBtn = container.querySelector<HTMLButtonElement>('.vital-hp .field-lock-btn[data-lock-key="vitals.maxHp"]');
-
-        expect(nameLockBtn).not.toBeNull();
-        expect(nameLockBtn?.classList.contains('is-locked')).toBe(true);
-        expect(classLockBtn?.classList.contains('is-locked')).toBe(true);
-        expect(chaLockBtn?.classList.contains('is-locked')).toBe(true);
-        expect(maxHpLockBtn?.classList.contains('is-locked')).toBe(true);
-
-        // Clicking toggle unlocks the field
-        nameLockBtn?.click();
-        expect(localChar.lockedFields.name).toBe(false);
-        expect(nameLockBtn?.classList.contains('is-locked')).toBe(false);
-
-        // Clicking toggle again locks the field
-        nameLockBtn?.click();
-        expect(localChar.lockedFields.name).toBe(true);
-        expect(nameLockBtn?.classList.contains('is-locked')).toBe(true);
 
         // Simulate a fresh D&D Beyond re-pull payload
         const freshDndBeyondPayload = {
@@ -1841,9 +1664,18 @@ describe('Frontend View Templates', () => {
         expect(refreshed.abilities[5].baseScore).toBe(17); // preserved custom base score
         expect(refreshed.abilities[5].score).toBe(22); // 17 + 5 bonus = 22
 
+        expect(refreshed.avatarUrl).toBe('https://example.com/custom.png');
+        expect(refreshed.details?.age).toBe('41');
+        expect(refreshed.notes?.backstory).toBe('Custom backstory');
+        expect(refreshed.skills.find((x: any) => x.name === 'Deception')?.proficiency).toBe('expertise');
+        expect(refreshed.features.filter((f: any) => f.type === 'Feat').map((f: any) => f.name)).toEqual(['Custom Feat']);
+        expect(refreshed.spells.map((x: any) => x.name)).toEqual(['Custom Spell']);
+        expect(refreshed.equipment.map((x: any) => x.name)).toEqual(['Custom Lute']);
+
         // Non-locked fields ARE updated from upstream D&D Beyond
         expect(refreshed.background).toBe('Entertainer'); // updated from D&D Beyond
         expect(refreshed.alignment).toBe('Lawful Neutral'); // updated from D&D Beyond
+        expect(refreshed.details?.gender).not.toBe('Custom'); // details.gender wasn't locked
     });
 
     it('generates black & white outline PDF pages with fillable HP boxes and spell slot bubbles', async () => {

@@ -102,6 +102,8 @@ export interface CreatorState {
     /** Spells D&D Beyond put on a class (by class key), kept even when the spell database doesn't list them for it. */
     importedClassSpells?: Record<string, string[]>;
     featureSpellChoices: Record<string, string[]>;
+    /** The player's own lock choices for an imported character's fields (importLocks), by lock key */
+    lockChoices?: Record<string, boolean>;
 }
 
 export interface SpellBucketSelection {

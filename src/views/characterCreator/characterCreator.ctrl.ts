@@ -65,6 +65,7 @@ import * as rulesCalc from "./services/rulesCalculations";
 import * as skillRules from "./services/skillRules";
 import { choiceKeysFor, getProgressionChoices, getProgressionPools, hasUnlockedProgressionChoice, optionAvailableAt } from "./services/progressionModifiers";
 import * as spellCalc from "./services/spellReconciliation";
+import { bindLockEvents, decorateStepLocks, snapshotLockGroups } from "./services/importLocks";
 
 export { ALL_SKILLS, AsiChoice, CharacterClassChoice, CreatorState, FeatureSpellChoiceSection };
 
@@ -134,6 +135,9 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     public backgrounds: BackgroundDefinition[] = [...BACKGROUNDS_2024];
     public originFeats: OriginFeatDefinition[] = [...ORIGIN_FEATS_2024];
     public loadedExtras?: Record<string, unknown>;
+    public loadedCharacter?: any;
+    public loadedLocks?: Record<string, boolean>;
+    public lockSnapshot?: Record<string, string>;
     public generalFeats: GeneralFeatDefinition[] = [...GENERAL_FEATS_2024];
     public spells: RuleSpellDefinition[] = [...SPELLS_2024];
 
@@ -297,6 +301,8 @@ export class CharacterCreatorController implements CharacterCreatorContext {
             await this.loadCharacter(targetId);
         }
         this.renderStep(1);
+        if (targetId) snapshotLockGroups(this);
+        bindLockEvents(this);
         this.updateLiveSummary();
     }
 
@@ -840,6 +846,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         }
 
         panelsContainer.innerHTML = panelHtml;
+        decorateStepLocks(this, step, panelsContainer);
         this.attachStepEvents(step);
 
         if (preserveScroll && typeof window !== "undefined") {

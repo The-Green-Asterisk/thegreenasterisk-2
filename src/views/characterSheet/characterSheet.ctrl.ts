@@ -17,7 +17,6 @@ import {
     SavedCharacterSummary,
     initAbilitiesController,
     initActionsController,
-    initEditModeController,
     initEquipmentController,
     initFeaturesController,
     initFullscreenController,
@@ -61,7 +60,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     let currentHp = 0;
     let maxHp = 0;
     let tempHp = 0;
-    let isEditMode = false;
     const spellMap = new Map<string, SpellDefinition>();
     let savedCharacters: SavedCharacterSummary[] = [];
     let statusHideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -679,7 +677,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             ensureSavingThrowNotesOnCharacter(activeCharacter);
             ensureFeatureDecisionsOnCharacterData(activeCharacter);
             ensureBaseScoresOnCharacter(activeCharacter, undefined);
-            isEditMode = false;
             activeCharacter.savedCharacterId = response.savedCharacter?.id || activeCharacter.savedCharacterId;
             activeCharacter.siteCharacterId = response.savedCharacter?.siteCharacterId || activeCharacter.siteCharacterId;
             activeCharacter.source = response.savedCharacter?.source || activeCharacter.source || "site";
@@ -717,9 +714,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                                 ensureClassResourcesOnCharacter(activeCharacter, raw);
                                 ensureSavingThrowNotesOnCharacter(activeCharacter, raw);
                                 ensureBaseScoresOnCharacter(activeCharacter, raw);
-                                if (isEditMode) {
-                                    editModeCtrl.enableCardLayoutEditors();
-                                }
                             }
                         }
                     }).catch(() => { });
@@ -986,52 +980,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         scheduleDebouncedAutoSave();
     }
 
-    function updateAbilityBaseScore(abilityIndex: number, newBaseScore: number) {
-        if (!activeCharacter) return;
-        const ability = activeCharacter.abilities[abilityIndex];
-        if (!ability) return;
-
-        const statId = abilityIndex + 1; // 1=STR, 2=DEX, 3=CON, 4=INT, 5=WIS, 6=CHA
-
-        if (activeRawDndBeyondPayload) {
-            const raw = activeRawDndBeyondPayload.data || activeRawDndBeyondPayload;
-            if (!Array.isArray(raw.stats)) {
-                raw.stats = [];
-            }
-            let statObj = raw.stats.find((s: any) => s.id === statId);
-            if (!statObj) {
-                statObj = { id: statId, value: newBaseScore };
-                raw.stats.push(statObj);
-            } else {
-                statObj.value = newBaseScore;
-            }
-
-            recalculateFromRawPayload();
-        } else {
-            ability.baseScore = newBaseScore;
-            syncSheetVitalsAndStatsToDom();
-        }
-    }
-
-    function isFieldLocked(fieldKey: string): boolean {
-        return !!activeCharacter?.lockedFields?.[fieldKey];
-    }
-
-    function toggleFieldLock(fieldKey: string): boolean {
-        if (!activeCharacter) return false;
-        if (!activeCharacter.lockedFields) {
-            activeCharacter.lockedFields = {};
-        }
-        const nextState = !activeCharacter.lockedFields[fieldKey];
-        if (nextState) {
-            activeCharacter.lockedFields[fieldKey] = true;
-        } else {
-            delete activeCharacter.lockedFields[fieldKey];
-        }
-        scheduleDebouncedAutoSave();
-        return nextState;
-    }
-
     function applyPersistedEquipStates(
         states: Array<{ scope: "item" | "weapon" | "weapon-mastery" | "attunement"; itemName: string; equipped: boolean }>
     ) {
@@ -1273,7 +1221,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             activeCharacter = parsed;
             activeCharacter.source = "dndbeyond";
             activeCharacter.siteCharacterId = undefined;
-            isEditMode = false;
             activeCharacter.savedCharacterId = undefined;
 
             if (shouldOverwriteSaved && existingSaved) {
@@ -1361,10 +1308,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         setActiveCharacterId: (id) => {
             activeCharacterId = id;
         },
-        getIsEditMode: () => isEditMode,
-        setIsEditMode: (val) => {
-            isEditMode = val;
-        },
         prefer2024Rules,
         spellMap,
         getSavedCharacters: () => savedCharacters,
@@ -1375,12 +1318,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         renderActiveCharacterView,
         renderSavedCharacterList: () => { },
         setCharacterActionsVisibility: () => { },
-        updateAbilityBaseScore,
         setItemQuantity,
         syncSheetStats: syncSheetVitalsAndStatsToDom,
         recalculateFromRawPayload,
-        isFieldLocked,
-        toggleFieldLock,
         saveActiveCharacter,
         scheduleDebouncedAutoSave,
         loadCharacter,
@@ -1435,7 +1375,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     initModalsController(ctx);
     initLoaderBarController(ctx);
     initFullscreenController(sheet);
-    const editModeCtrl = initEditModeController(ctx);
 
     function renderActiveCharacterView() {
         updateSheetTitle();
@@ -1445,54 +1384,48 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             ?.getAttribute("data-tab-target");
 
         dynamicContainer.innerHTML = renderSheetContent(activeCharacter);
-        sheet.classList.toggle("is-edit-mode", isEditMode);
+        // Rebuild in-memory spell map
+        spellMap.clear();
+        activeCharacter.spells.forEach(spell => {
+            spellMap.set(spell.name.toLowerCase(), spell);
+        });
 
-        if (isEditMode) {
-            editModeCtrl.enableCardLayoutEditors();
-        } else {
-            // Rebuild in-memory spell map
-            spellMap.clear();
-            activeCharacter.spells.forEach(spell => {
-                spellMap.set(spell.name.toLowerCase(), spell);
-            });
-
-            // Run each component's dedicated controller
-            initTabsController(ctx);
-            if (previousActiveTabTarget) {
-                const targetBtn = sheet.querySelector<HTMLButtonElement>(
-                    `.tab-btn[data-tab-target="${previousActiveTabTarget}"]`
-                );
-                const targetPane = sheet.querySelector<HTMLElement>(`#${previousActiveTabTarget}`);
-                if (targetBtn && targetPane) {
-                    sheet.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach(b => {
-                        b.classList.remove("active");
-                        b.setAttribute("aria-selected", "false");
-                    });
-                    sheet.querySelectorAll<HTMLElement>(".tab-pane").forEach(p => {
-                        p.classList.remove("active");
-                    });
-                    targetBtn.classList.add("active");
-                    targetBtn.setAttribute("aria-selected", "true");
-                    targetPane.classList.add("active");
-                }
+        // Run each component's dedicated controller
+        initTabsController(ctx);
+        if (previousActiveTabTarget) {
+            const targetBtn = sheet.querySelector<HTMLButtonElement>(
+                `.tab-btn[data-tab-target="${previousActiveTabTarget}"]`
+            );
+            const targetPane = sheet.querySelector<HTMLElement>(`#${previousActiveTabTarget}`);
+            if (targetBtn && targetPane) {
+                sheet.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach(b => {
+                    b.classList.remove("active");
+                    b.setAttribute("aria-selected", "false");
+                });
+                sheet.querySelectorAll<HTMLElement>(".tab-pane").forEach(p => {
+                    p.classList.remove("active");
+                });
+                targetBtn.classList.add("active");
+                targetBtn.setAttribute("aria-selected", "true");
+                targetPane.classList.add("active");
             }
-            initHeroController(ctx);
-            initVitalsController(ctx);
-            initAbilitiesController(ctx);
-            initSkillsController(ctx);
-            initActionsController(ctx);
-            initSpellsController(ctx);
-            initWeaponsController(ctx);
-            initEquipmentController(ctx);
-            initFeaturesController(ctx);
-            initResourcesController(ctx);
-            initDetailsController(ctx);
-
-            applyTrackerSnapshot();
-            updateHpDisplay();
-            updateSlotCounters();
-            persistTrackerSnapshot();
         }
+        initHeroController(ctx);
+        initVitalsController(ctx);
+        initAbilitiesController(ctx);
+        initSkillsController(ctx);
+        initActionsController(ctx);
+        initSpellsController(ctx);
+        initWeaponsController(ctx);
+        initEquipmentController(ctx);
+        initFeaturesController(ctx);
+        initResourcesController(ctx);
+        initDetailsController(ctx);
+
+        applyTrackerSnapshot();
+        updateHpDisplay();
+        updateSlotCounters();
+        persistTrackerSnapshot();
 
         ctx.setCharacterActionsVisibility();
     }

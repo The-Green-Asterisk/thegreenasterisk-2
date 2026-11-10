@@ -2,7 +2,6 @@ import Helpers from "@services/helpers";
 import {
     renderAbilityCards,
     renderActions,
-    renderEditableSheetContent,
     renderEquipment,
     renderFeatures,
     renderHeroSection,
@@ -44,7 +43,6 @@ const characterSheetTemplate = () => html`
 export {
     renderAbilityCards,
     renderActions,
-    renderEditableSheetContent,
     renderEquipment,
     renderFeatures,
     renderHeroSection,

@@ -22,8 +22,6 @@ export interface CharacterSheetContext {
     setCharacter: (char: CharacterData | null) => void;
     getActiveCharacterId: () => string | undefined;
     setActiveCharacterId: (id: string | undefined) => void;
-    getIsEditMode: () => boolean;
-    setIsEditMode: (val: boolean) => void;
     prefer2024Rules: { value: boolean };
     spellMap: Map<string, SpellDefinition>;
     getSavedCharacters: () => SavedCharacterSummary[];
@@ -34,12 +32,9 @@ export interface CharacterSheetContext {
     renderActiveCharacterView: () => void;
     renderSavedCharacterList: () => void;
     setCharacterActionsVisibility: () => void;
-    updateAbilityBaseScore: (abilityIndex: number, newBaseScore: number) => void;
     setItemQuantity: (itemName: string, quantity: number, scope?: "equipment" | "weapon") => void;
     syncSheetStats: () => void;
     recalculateFromRawPayload?: () => void;
-    toggleFieldLock?: (fieldKey: string) => boolean;
-    isFieldLocked?: (fieldKey: string) => boolean;
 
     // Persistence & API
     saveActiveCharacter: (options?: { silent?: boolean; background?: boolean }) => Promise<void>;
