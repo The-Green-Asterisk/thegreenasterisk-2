@@ -107,6 +107,8 @@ export const CLASS_SCALING_TRAITS_2024: Record<string, any> = {
         epicBoonLevel: EPIC_BOON_LEVEL
     },
     monk: {
+        // Martial Arts die by Monk level; also marks the class whose weapons use it
+        martialArtsDieByLevel: ["", "1d6", "1d6", "1d6", "1d6", "1d8", "1d8", "1d8", "1d8", "1d8", "1d8", "1d10", "1d10", "1d10", "1d10", "1d10", "1d10", "1d12", "1d12", "1d12", "1d12"],
         asiLevels: STANDARD_ASI_LEVELS,
         epicBoonLevel: EPIC_BOON_LEVEL
     },
@@ -259,6 +261,7 @@ export interface ProgressionGrantedFeature {
         type: "Action" | "Bonus Action" | "Reaction" | "Special";
         range?: string;
         cost?: string;
+        effect?: string;
         notes?: string;
     };
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
@@ -287,12 +290,14 @@ export interface ProgressionFeature {
     name: string;
     description: string;
     modifiers?: StatModifier[];
+    scaleValue?: string;           // the feature's scaling number, e.g. "{{cha}}+{{level}}" (templates as in resources)
     spellPicks?: SpellPick[];
     actionGrant?: {
         name: string;
         type: "Action" | "Bonus Action" | "Reaction";
         range?: string;
         cost?: string;
+        effect?: string;
         notes?: string;
     };
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
@@ -313,6 +318,7 @@ export interface ProgressionChoiceOption {
         type: "Action" | "Bonus Action" | "Reaction";
         range?: string;
         cost?: string;
+        effect?: string;
         notes?: string;
     };
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
@@ -337,6 +343,7 @@ export interface ProgressionResourceUpdate {
     total: number | string; // e.g. 2, or "{{level}}", or "{{pb}}"
     die?: string;           // e.g. "d6", "d8", "d10"
     resetOn: "short" | "long";
+    aliases?: string[];     // other feature names that use this resource or its die (e.g. "Cutting Words")
 }
 
 export interface ProgressionLevel {
@@ -413,6 +420,7 @@ export const FIGHTING_STYLE_OPTIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "great-weapon-fighting",
+        legacyIds: ["great-weapon"],
         name: "Great Weapon Fighting",
         description: "When you roll a 1 or 2 on a damage die for an attack with a two-handed melee weapon, you can treat it as a 3.",
         modifiers: [
@@ -444,6 +452,7 @@ export const FIGHTING_STYLE_OPTIONS: ProgressionChoiceOption[] = [
     },
     {
         id: "two-weapon-fighting",
+        legacyIds: ["two-weapon"],
         name: "Two-Weapon Fighting",
         description: "Add your ability modifier to the damage of the bonus attack from dual wielding.",
         modifiers: [
@@ -1385,12 +1394,8 @@ export const WAR_GOD_BLESSING_OPTIONS: ProgressionChoiceOption[] = [
     }
 ];
 
-// Champion's Additional Fighting Style: any Fighting Style feat a Fighter can take. Older saves used short ids.
-export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: ProgressionChoiceOption[] = BASE_FIGHTING_STYLES.map((o) =>
-    o.id === "great-weapon-fighting" ? { ...o, legacyIds: ["great-weapon"] }
-        : o.id === "two-weapon-fighting" ? { ...o, legacyIds: ["two-weapon"] }
-            : o
-);
+// Champion's Additional Fighting Style: any Fighting Style feat a Fighter can take
+export const CHAMPION_ADDITIONAL_FIGHTING_STYLES: ProgressionChoiceOption[] = BASE_FIGHTING_STYLES;
 
 export const PSI_WARRIOR_THRUST_OPTIONS: ProgressionChoiceOption[] = [
     { id: "push", name: "Telekinetic Push", description: "Push target up to 10 feet horizontally away on a failed Strength save." },
@@ -1406,7 +1411,7 @@ export const DIVINER_THIRD_EYE_OPTIONS: ProgressionChoiceOption[] = [
 
 export const ABERRANT_REVELATION_OPTIONS: ProgressionChoiceOption[] = [
     { id: "flight", name: "Aquatic / Aerial Flight", description: "Gain flying speed and swimming speed equal to walking speed and hover." },
-    { id: "see-invis", name: "See Invisibility", description: "See invisible creatures within 60 feet." },
+    { id: "see-invis", legacyIds: ["see-invisibility"], name: "See Invisibility", description: "See invisible creatures within 60 feet." },
     { id: "viscous-body", name: "Viscous Body", description: "Escape grapples easily and squeeze through 1-inch spaces." }
 ];
 
@@ -1502,7 +1507,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 modifiers.push({ target: "abilities.str", type: "bonus", value: 4, description: "+4 Strength (max 25)" });
                 modifiers.push({ target: "abilities.con", type: "bonus", value: 4, description: "+4 Constitution (max 25)" });
             } else if (featSlug === "aura-of-protection") {
-                modifiers.push({ target: "saves.all", type: "ability_mod", abilitySource: "cha", condition: "not incapacitated", description: "Add Charisma modifier to all saving throws" });
+                modifiers.push({ target: "saves.all", type: "ability_mod", abilitySource: "cha", minimum: 1, condition: "not incapacitated", description: "Add Charisma modifier (minimum +1) to all saving throws" });
             } else if (featSlug === "unarmored-defense") {
                 // Barbarian: 10 + DEX + CON, shield allowed; Monk: 10 + DEX + WIS, no shield
                 const isMonk = classSlug === "monk";
@@ -1512,6 +1517,8 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                     allowsShield: !isMonk,
                     description: isMonk ? "AC 10 + DEX + WIS while wearing no armor and no shield" : "AC 10 + DEX + CON while wearing no armor"
                 });
+            } else if (featSlug === "disciplined-survivor") {
+                modifiers.push({ target: "saves.all", type: "proficiency_tier", value: "proficient", description: "Proficiency in all saving throws" });
             } else if (featSlug === "jack-of-all-trades") {
                 modifiers.push({ target: "skills.unproficient", type: "half_proficiency", description: "Add half your Proficiency Bonus to skill checks you aren't proficient in" });
             }
@@ -1552,6 +1559,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 if (lvl === 13) {
                     choices.push({
                         id: "brutal-strike",
+                        legacyKeys: ["improved-brutal-strike"],
                         name: "Improved Brutal Strike",
                         prompt: "Choose your primary Improved Brutal Strike technique.",
                         chooseCount: 1,
@@ -1563,7 +1571,10 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
             case "bard":
                 // Bardic Inspiration: uses = CHA mod, die size scales
                 const bDie = lvl >= 15 ? "d12" : lvl >= 10 ? "d10" : lvl >= 5 ? "d8" : "d6";
-                resourceUpdates.push({ name: "Bardic Inspiration", total: "{{cha}}", die: bDie, resetOn: lvl >= 5 ? "short" : "long" });
+                resourceUpdates.push({
+                    name: "Bardic Inspiration", total: "{{cha}}", die: bDie, resetOn: lvl >= 5 ? "short" : "long",
+                    aliases: ["Cutting Words", "Combat Inspiration", "Mantle of Inspiration"]
+                });
                 break;
 
             case "cleric":
@@ -1639,7 +1650,7 @@ export function buildClassProgression(classSlug: string, baseFeatures: Array<{ n
                 if (lvl >= 2) {
                     resourceUpdates.push({ name: "Action Surge", total: lvl >= 17 ? 2 : 1, resetOn: "short" });
                 }
-                resourceUpdates.push({ name: "Second Wind", total: lvl >= 10 ? 4 : lvl >= 4 ? 3 : 2, die: "1d10", resetOn: "short" });
+                resourceUpdates.push({ name: "Second Wind", total: lvl >= 10 ? 4 : lvl >= 4 ? 3 : 2, die: "1d10+{{level}}", resetOn: "short" });
                 if (lvl >= 9) {
                     resourceUpdates.push({ name: "Indomitable", total: lvl >= 17 ? 3 : lvl >= 13 ? 2 : 1, resetOn: "long" });
                 }
@@ -2185,6 +2196,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
             choices.push({
                 id: "aspect-of-the-beast",
                 choiceId: "aspect-of-the-beast",
+                legacyKeys: ["aspect"],
                 name: "Aspect of the Beast",
                 prompt: "Choose 1 primal animal aspect.",
                 chooseCount: 1,
@@ -2244,6 +2256,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "additional-fighting-style",
             choiceId: "additional-fighting-style",
+            legacyKeys: ["champion-style"],
             name: "Additional Fighting Style",
             prompt: "Choose a second Fighting Style feat.",
             chooseCount: 1,
@@ -2253,6 +2266,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "telekinetic-thrust",
             choiceId: "telekinetic-thrust",
+            legacyKeys: ["psi-thrust"],
             name: "Telekinetic Thrust",
             prompt: "Choose Telekinetic Push or Topple.",
             chooseCount: 1,
@@ -2284,6 +2298,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "wrath-of-the-sea",
             choiceId: "wrath-of-the-sea",
+            legacyKeys: ["sea-wrath"],
             name: "Wrath of the Sea",
             prompt: "Choose Cold or Thunder wrath damage.",
             chooseCount: 1,
@@ -2293,6 +2308,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "circle-forms-strike",
             choiceId: "circle-forms-strike",
+            legacyKeys: ["moon-circle-strike"],
             name: "Circle Forms Strike",
             prompt: "Choose Radiant or Natural Physical beast strike damage.",
             chooseCount: 1,
@@ -2305,6 +2321,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "war-god-blessing",
             choiceId: "war-god-blessing",
+            legacyKeys: ["war-god"],
             name: "War God's Blessing",
             prompt: "Choose a spell to cast via War God's Blessing.",
             chooseCount: 1,
@@ -2317,6 +2334,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "open-hand-technique",
             choiceId: "open-hand-technique",
+            legacyKeys: ["open-hand"],
             name: "Open Hand Technique",
             prompt: "Choose your preferred Open Hand Technique effect.",
             chooseCount: 1,
@@ -2349,7 +2367,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
             choices.push({
                 id: "defensive-tactics",
                 choiceId: "defensive-tactics",
-                legacyKeys: ["ranger-6-hunter"],
+                legacyKeys: ["ranger-6-hunter", "defensive-tactic"],
                 name: "Defensive Tactics",
                 prompt: "Choose a Defensive Tactics feature.",
                 chooseCount: 1,
@@ -2359,6 +2377,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
             choices.push({
                 id: "superior-hunter-defense",
                 choiceId: "superior-hunter-defense",
+                legacyKeys: ["superior-defense"],
                 name: "Superior Hunter's Defense",
                 prompt: "Choose Evasion or Uncanny Dodge.",
                 chooseCount: 1,
@@ -2369,6 +2388,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "otherworldly-glamour",
             choiceId: "otherworldly-glamour",
+            legacyKeys: ["fey-glamour"],
             name: "Otherworldly Glamour",
             prompt: "Choose 1 skill proficiency (Deception, Performance, or Persuasion).",
             chooseCount: 1,
@@ -2399,6 +2419,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "revelation-in-flesh",
             choiceId: "revelation-in-flesh",
+            legacyKeys: ["aberrant-revelation"],
             name: "Revelation in Flesh",
             prompt: "Choose a Revelation in Flesh transformation.",
             chooseCount: 1,
@@ -2432,6 +2453,7 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
         choices.push({
             id: "the-third-eye",
             choiceId: "the-third-eye",
+            legacyKeys: ["third-eye"],
             name: "The Third Eye",
             prompt: "Choose a Third Eye sensory benefit.",
             chooseCount: 1,
@@ -2440,6 +2462,29 @@ export function getSubclassChoices(normSub: string, lvl: number): ProgressionCho
     }
 
     return choices;
+}
+
+/** Expendable resources a subclass adds, as of a subclass level (e.g. Circle of the Stars' Cosmic Omen). */
+function getSubclassResources(normSub: string, lvl: number): ProgressionResourceUpdate[] {
+    const res: ProgressionResourceUpdate[] = [];
+    if (normSub === "stars" && lvl >= 6) {
+        res.push({ name: "Cosmic Omen", total: "{{wis}}", die: "1d6", resetOn: "long" });
+    }
+    if (normSub === "battle-master" && lvl >= 3) {
+        res.push({
+            name: "Superiority Dice", total: lvl >= 15 ? 6 : lvl >= 7 ? 5 : 4, die: lvl >= 18 ? "d12" : lvl >= 10 ? "d10" : "d8", resetOn: "short",
+            aliases: ["Combat Superiority", "Improved Combat Superiority", "Ultimate Combat Superiority", "Maneuvers"]
+        });
+    }
+    if (normSub === "glamour") {
+        if (lvl >= 3) res.push({ name: "Beguiling Magic", total: 1, resetOn: "long" });
+        if (lvl >= 6) res.push({ name: "Mantle of Majesty", total: 1, resetOn: "long" });
+        if (lvl >= 14) res.push({ name: "Unbreakable Majesty", total: 1, resetOn: "short" });
+    }
+    if (normSub === "great-old-one" && lvl >= 6) {
+        res.push({ name: "Clairvoyant Combatant", total: 1, resetOn: "short" });
+    }
+    return res;
 }
 
 export function buildSubclassProgression(classSlug: string, sub: { id: string; name: string; description: string; features?: Array<{ name: string; level: number; description: string }> }): ProgressionLevel[] {
@@ -2472,6 +2517,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
             const featSlug = slugify(f.name);
             const modifiers: StatModifier[] = [];
             let subSpellPicks: SpellPick[] | undefined;
+            let featScaleValue: string | undefined;
 
             // Add inherent modifiers for concrete subclass features
             if (featSlug === "draconic-resilience") {
@@ -2488,6 +2534,12 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                     count: 2, lists: ["Cleric", "Druid", "Wizard"], levels: [0], maxLevel: "castable", ability: "cha",
                     sourceAliases: ["magical discoveries"]
                 }];
+            } else if (featSlug === "dazzling-footwork") {
+                modifiers.push({ target: "vitals.ac", type: "unarmored_ac", abilities: ["dex", "cha"], allowsShield: false, description: "AC 10 + DEX + CHA while wearing no armor and no shield" });
+            } else if (featSlug === "dread-ambusher") {
+                modifiers.push({ target: "vitals.initiative", type: "ability_mod", abilitySource: "wis", description: "Add Wisdom modifier to Initiative rolls" });
+            } else if (featSlug === "dark-ones-blessing") {
+                featScaleValue = "{{cha}}+{{level}}";
             } else if (featSlug === "umbral-sight") {
                 modifiers.push({ target: "vitals.darkvision", type: "bonus", value: 60, description: "Darkvision +60 ft." });
             }
@@ -2506,6 +2558,14 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                     type: "Special",
                     notes: "When forming Awakened Mind link, target makes WIS save or has Disadvantage on attacks against you, and you have Advantage against it. Recharges on Short/Long Rest or 1 Pact slot."
                 };
+            } else if (featSlug === "cosmic-omen") {
+                actionGrant = {
+                    name: "Cosmic Omen",
+                    type: "Reaction",
+                    range: "30 ft.",
+                    effect: "Roll 1d6: Add (Weal) or Subtract (Woe) from d20 Test",
+                    notes: "Whenever you finish a Long Rest, consult your Star Map for omens and roll a die. Until your next Long Rest, you gain a special Reaction: Weal (Even) - roll 1d6 and add to creature's D20 Test; Woe (Odd) - roll 1d6 and subtract from creature's D20 Test. Uses: Wisdom modifier (min 1), regained on Long Rest."
+                };
             } else if (featSlug === "thought-shield") {
                 actionGrant = {
                     name: "Thought Shield (Reflect)",
@@ -2519,6 +2579,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 name: f.name,
                 description: f.description,
                 modifiers: modifiers.length > 0 ? modifiers : undefined,
+                scaleValue: featScaleValue,
                 spellPicks: subSpellPicks,
                 actionGrant,
                 grantedSpells: (f as any).grantedSpells,
@@ -2532,6 +2593,7 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
                 name: `${sub.name} Spells`,
                 description: `Spells granted by ${sub.name} at level ${lvl}.`,
                 modifiers: undefined,
+                scaleValue: undefined,
                 spellPicks: undefined,
                 actionGrant: undefined,
                 grantedSpells: spellsAtLevel,
@@ -2554,10 +2616,12 @@ export function buildSubclassProgression(classSlug: string, sub: { id: string; n
             new Map(levelGrantedSpells.map(s => [s.spellId || s.id || s.name, s])).values()
         );
 
+        const subResources = getSubclassResources(normSub, lvl);
         levels.push({
             level: lvl,
             features: featsAtLevel,
             choices: choicesAtLevel.length > 0 ? choicesAtLevel : undefined,
+            resourceUpdates: subResources.length > 0 ? subResources : undefined,
             grantedSpells: uniqueSpells.length > 0 ? uniqueSpells : undefined
         });
     }

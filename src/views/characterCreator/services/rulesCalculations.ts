@@ -305,6 +305,12 @@ export function getInitiative(ctx: CharacterCreatorContext): number {
     if (ctx.state.originFeatId === "alert" || (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId === "alert")) {
         init += getProficiencyBonus(ctx);
     }
+    // Class features that add an ability modifier to Initiative (e.g. Dread Ambusher)
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target === "vitals.initiative" && m.type === "ability_mod" && m.abilitySource) {
+            init += Math.max(m.minimum ?? -Infinity, getAbilityModifier(ctx, m.abilitySource));
+        }
+    }
     return init;
 }
 

@@ -5,7 +5,6 @@ import {
     BACKGROUNDS_2024,
     ClassDefinition,
     CLASSES_2024,
-    ELDRITCH_INVOCATIONS,
     GENERAL_FEATS_2024,
     GeneralFeatDefinition,
     MulticlassCasterClassInfo,

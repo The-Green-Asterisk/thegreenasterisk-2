@@ -1,48 +1,6 @@
-import {
-    ABERRANT_REVELATION_OPTIONS,
-    BARBARIAN_ASPECTS,
-    BATTERING_ROOTS_OPTIONS,
-    BATTLE_MASTER_MANEUVERS,
-    BLESSED_STRIKES_OPTIONS,
-    BRUTAL_STRIKE_OPTIONS,
-    CHAMPION_ADDITIONAL_FIGHTING_STYLES,
-    DIVINE_ORDERS,
-    DIVINER_THIRD_EYE_OPTIONS,
-    DRACONIC_ANCESTOR_ELEMENTS,
-    DRUID_LAND_BIOMES,
-    ELEMENTAL_FURY_OPTIONS,
-    ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
-    ELDRITCH_INVOCATIONS,
-    FEY_WANDERER_GLAMOUR_SKILLS,
-    FIENDISH_RESILIENCE_DAMAGE_TYPES,
-    FIGHTING_STYLES,
-    HUNTER_DEFENSIVE_TACTICS,
-    HUNTER_PREY_OPTIONS,
-    HUNTER_SUPERIOR_DEFENSE_OPTIONS,
-    IMPROVED_BRUTAL_STRIKE_OPTIONS,
-    METAMAGIC_OPTIONS,
-    MOON_CIRCLE_FORMS_STRIKES,
-    OPEN_HAND_TECHNIQUES,
-    PRIMAL_COMPANION_TYPES,
-    PRIMAL_ORDERS,
-    PSI_WARRIOR_THRUST_OPTIONS,
-    ROGUE_CUNNING_STRIKES,
-    ROGUE_DEVIOUS_STRIKES,
-    SEA_WRATH_DAMAGE_TYPES,
-    SPELLS_2024,
-    STARRY_FORM_CONSTELLATIONS,
-    STEPS_OF_THE_FEY_OPTIONS,
-    STUDENT_OF_WAR_SKILLS,
-    TACTICAL_MASTER_PROPERTIES,
-    WAR_GOD_BLESSING_OPTIONS,
-    WILD_HEART_RAGES,
-    WILD_HEART_TOTEMIC_ATTUNEMENTS,
-    WIZARD_SCHOLAR_SKILLS,
-    ZEALOT_DIVINE_FURIES,
-    findClassOption
-} from "../../../rules/dnd5e_2024";
+import { SPELLS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
-import { getProgressionChoices } from "../services/progressionModifiers";
+import { getProgressionChoices, getProgressionPools } from "../services/progressionModifiers";
 
 export function renderStep9Review(ctx: CharacterCreatorContext): string {
     ctx.sanitizeSpellSelections();
@@ -88,9 +46,12 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                     ${getProgressionChoices(ctx).filter((e) => e.unlocked && e.selectedOptions.length > 0).map((e) =>
                         `<div class="review-row"><span class="label">${e.choice.name}${e.isSubclass ? ` (${e.sourceName})` : ""}:</span><strong>${e.selectedOptions.map((o) => o.name).join(", ")}</strong></div>`
                     ).join("")}
-                    ${ctx.state.metamagic.length > 0 ? `<div class="review-row"><span class="label">Metamagic:</span><strong>${ctx.state.metamagic.map((m) => METAMAGIC_OPTIONS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
-                    ${ctx.state.invocations.length > 0 ? `<div class="review-row"><span class="label">Invocations:</span><strong>${ctx.state.invocations.map((i) => ELDRITCH_INVOCATIONS.find((o) => o.id === i)?.name || i).join(", ")}</strong></div>` : ""}
-                    ${ctx.state.maneuvers.length > 0 ? `<div class="review-row"><span class="label">Maneuvers:</span><strong>${ctx.state.maneuvers.map((m) => BATTLE_MASTER_MANEUVERS.find((o) => o.id === m)?.name || m).join(", ")}</strong></div>` : ""}
+                    ${getProgressionPools(ctx).map((p) => {
+                        const picked = ((ctx.state as any)[p.pool] as string[] | undefined) || [];
+                        if (picked.length === 0) return "";
+                        const names = picked.map((id) => p.options.find((o) => o.id === id)?.name || id);
+                        return `<div class="review-row"><span class="label">${p.name}${p.isSubclass ? ` (${p.sourceName})` : ""}:</span><strong>${names.join(", ")}</strong></div>`;
+                    }).join("")}
                     ${ctx.state.expertiseSkills.length > 0 ? `<div class="review-row"><span class="label">Expertise Skills:</span><strong>${ctx.state.expertiseSkills.join(", ")}</strong></div>` : ""}
                     ${ctx.getAsiSlots().length > 0 ? `
                         <div class="review-row" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">

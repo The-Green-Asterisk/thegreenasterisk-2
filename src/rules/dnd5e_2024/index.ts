@@ -9,3 +9,4 @@ export * from "./classOptions";
 export * from "./generalFeats";
 export * from "./multiclass";
 export * from "./statModifierEvaluator";
+export * from "./classResources";

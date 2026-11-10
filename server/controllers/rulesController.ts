@@ -23,6 +23,7 @@ import {
     SEED_SPECIES
 } from "../services/database/rulesSeed";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
+import { findServerClassRule, loadClassRulesData } from "../services/classRulesData";
 import BaseController from "./baseController";
 import SpellController from "./spellController";
 
@@ -1147,12 +1148,11 @@ export default class RulesController extends BaseController {
                             const cSub = getCanonicalSubclassForFeature(fnLower);
                             if (cSub) return false;
                             if (targetSub?.features?.some((sf: any) => String(sf.name || "").trim().toLowerCase() === fnLower)) return false;
-                            if (slug === "warlock") {
-                                if (fnLower === "otherworldly patron" && f.level === 1) return false;
-                                if (fnLower === "pact boon" && f.level === 3) return false;
-                                if (fnLower === "mystic arcanum" && existingFeatures.some((ef: any) => ef !== f && String(ef.name || "").toLowerCase().startsWith("mystic arcanum"))) return false;
-                                if (fnLower === "eldritch invocations" && existingFeatures.some((ef: any) => ef !== f && String(ef.name || "").toLowerCase().startsWith("eldritch invocations ("))) return false;
-                            }
+                            // Features the seed marks as retired from older rules (e.g. the 2014 Warlock's level 1 Otherworldly Patron)
+                            const seedClass: any = (SEED_CLASSES as any[]).find((c) => c.id === slug);
+                            if ((seedClass?.retiredFeatures || []).some((r: any) => String(r.name).toLowerCase() === fnLower && (r.level == null || r.level === f.level))) return false;
+                            // A summary entry ("Mystic Arcanum") when its per-level entries ("Mystic Arcanum (6th Level)") exist
+                            if (existingFeatures.some((ef: any) => ef !== f && String(ef.name || "").toLowerCase().startsWith(`${fnLower} (`))) return false;
                             return true;
                         });
                         existingFeatures.sort((a, b) => a.level - b.level);
@@ -2139,9 +2139,14 @@ export default class RulesController extends BaseController {
             const charFeaturesLower = new Set<string>(
                 character.features.map((f: any) => String(f?.name || "").toLowerCase().trim())
             );
-            // If a character has Spellcasting for Druid, they also have Druidic at level 1
-            if (charClasses.includes("druid")) {
-                charFeaturesLower.add("druidic");
+            // Class features the character's levels grant in the class rules, even if the saved list lacks them (e.g. Druidic)
+            await loadClassRulesData();
+            for (const c of character.classes) {
+                const rule = findServerClassRule(String(c?.name || ""));
+                const lvl = Number(c?.level) || 1;
+                for (const f of rule?.features || []) {
+                    if (f.level <= lvl) charFeaturesLower.add(f.name.toLowerCase().trim());
+                }
             }
 
             const canonicalReplacements = new Map<string, any[]>();
@@ -2161,9 +2166,11 @@ export default class RulesController extends BaseController {
 
                 for (const act of character.actions) {
                     const actNameLower = String(act?.name || "").toLowerCase().trim();
-                    const baseFeatKey = actNameLower === "leave druidic message"
-                        ? "druidic"
-                        : actNameLower.split(":")[0].trim();
+                    // The feature this action belongs to: the one whose D&D Beyond actions include it (e.g. "Leave Druidic
+                    // Message" → Druidic), else the name before any colon
+                    const ownerKey = Array.from(canonicalReplacements.entries())
+                        .find(([, acts]) => acts.some((a: any) => String(a?.name || "").toLowerCase().trim() === actNameLower))?.[0];
+                    const baseFeatKey = ownerKey || actNameLower.split(":")[0].trim();
 
                     if (!act?.spellName && canonicalReplacements.has(baseFeatKey)) {
                         if (!handledFeatures.has(baseFeatKey)) {

@@ -11,6 +11,9 @@ import {
 } from "./characterData";
 import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
 import { findClassRule, getClassRules } from "../../services/classRules";
+import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
+import { AbilityName, ClassDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
+import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
@@ -401,20 +404,44 @@ export function parseDndBeyondCharacter(
     const wisMod = abilityModsById[5] ?? 0;
     const chaMod = abilityModsById[6] ?? 0;
 
+    // Each D&D Beyond class with its class rules (rule_classes, via /get-rules) and subclass
+    const ABILITY_IDS: Record<AbilityName, number> = { str: 1, dex: 2, con: 3, int: 4, wis: 5, cha: 6 };
+    const slugName = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const ruleClasses = (raw.classes || []).map((c: any) => {
+        const def = findClassRule(String(c.definition?.name || ""));
+        const subName = slugName(c.subclassDefinition?.name || "");
+        const subclass = subName
+            ? def?.subclasses?.find((s) => slugName(s.name) === subName || subName.includes(slugName(s.name)) || slugName(s.name).includes(subName) || s.id === subName)
+            : undefined;
+        return { def, subclass, level: Number(c.level) || 1 };
+    });
+    /** Modifiers from the class and subclass features the character's levels have unlocked (class rules data). */
+    const ruleFeatureModifiers = ruleClasses.flatMap(({ def, subclass, level }: { def?: ClassDefinition; subclass?: any; level: number }) =>
+        [...(def?.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])]
+            .filter((pl) => pl.level <= level)
+            .flatMap((pl) => pl.features || [])
+            .flatMap((f) => (f.modifiers || []).map((m) => ({ ...m, classLevel: level })))
+    );
+    const ruleMods = (target: string, type: string) => ruleFeatureModifiers.filter((m: any) => m.target === target && m.type === type);
+    const ruleAbilityMod = (m: StatModifier) => {
+        const v = m.abilitySource ? abilityModsById[ABILITY_IDS[m.abilitySource]] ?? 0 : 0;
+        return typeof m.minimum === "number" ? Math.max(m.minimum, v) : v;
+    };
+    /** Features with an action, bonus action, or reaction to list (class rules actionGrant). */
+    const ruleActionGrants = ruleClasses.flatMap(({ def, subclass, level }: { def?: ClassDefinition; subclass?: any; level: number }) =>
+        [...(def?.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])]
+            .filter((pl) => pl.level <= level)
+            .flatMap((pl) => pl.features || [])
+            .map((f: any) => f.actionGrant)
+            .filter(Boolean)
+    );
+    // The class with a Martial Arts die (scalingTraits.martialArtsDieByLevel): its weapons and die
+    const martialArtsClass = ruleClasses.find((c: any) => Array.isArray(c.def?.scalingTraits?.martialArtsDieByLevel));
+    const martialArtsDie: string = martialArtsClass
+        ? String(martialArtsClass.def.scalingTraits.martialArtsDieByLevel[Math.min(martialArtsClass.level, 20)] || "")
+        : "";
+
     // Class levels & features lookup helpers
-    const getClassLevel = (className: string): number => {
-        const match = (raw.classes || []).find(
-            (c: any) => (c.definition?.name || "").toLowerCase() === className.toLowerCase()
-        );
-        return match ? Number(match.level) || 0 : 0;
-    };
-    const hasSubclass = (className: string, subKeyword: string): boolean => {
-        return (raw.classes || []).some(
-            (c: any) =>
-                (c.definition?.name || "").toLowerCase() === className.toLowerCase() &&
-                (c.subclassDefinition?.name || "").toLowerCase().includes(subKeyword.toLowerCase())
-        );
-    };
     const hasFeat = (featKeyword: string): boolean => {
         return (raw.feats || []).some((f: any) =>
             (f.definition?.name || "").toLowerCase().includes(featKeyword.toLowerCase())
@@ -427,9 +454,6 @@ export function parseDndBeyondCharacter(
             if (kw === "defense") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:defense");
             if (kw === "dueling") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:dueling");
             if (kw === "thrown weapon fighting") return extractedFeaturesResult.activeFightingStyleValues.has("fighting-style:thrown");
-        }
-        if (extractedFeaturesResult.hasPactBoonDecision && kw === "pact of the blade") {
-            return extractedFeaturesResult.activePactBoonValue === "pact-boon:blade";
         }
         if ((raw.options?.class || []).some((o: any) => (o.definition?.name || "").toLowerCase().includes(kw))) {
             return true;
@@ -455,9 +479,6 @@ export function parseDndBeyondCharacter(
     const halfProfSaveKeys = new Set<string>();
     const halfProfRoundUpSaveKeys = new Set<string>();
 
-    const monkLevel = getClassLevel("monk");
-    const paladinLevel = getClassLevel("paladin");
-    const bardLevel = getClassLevel("bard");
 
     allMods.forEach(m => {
         const sub = String(m.subType || "").toLowerCase();
@@ -488,8 +509,8 @@ export function parseDndBeyondCharacter(
         }
     });
 
-    // Monk Level 14+ Diamond Soul grants proficiency in all saving throws
-    if (monkLevel >= 14) {
+    // Class features granting proficiency in all saving throws (e.g. Monk Disciplined Survivor)
+    if (ruleMods("saves.all", "proficiency_tier").length > 0) {
         Object.values(ABILITY_NAMES).forEach(a => proficientSaveKeys.add(a.key));
     }
 
@@ -499,10 +520,11 @@ export function parseDndBeyondCharacter(
     );
     let globalSaveBonus = globalSaveBonusMods.reduce((sum, m) => sum + resolveModValue(m), 0);
 
-    // Paladin Level 6+ Aura of Protection fallback if not already emitted as a statId=6 saving-throws modifier
-    const hasAuraMod = globalSaveBonusMods.some(m => Number(m.statId) === 6);
-    if (!hasAuraMod && (paladinLevel >= 6 || hasClassFeatureOrOption("Aura of Protection"))) {
-        globalSaveBonus += Math.max(1, chaMod);
+    // Class features adding an ability modifier to all saves (e.g. Aura of Protection), unless D&D Beyond already emitted it
+    for (const m of ruleMods("saves.all", "ability_mod")) {
+        const statId = m.abilitySource ? ABILITY_IDS[m.abilitySource as AbilityName] : 0;
+        if (globalSaveBonusMods.some(g => Number(g.statId) === statId)) continue;
+        globalSaveBonus += ruleAbilityMod(m);
     }
 
     const abilities: AbilityScore[] = [];
@@ -689,9 +711,8 @@ export function parseDndBeyondCharacter(
         if (hasFeat("Tough")) {
             hpPerLevelBonus += 2 * totalLevel;
         }
-        const sorcererLvl = getClassLevel("sorcerer");
-        if (sorcererLvl > 0 && hasSubclass("sorcerer", "draconic")) {
-            hpPerLevelBonus += 1 * sorcererLvl;
+        for (const m of ruleMods("vitals.maxHp", "bonus")) {
+            hpPerLevelBonus += modifierNumber(m);
         }
     }
 
@@ -767,8 +788,9 @@ export function parseDndBeyondCharacter(
         if (rest.includes("not wielding a shield") || rest.includes("no shield") || rest.includes("without a shield")) {
             return true;
         }
-        // Monk Unarmored Defense (statId 5 from class) requires no shield
-        if (m._sourceKey === "class" && Number(m.statId) === 5 && monkLevel > 0) {
+        // A class Unarmored Defense using this ability that the class rules say doesn't allow a shield (e.g. Monk's WIS)
+        const ability = (Object.keys(ABILITY_IDS) as AbilityName[]).find(a => ABILITY_IDS[a] === Number(m.statId));
+        if (m._sourceKey === "class" && ability && ruleMods("vitals.ac", "unarmored_ac").some((r: any) => r.allowsShield === false && r.abilities?.includes(ability))) {
             return true;
         }
         return false;
@@ -871,18 +893,14 @@ export function parseDndBeyondCharacter(
             });
         }
 
-        // 2) Intrinsic class Unarmored Defense formulas (ensures Monk, Barbarian, Draconic Sorcerer, Dance Bard work even if modifiers array is minimal)
-        if (monkLevel > 0 && !hasShield) {
-            candidates.push({ ac: 10 + unarmoredDex + wisMod, statIdUsed: 5 });
-        }
-        if (getClassLevel("barbarian") > 0) {
-            candidates.push({ ac: 10 + unarmoredDex + conMod, statIdUsed: 3 });
-        }
-        if (getClassLevel("sorcerer") > 0 && hasSubclass("sorcerer", "draconic")) {
-            candidates.push({ ac: 13 + unarmoredDex });
-        }
-        if (bardLevel >= 3 && hasSubclass("bard", "dance") && !hasShield) {
-            candidates.push({ ac: 10 + unarmoredDex + chaMod, statIdUsed: 6 });
+        // 2) Class and subclass Unarmored Defense formulas from the class rules (works even if the modifiers array is minimal)
+        for (const m of ruleMods("vitals.ac", "unarmored_ac")) {
+            if (!Array.isArray(m.abilities) || (hasShield && m.allowsShield === false)) continue;
+            const others = (m.abilities as AbilityName[]).filter(a => a !== "dex");
+            candidates.push({
+                ac: 10 + (m.abilities.includes("dex") ? unarmoredDex : 0) + others.reduce((sum, a) => sum + (abilityModsById[ABILITY_IDS[a]] ?? 0), 0),
+                statIdUsed: others.length === 1 ? ABILITY_IDS[others[0]] : undefined
+            });
         }
 
         // Pick the winning unarmored base formula
@@ -992,17 +1010,17 @@ export function parseDndBeyondCharacter(
     if (!isWearingHeavyArmor) {
         for (const m of unarmoredMoveMods) {
             if (isBlockedByShield(m)) continue;
-            if (isArmored && m._sourceKey === "class" && monkLevel > 0) continue;
+            if (isArmored && m._sourceKey === "class" && ruleMods("vitals.speed", "bonus").some((r: any) => r.requires === "no-armor-or-shield" || r.requires === "no-armor")) continue;
             unarmoredMoveBonus += resolveModValue(m);
         }
-        // Class fallback if unarmored-movement modifier wasn't explicitly listed in raw.modifiers
-        if (unarmoredMoveMods.length === 0) {
-            if (!isArmored && !hasShield && monkLevel >= 2) {
-                unarmoredMoveBonus +=
-                    monkLevel >= 18 ? 30 : monkLevel >= 14 ? 25 : monkLevel >= 10 ? 20 : monkLevel >= 6 ? 15 : 10;
-            }
-            if (!isWearingHeavyArmor && getClassLevel("barbarian") >= 5) {
-                unarmoredMoveBonus += 10;
+        // Class rules fallback (Fast Movement, Unarmored Movement, Roving) if D&D Beyond listed no class speed modifiers
+        const hasClassSpeedMods = allMods.some(
+            m => m._sourceKey === "class" && ["unarmored-movement", "speed", "speed-walking"].includes(String(m.subType))
+        );
+        if (!hasClassSpeedMods) {
+            const armorCategory = isWearingHeavyArmor ? "Heavy" : isArmored ? "Light" : null;
+            for (const m of ruleMods("vitals.speed", "bonus")) {
+                if (armorRequirementMet(m, armorCategory, hasShield)) unarmoredMoveBonus += modifierNumber(m);
             }
         }
     }
@@ -1153,16 +1171,10 @@ export function parseDndBeyondCharacter(
         initiativeBonus += Math.floor(profBonus / 2);
     }
 
-    // Subclass Initiative fallbacks if not already represented in raw.modifiers
+    // Class rules Initiative bonuses (e.g. Dread Ambusher) if not already represented in raw.modifiers
     if (!initBonusMods.some(m => m.subType === "initiative")) {
-        if (getClassLevel("rogue") >= 3 && hasSubclass("rogue", "swashbuckler")) {
-            initiativeBonus += chaMod;
-        }
-        if (getClassLevel("ranger") >= 3 && hasSubclass("ranger", "gloom stalker")) {
-            initiativeBonus += wisMod;
-        }
-        if (getClassLevel("wizard") >= 2 && (hasSubclass("wizard", "war magic") || hasSubclass("wizard", "chronurgy"))) {
-            initiativeBonus += intMod;
+        for (const m of ruleMods("vitals.initiative", "ability_mod")) {
+            initiativeBonus += ruleAbilityMod(m);
         }
     }
 
@@ -1534,14 +1546,10 @@ export function parseDndBeyondCharacter(
     // Helper for computing complete weapon attack & damage with all modifiers (Magic +1/+2/+3, Monk Martial Arts, Pact of the Blade/Hexblade, Battlesmith, Archery, Dueling, etc.)
     const hasPactOfTheBladeOrHexWarrior =
         hasClassFeatureOrOption("Pact of the Blade") ||
-        hasClassFeatureOrOption("Hex Warrior") ||
-        hasSubclass("warlock", "hexblade");
+        hasClassFeatureOrOption("Hex Warrior");
     const hasBattleReadyOrArmorer =
-        hasClassFeatureOrOption("Battle Ready") ||
-        hasSubclass("artificer", "battle smith") ||
-        hasSubclass("artificer", "armorer");
-    const monkMartialArtsDie =
-        monkLevel >= 17 ? "1d12" : monkLevel >= 11 ? "1d10" : monkLevel >= 5 ? "1d8" : monkLevel >= 1 ? "1d6" : "";
+        hasClassFeatureOrOption("Battle Ready");
+    const monkMartialArtsDie = martialArtsDie;
 
     // Check Dueling eligibility (wielding a single melee weapon in one hand and no other weapons)
     const totalEquippedWeaponsCount = equippedItems
@@ -1562,7 +1570,7 @@ export function parseDndBeyondCharacter(
 
         // Determine if weapon qualifies as a Monk weapon (Simple melee without Two-Handed/Heavy, or Martial melee with Light property)
         const isMonkWeapon =
-            monkLevel > 0 &&
+            !!martialArtsDie &&
             !isRanged &&
             !isTwoHanded &&
             !isHeavy &&
@@ -1824,21 +1832,19 @@ export function parseDndBeyondCharacter(
         });
     });
 
-    // Check Druid Circle of the Stars: Cosmic Omen Reaction
-    const druidClassDef = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "druid");
-    const druidSubName = String(druidClassDef?.subclassDefinition?.name || raw.subclass || "").toLowerCase();
-    if (druidClassDef && (druidClassDef.level || 0) >= 6 && druidSubName.includes("stars")) {
-        if (!seenActionNames.has("cosmic omen")) {
-            seenActionNames.add("cosmic omen");
-            actions.push({
-                name: "Cosmic Omen",
-                type: "Reaction",
-                rangeOrReach: "30 ft.",
-                hitOrDc: "Special",
-                damageOrEffect: "Roll 1d6: Add (Weal) or Subtract (Woe) from d20 Test",
-                notes: "Whenever you finish a Long Rest, consult your Star Map for omens and roll a die. Until your next Long Rest, you gain a special Reaction: Weal (Even) - roll 1d6 and add to creature's D20 Test; Woe (Odd) - roll 1d6 and subtract from creature's D20 Test. Uses: Wisdom modifier (min 1), regained on Long Rest."
-            });
-        }
+    // Class and subclass feature actions from the class rules (e.g. Cosmic Omen) that D&D Beyond didn't list
+    for (const g of ruleActionGrants) {
+        const key = String(g.name || "").toLowerCase();
+        if (!key || seenActionNames.has(key)) continue;
+        seenActionNames.add(key);
+        actions.push({
+            name: g.name,
+            type: g.type,
+            rangeOrReach: g.range || "Special",
+            hitOrDc: "Special",
+            damageOrEffect: g.effect || g.cost || "",
+            notes: g.notes || ""
+        });
     }
 
     // 11. Features & Invocations & Feats (already extracted with interactive decisions above)
@@ -2031,149 +2037,14 @@ export function parseDndBeyondCharacter(
         return undefined;
     };
 
-    // Check Barbarian Rage
-    const barb = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "barbarian");
-    if (barb) {
-        const bLvl = barb.level || 1;
-        const actionRages = getActionMaxUses("Rage");
-        const rages = actionRages ?? (bLvl >= 20 ? 99 : bLvl >= 17 ? 6 : bLvl >= 12 ? 5 : bLvl >= 6 ? 4 : bLvl >= 3 ? 3 : 2);
+    // Class and subclass resources from the class rules, at each class's level; D&D Beyond's own count wins when the
+    // character has an action of that name with limited uses
+    for (const r of resolveClassResources(ruleClasses, (ab) => abilityModsById[ABILITY_IDS[ab]] ?? 0, profBonus)) {
         classResources.push({
-            name: "Rage",
-            total: rages,
-            resetOn: "long",
-            dieOrType: bLvl >= 20 ? "Unlimited" : undefined
-        });
-    }
-
-    // Check Bard Inspiration
-    const bard = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "bard");
-    if (bard) {
-        const bLvl = bard.level || 1;
-        const die = bLvl >= 15 ? "d12" : bLvl >= 10 ? "d10" : bLvl >= 5 ? "d8" : "d6";
-        classResources.push({
-            name: `Bardic Inspiration (${die})`,
-            total: Math.max(1, chaMod),
-            resetOn: bLvl >= 5 ? "short" : "long",
-            dieOrType: die,
-            key: "bardic"
-        });
-    }
-
-    // Check Cleric / Paladin Channel Divinity
-    const cleric = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "cleric");
-    const paladin = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "paladin");
-    const cdActionUses = getActionMaxUses("Channel Divinity");
-    if (cleric) {
-        const cLvl = cleric.level || 1;
-        const uses = cdActionUses ?? (cLvl >= 18 ? 3 : cLvl >= 6 ? 2 : 1);
-        classResources.push({
-            name: "Channel Divinity",
-            total: uses,
-            resetOn: "short"
-        });
-    } else if (paladin && paladin.level >= 3) {
-        classResources.push({
-            name: "Channel Divinity",
-            total: cdActionUses ?? (paladin.level >= 11 ? 2 : 1),
-            resetOn: "short"
-        });
-    }
-
-    // Check Druid Wild Shape (supports D&D Beyond action limitedUse and 2024 scaling: 2 at lvl 2, 3 at lvl 6, 4 at lvl 17)
-    const druid = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "druid");
-    if (druid && druid.level >= 2) {
-        const actionUses = getActionMaxUses("Wild Shape");
-        const is2024Druid =
-            druid.definition?.sourceId === 145 ||
-            (Array.isArray(druid.definition?.sources) &&
-                druid.definition.sources.some((s: any) => s?.sourceId === 145));
-
-        const fallbackUses = druid.level >= 20
-            ? 99
-            : is2024Druid || druid.level >= 6
-                ? druid.level >= 17
-                    ? 4
-                    : druid.level >= 6
-                        ? 3
-                        : 2
-                : 2;
-
-        const totalUses = actionUses ?? fallbackUses;
-
-        classResources.push({
-            name: "Wild Shape",
-            total: totalUses,
-            resetOn: "short"
-        });
-
-        // Circle of the Stars: Cosmic Omen (Wisdom modifier uses, min 1, resets on Long Rest)
-        const subName = String(druid.subclassDefinition?.name || raw.subclass || "").toLowerCase();
-        if (druid.level >= 6 && subName.includes("stars")) {
-            const cosmicUses = getActionMaxUses("Cosmic Omen") ?? Math.max(1, wisMod);
-            classResources.push({
-                name: "Cosmic Omen",
-                total: cosmicUses,
-                resetOn: "long",
-                dieOrType: "1d6"
-            });
-        }
-    }
-
-    // Check Fighter Action Surge & Second Wind
-    const fighter = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "fighter");
-    if (fighter) {
-        const fLvl = fighter.level || 1;
-        const secondWindUses = getActionMaxUses("Second Wind") ?? (fLvl >= 10 ? 4 : fLvl >= 4 ? 3 : fLvl >= 2 ? 2 : 1);
-        classResources.push({
-            name: "Second Wind",
-            total: secondWindUses,
-            resetOn: "short",
-            dieOrType: `1d10+${fLvl}`
-        });
-        if (fLvl >= 2) {
-            const actionSurgeUses = getActionMaxUses("Action Surge") ?? (fLvl >= 17 ? 2 : 1);
-            classResources.push({
-                name: "Action Surge",
-                total: actionSurgeUses,
-                resetOn: "short"
-            });
-        }
-        if (fLvl >= 9) {
-            const indomitableUses = getActionMaxUses("Indomitable") ?? (fLvl >= 17 ? 3 : fLvl >= 13 ? 2 : 1);
-            classResources.push({
-                name: "Indomitable",
-                total: indomitableUses,
-                resetOn: "long"
-            });
-        }
-    }
-
-    // Check Monk Ki / Focus Points
-    const monk = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "monk");
-    if (monk && monk.level >= 2) {
-        classResources.push({
-            name: "Ki / Focus Points",
-            total: monk.level,
-            resetOn: "short"
-        });
-    }
-
-    // Check Paladin Lay on Hands
-    if (paladin) {
-        classResources.push({
-            name: "Lay on Hands (Pool)",
-            total: paladin.level * 5,
-            resetOn: "long"
-        });
-    }
-
-    // Check Sorcerer Sorcery Points
-    const sorcerer = (raw.classes || []).find((c: any) => c.definition?.name?.toLowerCase() === "sorcerer");
-    if (sorcerer && sorcerer.level >= 2) {
-        classResources.push({
-            name: "Sorcery Points",
-            total: sorcerer.level,
-            resetOn: "long"
+            name: r.name,
+            total: getActionMaxUses(r.name) ?? r.total,
+            resetOn: r.resetOn,
+            dieOrType: r.dieOrType
         });
     }
 
@@ -2677,64 +2548,35 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
         }
     }
 
-    // Check if raw actions provides maxUses
-    let rawWildShapeUses: number | undefined;
-    if (raw && typeof raw === "object" && raw.actions) {
-        const actionCategories = Object.values(raw.actions || {});
-        for (const list of actionCategories) {
+    // Auto-heal class and subclass resources (class rules data): add missing ones and raise totals that are too low.
+    // D&D Beyond's own count wins when the character has an action of that name with limited uses.
+    const rawActionUses = (name: string): number | undefined => {
+        for (const list of Object.values(raw?.actions || {})) {
             if (!Array.isArray(list)) continue;
-            const match = list.find(
-                (a: any) => a?.name?.toLowerCase() === "wild shape" && a?.limitedUse?.maxUses != null
-            );
-            if (match && typeof match.limitedUse.maxUses === "number" && match.limitedUse.maxUses > 0) {
-                rawWildShapeUses = match.limitedUse.maxUses;
-                break;
-            }
+            const match = list.find((a: any) => a?.name?.toLowerCase() === name.toLowerCase() && a?.limitedUse?.maxUses != null);
+            if (match && typeof match.limitedUse.maxUses === "number" && match.limitedUse.maxUses > 0) return match.limitedUse.maxUses;
         }
-    }
-
-    const druidClass = (character.classes || []).find(c => c?.name?.toLowerCase() === "druid");
-    if (druidClass && druidClass.level >= 2) {
-        const expectedUses =
-            rawWildShapeUses ??
-            (druidClass.level >= 20
-                ? 99
-                : druidClass.level >= 17
-                    ? 4
-                    : druidClass.level >= 6
-                        ? 3
-                        : 2);
-
-        const existingWs = character.classResources.find(r => r?.name?.toLowerCase() === "wild shape");
-        if (existingWs) {
-            if (existingWs.total < expectedUses) {
-                existingWs.total = expectedUses;
-            }
+        return undefined;
+    };
+    const slugName = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const abilityMod = (ab: string) => character.abilities?.find((a) => a.abbr.toLowerCase() === ab)?.modifier ?? 0;
+    const expected = resolveClassResources(
+        (character.classes || []).map((c) => {
+            const def = findClassRule(c.name || "");
+            const subName = slugName((c as any).subclassDefinition?.name || c.subclass || "");
+            const subclass = subName ? def?.subclasses?.find((s) => slugName(s.name) === subName || s.id === subName || subName.includes(slugName(s.name))) : undefined;
+            return { def, subclass, level: Number(c.level) || 1 };
+        }),
+        abilityMod,
+        character.vitals?.proficiencyBonus || 2
+    );
+    for (const r of expected) {
+        const total = rawActionUses(r.name) ?? r.total;
+        const existing = character.classResources.find((x) => x?.name?.toLowerCase() === r.name.toLowerCase());
+        if (existing) {
+            if (existing.total < total) existing.total = total;
         } else {
-            character.classResources.push({
-                name: "Wild Shape",
-                total: expectedUses,
-                resetOn: "short"
-            });
-        }
-
-        const druidSub = String((druidClass as any).subclassDefinition?.name || (druidClass as any).subclass || "").toLowerCase();
-        if (druidClass.level >= 6 && druidSub.includes("stars")) {
-            const wisMod = character.abilities?.find(a => a.abbr === "WIS")?.modifier ?? 0;
-            const expectedCosmic = Math.max(1, wisMod);
-            const existingCosmic = character.classResources.find(r => r?.name?.toLowerCase() === "cosmic omen");
-            if (existingCosmic) {
-                if (existingCosmic.total < expectedCosmic) {
-                    existingCosmic.total = expectedCosmic;
-                }
-            } else {
-                character.classResources.push({
-                    name: "Cosmic Omen",
-                    total: expectedCosmic,
-                    resetOn: "long",
-                    dieOrType: "1d6"
-                });
-            }
+            character.classResources.push({ name: r.name, total, resetOn: r.resetOn, dieOrType: r.dieOrType });
         }
     }
 

@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { setClassRules } from '../../../src/services/classRules';
+import { serverRulesClasses } from './serverRulesClasses';
 import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
 import characterSheet from '../../../src/views/characterSheet/characterSheet.ctrl';
 import characterSheetTemplate from '../../../src/views/characterSheet/characterSheet.template';
@@ -9,6 +11,11 @@ import footerTemplate from '../../../src/views/footer/footer.template';
 import homeTemplate from '../../../src/views/home/home.template';
 
 describe('Frontend View Templates', () => {
+    // The sheet reads class rules served from rule_classes; use the same seeded data here
+    beforeEach(() => {
+        setClassRules(serverRulesClasses());
+    });
+
     it('renders homeTemplate with expected hero content', () => {
         const element = homeTemplate();
         expect(element.tagName.toLowerCase()).toBe('el-home');
@@ -2941,5 +2948,38 @@ describe('Frontend View Templates', () => {
         const orcResNames = legacyOrc.classResources.map((r: any) => r.name);
         expect(orcResNames).toContain('Adrenaline Rush');
         expect(orcResNames).toContain('Relentless Endurance');
+    });
+
+    it('derives class stat fallbacks from the class rules when D&D Beyond sends no modifiers', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const stats = [
+            { id: 1, value: 10 }, { id: 2, value: 16 }, { id: 3, value: 14 },
+            { id: 4, value: 10 }, { id: 5, value: 14 }, { id: 6, value: 16 }
+        ];
+        const make = (name: string, level: number, sub?: string) => parseDndBeyondCharacter({
+            id: 1, name: 'Probe', stats, modifiers: {}, inventory: [], spells: {},
+            classes: [{ level, definition: { name }, subclassDefinition: sub ? { name: sub } : undefined }]
+        });
+
+        // Monk 14: Unarmored Defense 10 + DEX + WIS, Unarmored Movement +25, Disciplined Survivor saves
+        const monk = make('Monk', 14);
+        expect(monk.vitals.armorClass).toBe(15);
+        expect(monk.vitals.speed).toBe('55 ft.');
+        expect(monk.abilities.every((a: any) => a.proficientSave)).toBe(true);
+
+        // College of Dance: Dazzling Footwork 10 + DEX + CHA
+        expect(make('Bard', 3, 'College of Dance').vitals.armorClass).toBe(16);
+
+        // Gloom Stalker: Dread Ambusher adds WIS to Initiative
+        expect(make('Ranger', 3, 'Gloom Stalker').vitals.initiative).toBe(3 + 2);
+
+        // Paladin 6: Aura of Protection adds CHA to every save
+        const paladin = make('Paladin', 6);
+        expect(paladin.abilities.find((a: any) => a.abbr === 'STR')!.save).toBe(0 + 3);
+
+        // Circle of the Stars 6: Cosmic Omen reaction
+        const druid = make('Druid', 6, 'Circle of the Stars');
+        expect(druid.actions.some((a: any) => a.name === 'Cosmic Omen' && a.type === 'Reaction')).toBe(true);
+        expect(make('Druid', 5, 'Circle of the Stars').actions.some((a: any) => a.name === 'Cosmic Omen')).toBe(false);
     });
 });

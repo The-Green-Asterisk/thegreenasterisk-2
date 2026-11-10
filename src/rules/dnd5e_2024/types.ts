@@ -196,6 +196,7 @@ export interface ProgressionGrantedFeature {
         type: "Action" | "Bonus Action" | "Reaction" | "Special";
         range?: string;
         cost?: string;
+        effect?: string;
         notes?: string;
     };
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
@@ -224,12 +225,14 @@ export interface ProgressionFeature {
     name: string;
     description: string;
     modifiers?: StatModifier[];
+    scaleValue?: string;           // the feature's scaling number, e.g. "{{cha}}+{{level}}" (templates as in resources)
     spellPicks?: SpellPick[];
     actionGrant?: {
         name: string;
         type: "Action" | "Bonus Action" | "Reaction";
         range?: string;
         cost?: string;
+        effect?: string;
         notes?: string;
     };
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
@@ -253,6 +256,7 @@ export interface ProgressionChoiceOption {
         type: "Action" | "Bonus Action" | "Reaction";
         range?: string;
         cost?: string;
+        effect?: string;
         notes?: string;
     };
     grantedSpells?: Array<ProgressionGrantedSpell | string>;
@@ -279,6 +283,7 @@ export interface ProgressionResourceUpdate {
     total: number | string; // e.g. 2, or "{{level}}", or "{{pb}}"
     die?: string;           // e.g. "d6", "d8", "d10"
     resetOn: "short" | "long";
+    aliases?: string[];     // other feature names that use this resource or its die (e.g. "Cutting Words")
 }
 
 export interface ProgressionLevel {
@@ -321,6 +326,7 @@ export interface ClassScalingTraits {
     expertiseByLevel?: number[];          // total Expertise picks granted by each class level (index = level)
     asiLevels?: number[];                 // class levels that grant an Ability Score Improvement
     epicBoonLevel?: number;               // class level that grants an Epic Boon feat
+    martialArtsDieByLevel?: string[];     // Martial Arts die by class level (index = level); its weapons can use it
     [key: string]: any;
 }
 

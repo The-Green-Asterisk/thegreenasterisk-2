@@ -35,3 +35,33 @@ export function findClassRule(nameOrId: string): ClassDefinition | undefined {
     const key = (nameOrId || "").trim().toLowerCase();
     return getClassRules().find((c) => c.id === key || c.name.toLowerCase() === key);
 }
+
+/** Feature name variants to look up: the whole name, and either side of a "Feature: Option" colon. */
+function featureNameKeys(name: string): string[] {
+    const raw = String(name || "").trim().toLowerCase();
+    const keys = [raw, raw.split(":")[0].trim()];
+    if (raw.includes(":")) keys.push(raw.split(":").slice(1).join(":").trim());
+    return keys.filter(Boolean);
+}
+
+/** The ids of every class whose own (not subclass) features include this feature name. */
+export function getCanonicalClassesForFeature(name: string): string[] {
+    const keys = featureNameKeys(name);
+    return getClassRules()
+        .filter((cls) => (cls.features || []).some((f) => keys.includes(String(f.name || "").trim().toLowerCase())))
+        .map((cls) => cls.id);
+}
+
+/** Every subclass whose features include this feature name. */
+export function getCanonicalSubclassesForFeature(name: string): Array<{ classSlug: string; subSlug: string; subName: string }> {
+    const keys = featureNameKeys(name);
+    const out: Array<{ classSlug: string; subSlug: string; subName: string }> = [];
+    for (const cls of getClassRules()) {
+        for (const sub of cls.subclasses || []) {
+            if ((sub.features || []).some((f) => keys.includes(String(f.name || "").trim().toLowerCase()))) {
+                out.push({ classSlug: cls.id, subSlug: sub.id, subName: sub.name });
+            }
+        }
+    }
+    return out;
+}

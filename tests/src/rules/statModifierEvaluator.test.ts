@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { setClassRules } from "../../../src/services/classRules";
+import { serverRulesClasses } from "../views/serverRulesClasses";
 import { applyProgressionChoiceOption, applyStatModifier, evaluateCharacterStatModifiers } from "../../../src/rules/dnd5e_2024/statModifierEvaluator";
 import { CharacterData } from "../../../src/views/characterSheet/characterData";
 
@@ -65,6 +67,8 @@ function createMockCharacter(): CharacterData {
 }
 
 describe("StatModifierEvaluator", () => {
+    beforeEach(() => setClassRules(serverRulesClasses()));
+
     describe("applyStatModifier", () => {
         it("modifies AC with bonus and reverts it", () => {
             const char = createMockCharacter();

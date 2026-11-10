@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "../../../src/views/characterSheet/featureDecisions";
+import { beforeEach, describe, expect, it } from "vitest";
+import { setClassRules } from "../../../src/services/classRules";
+import { serverRulesClasses } from "./serverRulesClasses";
+import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData, extractFeaturesAndApplyDecisions } from "../../../src/views/characterSheet/featureDecisions";
 import { CharacterData } from "../../../src/views/characterSheet/characterData";
 
 function createMockCharacter(): CharacterData {
@@ -122,15 +124,16 @@ function createMockCharacter(): CharacterData {
 }
 
 describe("Feature Decisions Progression Choice Integration", () => {
+    beforeEach(() => setClassRules(serverRulesClasses()));
+
     it("dynamically grants spells and modifies stats when switching Divine Order", () => {
         const char = createMockCharacter();
 
         // Initially on protector: switch to thaumaturge
         applyFeatureDecisionOnCharacterData(char, "cleric-divine-order", "divine-order:thaumaturge");
 
-        // Should grant Sacred Flame spell
-        const sacredFlame = char.spells.find(s => s.name.toLowerCase() === "sacred flame");
-        expect(sacredFlame).toBeDefined();
+        // 2024 Thaumaturge grants a Cleric cantrip of the player's choice (a spell pick), not a fixed spell
+        expect(char.spells.some(s => s.name.toLowerCase() === "sacred flame")).toBe(false);
 
         // Should add WIS mod (+3) to Arcana and Religion
         const arcana = char.skills.find(s => s.name === "Arcana");
@@ -140,10 +143,6 @@ describe("Feature Decisions Progression Choice Integration", () => {
 
         // Now switch back to protector
         applyFeatureDecisionOnCharacterData(char, "cleric-divine-order", "divine-order:protector");
-
-        // Sacred flame granted spell should be reverted
-        const removedSacredFlame = char.spells.find(s => s.name.toLowerCase() === "sacred flame");
-        expect(removedSacredFlame).toBeUndefined();
 
         // Skill bonuses should revert
         expect(char.skills.find(s => s.name === "Arcana")?.bonus).toBe(0);
@@ -262,5 +261,65 @@ describe("Feature Decisions Progression Choice Integration", () => {
         applyFeatureDecisionOnCharacterData(char, "custom-transcendence", "none");
         expect(char.vitals.armorClass).toBe(initialAc);
         expect(char.abilities.find(a => a.abbr === "STR")!.save).toBe(initialStrSave);
+    });
+
+    it("builds D&D Beyond class feature decisions from the class rules and reads older saved keys", () => {
+        const raw = {
+            classes: [{
+                level: 6,
+                definition: { name: "Barbarian", classFeatures: [] },
+                subclassDefinition: { name: "Path of the Wild Heart", classFeatures: [{ name: "Aspect of the Beast", requiredLevel: 6 }] },
+                classFeatures: [{ definition: { id: 900, name: "Aspect of the Beast", requiredLevel: 6 } }]
+            }]
+        };
+        const prefix = "subclass:path-of-the-wild-heart:aspect-of-the-beast:6";
+
+        const fresh = extractFeaturesAndApplyDecisions(raw, [], {});
+        const dec = fresh.features.find(f => f.name === "Aspect of the Beast")!.decisions![0];
+        expect(dec.id).toBe(`${prefix}:aspect-of-the-beast:0`);
+        expect(dec.selectedValue).toBe("none");
+        expect(dec.options.map(o => o.value)).toContain("aspect-of-the-beast:owl");
+
+        // A pick the sheet saved before the decisions came from the class rules
+        const legacy = extractFeaturesAndApplyDecisions(raw, [], { [`${prefix}:aspect:0`]: "aspect:owl" });
+        expect(legacy.features.find(f => f.name === "Aspect of the Beast")!.decisions![0].selectedValue).toBe("aspect-of-the-beast:owl");
+    });
+
+    it("drives Scholar from the class rules and swaps its Expertise modifier", () => {
+        const raw = {
+            classes: [{
+                level: 2,
+                definition: { name: "Wizard", classFeatures: [{ id: 901, name: "Scholar", requiredLevel: 2 }] },
+                classFeatures: [{ definition: { id: 901, name: "Scholar", requiredLevel: 2 } }]
+            }]
+        };
+        const mods = () => [{ type: "expertise", subType: "arcana", componentId: 901, _sourceKey: "class", isGranted: true }];
+        const prefix = "class:wizard:scholar:2";
+
+        const asImported = mods();
+        const dec = extractFeaturesAndApplyDecisions(raw, asImported, {}).features.find(f => f.name === "Scholar")!.decisions!;
+        expect(dec).toHaveLength(1);
+        expect(dec[0].id).toBe(`${prefix}:scholar:0`);
+        expect(dec[0].selectedValue).toBe("scholar:arcana");
+        expect(dec[0].options.map(o => o.value)).toEqual(["scholar:arcana", "scholar:history", "scholar:investigation", "scholar:medicine", "scholar:nature", "scholar:religion"]);
+
+        const changed = mods();
+        extractFeaturesAndApplyDecisions(raw, changed, { [`${prefix}:scholar:0`]: "scholar:history" });
+        expect(changed.filter(m => m.type === "expertise").map(m => m.subType)).toEqual(["history"]);
+    });
+
+    it("doesn't treat Superior Hunter's Defense as a Fighting Style", () => {
+        const raw = {
+            classes: [{
+                level: 15,
+                definition: { name: "Ranger", classFeatures: [] },
+                subclassDefinition: { name: "Hunter", classFeatures: [{ name: "Superior Hunter's Defense", requiredLevel: 15 }] },
+                classFeatures: [{ definition: { id: 902, name: "Superior Hunter's Defense", requiredLevel: 15 } }]
+            }]
+        };
+        const result = extractFeaturesAndApplyDecisions(raw, [], {});
+        const dec = result.features.find(f => f.name === "Superior Hunter's Defense")!.decisions!;
+        expect(dec.map(d => d.label)).toEqual(["Superior Hunter's Defense"]);
+        expect(result.hasFightingStyleDecision).toBe(false);
     });
 });

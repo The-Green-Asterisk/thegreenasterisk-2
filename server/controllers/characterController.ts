@@ -13,6 +13,7 @@ import CharacterVitals from "services/database/entity/CharacterVitals";
 import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
 import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
+import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
 import BaseController from "./baseController";
 import ItemController from "./itemController";
 import RulesController from "./rulesController";
@@ -293,8 +294,8 @@ export default class CharacterController extends BaseController {
     }
 
     public static async getSavedCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
-        // Spell slot auto-heal reads class spellcasting from the rules data
-        await loadClassSpellcastingRules();
+        // Spell slot and resource auto-heal, feature cleanup, and saved decisions read the class rules data
+        await Promise.all([loadClassSpellcastingRules(), loadClassRulesData()]);
         const currentUser = SessionController.getUser(req as ReqAndUser);
         if (!currentUser) {
             return {
@@ -411,14 +412,17 @@ export default class CharacterController extends BaseController {
                 }
             }
 
-            // Auto-heal Wild Shape uses for Druids saved under outdated formulas
+            // Auto-heal class resource uses saved under outdated formulas (class rules resourceUpdates)
             if (character && Array.isArray(character.classes) && Array.isArray(character.classResources)) {
-                const druid = character.classes.find((c: any) => c?.name?.toLowerCase() === "druid");
-                if (druid && druid.level >= 2) {
-                    const expectedUses = druid.level >= 20 ? 99 : druid.level >= 17 ? 4 : druid.level >= 6 ? 3 : 2;
-                    const ws = character.classResources.find((r: any) => r?.name?.toLowerCase() === "wild shape");
-                    if (ws && typeof ws.total === "number" && ws.total < expectedUses) {
-                        ws.total = expectedUses;
+                const abilityMod = (ab: string) => {
+                    const a = (character.abilities || []).find((x: any) => String(x?.abbr || "").toLowerCase() === ab.toLowerCase());
+                    return Number(a?.modifier) || 0;
+                };
+                const expected = expectedClassResourceTotals(character.classes, abilityMod, Number(character.vitals?.proficiencyBonus) || 2);
+                for (const r of character.classResources) {
+                    const want = expected.get(String(r?.name || "").toLowerCase());
+                    if (want && typeof r.total === "number" && r.total < want) {
+                        r.total = want;
                         autoHealedPayload = true;
                     }
                 }
@@ -605,8 +609,8 @@ export default class CharacterController extends BaseController {
     }
 
     public static async saveCharacter(req: http.IncomingMessage, res: http.ServerResponse) {
-        // Spell slot auto-heal reads class spellcasting from the rules data
-        await loadClassSpellcastingRules();
+        // Spell slot and resource auto-heal, feature cleanup, and saved decisions read the class rules data
+        await Promise.all([loadClassSpellcastingRules(), loadClassRulesData()]);
         return this.persistCharacter(req, res, "update");
     }
 
@@ -992,11 +996,12 @@ export default class CharacterController extends BaseController {
                 continue;
             }
 
-            // Omit bogus default Fighting Style on non-Fighter/Paladin/Ranger classes
+            // Omit a bogus default Fighting Style on a class whose rules have no Fighting Style feature
+            const primaryRule = primaryClassId ? findServerClassRule(primaryClassId) : undefined;
             if (
                 lowerName.startsWith("fighting style:") &&
-                primaryClassId &&
-                !["fighter", "paladin", "ranger"].includes(primaryClassId)
+                primaryRule &&
+                !primaryRule.featureNames.some((n) => n.toLowerCase() === "fighting style")
             ) {
                 changed = true;
                 continue;
@@ -1101,43 +1106,32 @@ export default class CharacterController extends BaseController {
     private static inferFeatureActionType(name: string, desc: string): "Action" | "Bonus Action" | "Reaction" | null {
         const n = (name || "").toLowerCase().trim();
         const d = this.stripHtmlTags(desc || "").toLowerCase();
+        const usage = classFeatureUsage();
+        const base = n.split(":")[0].trim();
+        const granted = usage.grantTypes.get(n) || usage.grantTypes.get(base);
+        if (granted) {
+            return granted === "Action" || granted === "Bonus Action" || granted === "Reaction" ? granted : null;
+        }
         if (
             n.includes("ability score improvement") ||
+            // Spellcasting features (the rules' two names for them)
             n === "spellcasting" ||
             n === "pact magic" ||
-            n === "druidic" ||
             n.includes("level spells") ||
             n.startsWith("subclass:") ||
-            n === "extra attack" ||
-            n === "two extra attacks" ||
-            n === "three extra attacks" ||
-            n.includes("swim form") ||
-            n.includes("fly form") ||
+            n.startsWith("fighting style:") ||
+            // Class picks and stat-only features (class rules)
+            usage.passive.has(n) ||
+            usage.passive.has(base) ||
+            // Species traits and feats
             n === "keen senses" ||
             n === "fey ancestry" ||
             n === "darkvision" ||
             n === "trance" ||
             n === "elven lineage" ||
-            n === "unarmored defense" ||
-            n === "unarmored movement" ||
-            n === "fast movement" ||
-            n === "expertise" ||
-            n === "jack of all trades" ||
-            n === "evasion" ||
-            n === "danger sense" ||
-            n.startsWith("fighting style:") ||
-            n === "primal order" ||
-            n.startsWith("primal order:") ||
-            n === "divine order" ||
-            n.startsWith("divine order:") ||
-            n === "elemental fury" ||
-            n === "blessed strikes" ||
             n === "alert"
         ) {
             return null;
-        }
-        if (n.includes("cosmic omen")) {
-            return "Reaction";
         }
         if (/\bas a bonus action\b|\btake a bonus action\b|\bbonus action to\b|\bbonus action when\b/i.test(d)) {
             return "Bonus Action";
@@ -1147,29 +1141,9 @@ export default class CharacterController extends BaseController {
         }
         if (
             /\bas a magic action\b|\btake a magic action\b|\bas an action\b|\btake an action\b|\bonce on each of your turns\b|\bonce per turn\b|\bwhen you hit\b|\bexpend a spell slot\b|\bexpend one use\b|\bexpend a use\b|\byou can cast\b/i.test(d) ||
-            n.includes("wild shape") ||
-            n.includes("wild companion") ||
-            n.includes("wild resurgence") ||
-            n.includes("starry form") ||
-            n.includes("star map") ||
-            n.includes("twinkling constellations") ||
-            n.includes("channel divinity") ||
-            n.includes("bardic inspiration") ||
-            n.includes("second wind") ||
-            n.includes("action surge") ||
-            n.includes("flurry of blows") ||
-            n.includes("patient defense") ||
-            n.includes("step of the wind") ||
-            n.includes("stunning strike") ||
-            n.includes("lay on hands") ||
-            n.includes("divine smite") ||
-            n.includes("sneak attack") ||
-            n.includes("cunning action") ||
-            n.includes("cunning strike") ||
-            n.includes("uncanny dodge") ||
-            n.includes("innate sorcery") ||
-            n.includes("font of magic") ||
-            n.includes("arcane recovery")
+            // Features that spend a class resource or grant an action (class rules)
+            usage.active.has(n) ||
+            usage.active.has(base)
         ) {
             if (d.includes("bonus action")) return "Bonus Action";
             if (d.includes("reaction")) return "Reaction";
@@ -1734,7 +1708,7 @@ export default class CharacterController extends BaseController {
                 const classNames = Array.isArray(data.classes)
                     ? data.classes.map((c: any) => String(c.name || "").toLowerCase())
                     : [];
-                const knownClassPrefixes = ["barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
+                const knownClassPrefixes = getLoadedClassRules().map((r) => r.slug);
                 const decisionEntities = Object.entries(choicesMap)
                     .filter(([decisionId]) => {
                         const prefix = decisionId.split("-")[0]?.toLowerCase();

@@ -1,4 +1,7 @@
 import { CharacterData, DEFAULT_DND55_CONDITIONS } from "../characterData";
+import { resolveClassResources, resolveClassScaleValues } from "../../../rules/dnd5e_2024/classResources";
+import { AbilityName, ClassDefinition, ProgressionLevel } from "../../../rules/dnd5e_2024/types";
+import { resolveRuleClass } from "../classChoiceDecisions";
 
 const EXACT_CONDITION_NAMES: string[] = DEFAULT_DND55_CONDITIONS.map(c => c.name);
 const CONDITION_WORD_REGEX = new RegExp(`\\b(${EXACT_CONDITION_NAMES.join("|")})\\b`, "g");
@@ -443,6 +446,37 @@ function getAbilityScore(character: CharacterData | null | undefined, abbr: stri
     return found ? Number(found.score) || 10 : 10;
 }
 
+const normName = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Whether an entity name ("Bardic Inspiration", "Maneuvers: Trip Attack", "Rage") refers to a class-data name. */
+function entityMatchesName(entity: string, name: string): boolean {
+    const e = normName(entity);
+    const prefix = normName(String(entity || "").split(":")[0]);
+    const n = normName(name);
+    if (!e || !n) return false;
+    return e === n || prefix === n || e.startsWith(`${n} `) || (e.length >= 4 && n.startsWith(`${e} `));
+}
+
+/** The character's classes with their class rules (rule_classes, via /get-rules). */
+function characterRuleClasses(character: CharacterData | null | undefined) {
+    return (character?.classes || []).map(c => ({ ...resolveRuleClass(c.name, c.subclass), level: Number(c.level) || 1, name: c.name }));
+}
+
+const ABILITY_ABBR: Record<AbilityName, string> = { str: "STR", dex: "DEX", con: "CON", int: "INT", wis: "WIS", cha: "CHA" };
+
+/** Every name a class's unlocked data uses: features, subclass features, resources and what else they're called, badges. */
+function classDataNames(def: ClassDefinition | undefined, subclass: any, level: number): string[] {
+    if (!def) return [];
+    const levels = [...(def.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])].filter(pl => pl.level <= level);
+    return [
+        ...(def.features || []).filter(f => (f.level || 1) <= level).map(f => f.name),
+        ...((subclass?.features || []) as Array<{ name: string; level?: number }>).filter(f => (f.level || 3) <= level).map(f => f.name),
+        ...levels.flatMap(pl => (pl.features || []).map(f => f.name)),
+        ...levels.flatMap(pl => (pl.resourceUpdates || []).flatMap(r => [r.name, ...(r.aliases || [])])),
+        ...levels.flatMap(pl => (pl.badges || []).map(b => b.replace(/\s+[+-]?\d.*$/, "")))
+    ].filter(Boolean);
+}
+
 function getClassLevel(character: CharacterData | null | undefined, className?: string, entityName?: string): number {
     if (!character || !Array.isArray(character.classes) || character.classes.length === 0) {
         return Number(character?.level) || 1;
@@ -484,27 +518,9 @@ function getClassLevel(character: CharacterData | null | undefined, className?: 
             }
         }
 
-        // 2. Infer class from well-known class feature/action names
-        const classKeywordMap: Array<[RegExp, string]> = [
-            [/\b(?:wild shape|circle forms|primal strike|starry form|natural recovery|druidic|moonbeam|elemental fury)\b/i, "Druid"],
-            [/\b(?:bardic inspiration|mantle of inspiration|mantle of majesty|unbreakable majesty|beguiling magic|cutting words|countercharm|font of inspiration)\b/i, "Bard"],
-            [/\b(?:flurry of blows|patient defense|step of the wind|deflect attack|deflect attacks|deflect energy|slow fall|uncanny metabolism|martial arts|stunning strike|focus point|monk)\b/i, "Monk"],
-            [/\b(?:rage|reckless attack|brutal strike|frenzy|mindless rage)\b/i, "Barbarian"],
-            [/\b(?:second wind|action surge|indomitable|tactical mind|tactical shift|combat superiority)\b/i, "Fighter"],
-            [/\b(?:lay on hands|divine sense|divine smite|aura of protection|sacred weapon)\b/i, "Paladin"],
-            [/\b(?:sneak attack|cunning action|cunning strike|uncanny dodge|steady aim)\b/i, "Rogue"],
-            [/\b(?:font of magic|metamagic|innate sorcery|sorcery point)\b/i, "Sorcerer"],
-            [/\b(?:pact|eldritch|awakened mind|clairvoyant combatant|create thrall|dark one's blessing|magical cunning)\b/i, "Warlock"],
-            [/\b(?:arcane recovery|portent|bladesong|sculpt spells)\b/i, "Wizard"],
-            [/\b(?:channel divinity|divine intervention|turn undead|sear undead|war priest)\b/i, "Cleric"],
-            [/\b(?:favored enemy|deft explorer|tireless|nature's veil|dread ambusher)\b/i, "Ranger"]
-        ];
-        for (const [pattern, inferredClass] of classKeywordMap) {
-            if (pattern.test(entityLower)) {
-                const found = matchClassByString(inferredClass);
-                if (found) return Number(found.level) || 1;
-            }
-        }
+        // 2. The class whose rules have a feature, resource, or badge by that name (only when exactly one does)
+        const owners = characterRuleClasses(character).filter(rc => classDataNames(rc.def, rc.subclass, rc.level).some(n => entityMatchesName(entityName, n)));
+        if (owners.length === 1) return owners[0].level;
     }
 
     return Number(character.classes[0]?.level) || Number(character.level) || 1;
@@ -514,83 +530,19 @@ function inferScaleValueFromContext(ctx?: TemplatePlaceholderContext): string | 
     if (ctx?.scaleValue) return ctx.scaleValue;
     const char = ctx?.character;
     const nameLower = String(ctx?.entityName || "").toLowerCase();
-    const sourceLower = String(ctx?.sourceName || "").toLowerCase();
     const cLvl = getClassLevel(char, ctx?.sourceName, ctx?.entityName);
     const totalLvl = Number(char?.level) || cLvl || 1;
     const profBonus = Number(char?.vitals?.proficiencyBonus) || Math.floor((totalLvl - 1) / 4) + 2;
 
-    // Bardic Inspiration die or Bardic-scaled features (e.g. Mantle of Inspiration, Combat Inspiration, Psychic Blades, Cutting Words)
-    if (
-        nameLower.includes("bardic inspiration") ||
-        nameLower.includes("combat inspiration") ||
-        nameLower.includes("cutting words") ||
-        sourceLower.includes("bard") ||
-        sourceLower.includes("glamour") ||
-        sourceLower.includes("lore") ||
-        sourceLower.includes("valor") ||
-        sourceLower.includes("swords") ||
-        sourceLower.includes("dance")
-    ) {
-        const bardLvl = getClassLevel(char, "Bard");
-        if (nameLower.includes("mantle of inspiration")) {
-            // 2024 College of Glamour: 2 rolls of Bardic Inspiration die (or temp HP = 2x die / level scaling)
-            return bardLvl >= 15 ? "2d12" : bardLvl >= 10 ? "2d10" : bardLvl >= 5 ? "2d8" : "2d6";
-        }
-        if (nameLower.includes("song of rest")) {
-            return bardLvl >= 17 ? "1d12" : bardLvl >= 13 ? "1d10" : bardLvl >= 9 ? "1d8" : "1d6";
-        }
-        return bardLvl >= 15 ? "1d12" : bardLvl >= 10 ? "1d10" : bardLvl >= 5 ? "1d8" : "1d6";
-    }
-
-    // Rogue Sneak Attack
-    if (nameLower.includes("sneak attack") || sourceLower.includes("rogue")) {
-        const rogueLvl = getClassLevel(char, "Rogue");
-        return `${Math.ceil(rogueLvl / 2)}d6`;
-    }
-
-    // Monk Martial Arts / Focus / Deflect Attacks
-    if (nameLower.includes("martial arts") || nameLower.includes("unarmed") || sourceLower.includes("monk")) {
-        const monkLvl = getClassLevel(char, "Monk");
-        if (nameLower.includes("unarmored movement")) {
-            const bonus = monkLvl >= 18 ? 30 : monkLvl >= 14 ? 25 : monkLvl >= 10 ? 20 : monkLvl >= 6 ? 15 : 10;
-            return `+${bonus} ft.`;
-        }
-        return monkLvl >= 17 ? "1d12" : monkLvl >= 11 ? "1d10" : monkLvl >= 5 ? "1d8" : "1d6";
-    }
-
-    // Barbarian Rage Damage / Brutal Strike
-    if (nameLower.includes("rage") || sourceLower.includes("barbarian")) {
-        const barbLvl = getClassLevel(char, "Barbarian");
-        const dmg = barbLvl >= 16 ? 4 : barbLvl >= 9 ? 3 : 2;
-        return `+${dmg}`;
-    }
-
-    // Fighter Second Wind / Battle Master Superiority Die
-    if (nameLower.includes("second wind")) {
-        const fighterLvl = getClassLevel(char, "Fighter");
-        return `1d10 + ${fighterLvl}`;
-    }
-    if (nameLower.includes("superiority") || nameLower.includes("combat superiority") || nameLower.includes("maneuver")) {
-        const fighterLvl = getClassLevel(char, "Fighter");
-        return fighterLvl >= 18 ? "1d12" : fighterLvl >= 10 ? "1d10" : "1d8";
-    }
-
-    // Paladin Aura of Protection
-    if (nameLower.includes("aura of protection")) {
-        const chaMod = Math.max(1, getAbilityMod(char, "CHA"));
-        return `+${chaMod}`;
-    }
+    // Class data: resource dice, level badges, feature scale values and modifiers (class rules)
+    const abilityMod = (ab: AbilityName) => getAbilityMod(char, ABILITY_ABBR[ab]);
+    const scale = resolveClassScaleValues(characterRuleClasses(char), abilityMod, profBonus)
+        .find(v => v.names.some(n => entityMatchesName(nameLower, n)));
+    if (scale) return scale.value;
 
     // Dragonborn Breath Weapon
     if (nameLower.includes("breath weapon")) {
         return totalLvl >= 17 ? "4d10" : totalLvl >= 11 ? "3d10" : totalLvl >= 5 ? "2d10" : "1d10";
-    }
-
-    // Warlock Dark One's Blessing / Celestial Healing Light / Awakened Mind
-    if (nameLower.includes("dark one") && nameLower.includes("blessing")) {
-        const warlockLvl = getClassLevel(char, "Warlock");
-        const chaMod = getAbilityMod(char, "CHA");
-        return `${ Math.max(1, warlockLvl + chaMod) }`;
     }
 
     return `+${profBonus}`;
@@ -619,46 +571,29 @@ function inferLimitedUseFromContext(ctx?: TemplatePlaceholderContext): string {
     const nameLower = String(ctx?.entityName || "").toLowerCase();
     const sourceLower = String(ctx?.sourceName || "").toLowerCase();
 
-    if (nameLower.includes("bardic inspiration")) {
-        return String(Math.max(1, getAbilityMod(char, "CHA")));
-    }
-    if (nameLower.includes("rage")) {
-        const barbLvl = getClassLevel(char, "Barbarian");
-        return String(barbLvl >= 17 ? 6 : barbLvl >= 12 ? 5 : barbLvl >= 6 ? 4 : barbLvl >= 3 ? 3 : 2);
-    }
-    if (nameLower.includes("channel divinity")) {
-        const clericLvl = getClassLevel(char, "Cleric");
-        if (clericLvl > 0) return String(clericLvl >= 6 ? 3 : 2);
-        return "2";
-    }
-    if (nameLower.includes("second wind")) {
-        const fighterLvl = getClassLevel(char, "Fighter");
-        return String(fighterLvl >= 10 ? 4 : fighterLvl >= 4 ? 3 : 2);
-    }
-    if (nameLower.includes("action surge")) {
-        const fighterLvl = getClassLevel(char, "Fighter");
-        return String(fighterLvl >= 17 ? 2 : 1);
-    }
+    // Class and subclass resources (class rules), by name or a name that uses them
+    const ruleClasses = characterRuleClasses(char);
+    const resource = resolveClassResources(ruleClasses, ab => getAbilityMod(char, ABILITY_ABBR[ab]), profBonus)
+        .find(r => [r.name, ...(r.aliases || [])].some(n => entityMatchesName(nameLower, n)));
+    if (resource) return String(resource.total);
     if (nameLower.includes("luck") || nameLower.includes("lucky")) {
         return String(profBonus);
     }
     if (
-        nameLower.includes("beguiling magic") ||
-        nameLower.includes("mantle of majesty") ||
-        nameLower.includes("unbreakable majesty") ||
         nameLower.includes("fey touched") ||
         nameLower.includes("shadow touched") ||
         nameLower.includes("magic initiate") ||
-        nameLower.includes("misty step") ||
-        nameLower.includes("clairvoyant combatant") ||
-        nameLower.includes("thought shield") ||
-        nameLower.includes("create thrall") ||
-        nameLower.includes("eldritch hex")
+        nameLower.includes("misty step")
     ) {
         return "1";
     }
-    if (sourceLower.includes("warlock") || sourceLower.includes("bard")) {
-        return String(Math.max(1, getAbilityMod(char, "CHA")));
+    // A feature of a spellcasting class: its spellcasting ability modifier (minimum 1)
+    const sourceClass = ruleClasses.find(rc =>
+        rc.def && (sourceLower.includes(rc.name.toLowerCase()) || (!!rc.subclass && sourceLower.includes(rc.subclass.name.toLowerCase())))
+    );
+    const castingAbility = sourceClass?.def?.spellcasting?.ability || sourceClass?.subclass?.spellcastingOverride?.ability;
+    if (castingAbility) {
+        return String(Math.max(1, getAbilityMod(char, ABILITY_ABBR[castingAbility as AbilityName])));
     }
 
     return String(profBonus);

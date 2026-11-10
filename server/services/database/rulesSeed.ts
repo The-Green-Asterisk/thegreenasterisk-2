@@ -5208,6 +5208,10 @@ export const SEED_CLASSES = [
     {
         "id": "warlock",
         "name": "Warlock",
+        "retiredFeatures": [
+            { "name": "Otherworldly Patron", "level": 1 },
+            { "name": "Pact Boon", "level": 3 }
+        ],
         "description": "A wielder of magic derived from a bargain with an otherworldly patron.",
         "hitDie": 8,
         "primaryAbilities": [

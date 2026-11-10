@@ -4,9 +4,10 @@ import {
     FeatureDecision,
     FeatureItem
 } from "./characterData";
-import { applyStatModifier, applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
+import { applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
 import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
-import { getCanonicalClassForFeature, getCanonicalSubclassForFeature } from "../../rules/dnd5e_2024/classes";
+import { classChoiceDecisionIds, classChoiceModifiers, classChoiceOptions, findChoiceOption, matchClassChoice, unlockedClassChoices } from "./classChoiceDecisions";
+import { getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -79,235 +80,6 @@ export const FIGHTING_STYLE_OPTIONS: FeatureChoiceOption[] = [
     { value: "fighting-style:blind-fighting", label: "Blind Fighting (10 ft. Blindsight)" },
     { value: "fighting-style:interception", label: "Interception (Reduce Damage by 1d10 + PB)" },
     { value: "fighting-style:unarmed", label: "Unarmed Fighting (1d6/1d8 Unarmed Strikes)" }
-];
-
-export const DIVINE_ORDER_OPTIONS: FeatureChoiceOption[] = [
-    { value: "divine-order:protector", label: "Protector (Heavy Armor & Martial Weapons)" },
-    { value: "divine-order:thaumaturge", label: "Thaumaturge (+WIS Mod to Arcana & Religion)" }
-];
-
-export const PRIMAL_ORDER_OPTIONS: FeatureChoiceOption[] = [
-    { value: "primal-order:magician", label: "Magician (+WIS Mod to Arcana & Nature)" },
-    { value: "primal-order:warden", label: "Warden (Medium Armor & Martial Weapons)" }
-];
-
-export const PACT_BOON_OPTIONS: FeatureChoiceOption[] = [
-    { value: "pact-boon:blade", label: "Pact of the Blade (Use CHA for Bound Weapon)" },
-    { value: "pact-boon:chain", label: "Pact of the Chain (Familiar Invocation)" },
-    { value: "pact-boon:tome", label: "Pact of the Tome (Book of Shadows)" }
-];
-
-export const ELEMENTAL_FURY_OPTIONS: FeatureChoiceOption[] = [
-    { value: "elemental-fury:potent-spellcasting", label: "Potent Spellcasting (+WIS to Cantrip Damage)" },
-    { value: "elemental-fury:primal-strike", label: "Primal Strike (+1d8 Elemental Weapon/Beast Damage)" }
-];
-
-export const BLESSED_STRIKES_OPTIONS: FeatureChoiceOption[] = [
-    { value: "blessed-strikes:potent-spellcasting", label: "Potent Spellcasting (+WIS to Cantrip Damage)" },
-    { value: "blessed-strikes:divine-strike", label: "Divine Strike (+1d8 Radiant/Necrotic Weapon Damage)" }
-];
-
-export const DRUID_LAND_BIOME_OPTIONS: FeatureChoiceOption[] = [
-    { value: "land-biome:arid", label: "Arid (Desert / Savanna / Badlands)" },
-    { value: "land-biome:polar", label: "Polar (Tundra / Glacier / Taiga)" },
-    { value: "land-biome:temperate", label: "Temperate (Forest / Grassland)" },
-    { value: "land-biome:tropical", label: "Tropical (Rainforest / Swamp)" }
-];
-
-export const BARBARIAN_ASPECT_OPTIONS: FeatureChoiceOption[] = [
-    { value: "aspect:elephant", label: "Aspect of the Elephant (Athletics Advantage, Double Capacity)" },
-    { value: "aspect:owl", label: "Aspect of the Owl (Darkvision 60 ft., Perception Advantage)" },
-    { value: "aspect:spider", label: "Aspect of the Spider (Climbing Speed = Walking Speed)" },
-    { value: "aspect:wolf", label: "Aspect of the Wolf (Fast-Paced Tracking & Normal Stealth)" }
-];
-
-export const HUNTER_DEFENSIVE_TACTIC_OPTIONS: FeatureChoiceOption[] = [
-    { value: "defensive-tactic:multiattack-defense", label: "Multiattack Defense (Disadvantage on Consecutive Hits)" },
-    { value: "defensive-tactic:escape-the-horde", label: "Escape the Horde (Opportunity Attacks have Disadvantage)" }
-];
-
-export const WILD_HEART_RAGE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "wild-heart-rage:bear", label: "Bear (Resistance to all damage except Force)" },
-    { value: "wild-heart-rage:eagle", label: "Eagle (Dash & Disengage as Bonus Action)" },
-    { value: "wild-heart-rage:wolf", label: "Wolf (Melee Advantage for Allies within 5 ft)" }
-];
-
-export const ZEALOT_DIVINE_FURY_OPTIONS: FeatureChoiceOption[] = [
-    { value: "divine-fury:radiant", label: "Radiant (1d6 + half Barbarian level Radiant damage)" },
-    { value: "divine-fury:necrotic", label: "Necrotic (1d6 + half Barbarian level Necrotic damage)" }
-];
-
-export const ELEMENTS_ATTUNEMENT_OPTIONS: FeatureChoiceOption[] = [
-    { value: "elemental-attunement:fire", label: "Fire (Reach + Fire Damage)" },
-    { value: "elemental-attunement:cold", label: "Cold (Reach + Cold Damage)" },
-    { value: "elemental-attunement:acid", label: "Acid (Reach + Acid Damage)" },
-    { value: "elemental-attunement:lightning", label: "Lightning (Reach + Lightning Damage)" },
-    { value: "elemental-attunement:thunder", label: "Thunder (Reach + Thunder Damage)" }
-];
-
-export const HUNTER_PREY_OPTIONS: FeatureChoiceOption[] = [
-    { value: "hunter-prey:colossus-slayer", label: "Colossus Slayer (+1d8 damage to injured target)" },
-    { value: "hunter-prey:horde-breaker", label: "Horde Breaker (Extra attack against adjacent creature)" }
-];
-
-export const PRIMAL_COMPANION_OPTIONS: FeatureChoiceOption[] = [
-    { value: "primal-companion:land", label: "Beast of the Land (Maul & Charge)" },
-    { value: "primal-companion:sea", label: "Beast of the Sea (Amphibious & Binding Strike)" },
-    { value: "primal-companion:sky", label: "Beast of the Sky (Flyby & Shred)" }
-];
-
-export const DRACONIC_ANCESTOR_OPTIONS: FeatureChoiceOption[] = [
-    { value: "draconic-ancestor:gold", label: "Gold (Fire)" },
-    { value: "draconic-ancestor:red", label: "Red (Fire)" },
-    { value: "draconic-ancestor:brass", label: "Brass (Fire)" },
-    { value: "draconic-ancestor:blue", label: "Blue (Lightning)" },
-    { value: "draconic-ancestor:bronze", label: "Bronze (Lightning)" },
-    { value: "draconic-ancestor:silver", label: "Silver (Cold)" },
-    { value: "draconic-ancestor:white", label: "White (Cold)" },
-    { value: "draconic-ancestor:black", label: "Black (Acid)" },
-    { value: "draconic-ancestor:copper", label: "Copper (Acid)" },
-    { value: "draconic-ancestor:green", label: "Green (Poison)" }
-];
-
-export const CUNNING_STRIKE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "cunning-strike:poison", label: "Poison (Con Save or Poisoned 1 min)" },
-    { value: "cunning-strike:trip", label: "Trip (Dex Save or Prone)" },
-    { value: "cunning-strike:withdraw", label: "Withdraw (Move half speed without OA)" }
-];
-
-export const BRUTAL_STRIKE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "brutal-strike:forceful-blow", label: "Forceful Blow (Push 15 ft + Follow 10 ft)" },
-    { value: "brutal-strike:hamstring-blow", label: "Hamstring Blow (Reduce Speed by 15 ft)" }
-];
-
-export const TACTICAL_MASTER_OPTIONS: FeatureChoiceOption[] = [
-    { value: "tactical-master:push", label: "Push (Push target 10 ft away)" },
-    { value: "tactical-master:sap", label: "Sap (Disadvantage on target's next attack)" },
-    { value: "tactical-master:slow", label: "Slow (Reduce target Speed by 10 ft)" }
-];
-
-export const FIENDISH_RESILIENCE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "fiendish-resilience:fire", label: "Fire Resistance" },
-    { value: "fiendish-resilience:cold", label: "Cold Resistance" },
-    { value: "fiendish-resilience:lightning", label: "Lightning Resistance" },
-    { value: "fiendish-resilience:acid", label: "Acid Resistance" },
-    { value: "fiendish-resilience:poison", label: "Poison Resistance" },
-    { value: "fiendish-resilience:necrotic", label: "Necrotic Resistance" },
-    { value: "fiendish-resilience:radiant", label: "Radiant Resistance" },
-    { value: "fiendish-resilience:psychic", label: "Psychic Resistance" },
-    { value: "fiendish-resilience:force", label: "Force Resistance" },
-    { value: "fiendish-resilience:thunder", label: "Thunder Resistance" },
-    { value: "fiendish-resilience:bludgeoning", label: "Bludgeoning Resistance" },
-    { value: "fiendish-resilience:piercing", label: "Piercing Resistance" },
-    { value: "fiendish-resilience:slashing", label: "Slashing Resistance" }
-];
-
-export const TOTEMIC_ATTUNEMENT_OPTIONS: FeatureChoiceOption[] = [
-    { value: "totemic-attunement:falcon", label: "Falcon (Flying Speed = Walking Speed)" },
-    { value: "totemic-attunement:lion", label: "Lion (Disadvantage on Attacks against Allies)" },
-    { value: "totemic-attunement:ram", label: "Ram (Knock Target Prone on Hit)" }
-];
-
-export const DEVIOUS_STRIKE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "devious-strike:daze", label: "Daze (Con Save or Dazed 1 turn)" },
-    { value: "devious-strike:knock-out", label: "Knock Out (Con Save or Unconscious 1 min)" },
-    { value: "devious-strike:obscure", label: "Obscure (Dex Save or Blinded 1 turn)" }
-];
-
-export const WIZARD_SCHOLAR_OPTIONS: FeatureChoiceOption[] = [
-    { value: "scholar:arcana", label: "Arcana (INT Expertise)" },
-    { value: "scholar:history", label: "History (INT Expertise)" },
-    { value: "scholar:investigation", label: "Investigation (INT Expertise)" },
-    { value: "scholar:nature", label: "Nature (INT Expertise)" },
-    { value: "scholar:religion", label: "Religion (INT Expertise)" }
-];
-
-export const STARRY_FORM_OPTIONS: FeatureChoiceOption[] = [
-    { value: "starry-form:archer", label: "Archer (Bonus Action 1d8 + WIS Radiant Ranged Attack)" },
-    { value: "starry-form:chalice", label: "Chalice (+1d8 + WIS HP to Another Creature on Healing)" },
-    { value: "starry-form:dragon", label: "Dragon (Minimum 10 on Int/Wis & Con Concentration Checks)" }
-];
-
-export const SEA_WRATH_OPTIONS: FeatureChoiceOption[] = [
-    { value: "sea-wrath:cold", label: "Cold (Ocean Spray Freezing Cold Damage)" },
-    { value: "sea-wrath:thunder", label: "Thunder (Crashing Wave Deafening Thunder Damage)" }
-];
-
-export const MOON_CIRCLE_STRIKE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "moon-circle-strike:radiant", label: "Radiant (Moonlight Infused Strikes)" },
-    { value: "moon-circle-strike:physical", label: "Natural Physical Strike (Beast's Physical Strike)" }
-];
-
-export const DIVINER_THIRD_EYE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "third-eye:darkvision", label: "Darkvision (120 ft. Darkvision)" },
-    { value: "third-eye:ethereal-sight", label: "Ethereal Sight (See 60 ft. into the Ethereal Plane)" },
-    { value: "third-eye:greater-comprehension", label: "Greater Comprehension (Read Any Language)" },
-    { value: "third-eye:see-invisibility", label: "See Invisibility (See Invisible Creatures within 10 ft.)" }
-];
-
-export const CHAMPION_FIGHTING_STYLE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "champion-style:archery", label: "Archery (+2 Ranged Attack Rolls)" },
-    { value: "champion-style:defense", label: "Defense (+1 Armor Class)" },
-    { value: "champion-style:dueling", label: "Dueling (+2 One-Handed Melee Damage)" },
-    { value: "champion-style:great-weapon", label: "Great Weapon Fighting (Reroll 1 or 2 on Damage)" },
-    { value: "champion-style:protection", label: "Protection (Disadvantage to Enemy Attackers)" },
-    { value: "champion-style:two-weapon", label: "Two-Weapon Fighting (Add Ability Mod to Off-Hand)" }
-];
-
-export const STUDENT_OF_WAR_OPTIONS: FeatureChoiceOption[] = [
-    { value: "student-of-war:history", label: "History (INT Skill Proficiency)" },
-    { value: "student-of-war:insight", label: "Insight (WIS Skill Proficiency)" },
-    { value: "student-of-war:medicine", label: "Medicine (WIS Skill Proficiency)" },
-    { value: "student-of-war:performance", label: "Performance (CHA Skill Proficiency)" },
-    { value: "student-of-war:persuasion", label: "Persuasion (CHA Skill Proficiency)" }
-];
-
-export const PSI_WARRIOR_THRUST_OPTIONS: FeatureChoiceOption[] = [
-    { value: "psi-thrust:push", label: "Telekinetic Push (Push Target up to 10 ft.)" },
-    { value: "psi-thrust:topple", label: "Telekinetic Topple (Knock Target Prone)" }
-];
-
-export const BATTERING_ROOTS_OPTIONS: FeatureChoiceOption[] = [
-    { value: "battering-roots:push", label: "Battering Push (Push Target up to 10 ft.)" },
-    { value: "battering-roots:topple", label: "Battering Topple (Knock Target Prone)" }
-];
-
-export const IMPROVED_BRUTAL_STRIKE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "improved-brutal-strike:staggering-blow", label: "Staggering Blow (Target Disadvantage & Can't Take Reactions)" },
-    { value: "improved-brutal-strike:sundering-blow", label: "Sundering Blow (Next Ally Attack Has +5 to Hit)" }
-];
-
-export const OPEN_HAND_TECHNIQUE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "open-hand:addle", label: "Addle (Prevent Target from Taking Reactions)" },
-    { value: "open-hand:push", label: "Push (Push Target up to 15 ft.)" },
-    { value: "open-hand:topple", label: "Topple (Knock Target Prone)" }
-];
-
-export const WAR_GOD_BLESSING_OPTIONS: FeatureChoiceOption[] = [
-    { value: "war-god:shield-of-faith", label: "Shield of Faith (Bonus Action +2 AC Defense)" },
-    { value: "war-god:spiritual-weapon", label: "Spiritual Weapon (Bonus Action Force Damage Strike)" }
-];
-
-export const STEPS_OF_THE_FEY_OPTIONS: FeatureChoiceOption[] = [
-    { value: "steps-of-the-fey:taunting-step", label: "Taunting Step (Target Disadvantage on Other Attacks)" },
-    { value: "steps-of-the-fey:refreshing-step", label: "Refreshing Step (Grant Ally 1d10 + PB Temp HP)" }
-];
-
-export const FEY_WANDERER_GLAMOUR_OPTIONS: FeatureChoiceOption[] = [
-    { value: "fey-glamour:deception", label: "Deception (CHA Skill Proficiency)" },
-    { value: "fey-glamour:performance", label: "Performance (CHA Skill Proficiency)" },
-    { value: "fey-glamour:persuasion", label: "Persuasion (CHA Skill Proficiency)" }
-];
-
-export const HUNTER_SUPERIOR_DEFENSE_OPTIONS: FeatureChoiceOption[] = [
-    { value: "superior-defense:evasion", label: "Evasion (Half or No Damage on Dex Saves)" },
-    { value: "superior-defense:uncanny-dodge", label: "Uncanny Dodge (Halve Attack Damage as a Reaction)" }
-];
-
-export const ABERRANT_REVELATION_OPTIONS: FeatureChoiceOption[] = [
-    { value: "aberrant-revelation:flight", label: "Flight (Hovering Flight Speed = Walking Speed)" },
-    { value: "aberrant-revelation:see-invisibility", label: "See Invisibility (See Invisible Creatures 60 ft.)" },
-    { value: "aberrant-revelation:viscous-body", label: "Viscous Body (Escape Grapples & Squeeze 1-Inch Space)" }
 ];
 
 function slugifyKey(input: string): string {
@@ -568,28 +340,6 @@ export function decisionValueToModifiers(selectedValue: string, sourceKey = "fea
         return [];
     }
 
-    if (kind === "divine-order") {
-        const order = parts[1];
-        if (order === "thaumaturge") {
-            return [
-                { type: "bonus", subType: "arcana", statId: 5, value: 0, isGranted: true, _sourceKey: sourceKey },
-                { type: "bonus", subType: "religion", statId: 5, value: 0, isGranted: true, _sourceKey: sourceKey }
-            ];
-        }
-        return [];
-    }
-
-    if (kind === "primal-order") {
-        const order = parts[1];
-        if (order === "magician") {
-            return [
-                { type: "bonus", subType: "arcana", statId: 5, value: 0, isGranted: true, _sourceKey: sourceKey },
-                { type: "bonus", subType: "nature", statId: 5, value: 0, isGranted: true, _sourceKey: sourceKey }
-            ];
-        }
-        return [];
-    }
-
     if (kind === "resistance") {
         const dmgKey = parts[1];
         const dmgMeta = DAMAGE_RESISTANCE_TYPES.find(d => d.key === dmgKey);
@@ -661,7 +411,6 @@ function mapLabelToCanonicalDecisionValue(
         if (lower === skillNameLower || lower === skill.key || lower.includes(skillNameLower)) {
             const isExp =
                 hintLower.includes("expertise") ||
-                hintLower.includes("scholar") ||
                 lower.includes("expertise");
             return {
                 value: `${isExp ? "skill-exp" : "skill-prof"}:${skill.key}`,
@@ -694,46 +443,6 @@ function mapLabelToCanonicalDecisionValue(
         }
     }
 
-    // Check Elemental Fury
-    for (const efOpt of ELEMENTAL_FURY_OPTIONS) {
-        const optName = efOpt.label.split("(")[0].trim().toLowerCase();
-        if (lower === optName || (hintLower.includes("fury") && lower.includes(optName))) {
-            return efOpt;
-        }
-    }
-
-    // Check Blessed Strikes
-    for (const bsOpt of BLESSED_STRIKES_OPTIONS) {
-        const optName = bsOpt.label.split("(")[0].trim().toLowerCase();
-        if (lower === optName || (hintLower.includes("blessed") && lower.includes(optName))) {
-            return bsOpt;
-        }
-    }
-
-    // Check Land Biomes
-    for (const bOpt of DRUID_LAND_BIOME_OPTIONS) {
-        const bName = bOpt.label.split("(")[0].trim().toLowerCase();
-        if (lower === bName || lower.includes(bName) || (hintLower.includes("land") && lower.includes(bName))) {
-            return bOpt;
-        }
-    }
-
-    // Check Barbarian Aspects
-    for (const aOpt of BARBARIAN_ASPECT_OPTIONS) {
-        const aName = aOpt.label.split("(")[0].replace("aspect of the", "").trim().toLowerCase();
-        if (lower === aName || lower.includes(aName) || (hintLower.includes("aspect") && lower.includes(aName))) {
-            return aOpt;
-        }
-    }
-
-    // Check Hunter Defensive Tactics
-    for (const dtOpt of HUNTER_DEFENSIVE_TACTIC_OPTIONS) {
-        const dtName = dtOpt.label.split("(")[0].trim().toLowerCase();
-        if (lower === dtName || lower.includes(dtName) || (hintLower.includes("defense") && lower.includes(dtName))) {
-            return dtOpt;
-        }
-    }
-
     return null;
 }
 
@@ -756,28 +465,12 @@ export interface ExtractedFeaturesResult {
     features: FeatureItem[];
     hasFightingStyleDecision: boolean;
     activeFightingStyleValues: Set<string>;
-    hasPactBoonDecision: boolean;
-    activePactBoonValue?: string;
     netAbilityDecisionDelta: Record<number, number>;
 }
 
-const BOILERPLATE_CLASS_FEATURES = new Set([
-    "hit points",
-    "proficiencies",
-    "equipment",
-    "core barbarian traits",
-    "core bard traits",
-    "core cleric traits",
-    "core druid traits",
-    "core fighter traits",
-    "core monk traits",
-    "core paladin traits",
-    "core ranger traits",
-    "core rogue traits",
-    "core sorcerer traits",
-    "core warlock traits",
-    "core wizard traits"
-]);
+const BOILERPLATE_CLASS_FEATURES = new Set(["hit points", "proficiencies", "equipment"]);
+/** Boilerplate class features: the fixed set, plus every class's "Core <Class> Traits". */
+const isBoilerplateClassFeature = (nameLower: string) => BOILERPLATE_CLASS_FEATURES.has(nameLower) || /^core .+ traits$/.test(nameLower);
 
 function parseAbilityDeltaFromDecisionValue(val: string): { statId: number; bonus: number } | null {
     if (!val || val === "none") return null;
@@ -910,8 +603,18 @@ export function extractFeaturesAndApplyDecisions(
 
     let hasFightingStyleDecision = false;
     const activeFightingStyleValues = new Set<string>();
-    let hasPactBoonDecision = false;
-    let activePactBoonValue: string | undefined = undefined;
+    // Class and subclass choices the character's levels have unlocked (class rules), and every class feature name
+    const classChoices = unlockedClassChoices(
+        (raw.classes || []).map((c: any) => ({ name: c.definition?.name, level: Number(c.level) || 1, subclass: c.subclassDefinition?.name }))
+    );
+    const allClassFeatureNames: string[] = [
+        ...(raw.classes || []).flatMap((c: any) => [
+            ...(c.classFeatures || []).map((cf: any) => cf?.definition?.name || cf?.name),
+            ...(c.definition?.classFeatures || []).map((cf: any) => cf?.name),
+            ...(c.subclassDefinition?.classFeatures || []).map((cf: any) => cf?.name)
+        ]),
+        ...(raw.options?.class || []).map((o: any) => o.definition?.name)
+    ].filter(Boolean);
 
     // Collect all action entries across class, race, feat, background, item so we can look up limitedUse & scaleValue metadata for features
     const allRawActions: any[] = [];
@@ -1032,10 +735,12 @@ export function extractFeaturesAndApplyDecisions(
             label: string,
             defaultValue: string,
             baseOptions: FeatureChoiceOption[],
-            controlledMods: any[]
+            controlledMods: any[],
+            extra?: { toModifiers?: (value: string) => any[]; savedValue?: string }
         ) => {
             if (baseOptions.length < 2) return;
             const decisionId = `${featureKeyPrefix}:${idSuffix}`;
+            const valueToMods = extra?.toModifiers || ((v: string) => decisionValueToModifiers(v, category));
             const options = [...baseOptions];
 
             if (defaultValue === "none" && !options.some(o => o.value === "none")) {
@@ -1046,7 +751,7 @@ export function extractFeaturesAndApplyDecisions(
             if (!options.some(o => o.value === effectiveDefault)) {
                 effectiveDefault = options[0].value;
             }
-            const userChosen = activeFeatureChoices[decisionId];
+            const userChosen = activeFeatureChoices[decisionId] ?? extra?.savedValue;
             const selectedValue = userChosen && options.some(o => o.value === userChosen)
                 ? userChosen
                 : effectiveDefault;
@@ -1065,7 +770,7 @@ export function extractFeaturesAndApplyDecisions(
                 if (controlledMods.length > 0) {
                     removeModifiersByUids(new Set(controlledMods.map(m => m._modUid)));
                 } else if (effectiveDefault !== "none") {
-                    const defaultMods = decisionValueToModifiers(effectiveDefault, category);
+                    const defaultMods = valueToMods(effectiveDefault);
                     for (const dm of defaultMods) {
                         const matchIdx = allMods.findIndex(
                             m =>
@@ -1079,7 +784,7 @@ export function extractFeaturesAndApplyDecisions(
                         }
                     }
                 }
-                const replacementMods = decisionValueToModifiers(selectedValue, category);
+                const replacementMods = valueToMods(selectedValue);
                 replacementMods.forEach((rm, idx) => {
                     const uid = `decision-${decisionId}-${idx}`;
                     consumedModUids.add(uid);
@@ -1099,6 +804,56 @@ export function extractFeaturesAndApplyDecisions(
                 }
             }
         };
+
+        // 0. Class and subclass choices from the class rules (Divine Order, Aspect of the Beast, Scholar, ...); Fighting
+        // Style features are feat picks, handled in step 5
+        const handledDdbChoiceIds = new Set<string>();
+        const isFightingStyleName =
+            nameLower.includes("fighting style") ||
+            nameLower.includes("fighting initiate") ||
+            FIGHTING_STYLE_OPTIONS.some(o => nameLower === o.label.split("(")[0].trim().toLowerCase());
+        const classMatch = isFightingStyleName ? undefined : matchClassChoice(featureName, classChoices, allClassFeatureNames);
+        if (classMatch) {
+            const { choice } = classMatch;
+            // D&D Beyond's own pick for this feature: a chosen option definition or a choice's selected label
+            const ddbPicks: string[] = (raw.options?.[category] || [])
+                .filter((o: any) => compIds.has(Number(o.componentId)))
+                .map((o: any) => String(o.definition?.name || ""));
+            featureChoices.forEach((c: any) => {
+                const rawOpts = Array.isArray(c.options) ? c.options : choiceDefsMap.get(`${c.componentTypeId}-${c.type}`) || [];
+                const labels = rawOpts.map((ro: any) => stripHtml(ro.label || ro.name || ""));
+                if (!labels.some((l: string) => findChoiceOption(choice, l))) return;
+                handledDdbChoiceIds.add(String(c.id));
+                const picked = rawOpts.find((ro: any) => Number(ro.id) === Number(c.optionValue));
+                if (picked) ddbPicks.push(stripHtml(picked.label || picked.name || ""));
+            });
+            // ...or the option whose effects D&D Beyond already applied to this feature (e.g. Scholar's Expertise)
+            const appliedOption = (choice.options || []).find(o => {
+                const expected = classChoiceModifiers(o, category);
+                return expected.length > 0 && expected.every(em => featureMods.some(
+                    m => !consumedModUids.has(m._modUid) && m.type === em.type && m.subType === em.subType
+                ));
+            });
+            const defaultOption = ddbPicks.map((l) => findChoiceOption(choice, l)).find(Boolean) || classMatch.option || appliedOption;
+            const defaultValue = defaultOption ? `${choice.id}:${defaultOption.id}` : "none";
+            const toModifiers = (v: string) => classChoiceModifiers(findChoiceOption(choice, v), category);
+            const controlled = toModifiers(defaultValue)
+                .map(em => featureMods.find(
+                    m => !consumedModUids.has(m._modUid) && m.type === em.type && m.subType === em.subType
+                ))
+                .filter(Boolean);
+            // Saved under this choice's id, or an older key (choice.legacyKeys) with an older value
+            const savedKey = classChoiceDecisionIds(featureKeyPrefix, choice).find(k => activeFeatureChoices[k]);
+            const savedOption = savedKey ? findChoiceOption(choice, activeFeatureChoices[savedKey]) : undefined;
+            registerDecision(
+                `${choice.id}:0`,
+                choice.name,
+                defaultValue,
+                classChoiceOptions(choice),
+                controlled,
+                { toModifiers, savedValue: savedOption ? `${choice.id}:${savedOption.id}` : undefined }
+            );
+        }
 
         // 1. Special Case: Resilient Feat (+1 Ability & Saving Throw Proficiency)
         const isResilient = nameLower.includes("resilient");
@@ -1223,11 +978,6 @@ export function extractFeaturesAndApplyDecisions(
                 m.type === "expertise" &&
                 SKILL_KEY_SET.has(String(m.subType || "").toLowerCase())
         );
-        const isScholar = nameLower.includes("scholar");
-        const scholarAllowedSkills = isScholar
-            ? ["arcana", "history", "investigation", "medicine", "nature", "religion"]
-            : undefined;
-
         if (skillExpMods.length > 0) {
             skillExpMods.forEach((m, idx) => {
                 const skKey = String(m.subType || "").toLowerCase();
@@ -1236,19 +986,19 @@ export function extractFeaturesAndApplyDecisions(
                     `skill-exp:${idx}`,
                     label,
                     `skill-exp:${skKey}`,
-                    buildSkillChoiceOptions("exp", scholarAllowedSkills),
+                    buildSkillChoiceOptions("exp"),
                     [m]
                 );
             });
-        } else if (nameLower === "expertise" || nameLower.includes("skill expert") || isScholar) {
+        } else if (!classMatch && (nameLower === "expertise" || nameLower.includes("skill expert"))) {
             const count = nameLower === "expertise" ? 2 : 1;
             const defaults = ["perception", "stealth"];
             for (let idx = 0; idx < count; idx++) {
                 registerDecision(
                     `skill-exp:${idx}`,
                     count > 1 ? `Skill Expertise #${idx + 1}` : "Skill Expertise",
-                    `skill-exp:${scholarAllowedSkills ? scholarAllowedSkills[0] : defaults[idx] || "perception"}`,
-                    buildSkillChoiceOptions("exp", scholarAllowedSkills),
+                    `skill-exp:${defaults[idx] || "perception"}`,
+                    buildSkillChoiceOptions("exp"),
                     []
                 );
             }
@@ -1297,7 +1047,7 @@ export function extractFeaturesAndApplyDecisions(
             nameLower.includes("fighting initiate") ||
             !!fsDetectedFromName;
 
-        if (isFightingStyleFeature) {
+        if (isFightingStyleFeature && !classMatch) {
             const fsMods = featureMods.filter(
                 m =>
                     !consumedModUids.has(m._modUid) &&
@@ -1321,521 +1071,6 @@ export function extractFeaturesAndApplyDecisions(
                 hasFightingStyleDecision = true;
                 activeFightingStyleValues.add(activeDec.selectedValue);
             }
-        }
-
-        // 6. Cleric Divine Order & Druid Primal Order & Warlock Pact Boon
-        if (nameLower.includes("divine order") || nameLower === "protector" || nameLower === "thaumaturge") {
-            const orderMods = featureMods.filter(
-                m => !consumedModUids.has(m._modUid) && (m.subType === "arcana" || m.subType === "religion")
-            );
-            const defaultOrder = nameLower.includes("thaumaturge") || orderMods.length > 0
-                ? "divine-order:thaumaturge"
-                : "divine-order:protector";
-            registerDecision(
-                "divine-order:0",
-                "Divine Order",
-                defaultOrder,
-                DIVINE_ORDER_OPTIONS,
-                orderMods
-            );
-        }
-
-        if (nameLower.includes("primal order") || nameLower === "magician" || nameLower === "warden") {
-            const orderMods = featureMods.filter(
-                m => !consumedModUids.has(m._modUid) && (m.subType === "arcana" || m.subType === "nature")
-            );
-            const defaultOrder = nameLower.includes("magician") || orderMods.length > 0
-                ? "primal-order:magician"
-                : "primal-order:warden";
-            registerDecision(
-                "primal-order:0",
-                "Primal Order",
-                defaultOrder,
-                PRIMAL_ORDER_OPTIONS,
-                orderMods
-            );
-        }
-
-        if (
-            nameLower.includes("pact boon") ||
-            nameLower === "pact of the blade" ||
-            nameLower === "pact of the chain" ||
-            nameLower === "pact of the tome"
-        ) {
-            const defaultPact = nameLower.includes("blade")
-                ? "pact-boon:blade"
-                : nameLower.includes("chain")
-                  ? "pact-boon:chain"
-                  : "pact-boon:tome";
-            registerDecision(
-                "pact-boon:0",
-                "Pact Boon",
-                defaultPact,
-                PACT_BOON_OPTIONS,
-                []
-            );
-            const activeDec = decisions[decisions.length - 1];
-            if (activeDec) {
-                hasPactBoonDecision = true;
-                activePactBoonValue = activeDec.selectedValue;
-            }
-        }
-
-        // Elemental Fury (Druid 7)
-        if (nameLower.includes("elemental fury") || nameLower === "primal strike" || (nameLower === "potent spellcasting" && category === "class")) {
-            const defaultFury = nameLower.includes("primal strike")
-                ? "elemental-fury:primal-strike"
-                : "elemental-fury:potent-spellcasting";
-            registerDecision(
-                "elemental-fury:0",
-                "Elemental Fury",
-                defaultFury,
-                ELEMENTAL_FURY_OPTIONS,
-                []
-            );
-        }
-
-        // Blessed Strikes (Cleric 7)
-        if (nameLower.includes("blessed strikes") || nameLower === "divine strike") {
-            const defaultStrike = nameLower.includes("divine strike")
-                ? "blessed-strikes:divine-strike"
-                : "blessed-strikes:potent-spellcasting";
-            registerDecision(
-                "blessed-strikes:0",
-                "Blessed Strikes",
-                defaultStrike,
-                BLESSED_STRIKES_OPTIONS,
-                []
-            );
-        }
-
-        // Circle of the Land Biome Affinity
-        if (nameLower.includes("circle of the land") || nameLower.includes("land's aid") || nameLower.includes("biome")) {
-            let defaultBiome = "land-biome:arid";
-            if (nameLower.includes("polar")) defaultBiome = "land-biome:polar";
-            else if (nameLower.includes("temperate")) defaultBiome = "land-biome:temperate";
-            else if (nameLower.includes("tropical")) defaultBiome = "land-biome:tropical";
-            registerDecision(
-                "land-biome:0",
-                "Land Biome Affinity",
-                defaultBiome,
-                DRUID_LAND_BIOME_OPTIONS,
-                []
-            );
-        }
-
-        // Aspect of the Beast (Barbarian 6)
-        if (nameLower.includes("aspect of the beast") || nameLower.includes("wild heart")) {
-            let defaultAspect = "aspect:elephant";
-            if (nameLower.includes("owl")) defaultAspect = "aspect:owl";
-            else if (nameLower.includes("spider")) defaultAspect = "aspect:spider";
-            else if (nameLower.includes("wolf")) defaultAspect = "aspect:wolf";
-            registerDecision(
-                "aspect:0",
-                "Aspect of the Beast",
-                defaultAspect,
-                BARBARIAN_ASPECT_OPTIONS,
-                []
-            );
-        }
-
-        // Defensive Tactics (Hunter Ranger 6)
-        if (nameLower.includes("defensive tactics") || nameLower.includes("escape the horde") || nameLower.includes("multiattack defense")) {
-            const defaultTactic = nameLower.includes("escape")
-                ? "defensive-tactic:escape-the-horde"
-                : "defensive-tactic:multiattack-defense";
-            registerDecision(
-                "defensive-tactic:0",
-                "Defensive Tactics",
-                defaultTactic,
-                HUNTER_DEFENSIVE_TACTIC_OPTIONS,
-                []
-            );
-        }
-
-        // Scholar (Wizard 2)
-        if (nameLower.includes("scholar") && (nameLower.includes("academic") || nameLower.includes("arcana") || nameLower.includes("history") || nameLower.includes("investigation") || nameLower.includes("religion") || nameLower.includes("nature"))) {
-            let defaultSkill = "scholar:arcana";
-            if (nameLower.includes("history")) defaultSkill = "scholar:history";
-            else if (nameLower.includes("investigation")) defaultSkill = "scholar:investigation";
-            else if (nameLower.includes("nature")) defaultSkill = "scholar:nature";
-            else if (nameLower.includes("religion")) defaultSkill = "scholar:religion";
-            registerDecision(
-                "scholar:0",
-                "Scholar Academic Skill",
-                defaultSkill,
-                WIZARD_SCHOLAR_OPTIONS,
-                []
-            );
-        }
-
-        // Rage of the Wilds (Barbarian 3)
-        if (nameLower.includes("rage of the wilds") || (nameLower.includes("wild heart") && (nameLower.includes("bear") || nameLower.includes("eagle") || nameLower.includes("wolf")))) {
-            let defaultRage = "wild-heart-rage:bear";
-            if (nameLower.includes("eagle")) defaultRage = "wild-heart-rage:eagle";
-            else if (nameLower.includes("wolf")) defaultRage = "wild-heart-rage:wolf";
-            registerDecision(
-                "wild-heart-rage:0",
-                "Rage of the Wilds",
-                defaultRage,
-                WILD_HEART_RAGE_OPTIONS,
-                []
-            );
-        }
-
-        // Divine Fury (Barbarian Zealot 3)
-        if (nameLower.includes("divine fury")) {
-            const defaultFury = nameLower.includes("necrotic")
-                ? "divine-fury:necrotic"
-                : "divine-fury:radiant";
-            registerDecision(
-                "divine-fury:0",
-                "Divine Fury",
-                defaultFury,
-                ZEALOT_DIVINE_FURY_OPTIONS,
-                []
-            );
-        }
-
-        // Elemental Attunement (Monk Elements 3)
-        if (nameLower.includes("elemental attunement") || nameLower.includes("warrior of the elements")) {
-            let defaultElem = "elemental-attunement:fire";
-            if (nameLower.includes("cold")) defaultElem = "elemental-attunement:cold";
-            else if (nameLower.includes("acid")) defaultElem = "elemental-attunement:acid";
-            else if (nameLower.includes("lightning")) defaultElem = "elemental-attunement:lightning";
-            else if (nameLower.includes("thunder")) defaultElem = "elemental-attunement:thunder";
-            registerDecision(
-                "elemental-attunement:0",
-                "Elemental Attunement",
-                defaultElem,
-                ELEMENTS_ATTUNEMENT_OPTIONS,
-                []
-            );
-        }
-
-        // Primal Companion (Ranger Beast Master 3)
-        if (nameLower.includes("primal companion") || nameLower.includes("beast master")) {
-            let defaultComp = "primal-companion:land";
-            if (nameLower.includes("sea")) defaultComp = "primal-companion:sea";
-            else if (nameLower.includes("sky")) defaultComp = "primal-companion:sky";
-            registerDecision(
-                "primal-companion:0",
-                "Primal Companion",
-                defaultComp,
-                PRIMAL_COMPANION_OPTIONS,
-                []
-            );
-        }
-
-        // Hunter's Prey (Ranger Hunter 3)
-        if (nameLower.includes("hunter's prey") || nameLower.includes("colossus slayer") || nameLower.includes("horde breaker")) {
-            const defaultPrey = nameLower.includes("horde")
-                ? "hunter-prey:horde-breaker"
-                : "hunter-prey:colossus-slayer";
-            registerDecision(
-                "hunter-prey:0",
-                "Hunter's Prey",
-                defaultPrey,
-                HUNTER_PREY_OPTIONS,
-                []
-            );
-        }
-
-        // Draconic Ancestor (Sorcerer Draconic 3)
-        if (nameLower.includes("draconic ancestor") || nameLower.includes("dragon ancestor")) {
-            let defaultAnc = "draconic-ancestor:gold";
-            const anc = DRACONIC_ANCESTOR_OPTIONS.find(o => nameLower.includes(o.label.split(" ")[0].toLowerCase()));
-            if (anc) defaultAnc = anc.value;
-            registerDecision(
-                "draconic-ancestor:0",
-                "Draconic Ancestor",
-                defaultAnc,
-                DRACONIC_ANCESTOR_OPTIONS,
-                []
-            );
-        }
-
-        // Cunning Strike (Rogue 5)
-        if (nameLower.includes("cunning strike")) {
-            let defaultCunning = "cunning-strike:trip";
-            if (nameLower.includes("poison")) defaultCunning = "cunning-strike:poison";
-            else if (nameLower.includes("withdraw")) defaultCunning = "cunning-strike:withdraw";
-            registerDecision(
-                "cunning-strike:0",
-                "Cunning Strike",
-                defaultCunning,
-                CUNNING_STRIKE_OPTIONS,
-                []
-            );
-        }
-
-        // Brutal Strike (Barbarian 9)
-        if (nameLower.includes("brutal strike")) {
-            let defaultBrutal = "brutal-strike:forceful-blow";
-            if (nameLower.includes("hamstring")) defaultBrutal = "brutal-strike:hamstring-blow";
-            registerDecision(
-                "brutal-strike:0",
-                "Brutal Strike",
-                defaultBrutal,
-                BRUTAL_STRIKE_OPTIONS,
-                []
-            );
-        }
-
-        // Tactical Master (Fighter 9)
-        if (nameLower.includes("tactical master")) {
-            let defaultMaster = "tactical-master:push";
-            if (nameLower.includes("sap")) defaultMaster = "tactical-master:sap";
-            else if (nameLower.includes("slow")) defaultMaster = "tactical-master:slow";
-            registerDecision(
-                "tactical-master:0",
-                "Tactical Master",
-                defaultMaster,
-                TACTICAL_MASTER_OPTIONS,
-                []
-            );
-        }
-
-        // Fiendish Resilience (Warlock Fiend 10)
-        if (nameLower.includes("fiendish resilience")) {
-            let defaultRes = "fiendish-resilience:fire";
-            const res = FIENDISH_RESILIENCE_OPTIONS.find(o => nameLower.includes(o.label.split(" ")[0].toLowerCase()));
-            if (res) defaultRes = res.value;
-            registerDecision(
-                "fiendish-resilience:0",
-                "Fiendish Resilience",
-                defaultRes,
-                FIENDISH_RESILIENCE_OPTIONS,
-                []
-            );
-        }
-
-        // Totemic Attunement (Barbarian Wild Heart 14)
-        if (nameLower.includes("totemic attunement")) {
-            let defaultTotem = "totemic-attunement:falcon";
-            if (nameLower.includes("lion")) defaultTotem = "totemic-attunement:lion";
-            else if (nameLower.includes("ram")) defaultTotem = "totemic-attunement:ram";
-            registerDecision(
-                "totemic-attunement:0",
-                "Totemic Attunement",
-                defaultTotem,
-                TOTEMIC_ATTUNEMENT_OPTIONS,
-                []
-            );
-        }
-
-        // Devious Strike (Rogue 14)
-        if (nameLower.includes("devious strike")) {
-            let defaultDevious = "devious-strike:knock-out";
-            if (nameLower.includes("daze")) defaultDevious = "devious-strike:daze";
-            else if (nameLower.includes("obscure")) defaultDevious = "devious-strike:obscure";
-            registerDecision(
-                "devious-strike:0",
-                "Devious Strike",
-                defaultDevious,
-                DEVIOUS_STRIKE_OPTIONS,
-                []
-            );
-        }
-
-        // Starry Form (Druid Stars 3)
-        if (nameLower.includes("starry form")) {
-            let defaultConstellation = "starry-form:archer";
-            if (nameLower.includes("chalice")) defaultConstellation = "starry-form:chalice";
-            else if (nameLower.includes("dragon")) defaultConstellation = "starry-form:dragon";
-            registerDecision(
-                "starry-form:0",
-                "Starry Form Primary Constellation",
-                defaultConstellation,
-                STARRY_FORM_OPTIONS,
-                []
-            );
-        }
-
-        // Wrath of the Sea (Druid Sea 3)
-        if (nameLower.includes("wrath of the sea")) {
-            const defaultDamage = nameLower.includes("thunder") ? "sea-wrath:thunder" : "sea-wrath:cold";
-            registerDecision(
-                "sea-wrath:0",
-                "Wrath of the Sea Damage",
-                defaultDamage,
-                SEA_WRATH_OPTIONS,
-                []
-            );
-        }
-
-        // Circle Forms Strike (Druid Moon 3)
-        if (nameLower.includes("circle forms") || nameLower.includes("circle forms strike")) {
-            const defaultStrike = nameLower.includes("physical") || nameLower.includes("natural") ? "moon-circle-strike:physical" : "moon-circle-strike:radiant";
-            registerDecision(
-                "moon-circle-strike:0",
-                "Circle Forms Strike Damage",
-                defaultStrike,
-                MOON_CIRCLE_STRIKE_OPTIONS,
-                []
-            );
-        }
-
-        // The Third Eye (Wizard Diviner 10)
-        if (nameLower.includes("third eye") || nameLower.includes("the third eye")) {
-            let defaultEye = "third-eye:darkvision";
-            if (nameLower.includes("ethereal")) defaultEye = "third-eye:ethereal-sight";
-            else if (nameLower.includes("comprehension")) defaultEye = "third-eye:greater-comprehension";
-            else if (nameLower.includes("invisibility")) defaultEye = "third-eye:see-invisibility";
-            registerDecision(
-                "third-eye:0",
-                "The Third Eye Primary Benefit",
-                defaultEye,
-                DIVINER_THIRD_EYE_OPTIONS,
-                []
-            );
-        }
-
-        // Additional Fighting Style (Fighter Champion 7)
-        if (nameLower.includes("additional fighting style") || (nameLower.includes("champion") && nameLower.includes("fighting style"))) {
-            let defaultStyle = "champion-style:defense";
-            if (nameLower.includes("archery")) defaultStyle = "champion-style:archery";
-            else if (nameLower.includes("dueling")) defaultStyle = "champion-style:dueling";
-            else if (nameLower.includes("great weapon")) defaultStyle = "champion-style:great-weapon";
-            else if (nameLower.includes("protection")) defaultStyle = "champion-style:protection";
-            else if (nameLower.includes("two-weapon")) defaultStyle = "champion-style:two-weapon";
-            registerDecision(
-                "champion-fighting-style:0",
-                "Additional Fighting Style",
-                defaultStyle,
-                CHAMPION_FIGHTING_STYLE_OPTIONS,
-                []
-            );
-        }
-
-        // Student of War (Fighter Battle Master 3)
-        if (nameLower.includes("student of war")) {
-            let defaultSkill = "student-of-war:history";
-            if (nameLower.includes("insight")) defaultSkill = "student-of-war:insight";
-            else if (nameLower.includes("medicine")) defaultSkill = "student-of-war:medicine";
-            else if (nameLower.includes("performance")) defaultSkill = "student-of-war:performance";
-            else if (nameLower.includes("persuasion")) defaultSkill = "student-of-war:persuasion";
-            registerDecision(
-                "student-of-war:0",
-                "Student of War Skill Proficiency",
-                defaultSkill,
-                STUDENT_OF_WAR_OPTIONS,
-                []
-            );
-        }
-
-        // Telekinetic Thrust (Fighter Psi Warrior 7)
-        if (nameLower.includes("telekinetic thrust")) {
-            const defaultThrust = nameLower.includes("topple") ? "psi-thrust:topple" : "psi-thrust:push";
-            registerDecision(
-                "psi-thrust:0",
-                "Telekinetic Thrust Maneuver",
-                defaultThrust,
-                PSI_WARRIOR_THRUST_OPTIONS,
-                []
-            );
-        }
-
-        // Battering Roots (Barbarian World Tree 10)
-        if (nameLower.includes("battering roots")) {
-            const defaultRoot = nameLower.includes("topple") ? "battering-roots:topple" : "battering-roots:push";
-            registerDecision(
-                "battering-roots:0",
-                "Battering Roots Mastery",
-                defaultRoot,
-                BATTERING_ROOTS_OPTIONS,
-                []
-            );
-        }
-
-        // Improved Brutal Strike (Barbarian 13)
-        if (nameLower.includes("improved brutal strike")) {
-            const defaultBlow = nameLower.includes("sundering") ? "improved-brutal-strike:sundering-blow" : "improved-brutal-strike:staggering-blow";
-            registerDecision(
-                "improved-brutal-strike:0",
-                "Improved Brutal Strike Mastery",
-                defaultBlow,
-                IMPROVED_BRUTAL_STRIKE_OPTIONS,
-                []
-            );
-        }
-
-        // Open Hand Technique (Monk Open Hand 3)
-        if (nameLower.includes("open hand technique")) {
-            let defaultTech = "open-hand:addle";
-            if (nameLower.includes("push")) defaultTech = "open-hand:push";
-            else if (nameLower.includes("topple")) defaultTech = "open-hand:topple";
-            registerDecision(
-                "open-hand:0",
-                "Open Hand Technique Primary Tactic",
-                defaultTech,
-                OPEN_HAND_TECHNIQUE_OPTIONS,
-                []
-            );
-        }
-
-        // War God's Blessing (Cleric War 6)
-        if (nameLower.includes("war god's blessing") || nameLower.includes("war god blessing")) {
-            const defaultBlessing = nameLower.includes("spiritual weapon") ? "war-god:spiritual-weapon" : "war-god:shield-of-faith";
-            registerDecision(
-                "war-god:0",
-                "War God's Blessing Preferred Spell",
-                defaultBlessing,
-                WAR_GOD_BLESSING_OPTIONS,
-                []
-            );
-        }
-
-        // Steps of the Fey (Warlock Archfey 3)
-        if (nameLower.includes("steps of the fey")) {
-            const defaultStep = nameLower.includes("refreshing") ? "steps-of-the-fey:refreshing-step" : "steps-of-the-fey:taunting-step";
-            registerDecision(
-                "steps-of-the-fey:0",
-                "Steps of the Fey Effect",
-                defaultStep,
-                STEPS_OF_THE_FEY_OPTIONS,
-                []
-            );
-        }
-
-        // Otherworldly Glamour (Ranger Fey Wanderer 3)
-        if (nameLower.includes("otherworldly glamour")) {
-            let defaultGlam = "fey-glamour:deception";
-            if (nameLower.includes("performance")) defaultGlam = "fey-glamour:performance";
-            else if (nameLower.includes("persuasion")) defaultGlam = "fey-glamour:persuasion";
-            registerDecision(
-                "fey-glamour:0",
-                "Otherworldly Glamour Bonus Skill",
-                defaultGlam,
-                FEY_WANDERER_GLAMOUR_OPTIONS,
-                []
-            );
-        }
-
-        // Superior Hunter's Defense (Ranger Hunter 15)
-        if (nameLower.includes("superior hunter's defense") || nameLower.includes("superior defense")) {
-            const defaultDef = nameLower.includes("uncanny") ? "superior-defense:uncanny-dodge" : "superior-defense:evasion";
-            registerDecision(
-                "superior-defense:0",
-                "Superior Hunter's Defense",
-                defaultDef,
-                HUNTER_SUPERIOR_DEFENSE_OPTIONS,
-                []
-            );
-        }
-
-        // Revelation in Flesh (Sorcerer Aberrant 14)
-        if (nameLower.includes("revelation in flesh")) {
-            let defaultRev = "aberrant-revelation:flight";
-            if (nameLower.includes("invisibility")) defaultRev = "aberrant-revelation:see-invisibility";
-            else if (nameLower.includes("viscous")) defaultRev = "aberrant-revelation:viscous-body";
-            registerDecision(
-                "aberrant-revelation:0",
-                "Revelation in Flesh Primary Adaptation",
-                defaultRev,
-                ABERRANT_REVELATION_OPTIONS,
-                []
-            );
         }
 
         // 7. Damage Resistance / Elemental / Lineage Traits
@@ -1879,6 +1114,7 @@ export function extractFeaturesAndApplyDecisions(
         // 8. Any remaining explicit choices in raw.choices[category] with choiceDefinitions
         const hadPriorDecisions = decisions.length > 0;
         featureChoices.forEach((c: any, cIdx: number) => {
+            if (handledDdbChoiceIds.has(String(c.id))) return;
             const defKey = `${c.componentTypeId}-${c.type}`;
             const rawOpts = Array.isArray(c.options)
                 ? c.options
@@ -2014,7 +1250,7 @@ export function extractFeaturesAndApplyDecisions(
             cl.definition.classFeatures.forEach((cf: any) => {
                 if ((cf.requiredLevel ?? 1) > cLevel || !cf.name) return;
                 const cfNameLower = String(cf.name).toLowerCase();
-                if (BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) return;
+                if (isBoilerplateClassFeature(cfNameLower)) return;
 
                 const compIds = getComponentIdsForFeature([cf.id, cf.definition?.id], "class");
                 // Skip "Ability Score Improvement" class feature ONLY if it has no class modifiers attached
@@ -2064,7 +1300,7 @@ export function extractFeaturesAndApplyDecisions(
                 const cfNameLower = String(cf.name).trim().toLowerCase();
                 const cfId = cf.id || cf.definition?.id;
                 // Exclude base class features that D&D Beyond bundles into subclassDefinition.classFeatures
-                if (baseFeatureNames.has(cfNameLower) || (cfId && baseFeatureIds.has(cfId)) || BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) {
+                if (baseFeatureNames.has(cfNameLower) || (cfId && baseFeatureIds.has(cfId)) || isBoilerplateClassFeature(cfNameLower)) {
                     return;
                 }
 
@@ -2118,29 +1354,29 @@ export function extractFeaturesAndApplyDecisions(
                 const reqLevel = Number(def.requiredLevel ?? cf.requiredLevel ?? 1);
                 if (reqLevel > cLevel) return;
                 const cfNameLower = String(def.name).toLowerCase();
-                if (BOILERPLATE_CLASS_FEATURES.has(cfNameLower)) return;
+                if (isBoilerplateClassFeature(cfNameLower)) return;
 
                 const cfClassId = def.classId || def.subclassId || cf.classId || cf.subclassId;
                 const cfSourceLower = String(def.source || cf.source || "").toLowerCase().trim();
 
-                const canonCls = getCanonicalClassForFeature(def.name);
-                const canonSub = getCanonicalSubclassForFeature(def.name);
+                const canonCls = getCanonicalClassesForFeature(def.name);
+                const canonSub = getCanonicalSubclassesForFeature(def.name);
                 const classSlug = slugifyKey(cName);
                 const subSlug = slugifyKey(subName);
 
-                // Reject features canonically belonging to other classes or other subclasses
-                if (canonCls && canonCls !== classSlug) return;
-                if (canonSub && (canonSub.classSlug !== classSlug || (canonSub.subSlug !== subSlug && canonSub.subName.toLowerCase() !== subName.toLowerCase()))) return;
+                // Reject features that, in the class rules, belong only to other classes or other subclasses
+                if (canonCls.length > 0 && !canonCls.includes(classSlug)) return;
+                if (canonSub.length > 0 && !canonSub.some(cs => cs.classSlug === classSlug && (cs.subSlug === subSlug || cs.subName.toLowerCase() === subName.toLowerCase()))) return;
 
                 // Reject features explicitly belonging to other classes or subclasses on this character
                 if (cfClassId && (otherClassIds.has(cfClassId) || otherSubclassIds.has(cfClassId))) return;
                 if (cfSourceLower && (otherClassNames.has(cfSourceLower) || otherSubclassNames.has(cfSourceLower))) return;
 
-                const isBase = (canonCls === classSlug) || baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
+                const isBase = canonCls.includes(classSlug) || baseFeatureNames.has(cfNameLower) || (def.id && baseFeatureIds.has(def.id));
                 const subFeaturesList = Array.isArray(cl.subclassDefinition?.classFeatures) ? cl.subclassDefinition.classFeatures : [];
                 const isSubFeatureByName = subFeaturesList.some((scf: any) => (scf.definition?.name || scf.name || "").trim().toLowerCase() === cfNameLower);
                 const isSub = !isBase && (
-                    (canonSub && canonSub.classSlug === classSlug) ||
+                    canonSub.some(cs => cs.classSlug === classSlug) ||
                     (subId && (cfClassId === subId)) ||
                     (subName && cfSourceLower === subName.toLowerCase()) ||
                     isSubFeatureByName
@@ -2218,8 +1454,6 @@ export function extractFeaturesAndApplyDecisions(
         features,
         hasFightingStyleDecision,
         activeFightingStyleValues,
-        hasPactBoonDecision,
-        activePactBoonValue,
         netAbilityDecisionDelta
     };
 }
@@ -2231,6 +1465,9 @@ export function extractFeaturesAndApplyDecisions(
  */
 export function ensureFeatureDecisionsOnCharacterData(character: CharacterData): void {
     if (!character || !Array.isArray(character.features)) return;
+
+    const savedClassChoices = unlockedClassChoices(character.classes || []);
+    const savedFeatureNames = character.features.map(f => String(f.name || ""));
 
     character.features.forEach((feat, fIdx) => {
         if (Array.isArray(feat.decisions) && feat.decisions.length > 0) {
@@ -2276,106 +1513,29 @@ export function ensureFeatureDecisionsOnCharacterData(character: CharacterData):
                 selectedValue: selectedVal,
                 options: FIGHTING_STYLE_OPTIONS
             });
-        } else if (nameLower.includes("divine order") || nameLower === "protector" || nameLower === "thaumaturge") {
-            let selectedVal = character.featureChoices?.[`${prefix}:divine-order:0`] || (nameLower.includes("thaumaturge") ? "divine-order:thaumaturge" : "divine-order:protector");
-            decisions.push({
-                id: `${prefix}:divine-order:0`,
-                label: "Divine Order",
-                selectedValue: selectedVal,
-                options: DIVINE_ORDER_OPTIONS
-            });
-        } else if (nameLower.includes("primal order") || nameLower === "warden" || nameLower === "magician") {
-            let selectedVal = character.featureChoices?.[`${prefix}:primal-order:0`] || (nameLower.includes("magician") ? "primal-order:magician" : "primal-order:warden");
-            decisions.push({
-                id: `${prefix}:primal-order:0`,
-                label: "Primal Order",
-                selectedValue: selectedVal,
-                options: PRIMAL_ORDER_OPTIONS
-            });
-        } else if (nameLower.includes("pact boon") || nameLower.startsWith("pact of the")) {
-            let selectedVal = character.featureChoices?.[`${prefix}:pact-boon:0`] || (nameLower.includes("blade") ? "pact-boon:blade" : nameLower.includes("tome") ? "pact-boon:tome" : "pact-boon:chain");
-            decisions.push({
-                id: `${prefix}:pact-boon:0`,
-                label: "Pact Boon",
-                selectedValue: selectedVal,
-                options: PACT_BOON_OPTIONS
-            });
-        } else if (nameLower.includes("elemental fury")) {
-            let selectedVal = character.featureChoices?.[`${prefix}:elemental-fury:0`] || (nameLower.includes("strike") ? "elemental-fury:primal-strike" : "elemental-fury:potent-spellcasting");
-            decisions.push({
-                id: `${prefix}:elemental-fury:0`,
-                label: "Elemental Fury",
-                selectedValue: selectedVal,
-                options: ELEMENTAL_FURY_OPTIONS
-            });
-        } else if (nameLower.includes("blessed strikes")) {
-            let selectedVal = character.featureChoices?.[`${prefix}:blessed-strikes:0`] || (nameLower.includes("strike") ? "blessed-strikes:divine-strike" : "blessed-strikes:potent-spellcasting");
-            decisions.push({
-                id: `${prefix}:blessed-strikes:0`,
-                label: "Blessed Strikes",
-                selectedValue: selectedVal,
-                options: BLESSED_STRIKES_OPTIONS
-            });
-        } else if (nameLower.includes("aspect of the beast") || nameLower.includes("barbarian aspect")) {
-            const matched = BARBARIAN_ASPECT_OPTIONS.find(o => nameLower.includes(o.label.toLowerCase().split(" ")[0]));
-            let selectedVal = character.featureChoices?.[`${prefix}:aspect:0`] || (matched ? matched.value : BARBARIAN_ASPECT_OPTIONS[0].value);
-            decisions.push({
-                id: `${prefix}:aspect:0`,
-                label: "Aspect of the Beast",
-                selectedValue: selectedVal,
-                options: BARBARIAN_ASPECT_OPTIONS
-            });
-        } else if (nameLower.includes("land biome") || nameLower.includes("circle of the land")) {
-            const matched = DRUID_LAND_BIOME_OPTIONS.find(o => nameLower.includes(o.label.toLowerCase().split(" ")[0]));
-            let selectedVal = character.featureChoices?.[`${prefix}:land-biome:0`] || (matched ? matched.value : DRUID_LAND_BIOME_OPTIONS[0].value);
-            decisions.push({
-                id: `${prefix}:land-biome:0`,
-                label: "Land Biome",
-                selectedValue: selectedVal,
-                options: DRUID_LAND_BIOME_OPTIONS
-            });
         } else {
-            // Check dynamic progression choices on character's classes
+            // Class and subclass choices from the class rules
             let dynamicChoiceFound = false;
-            const classesToInspect = [
-                ...(character.creatorState?.classes || []),
-                ...(character.classes || [])
-            ];
-            for (const c of classesToInspect) {
-                const allProgressions = [
-                    ...(c.progression || []),
-                    ...((c.subclasses || []).flatMap((s: any) => s.progression || []))
-                ];
-                for (const pl of allProgressions) {
-                    for (const ch of pl.choices || []) {
-                        const chNameLower = String(ch.featureName || ch.name || "").toLowerCase();
-                        if (chNameLower && (nameLower.includes(chNameLower) || chNameLower.includes(nameLower))) {
-                            const choicePrefix = `${ch.choiceId || slugifyKey(chNameLower)}`;
-                            const savedVal = character.featureChoices?.[choicePrefix] ||
-                                character.subclassFeatureChoices?.[choicePrefix] ||
-                                character.creatorState?.subclassFeatureChoices?.[choicePrefix];
-                            const options: FeatureChoiceOption[] = (ch.options || []).map((o: any) => ({
-                                value: `${choicePrefix}:${o.id}`,
-                                label: o.name
-                            }));
-                            let selectedVal = options.find(o => o.value.endsWith(`:${savedVal}`))?.value;
-                            if (!selectedVal) {
-                                const matchedOpt = options.find(o => nameLower.includes(o.label.toLowerCase()));
-                                selectedVal = matchedOpt ? matchedOpt.value : (options[0]?.value || "none");
-                            }
-                            decisions.push({
-                                id: `${prefix}:${choicePrefix}:0`,
-                                label: ch.prompt || ch.featureName || feat.name,
-                                selectedValue: selectedVal,
-                                options
-                            });
-                            dynamicChoiceFound = true;
-                            break;
-                        }
-                    }
-                    if (dynamicChoiceFound) break;
-                }
-                if (dynamicChoiceFound) break;
+            const match = matchClassChoice(feat.name, savedClassChoices, savedFeatureNames);
+            if (match) {
+                const { choice } = match;
+                const keys = [choice.id, ...(choice.legacyKeys || [])];
+                const camel = (k: string) => k.replace(/-([a-z])/g, (_m, ch) => ch.toUpperCase());
+                const savedVal = [
+                    ...classChoiceDecisionIds(prefix, choice).map(k => character.featureChoices?.[k]),
+                    ...keys.map(k => character.featureChoices?.[k]),
+                    ...keys.map(k => character.subclassFeatureChoices?.[k]),
+                    ...keys.map(k => character.creatorState?.subclassFeatureChoices?.[k]),
+                    ...keys.map(k => (character.creatorState as any)?.[camel(k)])
+                ].find(v => typeof v === "string" && findChoiceOption(choice, v));
+                const option = findChoiceOption(choice, savedVal) || match.option;
+                decisions.push({
+                    id: `${prefix}:${choice.id}:0`,
+                    label: choice.name,
+                    selectedValue: option ? `${choice.id}:${option.id}` : "none",
+                    options: option ? classChoiceOptions(choice) : [{ value: "none", label: "— Select Choice —" }, ...classChoiceOptions(choice)]
+                });
+                dynamicChoiceFound = true;
             }
 
             if (!dynamicChoiceFound) {
@@ -2557,7 +1717,7 @@ export function applyFeatureDecisionOnCharacterData(
             return;
         }
 
-        // Dynamic search in character's classes or creatorState progressions
+        // Progression choices carried on the character (e.g. custom classes saved with their own rules)
         const classesToSearch = [
             ...(character.creatorState?.classes || []),
             ...(character.classes || [])
@@ -2588,12 +1748,6 @@ export function applyFeatureDecisionOnCharacterData(
             } else if (style === "blind-fighting") {
                 character.vitals.blindsight = sign === 1 ? "10 ft." : "None";
             }
-        } else if (kind === "student-of-war" || kind === "fey-wanderer-glamour") {
-            const skillName = parts[1];
-            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "proficient" }, sign);
-        } else if (kind === "wizard-scholar") {
-            const skillName = parts[1];
-            applyStatModifier(character, { target: `skills.${skillName.toLowerCase()}`, type: "proficiency_tier", value: "expertise" }, sign);
         }
     };
 

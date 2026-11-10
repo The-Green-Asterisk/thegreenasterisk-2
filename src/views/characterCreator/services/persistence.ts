@@ -1,59 +1,19 @@
 import { getData, postData, putData } from "@services/request";
 import {
-    ProgressionResourceUpdate,
-    ABERRANT_REVELATION_OPTIONS,
+    resolveClassResources,
     AbilityName,
-    BARBARIAN_ASPECTS,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
-    BATTERING_ROOTS_OPTIONS,
-    BATTLE_MASTER_MANEUVERS,
-    BLESSED_STRIKES_OPTIONS,
-    BRUTAL_STRIKE_OPTIONS,
     calculateMulticlassSpellSlots,
-    CHAMPION_ADDITIONAL_FIGHTING_STYLES,
     CLASSES_2024,
-    DIVINE_ORDERS,
-    DIVINER_THIRD_EYE_OPTIONS,
-    DRACONIC_ANCESTOR_ELEMENTS,
-    DRUID_LAND_BIOMES,
-    ELDRITCH_INVOCATIONS,
-    ELEMENTAL_FURY_OPTIONS,
-    ELEMENTS_ATTUNEMENT_DAMAGE_TYPES,
-    FEY_WANDERER_GLAMOUR_SKILLS,
-    FIENDISH_RESILIENCE_DAMAGE_TYPES,
-    FIGHTING_STYLES,
-    findClassOption,
-    HUNTER_DEFENSIVE_TACTICS,
-    HUNTER_PREY_OPTIONS,
-    HUNTER_SUPERIOR_DEFENSE_OPTIONS,
-    IMPROVED_BRUTAL_STRIKE_OPTIONS,
-    METAMAGIC_OPTIONS,
-    MOON_CIRCLE_FORMS_STRIKES,
-    OPEN_HAND_TECHNIQUES,
-    PRIMAL_COMPANION_TYPES,
-    PRIMAL_ORDERS,
-    PSI_WARRIOR_THRUST_OPTIONS,
-    ROGUE_CUNNING_STRIKES,
-    ROGUE_DEVIOUS_STRIKES,
     RuleSpellDefinition,
-    SEA_WRATH_DAMAGE_TYPES,
     SPELLS_2024,
-    STARRY_FORM_CONSTELLATIONS,
-    STEPS_OF_THE_FEY_OPTIONS,
-    STUDENT_OF_WAR_SKILLS,
-    TACTICAL_MASTER_PROPERTIES,
-    WAR_GOD_BLESSING_OPTIONS,
-    WEAPON_MASTERIES,
-    WILD_HEART_RAGES,
-    WILD_HEART_TOTEMIC_ATTUNEMENTS,
-    WIZARD_SCHOLAR_SKILLS,
-    ZEALOT_DIVINE_FURIES
+    WEAPON_MASTERIES
 } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
-import { getProgressionChoices, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
+import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
 import { distributeImportedSkills, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
 import { CharacterCreatorContext } from "../controllers/context";
 import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, resolveSpellBucketKey } from "./spellReconciliation";
@@ -603,10 +563,16 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         int: "Intelligence", wis: "Wisdom", cha: "Charisma"
     };
 
+    // Class features that grant save proficiency (e.g. Disciplined Survivor) or add to every save (e.g. Aura of Protection)
+    const progressionMods = getProgressionModifiers(ctx);
+    const saveBonusAll = progressionMods
+        .filter((m) => m.target === "saves.all" && m.type === "ability_mod" && m.abilitySource)
+        .reduce((sum, m) => sum + Math.max(m.minimum ?? -Infinity, ctx.getAbilityModifier(m.abilitySource!)), 0);
     const abilitiesPayload = abilityNames.map((st) => {
         const total = ctx.getEffectiveAbilityScore(st);
         const mod = ctx.getAbilityModifier(st);
-        const isProfSave = cls.savingThrows.includes(st);
+        const isProfSave = cls.savingThrows.includes(st) ||
+            progressionMods.some((m) => m.type === "proficiency_tier" && (m.target === "saves.all" || m.target === `saves.${st}`));
         return {
             name: abilityTitles[st],
             abbr: st.toUpperCase(),
@@ -614,7 +580,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             baseScore: ctx.state.baseAbilities[st],
             bonus: total - ctx.state.baseAbilities[st],
             modifier: mod,
-            save: mod + (isProfSave ? pb : 0),
+            save: mod + (isProfSave ? pb : 0) + saveBonusAll,
             proficientSave: isProfSave
         };
     });
@@ -806,11 +772,10 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     for (const entry of getProgressionChoices(ctx).filter((e) => e.unlocked)) {
         selectedProgressionOptions.push(...entry.selectedOptions);
     }
-    if (Array.isArray(ctx.state.invocations)) {
-        for (const invId of ctx.state.invocations) {
-            const opt = findClassOption("invocation", invId);
-            if (opt) selectedProgressionOptions.push(opt);
-        }
+    // Entries chosen from pick lists (e.g. state.invocations)
+    for (const pool of getProgressionPools(ctx)) {
+        const picked: string[] = ((ctx.state as any)[pool.pool] as string[] | undefined) || [];
+        selectedProgressionOptions.push(...pool.options.filter((o) => picked.includes(o.id)));
     }
 
 
@@ -1099,41 +1064,16 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         ...speciesTraitsList
     );
 
-    // Class Resources: each class's latest resourceUpdates up to its own level (class rules data). Totals can be
-    // templates ("{{cha}}" = Charisma modifier, minimum 1; "{{level}}" = class level; "{{pb}}"); dice values such as
-    // Sneak Attack aren't uses to track. A resource two classes share keeps the larger total.
-    const resourcesPayload: any[] = [];
-    for (const cc of ctx.state.classes || []) {
-        const def = ctx.classes.find((c) => c.id === cc.classId);
-        const latest = new Map<string, ProgressionResourceUpdate>();
-        for (const pl of [...(def?.progression || [])].sort((a, b) => a.level - b.level)) {
-            if (pl.level > (cc.level || 0)) continue;
-            for (const r of pl.resourceUpdates || []) latest.set(r.name, r);
-        }
-        for (const r of latest.values()) {
-            let total: number;
-            if (typeof r.total === "number") {
-                total = r.total;
-            } else {
-                const tmpl = String(r.total).match(/^\{\{(\w+)\}\}$/);
-                if (tmpl) {
-                    const key = tmpl[1].toLowerCase();
-                    total = key === "level" ? (cc.level || 0)
-                        : key === "pb" ? pb
-                            : Math.max(1, ctx.getAbilityModifier(key as AbilityName));
-                } else {
-                    total = Number(r.total);
-                }
-            }
-            if (!Number.isFinite(total) || total <= 0) continue;
-            const existing = resourcesPayload.find((x) => x.name === r.name);
-            if (existing) {
-                existing.total = Math.max(existing.total, total);
-                continue;
-            }
-            resourcesPayload.push({ name: r.name, total, resetOn: r.resetOn, ...(r.die ? { dieOrType: r.die } : {}), currentUsed: 0 });
-        }
-    }
+    // Class Resources: each class's and subclass's resourceUpdates at its own level (class rules data)
+    const resourcesPayload: any[] = resolveClassResources(
+        (ctx.state.classes || []).map((cc) => {
+            const def = ctx.classes.find((c) => c.id === cc.classId);
+            const subclass = def?.subclasses?.find((s) => s.id === ctx.resolveCanonicalSubclassId(cc.classId, cc.subclassId));
+            return { def, subclass, level: cc.level || 0 };
+        }),
+        (ability) => ctx.getAbilityModifier(ability),
+        pb
+    ).map(({ classId: _classId, aliases: _aliases, dieOrType, ...r }) => ({ ...r, ...(dieOrType ? { dieOrType } : {}), currentUsed: 0 }));
 
     // Species & Origin Feat expendable resources
     if (ctx.state.speciesId === "dragonborn") {
