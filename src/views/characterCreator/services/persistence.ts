@@ -1,31 +1,31 @@
 import { getData, postData, putData } from "@services/request";
 import {
-    resolveClassResources,
     AbilityName,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
     calculateMulticlassSpellSlots,
     CLASSES_2024,
+    resolveClassResources,
     RuleSpellDefinition,
     SPELLS_2024,
     WEAPON_MASTERIES
 } from "../../../rules/dnd5e_2024";
-import { featureUsage } from "../../../rules/dnd5e_2024/featureUsage";
-import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
-import { activeSpeciesTraits, detectLineage, speciesSenseGrants, resolveSpeciesResources, traitBaseName, resolveSpeciesSpellAbility, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
-import { ALL_SKILLS } from "../characterCreator.types";
-import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
 import { resolveFeatResources } from "../../../rules/dnd5e_2024/featRules";
-import { isImportedCharacter, keepPlayState, mergeImportedCharacter } from "./importLocks";
+import { featureUsage } from "../../../rules/dnd5e_2024/featureUsage";
 import { saveEffectsFromRules } from "../../../rules/dnd5e_2024/saveEffects";
 import { resolveSenses, senseGrantsFrom, writeSenses } from "../../../rules/dnd5e_2024/senses";
+import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesGrantedSpells, speciesResistances, speciesSenseGrants, traitBaseName } from "../../../rules/dnd5e_2024/speciesRules";
+import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
 import { findFeatRule } from "../../../services/classRules";
+import { ALL_SKILLS } from "../characterCreator.types";
 import { getOrdinalSuffix } from "../components/class";
+import { CharacterCreatorContext } from "../controllers/context";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
+import { isImportedCharacter, keepPlayState, mergeImportedCharacter } from "./importLocks";
 import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
 import { distributeImportedSkills, getCharacterFeats, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
-import { CharacterCreatorContext } from "../controllers/context";
-import { MAGIC_INITIATE_BUCKET_KEY, getProgressionGrantedSpellNames, getSpellFeat, resolveSpellBucketKey } from "./spellReconciliation";
+import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
+import { getProgressionGrantedSpellNames, getSpellFeat, MAGIC_INITIATE_BUCKET_KEY, resolveSpellBucketKey } from "./spellReconciliation";
 
 function getSpellDef(ctx: CharacterCreatorContext, spNameOrId: string): RuleSpellDefinition | undefined {
     if (!spNameOrId) return undefined;
