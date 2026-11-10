@@ -1,5 +1,13 @@
-import { rangeFeet, resolveSenses, senseGrantsFrom, writeSenses } from "../../rules/dnd5e_2024/senses";
+import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
+import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
+import { featBonus, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
+import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
 import { abilityKey, effectsFromLegacyNotes, mergeSaveEffects, normalizeAgainst, SaveEffect, saveEffectsFromRules } from "../../rules/dnd5e_2024/saveEffects";
+import { rangeFeet, resolveSenses, senseGrantsFrom, writeSenses } from "../../rules/dnd5e_2024/senses";
+import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSenseGrants, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
+import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
+import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
+import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import {
     AbilityScore,
     ActionItem,
@@ -11,16 +19,8 @@ import {
     SpellDefinition,
     WeaponItem
 } from "./characterData";
-import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
-import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
-import { featBonus, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
-import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
-import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSenseGrants, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
-import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
-import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
-import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
+import { readCampaign, readCompanions, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readItemChargePips, readItemCharges, readNotes, readSpeciesSpellAbility, readTrackingState } from "./dndBeyondExtras";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
-import { readSpeciesSpellAbility, readCampaign, readCompanions, readItemCharges, readItemChargePips, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
 import { applyGrantedWeapons, applyItemSensesToCharacter, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
@@ -509,6 +509,17 @@ export function parseDndBeyondCharacter(
     }
     const featMods = (target: string, type?: string) => featModifiers(featMechanics, target, type);
 
+    // Option action grants (e.g. Protection, Interception fighting styles)
+    const ruleChoiceActionGrants = ruleClasses.flatMap(({ def, subclass, level }: { def?: ClassDefinition; subclass?: any; level: number }) =>
+        [...(def?.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])]
+            .filter((pl) => pl.level <= level)
+            .flatMap((pl) => pl.choices || [])
+            .flatMap((c: any) => (c.options || []).filter((o: any) => featLikeNames.some(fn => fn.toLowerCase() === o.name.toLowerCase() || fn.toLowerCase() === (o.id || "").toLowerCase()) || featMechanics.some(fm => fm.name.toLowerCase() === o.name.toLowerCase())))
+            .map((o: any) => o.actionGrant)
+            .filter(Boolean)
+    );
+    ruleActionGrants.push(...ruleChoiceActionGrants);
+
     // Class levels & features lookup helpers
     const hasClassFeatureOrOption = (featureKeyword: string): boolean => {
         const kw = featureKeyword.toLowerCase();
@@ -857,7 +868,7 @@ export function parseDndBeyondCharacter(
         // Armor-only AC bonuses from feats and fighting styles (e.g. Defense) when D&D Beyond listed none
         const hasDefenseMod = allMods.some(m => m.subType === "armored-armor-class");
         const defenseStyleBonus = hasDefenseMod ? 0 : featMods("vitals.ac", "bonus")
-            .filter(m => /armor/i.test(String(m.condition || "")))
+            .filter(m => m.requires === "armor" || /armor/i.test(String(m.condition || "")))
             .reduce((sum, m) => sum + (Number(m.value) || 0), 0);
 
         baseArmorClass = armorBase + acDex + armoredBonus + defenseStyleBonus;
@@ -1056,6 +1067,32 @@ export function parseDndBeyondCharacter(
             walkSpeed = Number(customWalk.distance);
         }
     }
+
+    // Climb / swim / fly / burrow special speeds
+    const specialSpeedList: string[] = [];
+    const speedLabels: Record<string, string> = { climb: "Climb", swim: "Swim", fly: "Fly", burrow: "Burrow" };
+    for (const k of ["climb", "swim", "fly", "burrow"] as const) {
+        let val = 0;
+        const rawNorm = Number(raw.race?.weightSpeeds?.normal?.[k]);
+        if (rawNorm > 0) val = Math.max(val, rawNorm);
+        const customIdMap: Record<string, number> = { burrow: 2, climb: 3, fly: 4, swim: 5 };
+        if (Array.isArray(raw.customSpeeds)) {
+            const cs = raw.customSpeeds.find((s: any) => Number(s.movementId) === customIdMap[k] && Number(s.distance) > 0);
+            if (cs) val = Math.max(val, Number(cs.distance));
+        }
+        const ruleSetMods = [
+            ...ruleMods(`vitals.${k}`, "set"),
+            ...ruleMods(`speeds.${k}`, "set"),
+            ...featMods(`vitals.${k}`, "set"),
+            ...featMods(`speeds.${k}`, "set")
+        ];
+        for (const rm of ruleSetMods) {
+            const sVal = (rm.value === "walk" || rm.value === "equal_walk") ? walkSpeed : Number(rm.value) || 0;
+            val = Math.max(val, sVal);
+        }
+        if (val > 0) specialSpeedList.push(`${speedLabels[k]} ${val} ft.`);
+    }
+    const fullSpeedDisplay = specialSpeedList.length > 0 ? `${walkSpeed} ft. (${specialSpeedList.join(", ")})` : `${walkSpeed} ft.`;
 
     // Sight in magical darkness: a D&D Beyond darkvision sense restricted to magical darkness
     const devilsSightMod = allMods.find(
@@ -1515,16 +1552,46 @@ export function parseDndBeyondCharacter(
     const actions: ActionItem[] = [];
 
     // Cantrip attack actions (like Eldritch Blast, Fire Bolt, etc.)
+    const cantripMods = [
+        ...featMods("damage.cantrips"),
+        ...ruleMods("damage.cantrips", "ability_mod"),
+        ...ruleMods("damage.cantrips", "bonus"),
+        ...featMods("damage.eldritch_blast"),
+        ...ruleMods("damage.eldritch_blast", "ability_mod"),
+        ...ruleMods("damage.eldritch_blast", "bonus")
+    ];
+
     spellsList.forEach(spell => {
         if (spell.level === 0) {
             let hitOrDc = `+${spellAttackBonus} to hit`;
             if (spell.description.includes("saving throw")) {
                 hitOrDc = `DC ${spellSaveDc} Save`;
             }
+            const isEb = spell.name.toLowerCase() === "eldritch blast";
+            const dmgMatch = (spell.description || "").match(/(\d+d\d+)\s+([a-zA-Z]+)\s+damage/i);
+            const baseDmgDie = isEb ? "1d10" : (dmgMatch ? dmgMatch[1] : "");
+            const baseDmgType = isEb ? "Force" : (dmgMatch ? dmgMatch[2] : "");
+
+            let cantripBonus = 0;
+            for (const m of cantripMods) {
+                if (m.target === "damage.cantrips" || (isEb && m.target === "damage.eldritch_blast")) {
+                    if (m.type === "ability_mod" && m.abilitySource) {
+                        cantripBonus += abilityModsById[ABILITY_IDS[m.abilitySource as AbilityName]] ?? 0;
+                    } else if (typeof m.value === "number") {
+                        cantripBonus += m.value;
+                    }
+                }
+            }
+            if (isEb && hasAgonizingBlast && cantripBonus === 0) {
+                cantripBonus = chaMod;
+            }
+
             let damageOrEffect = "Spell Effect";
-            if (spell.name.toLowerCase() === "eldritch blast" && hasAgonizingBlast) {
-                const modSign = chaMod >= 0 ? `+ ${chaMod}` : `- ${Math.abs(chaMod)}`;
-                damageOrEffect = `1d10 ${modSign} Force`;
+            if (baseDmgDie) {
+                const bonusStr = cantripBonus !== 0 ? (cantripBonus >= 0 ? ` + ${cantripBonus}` : ` - ${Math.abs(cantripBonus)}`) : "";
+                damageOrEffect = `${baseDmgDie}${bonusStr} ${baseDmgType}`.trim();
+            } else if (cantripBonus !== 0) {
+                damageOrEffect = `+${cantripBonus} Damage`;
             }
             actions.push({
                 name: spell.name,
@@ -1686,6 +1753,20 @@ export function parseDndBeyondCharacter(
             : 0;
         const thrownStyleFallback =
             isThrown && thrownModBonus === 0 ? featBonus(featMechanics, "damage.thrown", totalLevel, profBonus) : 0;
+
+        // Great Weapon Fighting fallback (treat 1 or 2 on damage dice as 3 for two-handed melee weapons)
+        const hasGwfMod = featMods("attacks.two_handed_damage_floor", "set").length > 0 ||
+            ruleMods("attacks.two_handed_damage_floor", "set").length > 0;
+        if (hasGwfMod && isTwoHanded && !isRanged && !props.some(p => p.includes("GWF"))) {
+            props.push("GWF (min 3 on damage dice)");
+        }
+
+        // Two-Weapon Fighting fallback (add ability mod to off-hand attack damage)
+        const hasTwfMod = featMods("damage.offhand_ability_mod", "bonus").length > 0 ||
+            ruleMods("damage.offhand_ability_mod", "bonus").length > 0;
+        if (hasTwfMod && props.some(p => p.toLowerCase().includes("light")) && !props.some(p => p.includes("TWF"))) {
+            props.push("TWF (adds ability mod to off-hand damage)");
+        }
 
         const globalDmgBonus = allMods
             .filter(m => {
@@ -2209,7 +2290,7 @@ export function parseDndBeyondCharacter(
             tempHp,
             armorClass,
             initiative,
-            speed: `${walkSpeed} ft.`,
+            speed: fullSpeedDisplay,
             proficiencyBonus: profBonus,
             passivePerception,
             passiveInvestigation,
