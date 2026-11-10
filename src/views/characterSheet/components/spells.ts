@@ -1,7 +1,7 @@
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
 import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
 import { findClassRule, getClassRules, getFeatRules, getSpeciesRules } from "../../../services/classRules";
-import { extractSpellDamageInfo, getSpellDamageDisplay, parseDamageScalingString } from "../../../services/spellDamage";
+import { extractSpellDamageInfo, getSpellDamageDisplay, getSpellDamageType, getSpellcastingModifier, isHealingSpell, parseDamageScalingString } from "../../../services/spellDamage";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -285,7 +285,31 @@ export function describeDuplicateSpells(data: Pick<CharacterData, "name" | "dupl
         `Remove the extra ${dupes.length === 1 && dupes[0].copies.length <= 2 ? "copy" : "copies"} on D&D Beyond.${freed}`;
 }
 
-export function renderSpellCard(spell: SpellDefinition, characterLevel?: number): string {
+export function renderSpellCard(
+    spell: SpellDefinition,
+    characterLevelOrData?: number | CharacterData,
+    characterOrMod?: CharacterData | number
+): string {
+    let characterLevel: number | undefined;
+    let character: CharacterData | undefined;
+    let explicitMod: number | undefined;
+
+    if (typeof characterLevelOrData === "object" && characterLevelOrData !== null) {
+        character = characterLevelOrData;
+        characterLevel = Number(character.level) || (character.classes || []).reduce((sum, c) => sum + (Number(c.level) || 0), 0) || 1;
+    } else {
+        characterLevel = characterLevelOrData;
+        if (typeof characterOrMod === "object" && characterOrMod !== null) {
+            character = characterOrMod;
+        } else if (typeof characterOrMod === "number") {
+            explicitMod = characterOrMod;
+        }
+    }
+
+    const spellcastingMod = explicitMod !== undefined
+        ? explicitMod
+        : (character ? getSpellcastingModifier(character, spell) : undefined);
+
     const isUpcast = spell.castAtLevel !== undefined && spell.castAtLevel !== spell.level;
     const currentLevel = isUpcast ? spell.castAtLevel! : spell.level;
     const levelText = spell.level === 0
@@ -297,12 +321,18 @@ export function renderSpellCard(spell: SpellDefinition, characterLevel?: number)
     const ritBadge = spell.ritual ? '<span class="badge badge-ritual" title="Ritual">Ritual</span>' : '';
     const upcastBadge = isUpcast ? `<span class="badge badge-upcast" title="Cast using a Level ${spell.castAtLevel} spell slot">Upcast</span>` : '';
 
-    const damageText = getSpellDamageDisplay(spell, currentLevel, characterLevel);
+    const damageText = getSpellDamageDisplay(spell, currentLevel, characterLevel, spellcastingMod);
+    const damageType = getSpellDamageType(spell, damageText);
+    const isHealing = isHealingSpell(spell, damageType || damageText);
+    const typeClass = damageType ? `damage-type-${damageType.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : (isHealing ? 'damage-type-healing' : '');
+    const iconClass = isHealing ? 'fa-heart' : 'fa-burst';
+    const labelText = isHealing ? 'Healing' : 'Damage';
+
     const damageBadge = damageText
-        ? `<span class="badge badge-damage" title="Damage: ${damageText}"><i class="fa-solid fa-burst"></i> ${damageText}</span>`
+        ? `<span class="badge badge-damage${typeClass ? ' ' + typeClass : ''}" title="${labelText}: ${damageText}"><i class="fa-solid ${iconClass}"></i> ${damageText}</span>`
         : '';
     const damageMeta = damageText
-        ? `<div class="meta-item meta-damage"><span class="meta-label">Damage:</span> <span class="meta-value damage-dice-value"><i class="fa-solid fa-burst"></i> ${damageText}</span></div>`
+        ? `<div class="meta-item meta-damage${typeClass ? ' ' + typeClass : ''}"><span class="meta-label">${labelText}:</span> <span class="meta-value damage-dice-value${typeClass ? ' ' + typeClass : ''}"><i class="fa-solid ${iconClass}"></i> ${damageText}</span></div>`
         : '';
 
     return `

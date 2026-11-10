@@ -3283,6 +3283,494 @@ el-character-sheet .content-slate section {
     border-left-color: #2563eb;
 }
 
+/* ==========================================================================
+   DAMAGE TYPE COLOR CODING (DARK THEME / DEFAULT)
+   ========================================================================== */
+
+/* Acid */
+.badge-damage.damage-type-acid,
+.modal-badge.damage-badge.damage-type-acid,
+.spell-damage-summary-badge.damage-type-acid,
+.damage-total-badge.damage-type-acid {
+    background: rgba(132, 204, 22, 0.18);
+    color: #a3e635;
+    border: 1px solid rgba(163, 230, 53, 0.45);
+}
+.meta-damage.damage-type-acid .damage-dice-value,
+.damage-dice-value.damage-type-acid {
+    color: #a3e635;
+}
+
+/* Bludgeoning */
+.badge-damage.damage-type-bludgeoning,
+.modal-badge.damage-badge.damage-type-bludgeoning,
+.spell-damage-summary-badge.damage-type-bludgeoning,
+.damage-total-badge.damage-type-bludgeoning {
+    background: rgba(168, 162, 158, 0.18);
+    color: #e7e5e4;
+    border: 1px solid rgba(168, 162, 158, 0.45);
+}
+.meta-damage.damage-type-bludgeoning .damage-dice-value,
+.damage-dice-value.damage-type-bludgeoning {
+    color: #e7e5e4;
+}
+
+/* Cold */
+.badge-damage.damage-type-cold,
+.modal-badge.damage-badge.damage-type-cold,
+.spell-damage-summary-badge.damage-type-cold,
+.damage-total-badge.damage-type-cold {
+    background: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+}
+.meta-damage.damage-type-cold .damage-dice-value,
+.damage-dice-value.damage-type-cold {
+    color: #38bdf8;
+}
+
+/* Fire */
+.badge-damage.damage-type-fire,
+.modal-badge.damage-badge.damage-type-fire,
+.spell-damage-summary-badge.damage-type-fire,
+.damage-total-badge.damage-type-fire {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.45);
+}
+.meta-damage.damage-type-fire .damage-dice-value,
+.damage-dice-value.damage-type-fire {
+    color: #f87171;
+}
+
+/* Force */
+.badge-damage.damage-type-force,
+.modal-badge.damage-badge.damage-type-force,
+.spell-damage-summary-badge.damage-type-force,
+.damage-total-badge.damage-type-force {
+    background: rgba(217, 70, 239, 0.18);
+    color: #e879f9;
+    border: 1px solid rgba(217, 70, 239, 0.45);
+}
+.meta-damage.damage-type-force .damage-dice-value,
+.damage-dice-value.damage-type-force {
+    color: #e879f9;
+}
+
+/* Lightning */
+.badge-damage.damage-type-lightning,
+.modal-badge.damage-badge.damage-type-lightning,
+.spell-damage-summary-badge.damage-type-lightning,
+.damage-total-badge.damage-type-lightning {
+    background: rgba(250, 204, 21, 0.18);
+    color: #facc15;
+    border: 1px solid rgba(250, 204, 21, 0.45);
+}
+.meta-damage.damage-type-lightning .damage-dice-value,
+.damage-dice-value.damage-type-lightning {
+    color: #facc15;
+}
+
+/* Necrotic */
+.badge-damage.damage-type-necrotic,
+.modal-badge.damage-badge.damage-type-necrotic,
+.spell-damage-summary-badge.damage-type-necrotic,
+.damage-total-badge.damage-type-necrotic {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+}
+.meta-damage.damage-type-necrotic .damage-dice-value,
+.damage-dice-value.damage-type-necrotic {
+    color: #c084fc;
+}
+
+/* Piercing */
+.badge-damage.damage-type-piercing,
+.modal-badge.damage-badge.damage-type-piercing,
+.spell-damage-summary-badge.damage-type-piercing,
+.damage-total-badge.damage-type-piercing {
+    background: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+}
+.meta-damage.damage-type-piercing .damage-dice-value,
+.damage-dice-value.damage-type-piercing {
+    color: #cbd5e1;
+}
+
+/* Poison */
+.badge-damage.damage-type-poison,
+.modal-badge.damage-badge.damage-type-poison,
+.spell-damage-summary-badge.damage-type-poison,
+.damage-total-badge.damage-type-poison {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+}
+.meta-damage.damage-type-poison .damage-dice-value,
+.damage-dice-value.damage-type-poison {
+    color: #4ade80;
+}
+
+/* Psychic */
+.badge-damage.damage-type-psychic,
+.modal-badge.damage-badge.damage-type-psychic,
+.spell-damage-summary-badge.damage-type-psychic,
+.damage-total-badge.damage-type-psychic {
+    background: rgba(244, 63, 94, 0.18);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.45);
+}
+.meta-damage.damage-type-psychic .damage-dice-value,
+.damage-dice-value.damage-type-psychic {
+    color: #fb7185;
+}
+
+/* Radiant */
+.badge-damage.damage-type-radiant,
+.modal-badge.damage-badge.damage-type-radiant,
+.spell-damage-summary-badge.damage-type-radiant,
+.damage-total-badge.damage-type-radiant {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.48);
+}
+.meta-damage.damage-type-radiant .damage-dice-value,
+.damage-dice-value.damage-type-radiant {
+    color: #fbbf24;
+}
+
+/* Slashing */
+.badge-damage.damage-type-slashing,
+.modal-badge.damage-badge.damage-type-slashing,
+.spell-damage-summary-badge.damage-type-slashing,
+.damage-total-badge.damage-type-slashing {
+    background: rgba(225, 29, 72, 0.18);
+    color: #fda4af;
+    border: 1px solid rgba(225, 29, 72, 0.45);
+}
+.meta-damage.damage-type-slashing .damage-dice-value,
+.damage-dice-value.damage-type-slashing {
+    color: #fda4af;
+}
+
+/* Thunder */
+.badge-damage.damage-type-thunder,
+.modal-badge.damage-badge.damage-type-thunder,
+.spell-damage-summary-badge.damage-type-thunder,
+.damage-total-badge.damage-type-thunder {
+    background: rgba(99, 102, 241, 0.18);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.45);
+}
+.meta-damage.damage-type-thunder .damage-dice-value,
+.damage-dice-value.damage-type-thunder {
+    color: #818cf8;
+}
+
+/* Healing */
+.badge-damage.damage-type-healing,
+.modal-badge.damage-badge.damage-type-healing,
+.spell-damage-summary-badge.damage-type-healing,
+.damage-total-badge.damage-type-healing {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+.meta-damage.damage-type-healing .damage-dice-value,
+.damage-dice-value.damage-type-healing {
+    color: #34d399;
+}
+.damage-type-healing i.fa-heart {
+    color: currentColor;
+}
+
+/* ==========================================================================
+   DAMAGE TYPE COLOR CODING (LIGHT THEME)
+   ========================================================================== */
+
+/* Acid */
+[data-theme="light"] .badge-damage.damage-type-acid,
+.light-mode .badge-damage.damage-type-acid,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-acid,
+.light-mode .modal-badge.damage-badge.damage-type-acid,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-acid,
+.light-mode .spell-damage-summary-badge.damage-type-acid,
+[data-theme="light"] .damage-total-badge.damage-type-acid,
+.light-mode .damage-total-badge.damage-type-acid {
+    background: #ecfccb;
+    color: #3f6212;
+    border-color: #84cc16;
+}
+[data-theme="light"] .meta-damage.damage-type-acid .damage-dice-value,
+.light-mode .meta-damage.damage-type-acid .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-acid,
+.light-mode .damage-dice-value.damage-type-acid {
+    color: #3f6212;
+}
+
+/* Bludgeoning */
+[data-theme="light"] .badge-damage.damage-type-bludgeoning,
+.light-mode .badge-damage.damage-type-bludgeoning,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-bludgeoning,
+.light-mode .modal-badge.damage-badge.damage-type-bludgeoning,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-bludgeoning,
+.light-mode .spell-damage-summary-badge.damage-type-bludgeoning,
+[data-theme="light"] .damage-total-badge.damage-type-bludgeoning,
+.light-mode .damage-total-badge.damage-type-bludgeoning {
+    background: #f5f5f4;
+    color: #44403c;
+    border-color: #a8a29e;
+}
+[data-theme="light"] .meta-damage.damage-type-bludgeoning .damage-dice-value,
+.light-mode .meta-damage.damage-type-bludgeoning .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-bludgeoning,
+.light-mode .damage-dice-value.damage-type-bludgeoning {
+    color: #44403c;
+}
+
+/* Cold */
+[data-theme="light"] .badge-damage.damage-type-cold,
+.light-mode .badge-damage.damage-type-cold,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-cold,
+.light-mode .modal-badge.damage-badge.damage-type-cold,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-cold,
+.light-mode .spell-damage-summary-badge.damage-type-cold,
+[data-theme="light"] .damage-total-badge.damage-type-cold,
+.light-mode .damage-total-badge.damage-type-cold {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #38bdf8;
+}
+[data-theme="light"] .meta-damage.damage-type-cold .damage-dice-value,
+.light-mode .meta-damage.damage-type-cold .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-cold,
+.light-mode .damage-dice-value.damage-type-cold {
+    color: #0369a1;
+}
+
+/* Fire */
+[data-theme="light"] .badge-damage.damage-type-fire,
+.light-mode .badge-damage.damage-type-fire,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-fire,
+.light-mode .modal-badge.damage-badge.damage-type-fire,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-fire,
+.light-mode .spell-damage-summary-badge.damage-type-fire,
+[data-theme="light"] .damage-total-badge.damage-type-fire,
+.light-mode .damage-total-badge.damage-type-fire {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #f87171;
+}
+[data-theme="light"] .meta-damage.damage-type-fire .damage-dice-value,
+.light-mode .meta-damage.damage-type-fire .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-fire,
+.light-mode .damage-dice-value.damage-type-fire {
+    color: #b91c1c;
+}
+
+/* Force */
+[data-theme="light"] .badge-damage.damage-type-force,
+.light-mode .badge-damage.damage-type-force,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-force,
+.light-mode .modal-badge.damage-badge.damage-type-force,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-force,
+.light-mode .spell-damage-summary-badge.damage-type-force,
+[data-theme="light"] .damage-total-badge.damage-type-force,
+.light-mode .damage-total-badge.damage-type-force {
+    background: #fae8ff;
+    color: #86198f;
+    border-color: #d946ef;
+}
+[data-theme="light"] .meta-damage.damage-type-force .damage-dice-value,
+.light-mode .meta-damage.damage-type-force .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-force,
+.light-mode .damage-dice-value.damage-type-force {
+    color: #86198f;
+}
+
+/* Lightning */
+[data-theme="light"] .badge-damage.damage-type-lightning,
+.light-mode .badge-damage.damage-type-lightning,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-lightning,
+.light-mode .modal-badge.damage-badge.damage-type-lightning,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-lightning,
+.light-mode .spell-damage-summary-badge.damage-type-lightning,
+[data-theme="light"] .damage-total-badge.damage-type-lightning,
+.light-mode .damage-total-badge.damage-type-lightning {
+    background: #fef9c3;
+    color: #854d0e;
+    border-color: #eab308;
+}
+[data-theme="light"] .meta-damage.damage-type-lightning .damage-dice-value,
+.light-mode .meta-damage.damage-type-lightning .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-lightning,
+.light-mode .damage-dice-value.damage-type-lightning {
+    color: #854d0e;
+}
+
+/* Necrotic */
+[data-theme="light"] .badge-damage.damage-type-necrotic,
+.light-mode .badge-damage.damage-type-necrotic,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-necrotic,
+.light-mode .modal-badge.damage-badge.damage-type-necrotic,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-necrotic,
+.light-mode .spell-damage-summary-badge.damage-type-necrotic,
+[data-theme="light"] .damage-total-badge.damage-type-necrotic,
+.light-mode .damage-total-badge.damage-type-necrotic {
+    background: #f3e8ff;
+    color: #6b21a8;
+    border-color: #c084fc;
+}
+[data-theme="light"] .meta-damage.damage-type-necrotic .damage-dice-value,
+.light-mode .meta-damage.damage-type-necrotic .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-necrotic,
+.light-mode .damage-dice-value.damage-type-necrotic {
+    color: #6b21a8;
+}
+
+/* Piercing */
+[data-theme="light"] .badge-damage.damage-type-piercing,
+.light-mode .badge-damage.damage-type-piercing,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-piercing,
+.light-mode .modal-badge.damage-badge.damage-type-piercing,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-piercing,
+.light-mode .spell-damage-summary-badge.damage-type-piercing,
+[data-theme="light"] .damage-total-badge.damage-type-piercing,
+.light-mode .damage-total-badge.damage-type-piercing {
+    background: #f1f5f9;
+    color: #334155;
+    border-color: #94a3b8;
+}
+[data-theme="light"] .meta-damage.damage-type-piercing .damage-dice-value,
+.light-mode .meta-damage.damage-type-piercing .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-piercing,
+.light-mode .damage-dice-value.damage-type-piercing {
+    color: #334155;
+}
+
+/* Poison */
+[data-theme="light"] .badge-damage.damage-type-poison,
+.light-mode .badge-damage.damage-type-poison,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-poison,
+.light-mode .modal-badge.damage-badge.damage-type-poison,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-poison,
+.light-mode .spell-damage-summary-badge.damage-type-poison,
+[data-theme="light"] .damage-total-badge.damage-type-poison,
+.light-mode .damage-total-badge.damage-type-poison {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #22c55e;
+}
+[data-theme="light"] .meta-damage.damage-type-poison .damage-dice-value,
+.light-mode .meta-damage.damage-type-poison .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-poison,
+.light-mode .damage-dice-value.damage-type-poison {
+    color: #166534;
+}
+
+/* Psychic */
+[data-theme="light"] .badge-damage.damage-type-psychic,
+.light-mode .badge-damage.damage-type-psychic,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-psychic,
+.light-mode .modal-badge.damage-badge.damage-type-psychic,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-psychic,
+.light-mode .spell-damage-summary-badge.damage-type-psychic,
+[data-theme="light"] .damage-total-badge.damage-type-psychic,
+.light-mode .damage-total-badge.damage-type-psychic {
+    background: #ffe4e6;
+    color: #9f1239;
+    border-color: #fb7185;
+}
+[data-theme="light"] .meta-damage.damage-type-psychic .damage-dice-value,
+.light-mode .meta-damage.damage-type-psychic .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-psychic,
+.light-mode .damage-dice-value.damage-type-psychic {
+    color: #9f1239;
+}
+
+/* Radiant */
+[data-theme="light"] .badge-damage.damage-type-radiant,
+.light-mode .badge-damage.damage-type-radiant,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-radiant,
+.light-mode .modal-badge.damage-badge.damage-type-radiant,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-radiant,
+.light-mode .spell-damage-summary-badge.damage-type-radiant,
+[data-theme="light"] .damage-total-badge.damage-type-radiant,
+.light-mode .damage-total-badge.damage-type-radiant {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #f59e0b;
+}
+[data-theme="light"] .meta-damage.damage-type-radiant .damage-dice-value,
+.light-mode .meta-damage.damage-type-radiant .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-radiant,
+.light-mode .damage-dice-value.damage-type-radiant {
+    color: #92400e;
+}
+
+/* Slashing */
+[data-theme="light"] .badge-damage.damage-type-slashing,
+.light-mode .badge-damage.damage-type-slashing,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-slashing,
+.light-mode .modal-badge.damage-badge.damage-type-slashing,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-slashing,
+.light-mode .spell-damage-summary-badge.damage-type-slashing,
+[data-theme="light"] .damage-total-badge.damage-type-slashing,
+.light-mode .damage-total-badge.damage-type-slashing {
+    background: #fff1f2;
+    color: #881337;
+    border-color: #f43f5e;
+}
+[data-theme="light"] .meta-damage.damage-type-slashing .damage-dice-value,
+.light-mode .meta-damage.damage-type-slashing .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-slashing,
+.light-mode .damage-dice-value.damage-type-slashing {
+    color: #881337;
+}
+
+/* Thunder */
+[data-theme="light"] .badge-damage.damage-type-thunder,
+.light-mode .badge-damage.damage-type-thunder,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-thunder,
+.light-mode .modal-badge.damage-badge.damage-type-thunder,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-thunder,
+.light-mode .spell-damage-summary-badge.damage-type-thunder,
+[data-theme="light"] .damage-total-badge.damage-type-thunder,
+.light-mode .damage-total-badge.damage-type-thunder {
+    background: #e0e7ff;
+    color: #3730a3;
+    border-color: #818cf8;
+}
+[data-theme="light"] .meta-damage.damage-type-thunder .damage-dice-value,
+.light-mode .meta-damage.damage-type-thunder .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-thunder,
+.light-mode .damage-dice-value.damage-type-thunder {
+    color: #3730a3;
+}
+
+/* Healing */
+[data-theme="light"] .badge-damage.damage-type-healing,
+.light-mode .badge-damage.damage-type-healing,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-healing,
+.light-mode .modal-badge.damage-badge.damage-type-healing,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-healing,
+.light-mode .spell-damage-summary-badge.damage-type-healing,
+[data-theme="light"] .damage-total-badge.damage-type-healing,
+.light-mode .damage-total-badge.damage-type-healing {
+    background: #d1fae5;
+    color: #047857;
+    border-color: #10b981;
+}
+[data-theme="light"] .meta-damage.damage-type-healing .damage-dice-value,
+.light-mode .meta-damage.damage-type-healing .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-healing,
+.light-mode .damage-dice-value.damage-type-healing {
+    color: #047857;
+}
+
+
 .spell-card-meta {
     display: flex;
     flex-wrap: wrap;

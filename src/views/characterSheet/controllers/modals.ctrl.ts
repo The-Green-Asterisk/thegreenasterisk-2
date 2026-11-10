@@ -1,7 +1,7 @@
 import el from "@elements";
 import FileService from "@services/fileService";
 import { getData, postData } from "@services/request";
-import { getSpellDamageDisplay, resolveActionSpellDamage } from "../../../services/spellDamage";
+import { getSpellcastingModifier, getSpellDamageDisplay, getSpellDamageType, isHealingSpell, replaceModInString, resolveActionSpellDamage } from "../../../services/spellDamage";
 import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
 import { renderEquipment } from "../components/equipment";
 import {
@@ -1365,8 +1365,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalBadges) {
             let badgesHtml = `<span class="modal-badge school-badge">${displaySchool}</span>`;
             if (localSpell?.source) badgesHtml += `<span class="modal-badge source-badge">${localSpell.source}</span>`;
-            const localDamage = localSpell ? getSpellDamageDisplay(localSpell, undefined, activeCharLevel) : "";
-            if (localDamage) badgesHtml += `<span class="modal-badge damage-badge"><i class="fa-solid fa-burst"></i> ${localDamage}</span>`;
+            const localDamage = localSpell ? getSpellDamageDisplay(localSpell, undefined, activeCharLevel, activeChar) : "";
+            if (localDamage) {
+                const dmgType = getSpellDamageType(localSpell, localDamage);
+                const isHeal = isHealingSpell(localSpell, dmgType || localDamage);
+                const typeCls = dmgType ? `damage-type-${dmgType.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : (isHeal ? 'damage-type-healing' : '');
+                const icon = isHeal ? 'fa-heart' : 'fa-burst';
+                badgesHtml += `<span class="modal-badge damage-badge${typeCls ? ' ' + typeCls : ''}"><i class="fa-solid ${icon}"></i> ${localDamage}</span>`;
+            }
             if (localSpell?.concentration) {
                 badgesHtml += `<span class="modal-badge conc-badge"><i class="fa-solid fa-brain"></i> Concentration</span>`;
             }
@@ -1449,8 +1455,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 if (modalBadges) {
                     let badges = `<span class="modal-badge school-badge">${independentSpell.school || displaySchool}</span>`;
                     badges += `<span class="modal-badge tier-badge tier-${String(spellSourceTier).toLowerCase().replace(/[^a-z0-9]/g, '-')}"><i class="fa-solid fa-database"></i> Source: ${spellSourceTier}</span>`;
-                    const indDamage = getSpellDamageDisplay(independentSpell, undefined, activeCharLevel);
-                    if (indDamage) badges += `<span class="modal-badge damage-badge"><i class="fa-solid fa-burst"></i> ${indDamage}</span>`;
+                    const indDamage = getSpellDamageDisplay(independentSpell, undefined, activeCharLevel, activeChar);
+                    if (indDamage) {
+                        const dmgType = getSpellDamageType(independentSpell, indDamage);
+                        const isHeal = isHealingSpell(independentSpell, dmgType || indDamage);
+                        const typeCls = dmgType ? `damage-type-${dmgType.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : (isHeal ? 'damage-type-healing' : '');
+                        const icon = isHeal ? 'fa-heart' : 'fa-burst';
+                        badges += `<span class="modal-badge damage-badge${typeCls ? ' ' + typeCls : ''}"><i class="fa-solid ${icon}"></i> ${indDamage}</span>`;
+                    }
                     if (independentSpell.concentration) {
                         badges += `<span class="modal-badge conc-badge"><i class="fa-solid fa-brain"></i> Concentration</span>`;
                     }
@@ -2611,26 +2623,30 @@ export function initModalsController(ctx: CharacterSheetContext) {
             const baseModStr = baseDamageMod ? (baseDamageMod.startsWith("+") || baseDamageMod.startsWith("-") ? ` ${baseDamageMod}` : ` +${baseDamageMod}`) : "";
             const baseTotalStr = baseDamageDice ? `${baseDamageDice}${baseModStr} ${damageType}` : damageType;
             const colHeader = isCharacterScaling ? "Character Level" : "Casting Level";
+            const isHeal = isHealingSpell({ damageType }, damageType);
+            const typeCls = damageType ? `damage-type-${damageType.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : (isHeal ? 'damage-type-healing' : '');
+            const icon = isHeal ? 'fa-heart' : 'fa-burst';
+            const label = isHeal ? 'Healing' : 'Damage';
 
             const tableRowsHtml = scalingRows.map(r => {
                 const formattedMod = r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? r.modifier : `+${r.modifier}`) : "—";
                 const totalText = r.dice ? `${r.dice}${r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? ` ${r.modifier}` : ` +${r.modifier}`) : ""} ${damageType}`.trim() : "—";
-                return `<tr><td><strong>${escapeHtml(r.label)}</strong></td><td>${escapeHtml(r.dice || "—")}</td><td>${escapeHtml(formattedMod)}</td><td><span class="damage-total-badge">${escapeHtml(totalText)}</span></td></tr>`;
+                return `<tr><td><strong>${escapeHtml(r.label)}</strong></td><td>${escapeHtml(r.dice || "—")}</td><td>${escapeHtml(formattedMod)}</td><td><span class="damage-total-badge${typeCls ? ' ' + typeCls : ''}">${escapeHtml(totalText)}</span></td></tr>`;
             }).join("");
 
             const damageBlockHtml = `
 <div class="spell-damage-scaling-block">
-    <div class="spell-damage-summary-badge">
-        <i class="fa-solid fa-burst"></i> <strong>Damage:</strong> ${escapeHtml(baseTotalStr)}
+    <div class="spell-damage-summary-badge${typeCls ? ' ' + typeCls : ''}">
+        <i class="fa-solid ${icon}"></i> <strong>${label}:</strong> ${escapeHtml(baseTotalStr)}
     </div>
     <div class="spell-scaling-table-container">
         <table class="spell-scaling-table">
             <thead>
                 <tr>
                     <th>${escapeHtml(colHeader)}</th>
-                    <th>Damage Dice</th>
+                    <th>${isHeal ? 'Healing Dice' : 'Damage Dice'}</th>
                     <th>Modifier</th>
-                    <th>Total Damage</th>
+                    <th>${isHeal ? 'Total Healing' : 'Total Damage'}</th>
                 </tr>
             </thead>
             <tbody>
