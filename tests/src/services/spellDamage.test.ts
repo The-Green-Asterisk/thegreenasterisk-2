@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
     extractSpellDamageInfo,
     getSpellDamageDisplay,
+    getSpellDamageType,
+    getSpellcastingModifier,
+    isHealingSpell,
+    replaceModInString,
     resolveActionSpellDamage
 } from "../../../src/services/spellDamage";
 import { CharacterData, SpellDefinition } from "../../../src/views/characterSheet/characterData";
@@ -246,9 +250,10 @@ describe("renderSpellCard & renderSpellsByLevel", () => {
 
     it("displays damage dice and type on spell cards", () => {
         const cardHtml = renderSpellCard(mockSpell);
-        expect(cardHtml).toContain('class="badge badge-damage"');
+        expect(cardHtml).toContain('badge badge-damage');
+        expect(cardHtml).toContain('damage-type-fire');
         expect(cardHtml).toContain("8d6 Fire");
-        expect(cardHtml).toContain('class="meta-item meta-damage"');
+        expect(cardHtml).toContain('meta-item meta-damage');
     });
 
     it("displays upcast badge and level when rendered as an upcast spell", () => {
@@ -470,5 +475,179 @@ describe("renderSpellCard & renderSpellsByLevel", () => {
         const renderedLv17 = renderActions(level17Char);
         expect(renderedLv17).toContain("4d6 Acid");
         expect(renderedLv17).toContain("4 beams • 1d10 + 4 Force each");
+    });
+
+    it("correctly identifies damage types and healing spells", () => {
+        expect(getSpellDamageType({ damageType: "Fire" })).toBe("Fire");
+        expect(isHealingSpell({ damageType: "Fire" })).toBe(false);
+
+        expect(getSpellDamageType({ damageType: "Healing" })).toBe("Healing");
+        expect(isHealingSpell({ damageType: "Healing" })).toBe(true);
+
+        expect(getSpellDamageType(null, "2d8+MOD Healing")).toBe("Healing");
+        expect(isHealingSpell(null, "2d8+MOD Healing")).toBe(true);
+
+        expect(getSpellDamageType(null, "8d6 Fire")).toBe("Fire");
+        expect(isHealingSpell(null, "8d6 Fire")).toBe(false);
+
+        expect(getSpellDamageType(null, "1d10 Force")).toBe("Force");
+        expect(isHealingSpell(null, "1d10 Force")).toBe(false);
+
+        const cureWounds = {
+            name: "Cure Wounds",
+            level: 1,
+            description: "A creature you touch regains Hit Points equal to 2d8 plus your spellcasting ability modifier."
+        };
+        expect(getSpellDamageType(cureWounds)).toBe("Healing");
+        expect(isHealingSpell(cureWounds)).toBe(true);
+    });
+
+    it("color-codes damage badges and changes icon to a heart for healing spells", () => {
+        const healingSpell: SpellDefinition = {
+            id: 20,
+            name: "Cure Wounds",
+            level: 1,
+            school: "Abjuration",
+            source: "Cleric",
+            castingTime: "1 Action",
+            range: "Touch",
+            duration: "Instantaneous",
+            components: "V, S",
+            concentration: false,
+            ritual: false,
+            description: "A creature you touch regains Hit Points equal to 2d8 plus your spellcasting ability modifier.",
+            damageDice: "2d8",
+            damageModifier: "+MOD",
+            damageType: "Healing"
+        };
+
+        const cardHtml = renderSpellCard(healingSpell);
+        expect(cardHtml).toContain("badge-damage damage-type-healing");
+        expect(cardHtml).toContain("meta-damage damage-type-healing");
+        expect(cardHtml).toContain("damage-dice-value damage-type-healing");
+        expect(cardHtml).toContain("fa-solid fa-heart");
+        expect(cardHtml).not.toContain("fa-burst");
+        expect(cardHtml).toContain('title="Healing: 2d8+MOD Healing"');
+        expect(cardHtml).toContain('<span class="meta-label">Healing:</span>');
+    });
+
+    it("color-codes damage badges with damage-type class and burst icon for standard damage", () => {
+        const fireCard = renderSpellCard(mockSpell);
+        expect(fireCard).toContain("badge-damage damage-type-fire");
+        expect(fireCard).toContain("meta-damage damage-type-fire");
+        expect(fireCard).toContain("damage-dice-value damage-type-fire");
+        expect(fireCard).toContain("fa-solid fa-burst");
+        expect(fireCard).not.toContain("fa-heart");
+        expect(fireCard).toContain('title="Damage: 8d6 Fire"');
+
+        const acidCard = renderSpellCard(mockAcidSplash, 1);
+        expect(acidCard).toContain("badge-damage damage-type-acid");
+        expect(acidCard).toContain("meta-damage damage-type-acid");
+        expect(acidCard).toContain("fa-solid fa-burst");
+    });
+
+    it("replaces +MOD with spellcasting modifier number in getSpellDamageDisplay", () => {
+        const cureWounds: SpellDefinition = {
+            id: 20,
+            name: "Cure Wounds",
+            level: 1,
+            school: "Abjuration",
+            source: "Cleric",
+            castingTime: "1 Action",
+            range: "Touch",
+            duration: "Instantaneous",
+            components: "V, S",
+            concentration: false,
+            ritual: false,
+            description: "A creature you touch regains Hit Points equal to 2d8 plus your spellcasting ability modifier. Using a Higher-Level Spell Slot. Increases by 1d8 for each slot level above 1st.",
+            damageDice: "2d8",
+            damageModifier: "+MOD",
+            damageType: "Healing",
+            damageScaling: [
+                { level: 1, label: "Level 1", dice: "2d8", modifier: "+MOD" },
+                { level: 2, label: "Level 2", dice: "3d8", modifier: "+MOD" },
+                { level: 3, label: "Level 3", dice: "4d8", modifier: "+MOD" }
+            ]
+        };
+
+        // Positive modifier (+4)
+        expect(getSpellDamageDisplay(cureWounds, 1, 1, 4)).toBe("2d8+4 Healing");
+        // Zero modifier (+0)
+        expect(getSpellDamageDisplay(cureWounds, 1, 1, 0)).toBe("2d8+0 Healing");
+        // Negative modifier (-1)
+        expect(getSpellDamageDisplay(cureWounds, 1, 1, -1)).toBe("2d8-1 Healing");
+        // Upcast with modifier
+        expect(getSpellDamageDisplay(cureWounds, 2, 1, 4)).toBe("3d8+4 Healing");
+        expect(getSpellDamageDisplay(cureWounds, 3, 1, 4)).toBe("4d8+4 Healing");
+        // Fallback without modifier retains +MOD
+        expect(getSpellDamageDisplay(cureWounds)).toBe("2d8+MOD Healing");
+    });
+
+    it("extracts spellcasting modifier from character data and replaces +MOD on spell cards", () => {
+        const cureWounds: SpellDefinition = {
+            id: 20,
+            name: "Cure Wounds",
+            level: 1,
+            school: "Abjuration",
+            source: "Cleric",
+            castingTime: "1 Action",
+            range: "Touch",
+            duration: "Instantaneous",
+            components: "V, S",
+            concentration: false,
+            ritual: false,
+            description: "A creature you touch regains Hit Points equal to 2d8 plus your spellcasting ability modifier.",
+            damageDice: "2d8",
+            damageModifier: "+MOD",
+            damageType: "Healing"
+        };
+
+        const clericChar = {
+            level: 5,
+            classes: [{ name: "Cleric", level: 5 }],
+            abilities: [
+                { name: "Wisdom", abbr: "WIS", score: 18, modifier: 4 },
+                { name: "Charisma", abbr: "CHA", score: 10, modifier: 0 }
+            ],
+            vitals: {
+                spellcastingAbility: "Wisdom (+4)",
+                spellAttackBonus: 7,
+                proficiencyBonus: 3
+            },
+            spellSlots: {
+                level1: { total: 4, label: "1st Level" },
+                level2: { total: 3, label: "2nd Level" }
+            },
+            spells: [cureWounds]
+        } as unknown as CharacterData;
+
+        expect(getSpellcastingModifier(clericChar, cureWounds)).toBe(4);
+
+        // Rendering spell card directly with character
+        const cardHtml = renderSpellCard(cureWounds, 5, clericChar);
+        expect(cardHtml).toContain("2d8+4 Healing");
+        expect(cardHtml).not.toContain("+MOD");
+        expect(cardHtml).toContain("fa-heart");
+
+        // Rendering spell card with explicit modifier number
+        const cardWithMod = renderSpellCard(cureWounds, 5, 5);
+        expect(cardWithMod).toContain("2d8+5 Healing");
+
+        // Rendering in renderSpellsByLevel replaces +MOD with the character's modifier
+        const renderedSpells = renderSpellsByLevel([cureWounds], clericChar.spellSlots, clericChar);
+        expect(renderedSpells).toContain("2d8+4 Healing");
+        expect(renderedSpells).not.toContain("+MOD");
+    });
+
+    it("replaces MOD in replaceModInString for various formats and signs", () => {
+        expect(replaceModInString("+MOD", 4)).toBe("+4");
+        expect(replaceModInString("+ MOD", 4)).toBe("+ 4");
+        expect(replaceModInString("-MOD", 4)).toBe("-4");
+        expect(replaceModInString("-MOD", -2)).toBe("+2");
+        expect(replaceModInString("+MOD", -2)).toBe("-2");
+        expect(replaceModInString("+MOD", 0)).toBe("+0");
+        expect(replaceModInString("MOD", 3)).toBe("+3");
+        expect(replaceModInString("2d8 + MOD Healing", 4)).toBe("2d8 + 4 Healing");
+        expect(replaceModInString("1d4+MOD", 5)).toBe("1d4+5");
     });
 });
