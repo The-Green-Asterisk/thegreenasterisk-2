@@ -239,6 +239,8 @@ export interface CharacterData {
     savingThrowNotes?: string[];
     /** Advantage, disadvantage, and situational bonuses on saving throws, merged, with their sources */
     saveEffects?: SaveEffect[];
+    /** Advantage and disadvantage from equipped items (Weapon of Warning), recomputed with item bonuses */
+    itemRollNotes?: string[];
     /** Senses before any rules-data grants (species, or what D&D Beyond gave), feet by key */
     baseSenses?: Record<string, number>;
     /** Senses granted by rules data (class features, options, feats, traits), with their sources */

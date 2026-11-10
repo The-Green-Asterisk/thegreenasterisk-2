@@ -122,9 +122,16 @@ export function setItemRules(items: Array<{ name: string; modifiers: StatModifie
     itemRules = Array.isArray(items) ? items : [];
 }
 
-/** An item's rules modifiers, by name ("Goggles of Night"); apostrophes match either way. */
+/**
+ * An item's rules modifiers, by name ("Goggles of Night"); apostrophes match either way, and a "+1"/"+2"/"+3" variant
+ * ("Rod of the Pact Keeper, +2", "+1 Amulet of the Devout") uses its base name's entry.
+ */
 export function findItemRule(name: string): { name: string; modifiers: StatModifier[] } | undefined {
     const norm = (s: string) => String(s || "").trim().toLowerCase().replace(/[’‘`]/g, "'");
     const key = norm(name);
-    return key ? itemRules.find((i) => norm(i.name) === key) : undefined;
+    if (!key) return undefined;
+    const exact = itemRules.find((i) => norm(i.name) === key);
+    if (exact) return exact;
+    const base = key.replace(/,?\s*\+\s*[1-3]\b/g, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+    return base && base !== key ? itemRules.find((i) => norm(i.name) === base) : undefined;
 }

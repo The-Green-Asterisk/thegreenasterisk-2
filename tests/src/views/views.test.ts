@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { setClassRules } from '../../../src/services/classRules';
+import { setClassRules, setItemRules } from '../../../src/services/classRules';
+import { SEED_ITEM_MECHANICS } from '../../../server/services/database/itemMechanics';
 import { serverRulesClasses } from './serverRulesClasses';
 import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
 import characterSheet from '../../../src/views/characterSheet/characterSheet.ctrl';
@@ -14,6 +15,8 @@ describe('Frontend View Templates', () => {
     // The sheet reads class rules served from rule_classes; use the same seeded data here
     beforeEach(() => {
         setClassRules(serverRulesClasses());
+        // Item effects come from the item rules served with /get-rules (the seed list here)
+        setItemRules(SEED_ITEM_MECHANICS as any);
     });
 
     it('renders homeTemplate with expected hero content', () => {
@@ -1892,6 +1895,8 @@ describe('Frontend View Templates', () => {
         const { darvellData } = await import('../../../src/views/characterSheet/characterData');
 
         const testChar = JSON.parse(JSON.stringify(darvellData));
+        // Item stats from data apply to characters built here (D&D Beyond's numbers already count its items)
+        testChar.source = "site";
         testChar.abilities = [
             { name: "Strength", abbr: "STR", score: 14, modifier: 2, save: 2, proficientSave: false, baseScore: 14, bonus: 0 },
             { name: "Dexterity", abbr: "DEX", score: 14, modifier: 2, save: 2, proficientSave: false, baseScore: 14, bonus: 0 },
@@ -2042,6 +2047,8 @@ describe('Frontend View Templates', () => {
         expect(checkItemRequiresAttunement({ name: 'Custom Ring', requiresAttunement: true })).toBe(true);
 
         const charClone = JSON.parse(JSON.stringify(darvellData));
+        // Item stats from data apply to characters built here (D&D Beyond's numbers already count its items)
+        charClone.source = "site";
         // Give character an attuned Cloak of Protection (+1 AC, +1 Saves, requires attunement)
         charClone.equipment.push({
             id: 9991,

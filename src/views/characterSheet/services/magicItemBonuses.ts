@@ -1,5 +1,6 @@
 import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
 import { findItemRule } from "../../../services/classRules";
+import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { AbilityScore, CharacterData, EquipmentItem, WeaponItem } from "../characterData";
 
 export interface MagicBonusExtraction {
@@ -14,6 +15,8 @@ export interface MagicBonusExtraction {
     speedBonusFt: number;
     speedMultiplier: number;
     initiativeBonus: number;
+    /** Advantage or disadvantage the item gives, as notes ("Advantage on Initiative (Weapon of Warning)") */
+    rollNotes: string[];
 }
 
 export interface BaseWeaponDef {
@@ -729,11 +732,9 @@ const STAT_ABBRS: Record<string, string> = {
 export function extractPlusBonus(name: string, description?: string): number {
     const combined = `${name || ""} ${description || ""}`;
 
-    // Specific named weapon bonuses
-    const lowerName = (name || "").toLowerCase();
-    if (lowerName.includes("holy avenger")) return 3;
-    if (lowerName.includes("sun blade")) return 2;
-    if (lowerName.includes("staff of power") || lowerName.includes("staff of the magi")) return 2;
+    // An item whose bonus its name doesn't show (Holy Avenger, Sun Blade, staves): item.plus in its rules data
+    const fromData = findItemRule(name)?.modifiers?.find((m) => m.target === "item.plus" && m.type === "set");
+    if (fromData && Number(fromData.value) > 0) return Number(fromData.value);
 
     // Matches "+1", "+2", "+3", ", +1", "+ 1", "plus 1", etc.
     const nameMatch = name.match(/(?:\+|\bplus\s*)([1-3])\b|\b([1-3])\s*\+/i);
@@ -749,186 +750,81 @@ export function extractPlusBonus(name: string, description?: string): number {
     return 0;
 }
 
+/** An item's rules modifiers: its own (custom items, D&D Beyond), else the item rules' for its name. */
+export function itemModifiers(item: { name?: string; modifiers?: StatModifier[] }): StatModifier[] {
+    return item.modifiers ?? findItemRule(item.name || "")?.modifiers ?? [];
+}
+
+const emptyExtraction = (): MagicBonusExtraction => ({
+    statOverrides: {},
+    statBonuses: {},
+    acBonus: 0,
+    globalSaveBonus: 0,
+    specificSaveBonuses: {},
+    spellDcBonus: 0,
+    spellAtkBonus: 0,
+    globalCheckBonus: 0,
+    speedBonusFt: 0,
+    speedMultiplier: 1,
+    initiativeBonus: 0,
+    rollNotes: []
+});
+
 /**
- * Analyzes an equipped item or weapon and returns any magical bonuses it confers.
+ * The bonuses an equipped item gives, from its rules modifiers (itemModifiers): ability scores, AC, saves, checks,
+ * spell attack and DC, speed, initiative, and advantage notes. Magic armor and shields also add their own +N to AC
+ * when their data doesn't set AC itself.
  */
 export function extractItemMagicBonuses(
-    item: { name: string; type?: string; filterType?: string; description?: string; notes?: string; isMagic?: boolean },
+    item: { name: string; type?: string; filterType?: string; description?: string; notes?: string; isMagic?: boolean; modifiers?: StatModifier[] },
     isShieldEquipped: boolean,
     isBodyArmorEquipped: boolean
 ): MagicBonusExtraction {
-    const result: MagicBonusExtraction = {
-        statOverrides: {},
-        statBonuses: {},
-        acBonus: 0,
-        globalSaveBonus: 0,
-        specificSaveBonuses: {},
-        spellDcBonus: 0,
-        spellAtkBonus: 0,
-        globalCheckBonus: 0,
-        speedBonusFt: 0,
-        speedMultiplier: 1,
-        initiativeBonus: 0
-    };
-
+    const result = emptyExtraction();
     const name = (item.name || "").trim();
-    const lowerName = name.toLowerCase();
-    const desc = `${item.description || ""} ${item.notes || ""}`;
-    const lowerDesc = desc.toLowerCase();
-    const plusVal = extractPlusBonus(name, desc);
+    const plusVal = extractPlusBonus(name, `${item.description || ""} ${item.notes || ""}`);
+    const mods = itemModifiers(item);
+    const num = (m: StatModifier) => (m.value === "{{plus}}" ? plusVal || 1 : Number(m.value) || 0);
+    const armorStateOk = (m: StatModifier) =>
+        m.requires === "no-armor-or-shield" ? !isBodyArmorEquipped && !isShieldEquipped
+            : m.requires === "no-armor" ? !isBodyArmorEquipped
+            : true;
 
-    // --- 1. STAT OVERRIDES (Belt of Giant Strength, Gauntlets of Ogre Power, Headband of Intellect, Amulet of Health) ---
-    if (lowerName.includes("gauntlets of ogre power") || lowerDesc.includes("strength score is 19")) {
-        result.statOverrides.STR = 19;
-    }
-    if (lowerName.includes("belt of") && lowerName.includes("giant strength")) {
-        if (lowerName.includes("storm")) result.statOverrides.STR = 29;
-        else if (lowerName.includes("cloud")) result.statOverrides.STR = 27;
-        else if (lowerName.includes("fire")) result.statOverrides.STR = 25;
-        else if (lowerName.includes("frost") || lowerName.includes("stone")) result.statOverrides.STR = 23;
-        else result.statOverrides.STR = 21; // Hill or unspecified
-    } else if (lowerDesc.includes("belt of") && lowerDesc.includes("giant strength")) {
-        if (lowerDesc.includes("storm")) result.statOverrides.STR = 29;
-        else if (lowerDesc.includes("cloud")) result.statOverrides.STR = 27;
-        else if (lowerDesc.includes("fire")) result.statOverrides.STR = 25;
-        else if (lowerDesc.includes("frost") || lowerDesc.includes("stone")) result.statOverrides.STR = 23;
-        else result.statOverrides.STR = 21;
-    }
-
-    if (lowerName.includes("headband of intellect") || lowerDesc.includes("intelligence score is 19")) {
-        result.statOverrides.INT = 19;
-    }
-
-    if (lowerName.includes("amulet of health") || lowerDesc.includes("constitution score is 19")) {
-        result.statOverrides.CON = 19;
-    }
-
-    // Generic set score regex: e.g. "Your Strength score is 21 while you wear"
-    const scoreIsRegex = /your\s+(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+score\s+is\s+(\d+)/gi;
-    let mScore: RegExpExecArray | null;
-    while ((mScore = scoreIsRegex.exec(lowerDesc)) !== null) {
-        const statKey = STAT_ABBRS[mScore[1].toLowerCase()];
-        const val = Number(mScore[2]);
-        if (statKey && val > 0) {
-            result.statOverrides[statKey] = Math.max(result.statOverrides[statKey] || 0, val);
+    for (const m of mods) {
+        const target = String(m.target || "");
+        if (!armorStateOk(m)) continue;
+        if (target.startsWith("abilities.")) {
+            const abbr = STAT_ABBRS[target.split(".")[1]];
+            if (!abbr) continue;
+            if (m.type === "set") result.statOverrides[abbr] = Math.max(result.statOverrides[abbr] || 0, num(m));
+            else if (m.type === "bonus") result.statBonuses[abbr] = (result.statBonuses[abbr] || 0) + num(m);
+        } else if (target === "vitals.ac" && m.type === "bonus") {
+            result.acBonus += num(m);
+        } else if (target === "saves.all" && m.type === "bonus") {
+            result.globalSaveBonus += num(m);
+        } else if (target === "checks.all" && m.type === "bonus") {
+            result.globalCheckBonus += num(m);
+        } else if (target === "spells.attack" && m.type === "bonus") {
+            result.spellAtkBonus += num(m);
+        } else if (target === "spells.dc" && m.type === "bonus") {
+            result.spellDcBonus += num(m);
+        } else if (target === "vitals.speed" && m.type === "bonus") {
+            result.speedBonusFt += num(m);
+        } else if (target === "vitals.initiative" && m.type === "bonus") {
+            result.initiativeBonus += num(m);
+        } else if (m.type === "advantage" || m.type === "disadvantage") {
+            const what = target === "vitals.initiative" ? "Initiative"
+                : target.startsWith("skills.") ? `${target.slice(7).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} checks`
+                : target.startsWith("saves.") ? `${target.slice(6) === "all" ? "saving throws" : `${(STAT_ABBRS[target.slice(6)] || target.slice(6)).toUpperCase()} saving throws`}`
+                : "";
+            if (what) result.rollNotes.push(`${m.type === "advantage" ? "Advantage" : "Disadvantage"} on ${what} (${name})`);
         }
     }
 
-    // --- 2. STAT FLAT BONUSES (Tomes, Manuals, Ioun Stones, Hammer of Thunderbolts) ---
-    if (lowerName.includes("manual of gainful exercise")) result.statBonuses.STR = 2;
-    if (lowerName.includes("manual of quickness of action")) result.statBonuses.DEX = 2;
-    if (lowerName.includes("manual of bodily health")) result.statBonuses.CON = 2;
-    if (lowerName.includes("tome of clear thought")) result.statBonuses.INT = 2;
-    if (lowerName.includes("tome of understanding")) result.statBonuses.WIS = 2;
-    if (lowerName.includes("tome of leadership and influence")) result.statBonuses.CHA = 2;
-
-    if (lowerName.includes("ioun stone of strength")) result.statBonuses.STR = 2;
-    if (lowerName.includes("ioun stone of agility")) result.statBonuses.DEX = 2;
-    if (lowerName.includes("ioun stone of fortitude")) result.statBonuses.CON = 2;
-    if (lowerName.includes("ioun stone of intellect")) result.statBonuses.INT = 2;
-    if (lowerName.includes("ioun stone of insight")) result.statBonuses.WIS = 2;
-    if (lowerName.includes("ioun stone of leadership")) result.statBonuses.CHA = 2;
-
-    if (lowerName.includes("hammer of thunderbolts")) result.statBonuses.STR = 4;
-
-    const statIncRegex = /(?:increases? your|your)\s+(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+score\s+(?:increases?\s+)?by\s+(\d+)/gi;
-    let mInc: RegExpExecArray | null;
-    while ((mInc = statIncRegex.exec(lowerDesc)) !== null) {
-        const statKey = STAT_ABBRS[mInc[1].toLowerCase()];
-        const val = Number(mInc[2]);
-        if (statKey && val > 0) {
-            result.statBonuses[statKey] = (result.statBonuses[statKey] || 0) + val;
-        }
-    }
-
-    // --- 3. ARMOR CLASS (AC) BONUSES ---
-    const isShield = lowerName.includes("shield") || (item.filterType || "").toLowerCase() === "shield";
+    // Magic armor and shields: their +N is AC unless their data already gives AC
+    const isShield = name.toLowerCase().includes("shield") || (item.filterType || "").toLowerCase() === "shield";
     const isArmor = (item.filterType || "").toLowerCase() === "armor" && !isShield;
-
-    if (isShield && plusVal > 0) {
-        result.acBonus += plusVal;
-    } else if (isArmor && plusVal > 0) {
-        result.acBonus += plusVal;
-    } else if (lowerName.includes("cloak of protection")) {
-        result.acBonus += 1;
-    } else if (lowerName.includes("ring of protection")) {
-        result.acBonus += 1;
-    } else if (lowerName.includes("staff of power")) {
-        result.acBonus += 2;
-    } else if (lowerName.includes("ioun stone of protection")) {
-        result.acBonus += 1;
-    } else if (lowerName.includes("defender")) {
-        result.acBonus += 3;
-    } else if (lowerName.includes("bracers of defense")) {
-        // Bracers of Defense only apply if not wearing armor and not using a shield
-        if (!isBodyArmorEquipped && !isShieldEquipped) {
-            result.acBonus += 2;
-        }
-    } else if (!isShield && !isArmor) {
-        const acBonusMatch = desc.match(/(?:\+|\bplus\s*)([1-3])\s+bonus\s+to\s+(?:your\s+)?(?:AC|Armor Class)\b/i);
-        if (acBonusMatch) {
-            result.acBonus += Number(acBonusMatch[1]) || 0;
-        }
-    }
-
-    // --- 4. SAVING THROW BONUSES ---
-    if (lowerName.includes("cloak of protection")) {
-        result.globalSaveBonus += 1;
-    } else if (lowerName.includes("ring of protection")) {
-        result.globalSaveBonus += 1;
-    } else if (lowerName.includes("stone of good luck") || lowerName.includes("luckstone")) {
-        result.globalSaveBonus += 1;
-        result.globalCheckBonus += 1;
-    } else if (lowerName.includes("staff of power")) {
-        result.globalSaveBonus += 2;
-    } else {
-        const saveBonusMatch = desc.match(/(?:\+|\bplus\s*)([1-3])\s+bonus\s+to\s+(?:all\s+)?saving throws\b/i);
-        if (saveBonusMatch) {
-            result.globalSaveBonus += Number(saveBonusMatch[1]) || 0;
-        }
-    }
-
-    // --- 5. SPELL ATTACK & SPELL SAVE DC BONUSES ---
-    const isSpellFocusItem =
-        lowerName.includes("rod of the pact keeper") ||
-        lowerName.includes("amulet of the devout") ||
-        lowerName.includes("bloodwell vial") ||
-        lowerName.includes("moon sickle") ||
-        lowerName.includes("all-purpose tool") ||
-        lowerName.includes("rhythm-maker's drum") ||
-        lowerName.includes("wand of the war mage") ||
-        lowerName.includes("robe of the archmagi");
-
-    if (isSpellFocusItem) {
-        const bonus = plusVal > 0 ? plusVal : (lowerName.includes("robe of the archmagi") ? 2 : 1);
-        result.spellAtkBonus += bonus;
-        if (!lowerName.includes("wand of the war mage")) {
-            result.spellDcBonus += bonus;
-        }
-    } else if (lowerName.includes("staff of power") || lowerName.includes("staff of the magi")) {
-        result.spellAtkBonus += 2;
-        result.spellDcBonus += 2;
-    } else {
-        const spellAtkMatch = desc.match(/(?:\+|\bplus\s*)([1-3])\s+bonus\s+to\s+(?:your\s+)?spell attack rolls\b/i);
-        if (spellAtkMatch) {
-            result.spellAtkBonus += Number(spellAtkMatch[1]) || 0;
-        }
-        const spellDcMatch = desc.match(/(?:\+|\bplus\s*)([1-3])\s+bonus\s+to\s+(?:the\s+)?saving throw DCs of your spells\b/i);
-        if (spellDcMatch) {
-            result.spellDcBonus += Number(spellDcMatch[1]) || 0;
-        }
-    }
-
-    // --- 6. SPEED & INITIATIVE ---
-    if (lowerName.includes("boots of speed")) {
-        result.speedMultiplier = 2;
-    }
-    if (lowerName.includes("boots of striding and springing")) {
-        result.speedBonusFt = Math.max(result.speedBonusFt, 0);
-    }
-    if (lowerName.includes("weapon of warning") || lowerName.includes("sentinel shield")) {
-        result.initiativeBonus += 2; // Represent advantage on initiative as +2 effective bonus
-    }
+    if ((isShield || isArmor) && plusVal > 0 && !mods.some((m) => m.target === "vitals.ac")) result.acBonus += plusVal;
 
     return result;
 }
@@ -970,19 +866,7 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     });
 
     // Aggregate bonuses from all active items without double-counting mirrored items
-    const aggregated: MagicBonusExtraction = {
-        statOverrides: {},
-        statBonuses: {},
-        acBonus: 0,
-        globalSaveBonus: 0,
-        specificSaveBonuses: {},
-        spellDcBonus: 0,
-        spellAtkBonus: 0,
-        globalCheckBonus: 0,
-        speedBonusFt: 0,
-        speedMultiplier: 1,
-        initiativeBonus: 0
-    };
+    const aggregated = emptyExtraction();
 
     const seenItemKeys = new Set<string>();
     const processItem = (item: any) => {
@@ -1012,15 +896,21 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         aggregated.speedBonusFt += extracted.speedBonusFt;
         aggregated.speedMultiplier = Math.max(aggregated.speedMultiplier, extracted.speedMultiplier);
         aggregated.initiativeBonus += extracted.initiativeBonus;
+        aggregated.rollNotes.push(...extracted.rollNotes);
     };
 
     equippedItems.forEach(processItem);
     equippedWeapons.forEach(processItem);
+    character.itemRollNotes = aggregated.rollNotes.length > 0 ? aggregated.rollNotes : undefined;
+
+    // D&D Beyond's numbers already count its items' effects, and changing equipment re-reads them, so imported
+    // characters only get their items' senses and weapons here; adding item stats again would count them twice
+    const itemStatsFromData = character.source !== "dndbeyond";
 
     const profBonus = character.vitals?.proficiencyBonus || Math.floor(((character.level || 1) - 1) / 4) + 2;
 
     // --- 1. RECALCULATE ABILITY SCORES ---
-    character.abilities.forEach(ability => {
+    if (itemStatsFromData) character.abilities.forEach(ability => {
         const abbr = ability.abbr;
         // Natural score is baseScore + natural bonus (from racial, leveling, feats)
         const naturalBase = typeof ability.baseScore === "number" ? ability.baseScore : (ability.score - (ability.bonus || 0));
@@ -1059,7 +949,7 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     const chaMod = abilityMods.CHA ?? 0;
 
     // --- 2. RECALCULATE SKILLS ---
-    if (Array.isArray(character.skills)) {
+    if (itemStatsFromData && Array.isArray(character.skills)) {
         character.skills.forEach(skill => {
             const statMod = abilityMods[skill.stat] ?? 0;
             let b = statMod;
@@ -1073,7 +963,7 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     }
 
     // --- 3. RECALCULATE VITALS ---
-    if (character.vitals) {
+    if (itemStatsFromData && character.vitals) {
         // Base AC without magic item accessories:
         // If character.vitals.armorClass was previously computed, apply the net magic acBonus
         // If natural AC is tracked, start from natural AC:

@@ -311,7 +311,8 @@ export function renderSavingThrowNotes(data: CharacterData): string {
     // Effects on every save, with what grants them, then other roll notes; effects on one ability are on its card
     const notes = [
         ...effectsForAllSaves(data.saveEffects).map((e) => `${rowText(e)}${e.sources.length ? ` (${e.sources.join(", ")})` : ""}`),
-        ...(data.savingThrowNotes || data.vitals?.savingThrowNotes || [])
+        ...(data.savingThrowNotes || data.vitals?.savingThrowNotes || []),
+        ...(data.itemRollNotes || [])
     ];
     const resistances = data.damageResistances || data.vitals?.damageResistances || [];
     const immunities = data.conditionImmunities || data.vitals?.conditionImmunities || [];

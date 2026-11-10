@@ -2188,6 +2188,7 @@ export function parseDndBeyondCharacter(
 
     const result: CharacterData = {
         id: characterId,
+        source: "dndbeyond",
         name: raw.name || "Adventurer",
         subtitle,
         level: totalLevel,
