@@ -39,6 +39,7 @@ Beyond what Elemental comes with:
 - **Profiles**, comments, and image uploads
 - **Dark mode**, following the device's setting, with a toggle in the nav
 - **PR Digest**: an admin-only page with push notifications, installable as an app
+- **Character Creator and Sheet**: D&D 2024 characters built here or imported from D&D Beyond. Every class, subclass, species, feat, item, and spell effect comes from rules data, not code; [docs/character-rules-data.md](docs/character-rules-data.md) explains how, and is the guide for anyone (or any AI) changing them
 
 ### Deploying
 
