@@ -64,6 +64,8 @@ export interface CharacterSheetContext {
     openFeatureModal: (featureIndex: number) => void;
     openCustomSpellModal: () => void;
     closeCustomSpellModal: () => void;
+    openMarkupGuideModal: () => void;
+    closeMarkupGuideModal: () => void;
     openManageSpellsModal: () => Promise<void>;
     closeManageSpellsModal: () => void;
     openManageItemsModal: (initialType?: string) => Promise<void>;

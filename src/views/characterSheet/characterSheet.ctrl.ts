@@ -1,23 +1,22 @@
-import { restoreUsePips } from "./components/usesTracker";
 import el from "@elements";
 import { delData, getData, postData, putData } from "@services/request";
+import { loadClassRules } from "../../services/classRules";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
-import { loadClassRules } from "../../services/classRules";
 import { renderSheetContent } from "./characterSheet.template";
-import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
 import { renderAbilityCards } from "./components/abilities";
-import { renderSpecialSensesList } from "./components/vitals";
-import { renderSkills } from "./components/skills";
-import { renderWeapons } from "./components/weapons";
 import { renderActions } from "./components/actions";
+import { renderSkills } from "./components/skills";
 import { describeDuplicateSpells } from "./components/spells";
-import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
+import { restoreUsePips } from "./components/usesTracker";
+import { renderSpecialSensesList } from "./components/vitals";
+import { renderWeapons } from "./components/weapons";
 import {
     CharacterSheetContext,
     SavedCharacterSummary,
     initAbilitiesController,
     initActionsController,
+    initDetailsController,
     initEquipmentController,
     initFeaturesController,
     initFullscreenController,
@@ -25,13 +24,14 @@ import {
     initLoaderBarController,
     initModalsController,
     initResourcesController,
-    initDetailsController,
     initSkillsController,
     initSpellsController,
     initTabsController,
     initVitalsController,
     initWeaponsController
 } from "./controllers/index";
+import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
+import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
 
 export default function characterSheet(initialParams?: { id?: string | number; characterId?: string | number; url?: string } | string | number) {
     const baseEl = el.getElement<HTMLElement>("el-character-sheet");
@@ -1183,18 +1183,18 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
         const currentActiveId = activeCharacter
             ? ((activeCharacter as any).externalCharacterId ||
-               (activeCharacter.id && /^\d+$/.test(String(activeCharacter.id)) ? String(activeCharacter.id) : undefined) ||
-               activeCharacter.siteCharacterId ||
-               activeCharacterId)
+                (activeCharacter.id && /^\d+$/.test(String(activeCharacter.id)) ? String(activeCharacter.id) : undefined) ||
+                activeCharacter.siteCharacterId ||
+                activeCharacterId)
             : undefined;
 
         const isSameCharacter = !!(
             activeCharacter &&
             (options?.refreshed ||
-             (currentActiveId && String(currentActiveId) === String(extractedId)) ||
-             (activeCharacter.id && String(activeCharacter.id) === String(extractedId)) ||
-             ((activeCharacter as any).externalCharacterId && String((activeCharacter as any).externalCharacterId) === String(extractedId)) ||
-             (activeCharacter.siteCharacterId && String(activeCharacter.siteCharacterId).toLowerCase() === String(extractedId).toLowerCase()))
+                (currentActiveId && String(currentActiveId) === String(extractedId)) ||
+                (activeCharacter.id && String(activeCharacter.id) === String(extractedId)) ||
+                ((activeCharacter as any).externalCharacterId && String((activeCharacter as any).externalCharacterId) === String(extractedId)) ||
+                (activeCharacter.siteCharacterId && String(activeCharacter.siteCharacterId).toLowerCase() === String(extractedId).toLowerCase()))
         );
 
         try {
@@ -1345,6 +1345,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         openFeatureModal: () => { },
         openCustomSpellModal: () => { },
         closeCustomSpellModal: () => { },
+        openMarkupGuideModal: () => { },
+        closeMarkupGuideModal: () => { },
         openManageSpellsModal: async () => { },
         closeManageSpellsModal: () => { },
         openManageItemsModal: async () => { },
