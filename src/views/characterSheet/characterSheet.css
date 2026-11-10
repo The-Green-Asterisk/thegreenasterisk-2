@@ -2493,6 +2493,57 @@ el-character-sheet .content-slate section {
     border: 1px solid #26a69a;
 }
 
+.badge-damage {
+    background: rgba(220, 38, 38, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge-upcast {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.4);
+}
+
+.spell-card-upcast {
+    border-left: 3px solid #3b82f6;
+}
+
+.meta-damage .damage-dice-value {
+    color: #f87171;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+[data-theme="light"] .badge-damage,
+.light-mode .badge-damage {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #f87171;
+}
+
+[data-theme="light"] .badge-upcast,
+.light-mode .badge-upcast {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #60a5fa;
+}
+
+[data-theme="light"] .meta-damage .damage-dice-value,
+.light-mode .meta-damage .damage-dice-value {
+    color: #b91c1c;
+}
+
+[data-theme="light"] .spell-card-upcast,
+.light-mode .spell-card-upcast {
+    border-left-color: #2563eb;
+}
+
 .spell-card-meta {
     display: flex;
     flex-wrap: wrap;
@@ -2652,6 +2703,19 @@ el-character-sheet .content-slate section {
 
 .action-stat .stat-lbl {
     color: var(--text-muted);
+}
+
+.action-scaling-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ui-color);
+    background: rgba(46, 125, 50, 0.12);
+    border: 1px solid rgba(46, 125, 50, 0.25);
+    border-radius: var(--radius);
+    padding: 0.1rem 0.35rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
 }
 
 .action-notes {
@@ -3245,6 +3309,19 @@ el-character-sheet .content-slate section {
 .modal-badge.ritual-badge {
     background: #00897b;
     color: white;
+}
+
+.modal-badge.damage-badge {
+    background: rgba(220, 38, 38, 0.18);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+[data-theme="light"] .modal-badge.damage-badge,
+.light-mode .modal-badge.damage-badge {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #f87171;
 }
 
 .modal-spell-title {
@@ -4947,17 +5024,29 @@ el-character-sheet .content-slate section.sheet-hero,
 }
 
 .manage-spells-btn {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.28) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.55);
-    color: #a7f3d0;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #10b981;
+    color: #065f46;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15);
     transition: all 0.16s ease;
 }
 
 .manage-spells-btn:hover {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.32) 0%, rgba(5, 150, 105, 0.42) 100%);
-    border-color: #10b981;
-    color: #ecfdf5;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: #059669;
+    color: #ffffff;
+    box-shadow: 0 3px 8px rgba(16, 185, 129, 0.28);
     transform: translateY(-1px);
+}
+
+.manage-spells-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
+}
+
+.manage-spells-btn:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
 }
 
 .manage-weapons-btn,
@@ -4980,29 +5069,102 @@ el-character-sheet .content-slate section.sheet-hero,
 }
 
 .manage-weapons-btn {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.28) 100%);
-    border: 1px solid rgba(245, 158, 11, 0.55);
-    color: #fde68a;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);
 }
 
 .manage-weapons-btn:hover {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.32) 0%, rgba(217, 119, 6, 0.42) 100%);
-    border-color: #f59e0b;
-    color: #fffbeb;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border-color: #d97706;
+    color: #ffffff;
+    box-shadow: 0 3px 8px rgba(245, 158, 11, 0.28);
     transform: translateY(-1px);
+}
+
+.manage-weapons-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2);
+}
+
+.manage-weapons-btn:focus-visible {
+    outline: 2px solid #f59e0b;
+    outline-offset: 2px;
 }
 
 .manage-equipment-btn {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(8, 145, 178, 0.28) 100%);
-    border: 1px solid rgba(6, 182, 212, 0.55);
-    color: #a5f3fc;
+    background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+    border: 1px solid #06b6d4;
+    color: #155e75;
+    box-shadow: 0 1px 3px rgba(6, 182, 212, 0.15);
 }
 
 .manage-equipment-btn:hover {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    border-color: #0891b2;
+    color: #ffffff;
+    box-shadow: 0 3px 8px rgba(6, 182, 212, 0.28);
+    transform: translateY(-1px);
+}
+
+.manage-equipment-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(6, 182, 212, 0.2);
+}
+
+.manage-equipment-btn:focus-visible {
+    outline: 2px solid #06b6d4;
+    outline-offset: 2px;
+}
+
+/* Dark mode theme overrides for manage buttons */
+:root[data-theme="dark"] .manage-spells-btn,
+.theme-dark .manage-spells-btn {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.28) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.55);
+    color: #a7f3d0;
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-spells-btn:hover,
+.theme-dark .manage-spells-btn:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.32) 0%, rgba(5, 150, 105, 0.42) 100%);
+    border-color: #10b981;
+    color: #ecfdf5;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+:root[data-theme="dark"] .manage-weapons-btn,
+.theme-dark .manage-weapons-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.28) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.55);
+    color: #fde68a;
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-weapons-btn:hover,
+.theme-dark .manage-weapons-btn:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.32) 0%, rgba(217, 119, 6, 0.42) 100%);
+    border-color: #f59e0b;
+    color: #fffbeb;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+}
+
+:root[data-theme="dark"] .manage-equipment-btn,
+.theme-dark .manage-equipment-btn {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(8, 145, 178, 0.28) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.55);
+    color: #a5f3fc;
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-equipment-btn:hover,
+.theme-dark .manage-equipment-btn:hover {
     background: linear-gradient(135deg, rgba(6, 182, 212, 0.32) 0%, rgba(8, 145, 178, 0.42) 100%);
     border-color: #06b6d4;
     color: #ecfeff;
-    transform: translateY(-1px);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
 }
 
 .equipment-header-banner {
@@ -5036,9 +5198,8 @@ el-character-sheet .content-slate section.sheet-hero,
 
 .manage-spells-search-panel,
 .manage-spells-current-panel {
-    /* Opaque slate in both themes: its text is light */
-    background: #1e293b;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-raised, #f8fafc);
+    border: 1px solid var(--border-soft, rgba(0, 0, 0, 0.12));
     border-radius: 12px;
     padding: 1rem;
     display: flex;
@@ -5048,6 +5209,7 @@ el-character-sheet .content-slate section.sheet-hero,
     min-height: 420px;
     max-height: 620px;
     box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .manage-panel-header {
@@ -5060,22 +5222,22 @@ el-character-sheet .content-slate section.sheet-hero,
 .manage-panel-header h3 {
     margin: 0;
     font-size: 0.96rem;
-    font-weight: 700;
-    color: #f8fafc;
+    font-weight: 800;
+    color: var(--text, #0f172a);
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
 }
 
 .manage-panel-header h3 i {
-    color: var(--accent-green, #10b981);
+    color: var(--ui-color, #10b981);
 }
 
 .manage-db-count,
 .manage-panel-hint {
     font-size: 0.76rem;
     font-weight: 600;
-    color: #cbd5e1;
+    color: var(--text-muted, #64748b);
 }
 
 .manage-search-controls {
@@ -5086,27 +5248,28 @@ el-character-sheet .content-slate section.sheet-hero,
 
 .manage-spells-search-input {
     flex: 1 1 200px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.2));
     border-radius: 8px;
     padding: 0.55rem 0.75rem;
-    color: #f1f5f9;
+    color: var(--text, #0f172a);
     font-size: 0.86rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .manage-spells-search-input:focus,
 .manage-spells-level-select:focus {
     outline: none;
-    border-color: #10b981;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    border-color: var(--ui-color, #10b981);
+    box-shadow: 0 0 0 2px rgba(41, 112, 27, 0.2);
 }
 
 .manage-spells-level-select {
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.2));
     border-radius: 8px;
     padding: 0.55rem 0.65rem;
-    color: #f1f5f9;
+    color: var(--text, #0f172a);
     font-size: 0.84rem;
     cursor: pointer;
 }
@@ -5125,7 +5288,7 @@ el-character-sheet .content-slate section.sheet-hero,
 .manage-db-empty {
     text-align: center;
     padding: 2rem 1rem;
-    color: var(--text-soft, #94a3b8);
+    color: var(--text-muted, #64748b);
     font-size: 0.88rem;
 }
 
@@ -5142,19 +5305,21 @@ el-character-sheet .content-slate section.sheet-hero,
     gap: 0.75rem;
     padding: 0.6rem 0.75rem;
     border-radius: 8px;
-    background: rgba(30, 41, 59, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-soft, rgba(0, 0, 0, 0.12));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     transition: all 0.15s ease;
 }
 
 .manage-db-spell-card:hover {
-    border-color: rgba(16, 185, 129, 0.4);
-    background: rgba(30, 41, 59, 0.9);
+    border-color: #10b981;
+    background: #f0fdf4;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.12);
 }
 
 .manage-db-spell-card.is-added {
-    border-color: rgba(16, 185, 129, 0.35);
-    background: rgba(16, 185, 129, 0.07);
+    border-color: #a7f3d0;
+    background: #ecfdf5;
 }
 
 .manage-db-spell-info {
@@ -5176,7 +5341,7 @@ el-character-sheet .content-slate section.sheet-hero,
 .manage-db-spell-name {
     font-size: 0.9rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--text, #0f172a);
 }
 
 .manage-db-lvl-pill {
@@ -5184,13 +5349,13 @@ el-character-sheet .content-slate section.sheet-hero,
     font-weight: 700;
     padding: 0.1rem 0.45rem;
     border-radius: 999px;
-    background: rgba(16, 185, 129, 0.18);
-    color: #6ee7b7;
+    background: #d1fae5;
+    color: #065f46;
 }
 
 .manage-db-school {
     font-size: 0.75rem;
-    color: var(--text-soft, #94a3b8);
+    color: var(--text-muted, #64748b);
 }
 
 .manage-db-spell-sub {
@@ -5199,11 +5364,11 @@ el-character-sheet .content-slate section.sheet-hero,
     align-items: center;
     gap: 0.55rem;
     font-size: 0.74rem;
-    color: #94a3b8;
+    color: var(--text-muted, #64748b);
 }
 
 .manage-db-source {
-    color: #64748b;
+    color: var(--text-muted, #475569);
     font-style: italic;
 }
 
@@ -5216,15 +5381,15 @@ el-character-sheet .content-slate section.sheet-hero,
 }
 
 .manage-mini-tag.conc {
-    background: rgba(245, 158, 11, 0.2);
-    color: #fcd34d;
-    border: 1px solid rgba(245, 158, 11, 0.4);
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
 }
 
 .manage-mini-tag.ritual {
-    background: rgba(59, 130, 246, 0.2);
-    color: #93c5fd;
-    border: 1px solid rgba(59, 130, 246, 0.4);
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
 }
 
 .manage-db-action-btn {
@@ -5241,37 +5406,38 @@ el-character-sheet .content-slate section.sheet-hero,
 }
 
 .manage-db-action-btn.add {
-    background: rgba(16, 185, 129, 0.18);
-    border: 1px solid rgba(16, 185, 129, 0.5);
-    color: #6ee7b7;
+    background: #ecfdf5;
+    border: 1px solid #10b981;
+    color: #065f46;
 }
 
 .manage-db-action-btn.add:hover {
-    background: rgba(16, 185, 129, 0.32);
-    border-color: #10b981;
-    color: #ecfdf5;
+    background: #10b981;
+    border-color: #059669;
+    color: #ffffff;
 }
 
 .manage-db-action-btn.added {
-    background: rgba(100, 116, 139, 0.2);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    color: #cbd5e1;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
 }
 
 .manage-db-action-btn.added:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.55);
-    color: #fca5a5;
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #dc2626;
 }
 
 .manage-level-group {
-    background: rgba(30, 41, 59, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-soft, rgba(0, 0, 0, 0.1));
     border-radius: 10px;
     padding: 0.65rem 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .manage-level-header {
@@ -5279,14 +5445,14 @@ el-character-sheet .content-slate section.sheet-hero,
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--border-soft, rgba(0, 0, 0, 0.08));
     padding-bottom: 0.38rem;
 }
 
 .manage-level-title {
     font-size: 0.85rem;
     font-weight: 800;
-    color: #e2e8f0;
+    color: var(--text, #0f172a);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -5301,9 +5467,9 @@ el-character-sheet .content-slate section.sheet-hero,
     width: 22px;
     height: 22px;
     border-radius: 6px;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: #94a3b8;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
     font-size: 0.82rem;
     font-weight: 700;
     display: inline-flex;
@@ -5315,7 +5481,8 @@ el-character-sheet .content-slate section.sheet-hero,
 
 .manage-limit-step-btn:hover {
     border-color: #10b981;
-    color: #f8fafc;
+    color: #065f46;
+    background: #e2e8f0;
 }
 
 .manage-level-ratio {
@@ -5323,25 +5490,25 @@ el-character-sheet .content-slate section.sheet-hero,
     font-weight: 800;
     padding: 0.16rem 0.55rem;
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #e2e8f0;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
     min-width: 42px;
     text-align: center;
 }
 
 .manage-level-ratio.at-limit {
-    background: rgba(16, 185, 129, 0.18);
-    border-color: rgba(16, 185, 129, 0.5);
-    color: #6ee7b7;
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
 }
 
 .manage-level-ratio.over-limit {
-    background: rgba(239, 68, 68, 0.25);
-    border: 1.5px solid #ef4444;
-    color: #fca5a5;
+    background: #fee2e2;
+    border: 1.5px solid #dc2626;
+    color: #b91c1c;
     font-weight: 800;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.25);
 }
 
 :root[data-theme="light"] .manage-level-ratio.over-limit,
@@ -5368,12 +5535,15 @@ el-character-sheet .content-slate section.sheet-hero,
     gap: 0.5rem;
     padding: 0.35rem 0.5rem;
     border-radius: 6px;
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.12s ease;
 }
 
 .manage-abbrev-spell-row:hover {
-    border-color: rgba(255, 255, 255, 0.16);
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.18);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .manage-abbrev-spell-main {
@@ -5394,7 +5564,7 @@ el-character-sheet .content-slate section.sheet-hero,
 }
 
 .manage-abbrev-spell-main:focus-visible {
-    outline: 2px solid #93c5fd;
+    outline: 2px solid var(--ui-color, #256619);
     outline-offset: 2px;
     border-radius: 3px;
 }
@@ -5402,16 +5572,18 @@ el-character-sheet .content-slate section.sheet-hero,
 .manage-abbrev-spell-name {
     font-size: 0.84rem;
     font-weight: 700;
-    color: #f1f5f9;
+    color: var(--text, #0f172a);
 }
 
 .manage-abbrev-spell-meta {
     font-size: 0.72rem;
-    color: #94a3b8;
+    color: var(--text-muted, #64748b);
 }
 
 .manage-remove-spell-btn {
-    color: #94a3b8;
+    background: transparent;
+    border: none;
+    color: #64748b;
     padding: 0.25rem 0.4rem;
     border-radius: 6px;
     font-size: 0.78rem;
@@ -5420,15 +5592,248 @@ el-character-sheet .content-slate section.sheet-hero,
 }
 
 .manage-remove-spell-btn:hover {
-    background: rgba(239, 68, 68, 0.18);
-    color: #fca5a5;
+    background: #fee2e2;
+    color: #dc2626;
 }
 
 .manage-empty-level-note {
     font-size: 0.78rem;
-    color: #64748b;
+    color: var(--text-muted, #64748b);
     font-style: italic;
     padding: 0.2rem 0.1rem;
+}
+
+/* Dark mode theme overrides for Manage Spells & Manage Equipment modals */
+:root[data-theme="dark"] .manage-spells-search-panel,
+:root[data-theme="dark"] .manage-spells-current-panel,
+.theme-dark .manage-spells-search-panel,
+.theme-dark .manage-spells-current-panel {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-panel-header h3,
+.theme-dark .manage-panel-header h3 {
+    color: #f8fafc;
+}
+
+:root[data-theme="dark"] .manage-panel-header h3 i,
+.theme-dark .manage-panel-header h3 i {
+    color: var(--accent-green, #10b981);
+}
+
+:root[data-theme="dark"] .manage-db-count,
+:root[data-theme="dark"] .manage-panel-hint,
+.theme-dark .manage-db-count,
+.theme-dark .manage-panel-hint {
+    color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .manage-spells-search-input,
+:root[data-theme="dark"] .manage-spells-level-select,
+.theme-dark .manage-spells-search-input,
+.theme-dark .manage-spells-level-select {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f1f5f9;
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-spells-search-input:focus,
+:root[data-theme="dark"] .manage-spells-level-select:focus,
+.theme-dark .manage-spells-search-input:focus,
+.theme-dark .manage-spells-level-select:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+:root[data-theme="dark"] .manage-db-empty,
+.theme-dark .manage-db-empty {
+    color: var(--text-soft, #94a3b8);
+}
+
+:root[data-theme="dark"] .manage-db-spell-card,
+.theme-dark .manage-db-spell-card {
+    background: rgba(30, 41, 59, 0.65);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-db-spell-card:hover,
+.theme-dark .manage-db-spell-card:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(30, 41, 59, 0.9);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-db-spell-card.is-added,
+.theme-dark .manage-db-spell-card.is-added {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.07);
+}
+
+:root[data-theme="dark"] .manage-db-spell-name,
+.theme-dark .manage-db-spell-name {
+    color: #f8fafc;
+}
+
+:root[data-theme="dark"] .manage-db-lvl-pill,
+.theme-dark .manage-db-lvl-pill {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+}
+
+:root[data-theme="dark"] .manage-db-school,
+:root[data-theme="dark"] .manage-db-spell-sub,
+.theme-dark .manage-db-school,
+.theme-dark .manage-db-spell-sub {
+    color: var(--text-soft, #94a3b8);
+}
+
+:root[data-theme="dark"] .manage-db-source,
+.theme-dark .manage-db-source {
+    color: #64748b;
+}
+
+:root[data-theme="dark"] .manage-mini-tag.conc,
+.theme-dark .manage-mini-tag.conc {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+:root[data-theme="dark"] .manage-mini-tag.ritual,
+.theme-dark .manage-mini-tag.ritual {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+:root[data-theme="dark"] .manage-db-action-btn.add,
+.theme-dark .manage-db-action-btn.add {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #6ee7b7;
+}
+
+:root[data-theme="dark"] .manage-db-action-btn.add:hover,
+.theme-dark .manage-db-action-btn.add:hover {
+    background: rgba(16, 185, 129, 0.32);
+    border-color: #10b981;
+    color: #ecfdf5;
+}
+
+:root[data-theme="dark"] .manage-db-action-btn.added,
+.theme-dark .manage-db-action-btn.added {
+    background: rgba(100, 116, 139, 0.2);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .manage-db-action-btn.added:hover,
+.theme-dark .manage-db-action-btn.added:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.55);
+    color: #fca5a5;
+}
+
+:root[data-theme="dark"] .manage-level-group,
+.theme-dark .manage-level-group {
+    background: rgba(30, 41, 59, 0.55);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-level-header,
+.theme-dark .manage-level-header {
+    border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+
+:root[data-theme="dark"] .manage-level-title,
+.theme-dark .manage-level-title {
+    color: #e2e8f0;
+}
+
+:root[data-theme="dark"] .manage-limit-step-btn,
+.theme-dark .manage-limit-step-btn {
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #94a3b8;
+}
+
+:root[data-theme="dark"] .manage-limit-step-btn:hover,
+.theme-dark .manage-limit-step-btn:hover {
+    border-color: #10b981;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.8);
+}
+
+:root[data-theme="dark"] .manage-level-ratio,
+.theme-dark .manage-level-ratio {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+}
+
+:root[data-theme="dark"] .manage-level-ratio.at-limit,
+.theme-dark .manage-level-ratio.at-limit {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #6ee7b7;
+}
+
+:root[data-theme="dark"] .manage-level-ratio.over-limit,
+.theme-dark .manage-level-ratio.over-limit {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #fca5a5;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+
+:root[data-theme="dark"] .manage-abbrev-spell-row,
+.theme-dark .manage-abbrev-spell-row {
+    background: rgba(15, 23, 42, 0.65);
+    border-color: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-abbrev-spell-row:hover,
+.theme-dark .manage-abbrev-spell-row:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(15, 23, 42, 0.65);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-abbrev-spell-main:focus-visible,
+.theme-dark .manage-abbrev-spell-main:focus-visible {
+    outline-color: #93c5fd;
+}
+
+:root[data-theme="dark"] .manage-abbrev-spell-name,
+.theme-dark .manage-abbrev-spell-name {
+    color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .manage-abbrev-spell-meta,
+.theme-dark .manage-abbrev-spell-meta {
+    color: #94a3b8;
+}
+
+:root[data-theme="dark"] .manage-remove-spell-btn,
+.theme-dark .manage-remove-spell-btn {
+    color: #94a3b8;
+}
+
+:root[data-theme="dark"] .manage-remove-spell-btn:hover,
+.theme-dark .manage-remove-spell-btn:hover {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+}
+
+:root[data-theme="dark"] .manage-empty-level-note,
+.theme-dark .manage-empty-level-note {
+    color: #64748b;
 }
 
 
