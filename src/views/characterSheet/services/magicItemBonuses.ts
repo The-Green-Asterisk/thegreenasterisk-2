@@ -1,7 +1,7 @@
 import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
-import { findItemRule } from "../../../services/classRules";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
-import { AbilityScore, CharacterData, EquipmentItem, WeaponItem } from "../characterData";
+import { findItemRule } from "../../../services/classRules";
+import { CharacterData, EquipmentItem } from "../characterData";
 
 export interface MagicBonusExtraction {
     statOverrides: Partial<Record<string, number>>;
@@ -788,7 +788,8 @@ export function extractItemMagicBonuses(
     const armorStateOk = (m: StatModifier) =>
         m.requires === "no-armor-or-shield" ? !isBodyArmorEquipped && !isShieldEquipped
             : m.requires === "no-armor" ? !isBodyArmorEquipped
-            : true;
+                : m.requires === "armor" ? isBodyArmorEquipped
+                    : true;
 
     for (const m of mods) {
         const target = String(m.target || "");
@@ -815,8 +816,8 @@ export function extractItemMagicBonuses(
         } else if (m.type === "advantage" || m.type === "disadvantage") {
             const what = target === "vitals.initiative" ? "Initiative"
                 : target.startsWith("skills.") ? `${target.slice(7).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} checks`
-                : target.startsWith("saves.") ? `${target.slice(6) === "all" ? "saving throws" : `${(STAT_ABBRS[target.slice(6)] || target.slice(6)).toUpperCase()} saving throws`}`
-                : "";
+                    : target.startsWith("saves.") ? `${target.slice(6) === "all" ? "saving throws" : `${(STAT_ABBRS[target.slice(6)] || target.slice(6)).toUpperCase()} saving throws`}`
+                        : "";
             if (what) result.rollNotes.push(`${m.type === "advantage" ? "Advantage" : "Disadvantage"} on ${what} (${name})`);
         }
     }
@@ -998,7 +999,8 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         // Speed
         const baseSpeedNum = parseInt(character.vitals.speed, 10) || 30;
         const adjustedSpeed = (baseSpeedNum + aggregated.speedBonusFt) * aggregated.speedMultiplier;
-        character.vitals.speed = `${adjustedSpeed} ft.`;
+        const currentParen = String(character.vitals.speed || "").match(/\s*(\([^)]+\))/);
+        character.vitals.speed = `${adjustedSpeed} ft.${currentParen ? currentParen[0] : ""}`;
     }
 
     // --- 3.5. PROCESS GRANTED WEAPONS FROM ACTIVE EQUIPMENT ---
