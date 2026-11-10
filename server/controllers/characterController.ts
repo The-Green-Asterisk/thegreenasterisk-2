@@ -12,6 +12,7 @@ import CharacterSpell from "services/database/entity/CharacterSpell";
 import CharacterVitals from "services/database/entity/CharacterVitals";
 import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
+import { mergeVitals } from "../services/characterVitals";
 import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
 import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
 import BaseController from "./baseController";
@@ -1274,7 +1275,7 @@ export default class CharacterController extends BaseController {
     }
 
     private static hydrateFromRelationalEntities(record: SavedCharacter, fallbackPayload: any): any {
-        const vitals = record.vitals ? {
+        const rowVitals = record.vitals ? {
             currentHp: record.vitals.currentHp,
             maxHp: record.vitals.maxHp,
             tempHp: record.vitals.tempHp,
@@ -1300,7 +1301,8 @@ export default class CharacterController extends BaseController {
                 isStable: record.vitals.isStable
             },
             savingThrowNotes: record.vitals.savingThrowNotes ? this.tryParseJson(record.vitals.savingThrowNotes) || [] : []
-        } : fallbackPayload?.vitals;
+        } : undefined;
+        const vitals = mergeVitals(rowVitals, fallbackPayload?.vitals);
 
         const classes = record.classes && record.classes.length > 0
             ? record.classes.map(c => ({ name: c.name, level: c.level, subclass: c.subclass }))
