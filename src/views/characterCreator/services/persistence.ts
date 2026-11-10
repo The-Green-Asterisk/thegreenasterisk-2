@@ -1066,10 +1066,34 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             if (descLower.includes("saving throw") || descLower.includes("save")) {
                 hitOrDc = `DC ${spellSaveDcVal} Save`;
             }
+            const isEb = sp.name.toLowerCase() === "eldritch blast";
+            const dmgMatch = (sp.description || "").match(/(\d+d\d+)\s+([a-zA-Z]+)\s+damage/i);
+            const baseDmgDie = isEb ? "1d10" : (dmgMatch ? dmgMatch[1] : "");
+            const baseDmgType = isEb ? "Force" : (dmgMatch ? dmgMatch[2] : "");
+
+            let cantripBonus = 0;
+            for (const m of progressionMods) {
+                if (m.type === "ability_mod" && m.abilitySource) {
+                    const abMod = ctx.getAbilityModifier(m.abilitySource);
+                    if (m.target === "damage.cantrips" || (isEb && m.target === "damage.eldritch_blast")) {
+                        cantripBonus += abMod;
+                    }
+                } else if ((m.type === "bonus" || m.type === "set") && typeof m.value === "number") {
+                    if (m.target === "damage.cantrips" || (isEb && m.target === "damage.eldritch_blast")) {
+                        cantripBonus += m.value;
+                    }
+                }
+            }
+            if (isEb && ctx.state.invocations.includes("agonizing-blast") && cantripBonus === 0) {
+                cantripBonus = ctx.getAbilityModifier("cha");
+            }
+
             let damageOrEffect = "Spell Effect";
-            if (sp.name.toLowerCase() === "eldritch blast" && ctx.state.invocations.includes("agonizing-blast")) {
-                const chaMod = ctx.getAbilityModifier("cha");
-                damageOrEffect = `1d10 ${chaMod >= 0 ? `+ ${chaMod}` : `- ${Math.abs(chaMod)}`} Force`;
+            if (baseDmgDie) {
+                const bonusStr = cantripBonus !== 0 ? (cantripBonus >= 0 ? ` + ${cantripBonus}` : ` - ${Math.abs(cantripBonus)}`) : "";
+                damageOrEffect = `${baseDmgDie}${bonusStr} ${baseDmgType}`.trim();
+            } else if (cantripBonus !== 0) {
+                damageOrEffect = `+${cantripBonus} Damage`;
             }
             return {
                 name: sp.name,

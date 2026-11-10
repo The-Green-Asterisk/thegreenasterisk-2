@@ -1,16 +1,16 @@
-import { speciesMaxHpBonus } from "../../../rules/dnd5e_2024/speciesRules";
-import { currentLineage, currentSpecies } from "./speciesChoices";
-import { getCharacterFeats } from "./skillRules";
-import { featBonus } from "../../../rules/dnd5e_2024/featRules";
 import {
     AbilityName,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
     checkClassPrerequisite
 } from "../../../rules/dnd5e_2024";
-import { ALL_SKILLS, AsiChoice, AsiSlot } from "../characterCreator.types";
+import { featBonus, featModifiers } from "../../../rules/dnd5e_2024/featRules";
+import { speciesMaxHpBonus } from "../../../rules/dnd5e_2024/speciesRules";
+import { AsiChoice, AsiSlot } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 import { armorRequirementMet, getProgressionModifiers, modifierNumber } from "./progressionModifiers";
+import { getCharacterFeats } from "./skillRules";
+import { currentLineage, currentSpecies } from "./speciesChoices";
 
 export const STANDARD_ARRAY: number[] = [15, 14, 13, 12, 10, 8];
 
@@ -297,6 +297,14 @@ export function getArmorClass(ctx: CharacterCreatorContext): number {
         ac += 2;
     }
 
+    // Bonuses to AC (e.g. Defense Fighting Style while wearing armor)
+    const armorCategory = armor?.category || null;
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target !== "vitals.ac" || m.type !== "bonus") continue;
+        if (!armorRequirementMet(m, armorCategory, !!ctx.state.hasShield)) continue;
+        ac += modifierNumber(m);
+    }
+
     return ac;
 }
 
@@ -340,14 +348,20 @@ export function getSpeed(ctx: CharacterCreatorContext): number {
     return speed;
 }
 
-/** Climb / swim / fly speeds from class and subclass features ("walk" = equal to walking speed). */
+/** Climb / swim / fly speeds from class, subclass, and feat features ("walk" = equal to walking speed). */
 export function getSpecialSpeeds(ctx: CharacterCreatorContext): string[] {
     const baseSpeed = getSpeed(ctx);
     const best: Record<string, number> = {};
-    for (const m of getProgressionModifiers(ctx)) {
-        const kind = String(m.target || "").replace(/^vitals\./, "");
+    const feats = getCharacterFeats(ctx);
+    const featMods = ["climb", "swim", "fly", "burrow"].flatMap((k) => [
+        ...featModifiers(feats, `vitals.${k}`, "set"),
+        ...featModifiers(feats, `speeds.${k}`, "set")
+    ]);
+    const allMods = [...getProgressionModifiers(ctx), ...featMods];
+    for (const m of allMods) {
+        const kind = String(m.target || "").replace(/^(vitals|speeds)\./, "");
         if (!["climb", "swim", "fly", "burrow"].includes(kind) || m.type !== "set") continue;
-        const value = m.value === "walk" ? baseSpeed : Number(m.value) || 0;
+        const value = (m.value === "walk" || m.value === "equal_walk") ? baseSpeed : Number(m.value) || 0;
         best[kind] = Math.max(best[kind] || 0, value);
     }
     const labels: Record<string, string> = { climb: "Climb", swim: "Swim", fly: "Fly", burrow: "Burrow" };

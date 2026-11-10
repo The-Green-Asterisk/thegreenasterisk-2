@@ -231,6 +231,7 @@ export function armorRequirementMet(m: StatModifier, armorCategory: string | nul
     if (m.requires === "no-armor") return !armorCategory;
     if (m.requires === "no-heavy-armor") return armorCategory !== "Heavy";
     if (m.requires === "no-armor-or-shield") return !armorCategory && !hasShield;
+    if (m.requires === "armor") return !!armorCategory;
     return true;
 }
 
