@@ -4,7 +4,7 @@ import { ORIGIN_FEATS_2024 } from "../rules/dnd5e_2024/originFeats";
 import { SPECIES_2024 } from "../rules/dnd5e_2024/species";
 import { BACKGROUNDS_2024 } from "../rules/dnd5e_2024/backgrounds";
 import { findSpecies } from "../rules/dnd5e_2024/speciesRules";
-import { BackgroundDefinition, ClassDefinition, GeneralFeatDefinition, OriginFeatDefinition, SpeciesDefinition } from "../rules/dnd5e_2024/types";
+import { BackgroundDefinition, ClassDefinition, GeneralFeatDefinition, OriginFeatDefinition, SpeciesDefinition, StatModifier } from "../rules/dnd5e_2024/types";
 import { getData } from "./request";
 
 let classRules: ClassDefinition[] | null = null;
@@ -35,6 +35,7 @@ export function loadClassRules(): Promise<ClassDefinition[]> {
                 setFeatRules(feats);
                 if (Array.isArray(rules?.species)) setSpeciesRules(rules.species);
                 if (Array.isArray(rules?.backgrounds) && rules.backgrounds.length > 0) backgroundRules = rules.backgrounds;
+                if (Array.isArray(rules?.items)) setItemRules(rules.items);
                 return getClassRules();
             })
             .catch(() => getClassRules());
@@ -112,4 +113,18 @@ export function getCanonicalSubclassesForFeature(name: string): Array<{ classSlu
         }
     }
     return out;
+}
+
+/** Items with rules modifiers (/get-rules items: custom items' own, then the seed list), by name. */
+let itemRules: Array<{ name: string; modifiers: StatModifier[] }> = [];
+
+export function setItemRules(items: Array<{ name: string; modifiers: StatModifier[] }> | null): void {
+    itemRules = Array.isArray(items) ? items : [];
+}
+
+/** An item's rules modifiers, by name ("Goggles of Night"); apostrophes match either way. */
+export function findItemRule(name: string): { name: string; modifiers: StatModifier[] } | undefined {
+    const norm = (s: string) => String(s || "").trim().toLowerCase().replace(/[’‘`]/g, "'");
+    const key = norm(name);
+    return key ? itemRules.find((i) => norm(i.name) === key) : undefined;
 }

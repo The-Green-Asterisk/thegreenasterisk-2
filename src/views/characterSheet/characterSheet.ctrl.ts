@@ -7,6 +7,7 @@ import { loadClassRules } from "../../services/classRules";
 import { renderSheetContent } from "./characterSheet.template";
 import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
 import { renderAbilityCards } from "./components/abilities";
+import { renderSpecialSensesList } from "./components/vitals";
 import { renderSkills } from "./components/skills";
 import { renderWeapons } from "./components/weapons";
 import { renderActions } from "./components/actions";
@@ -826,6 +827,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (dcEl) dcEl.textContent = String(char.vitals.spellSaveDc);
         const atkEl = sheet.querySelector<HTMLElement>(".vital-attack .vital-val");
         if (atkEl) atkEl.textContent = `+${char.vitals.spellAttackBonus}`;
+        // Special senses change with equipped items (Goggles of Night)
+        const sensesList = sheet.querySelector<HTMLElement>(".vital-special-senses .special-senses-list");
+        if (sensesList) sensesList.innerHTML = renderSpecialSensesList(char);
         const percEl = sheet.querySelector<HTMLElement>(".vital-passive-perception .vital-val, .sense-passive-perception-val");
         if (percEl) percEl.textContent = String(char.vitals.passivePerception);
         const invEl = sheet.querySelector<HTMLElement>(".vital-passive-investigation .vital-val, .sense-passive-investigation-val");

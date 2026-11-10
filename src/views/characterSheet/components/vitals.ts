@@ -300,16 +300,7 @@ export function renderVitalsSection(data: CharacterData): string {
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-binoculars"></i></div>
                     <div class="vital-label">SPECIAL SENSES</div>
-                    <div class="special-senses-list">
-                        <div class="special-sense-row"><span>Darkvision</span><strong class="sense-darkvision-val">${formatSense(data.vitals.darkvision)}</strong></div>
-                        ${data.vitals.devilsSight && data.vitals.devilsSight !== 'None' ? `
-                        <div class="special-sense-row dev-sight-row" title="Sees normally in darkness, both magical and nonmagical"><span>Devil's Sight</span><strong class="sense-devils-sight-val">${formatSense(data.vitals.devilsSight)}</strong></div>
-                        ` : ''}
-                        <div class="special-sense-row"><span>Blindsight</span><strong class="sense-blindsight-val">${formatSense(data.vitals.blindsight)}</strong></div>
-                        <div class="special-sense-row"><span>Tremorsense</span><strong class="sense-tremorsense-val">${formatSense(data.vitals.tremorsense)}</strong></div>
-                        <div class="special-sense-row"><span>Truesight</span><strong class="sense-truesight-val">${formatSense(data.vitals.truesight)}</strong></div>
-                        ${(data.vitals.otherSenses || []).map((s) => `<div class="special-sense-row" data-sense="${escapeText(s.key)}"><span>${escapeText(s.label)}</span><strong>${escapeText(formatSense(s.range))}</strong></div>`).join("")}
-                    </div>
+                    <div class="special-senses-list">${renderSpecialSensesList(data)}</div>
                 </div>
             </div>
         </div>
@@ -367,4 +358,18 @@ export function renderSavingThrowNotes(data: CharacterData): string {
     }
 
     return blocks.join("");
+}
+
+/** The Special Senses rows: the four core senses, Devil's Sight when present, and any other sense from rules data. */
+export function renderSpecialSensesList(data: CharacterData): string {
+    return `
+                        <div class="special-sense-row"><span>Darkvision</span><strong class="sense-darkvision-val">${formatSense(data.vitals.darkvision)}</strong></div>
+                        ${data.vitals.devilsSight && data.vitals.devilsSight !== 'None' ? `
+                        <div class="special-sense-row dev-sight-row" title="Sees normally in darkness, both magical and nonmagical"><span>Devil's Sight</span><strong class="sense-devils-sight-val">${formatSense(data.vitals.devilsSight)}</strong></div>
+                        ` : ''}
+                        <div class="special-sense-row"><span>Blindsight</span><strong class="sense-blindsight-val">${formatSense(data.vitals.blindsight)}</strong></div>
+                        <div class="special-sense-row"><span>Tremorsense</span><strong class="sense-tremorsense-val">${formatSense(data.vitals.tremorsense)}</strong></div>
+                        <div class="special-sense-row"><span>Truesight</span><strong class="sense-truesight-val">${formatSense(data.vitals.truesight)}</strong></div>
+                        ${(data.vitals.otherSenses || []).map((s) => `<div class="special-sense-row" data-sense="${escapeText(s.key)}"><span>${escapeText(s.label)}</span><strong>${escapeText(formatSense(s.range))}</strong></div>`).join("")}
+                    `;
 }

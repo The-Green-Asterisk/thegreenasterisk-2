@@ -24,6 +24,8 @@ import {
 } from "../services/database/rulesSeed";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
 import { featMechanicsJson } from "../services/database/featMechanics";
+import Item from "../services/database/entity/Item";
+import { itemMechanicsRules } from "../services/database/itemMechanics";
 import { findServerClassRule, loadClassRulesData } from "../services/classRulesData";
 import BaseController from "./baseController";
 import SpellController from "./spellController";
@@ -570,7 +572,8 @@ export default class RulesController extends BaseController {
                 backgrounds: SEED_BACKGROUNDS,
                 originFeats: SEED_ORIGIN_FEATS,
                 generalFeats: SEED_GENERAL_FEATS,
-                spells: SEED_SPELLS
+                spells: SEED_SPELLS,
+                items: itemMechanicsRules([])
             });
             return {
                 response: fallback,
@@ -825,6 +828,14 @@ export default class RulesController extends BaseController {
                 console.warn("Could not load spells from DB for rules:", err?.message || err);
             }
 
+            // Items with rules modifiers (custom items' own, then the seed list)
+            let itemRows: Array<{ name: string; modifiersJson?: string | null }> = [];
+            try {
+                itemRows = await AppDataSource.getRepository(Item).find({ select: { name: true, modifiersJson: true } });
+            } catch (err: any) {
+                console.warn("Could not load item modifiers for rules:", err?.message || err);
+            }
+
             const payload = JSON.stringify({
                 classes: classes.length > 0 ? classes : SEED_CLASSES,
                 subclasses: allSubclasses,
@@ -832,7 +843,8 @@ export default class RulesController extends BaseController {
                 backgrounds: backgrounds.length > 0 ? backgrounds : SEED_BACKGROUNDS,
                 originFeats: originFeats.length > 0 ? originFeats : SEED_ORIGIN_FEATS,
                 generalFeats: generalFeats.length > 0 ? generalFeats : SEED_GENERAL_FEATS,
-                spells: dbSpells.length > 0 ? dbSpells : SEED_SPELLS
+                spells: dbSpells.length > 0 ? dbSpells : SEED_SPELLS,
+                items: itemMechanicsRules(itemRows)
             });
 
             // Cache rules in memory for 10 minutes
@@ -863,7 +875,8 @@ export default class RulesController extends BaseController {
                 backgrounds: SEED_BACKGROUNDS,
                 originFeats: SEED_ORIGIN_FEATS,
                 generalFeats: SEED_GENERAL_FEATS,
-                spells: SEED_SPELLS
+                spells: SEED_SPELLS,
+                items: itemMechanicsRules([])
             });
             return {
                 response: fallback,

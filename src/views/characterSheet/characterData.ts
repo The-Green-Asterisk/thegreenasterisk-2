@@ -1,5 +1,6 @@
 import type { SaveEffect } from "../../rules/dnd5e_2024/saveEffects";
 import type { OtherSense, SenseGrant } from "../../rules/dnd5e_2024/senses";
+import type { StatModifier } from "../../rules/dnd5e_2024/types";
 
 export interface SpellDefinition {
     id: string | number;
@@ -97,9 +98,13 @@ export interface EquipmentItem {
     description?: string;
     imageUrl?: string;
     notes?: string;
+    /** Rules modifiers while equipped (and attuned): the item's own (custom, or from D&D Beyond); else the item rules' */
+    modifiers?: StatModifier[];
 }
 
 export interface WeaponItem {
+    /** Rules modifiers while equipped (and attuned): the item's own (custom, or from D&D Beyond); else the item rules' */
+    modifiers?: StatModifier[];
     id?: number;
     charges?: ItemCharges;
     definitionId?: number;

@@ -59,6 +59,10 @@ export class Item {
     @Column({ type: "boolean", default: false })
     isCustom!: boolean;
 
+    /** Rules modifiers while equipped (and attuned), as JSON (e.g. senses); see itemMechanics.ts */
+    @Column({ type: "text", nullable: true })
+    modifiersJson?: string;
+
     @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
     createdAt!: Date;
 }

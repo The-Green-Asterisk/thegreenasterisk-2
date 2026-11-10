@@ -21,7 +21,7 @@ import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, Progres
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { readSpeciesSpellAbility, readCampaign, readCompanions, readItemCharges, readItemChargePips, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
-import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
+import { applyGrantedWeapons, applyItemSensesToCharacter, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
     1: { name: "Strength", abbr: "STR", key: "strength" },
@@ -1076,8 +1076,10 @@ export function parseDndBeyondCharacter(
         }
 
         // 2. Modifiers: filter matches by subType or friendlySubtypeName
+        // Items' senses go on the items (applied while they're equipped), not into the character's base
         const senseMatches = allMods.filter(
             m =>
+                m._sourceKey !== "item" &&
                 (m.type === "sense" || m.type === "set-base" || m.type === "bonus") &&
                 (String(m.subType || "").toLowerCase().includes(senseName) ||
                     String(m.friendlySubtypeName || "").toLowerCase().includes(senseName))
@@ -1869,6 +1871,7 @@ export function parseDndBeyondCharacter(
             else if (defNameLower.includes("supreme")) rarity = "Very Rare";
         }
         return {
+            ...itemSenseModifiers(def),
             id: i.id,
             definitionId: def?.id,
             name: def?.name || "Item",
@@ -1973,6 +1976,7 @@ export function parseDndBeyondCharacter(
         }
 
         return {
+            ...itemSenseModifiers(def),
             charges: readItemCharges(item),
             id: item.id,
             definitionId: def.id,
@@ -2313,7 +2317,23 @@ export function parseDndBeyondCharacter(
     result.vitals.deathSaves = { ...result.trackingState.deathSaves! };
 
     applyGrantedWeapons(result);
+    // Equipped items' senses (their D&D Beyond modifiers, else the item rules), on top of the base and other grants
+    applyItemSensesToCharacter(result);
     return result;
+}
+
+/** A D&D Beyond item's sense modifiers (Goggles of Night: darkvision 60) as rules modifiers on the item, if any. */
+function itemSenseModifiers(def: any): { modifiers?: StatModifier[] } {
+    const modifiers: StatModifier[] = (Array.isArray(def?.grantedModifiers) ? def.grantedModifiers : [])
+        .filter((m: any) => (m?.type === "sense" || m?.type === "set-base") && Number(m.value ?? m.fixedValue) > 0)
+        .map((m: any) => ({
+            target: `senses.${String(m.subType || "").toLowerCase()}`,
+            type: "set" as const,
+            value: Number(m.value ?? m.fixedValue),
+            ...(m.friendlySubtypeName ? { label: String(m.friendlySubtypeName) } : {})
+        }))
+        .filter((m: StatModifier) => m.target !== "senses.");
+    return modifiers.length > 0 ? { modifiers } : {};
 }
 
 /**

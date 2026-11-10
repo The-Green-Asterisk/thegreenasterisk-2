@@ -1,3 +1,5 @@
+import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
+import { findItemRule } from "../../../services/classRules";
 import { AbilityScore, CharacterData, EquipmentItem, WeaponItem } from "../characterData";
 
 export interface MagicBonusExtraction {
@@ -936,15 +938,26 @@ export function extractItemMagicBonuses(
  * This updates ability scores, modifiers, saving throws, armor class, spell save DC,
  * spell attack bonus, skill bonuses, passive senses, and weapon attack/damage bonuses.
  */
+/** Whether an item's effects apply: equipped, and attuned when it needs attunement. */
+function isItemActive(item: any): boolean {
+    if (item.equipped === false) return false;
+    if (checkItemRequiresAttunement(item) && !item.attuned) return false;
+    return true;
+}
+
+/**
+ * Re-applies the special senses of the character's active items, from each item's own modifiers or its item rules
+ * (Goggles of Night, Robe of Eyes, custom items).
+ */
+export function applyItemSensesToCharacter(character: CharacterData): void {
+    if (!character) return;
+    const active = [...(character.equipment || []), ...(character.weapons || [])].filter(isItemActive);
+    applyItemSenses(character, active.map((i: any) => ({ name: i.name, modifiers: i.modifiers ?? findItemRule(i.name)?.modifiers })));
+}
+
 export function applyMagicalItemBonuses(character: CharacterData): CharacterData {
     if (!character || !Array.isArray(character.abilities)) return character;
-
-    const isItemActive = (item: any): boolean => {
-        if (item.equipped === false) return false;
-        const requiresAttune = checkItemRequiresAttunement(item);
-        if (requiresAttune && !item.attuned) return false;
-        return true;
-    };
+    applyItemSensesToCharacter(character);
 
     const equippedItems = (character.equipment || []).filter(isItemActive);
     const equippedWeapons = (character.weapons || []).filter(isItemActive);

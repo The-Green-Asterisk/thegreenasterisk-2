@@ -13,6 +13,8 @@ export interface SenseGrant {
     value: number;
     label?: string;
     source?: string;
+    /** From an equipped item; recomputed whenever equipment changes */
+    item?: boolean;
 }
 
 export interface OtherSense {
@@ -145,4 +147,20 @@ export function applySenseGrants(
     }
     character.senseGrants = list;
     writeSenses(character.vitals, resolveSenses(character.baseSenses, list), list, character.vitals.otherSenses);
+}
+
+/**
+ * Re-applies the senses of the character's active items (equipped, and attuned when they need it): each item's own
+ * modifiers, or its rules modifiers by name. Other grants and the base are kept. Characters without a recorded base
+ * (saved before senses were tracked) are left as they are, so an item already counted in their senses isn't counted twice.
+ */
+export function applyItemSenses(
+    character: { vitals: VitalsWithSenses; baseSenses?: Record<string, number>; senseGrants?: SenseGrant[] },
+    items: Array<{ name: string; modifiers?: Array<{ target?: string; type?: string; value?: unknown; label?: string }> }>
+): void {
+    if (!character?.vitals || !character.baseSenses) return;
+    const itemGrants = senseGrantsFrom(items.map((i) => ({ name: i.name, modifiers: i.modifiers }))).map((g) => ({ ...g, item: true }));
+    const grants = [...(character.senseGrants || []).filter((g) => !g.item), ...itemGrants];
+    character.senseGrants = grants;
+    writeSenses(character.vitals, resolveSenses(character.baseSenses, grants), grants, character.vitals.otherSenses);
 }
