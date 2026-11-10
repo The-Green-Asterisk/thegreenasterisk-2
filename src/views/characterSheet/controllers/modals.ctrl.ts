@@ -1574,7 +1574,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
     function computeDamageRowPreview(dice: string, mod: string, damageType: string): string {
         const cleanDice = dice.trim();
-        const cleanMod = mod.trim();
+        let cleanMod = mod.trim();
+        const activeChar = ctx.getCharacter();
+        const scMod = activeChar ? getSpellcastingModifier(activeChar) : undefined;
+        if (scMod !== undefined) {
+            cleanMod = replaceModInString(cleanMod, scMod);
+        }
         const formattedMod = cleanMod ? (cleanMod.startsWith("+") || cleanMod.startsWith("-") ? cleanMod : `+${cleanMod}`) : "";
         if (!cleanDice && !formattedMod) return "—";
         const parts = [cleanDice, formattedMod].filter(Boolean).join(" ");

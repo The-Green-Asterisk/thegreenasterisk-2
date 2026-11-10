@@ -468,8 +468,8 @@ export function renderSpellsByLevel(
                 : higherScalingLevels.sort((a, b) => a - b);
 
             targetLevels.forEach(targetLvl => {
-                const baseDamage = getSpellDamageDisplay(spell, baseLevel);
-                const upcastDamage = getSpellDamageDisplay(spell, targetLvl);
+                const baseDamage = getSpellDamageDisplay(spell, baseLevel, characterLevel, characterData);
+                const upcastDamage = getSpellDamageDisplay(spell, targetLvl, characterLevel, characterData);
                 const hasScalingRow = scaling?.some(r => Number(r.level) === targetLvl);
 
                 if (hasScalingRow || (upcastDamage && upcastDamage !== baseDamage)) {
@@ -534,7 +534,7 @@ export function renderSpellsByLevel(
                     ${countBadgeHtml}
                 </header>
                 <div class="spells-grid level-spells-grid">
-                    ${levelSpells.map(spell => renderSpellCard(spell, characterLevel)).join('')}
+                    ${levelSpells.map(spell => renderSpellCard(spell, characterLevel, characterData)).join('')}
                 </div>
             </section>
         `;
