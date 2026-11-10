@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { setClassRules, setItemRules } from '../../../src/services/classRules';
 import { SEED_ITEM_MECHANICS } from '../../../server/services/database/itemMechanics';
-import { serverRulesClasses } from './serverRulesClasses';
+import { setClassRules, setItemRules } from '../../../src/services/classRules';
 import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
 import characterSheet from '../../../src/views/characterSheet/characterSheet.ctrl';
 import characterSheetTemplate from '../../../src/views/characterSheet/characterSheet.template';
@@ -10,6 +9,7 @@ import cookieBannerTemplate from '../../../src/views/cookieBanner/cookieBanner.t
 import errorPage from '../../../src/views/errorPage/errorPage.template';
 import footerTemplate from '../../../src/views/footer/footer.template';
 import homeTemplate from '../../../src/views/home/home.template';
+import { serverRulesClasses } from './serverRulesClasses';
 
 describe('Frontend View Templates', () => {
     // The sheet reads class rules served from rule_classes; use the same seeded data here
@@ -953,17 +953,21 @@ describe('Frontend View Templates', () => {
             stats: [{ id: 1, value: 10 }, { id: 2, value: 10 }, { id: 3, value: 10 }, { id: 4, value: 10 }, { id: 5, value: 10 }, { id: 6, value: 16 }],
             modifiers: {},
             inventory: [],
-            classSpells: [{ characterClassId: 7, spells: [
-                { definition: def('Telekinesis', 5), countsAsKnownSpell: true, alwaysPrepared: false, spellListId: null },
-                { definition: def('Misty Step', 2), countsAsKnownSpell: true, alwaysPrepared: false, spellListId: null }
-            ] }],
-            spells: { class: [
-                { definition: def('Telekinesis', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: true },
-                { definition: def('Speak with Dead', 3), componentId: 777, countsAsKnownSpell: false, alwaysPrepared: false },
-                // Feature-only duplicate (free daily cast plus slot casting): not the player's pick, so not reported
-                { definition: def('Contact Other Plane', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: false },
-                { definition: def('Contact Other Plane', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: false }
-            ] }
+            classSpells: [{
+                characterClassId: 7, spells: [
+                    { definition: def('Telekinesis', 5), countsAsKnownSpell: true, alwaysPrepared: false, spellListId: null },
+                    { definition: def('Misty Step', 2), countsAsKnownSpell: true, alwaysPrepared: false, spellListId: null }
+                ]
+            }],
+            spells: {
+                class: [
+                    { definition: def('Telekinesis', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: true },
+                    { definition: def('Speak with Dead', 3), componentId: 777, countsAsKnownSpell: false, alwaysPrepared: false },
+                    // Feature-only duplicate (free daily cast plus slot casting): not the player's pick, so not reported
+                    { definition: def('Contact Other Plane', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: false },
+                    { definition: def('Contact Other Plane', 5), componentId: 555, countsAsKnownSpell: false, alwaysPrepared: false }
+                ]
+            }
         });
 
         expect(charData.spells.find(s => s.name === 'Telekinesis')).toMatchObject({ source: 'Warlock', alwaysPrepared: true });
@@ -3083,6 +3087,7 @@ describe('Frontend View Templates', () => {
         initDialogFocus(sheet);
         const opener = sheet.querySelector('.card-open-btn') as HTMLButtonElement;
         opener.focus();
+        opener.dispatchEvent(new Event('focusin', { bubbles: true }));
         const dialog = sheet.querySelector('#action-modal-container') as HTMLElement;
         dialog.classList.remove('hidden');
         dialog.setAttribute('aria-hidden', 'false');
@@ -3095,6 +3100,174 @@ describe('Frontend View Templates', () => {
         dialog.setAttribute('aria-hidden', 'true');
         await new Promise(r => setTimeout(r, 0));
         expect(document.activeElement).toBe(opener);
+        sheet.remove();
+    });
+
+    it('renders the custom spell modal with guide button, and opens/closes the D&D Beyond markup guide dialog', async () => {
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { initModalsController } = await import('../../../src/views/characterSheet/controllers/modals.ctrl');
+        const sheet = document.createElement('div');
+        sheet.innerHTML = renderModals();
+        document.body.appendChild(sheet);
+
+        const customSpellModal = sheet.querySelector('#custom-spell-modal-container') as HTMLElement;
+        const guideModal = sheet.querySelector('#markup-guide-modal-container') as HTMLElement;
+        const guideBtn = sheet.querySelector('#custom-spell-guide-btn') as HTMLButtonElement;
+        const statusMsg = sheet.querySelector('#custom-spell-status') as HTMLElement;
+        const imgInput = sheet.querySelector('#custom-spell-image') as HTMLInputElement;
+        const uploadBtn = sheet.querySelector('#custom-spell-upload-trigger-btn') as HTMLButtonElement;
+        const fileInput = sheet.querySelector('#custom-spell-file-input') as HTMLInputElement;
+
+        expect(customSpellModal).not.toBeNull();
+        expect(guideModal).not.toBeNull();
+        expect(guideBtn).not.toBeNull();
+        expect(statusMsg).not.toBeNull();
+        expect(imgInput).not.toBeNull();
+        expect(uploadBtn).not.toBeNull();
+        expect(fileInput).not.toBeNull();
+
+        // Verify guide modal has key reference tables & content
+        expect(guideModal.textContent).toContain('Placeholders & Rule Tags Guide');
+        expect(guideModal.textContent).toContain('savedc:cha');
+        expect(guideModal.textContent).toContain('[condition]Prone[/condition]');
+
+        const ctx: any = {
+            sheet,
+            dynamicContainer: sheet,
+            getCharacter: () => ({ spells: [] }),
+            setCharacter: () => { },
+            spellMap: new Map(),
+            renderActiveCharacterView: () => { }
+        };
+        initModalsController(ctx);
+
+        // Open custom spell modal
+        ctx.openCustomSpellModal();
+        expect(customSpellModal.classList.contains('hidden')).toBe(false);
+
+        // Entering an image URL updates preview
+        imgInput.value = 'https://example.com/spell.jpg';
+        imgInput.dispatchEvent(new Event('input'));
+        const previewWrap = sheet.querySelector('#custom-spell-image-preview-wrap') as HTMLElement;
+        const previewImg = sheet.querySelector('#custom-spell-image-preview') as HTMLImageElement;
+        expect(previewWrap.classList.contains('hidden')).toBe(false);
+        expect(previewImg.src).toBe('https://example.com/spell.jpg');
+
+        // Clear button clears image
+        const clearBtn = sheet.querySelector('#custom-spell-image-clear-btn') as HTMLButtonElement;
+        clearBtn.click();
+        expect(imgInput.value).toBe('');
+        expect(previewWrap.classList.contains('hidden')).toBe(true);
+
+        // Click guide button to open markup guide
+        guideBtn.click();
+        expect(guideModal.classList.contains('hidden')).toBe(false);
+        expect(guideModal.getAttribute('aria-hidden')).toBe('false');
+
+        // Press Escape - should close the guide modal first, keeping custom spell modal open
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(guideModal.classList.contains('hidden')).toBe(true);
+        expect(customSpellModal.classList.contains('hidden')).toBe(false);
+
+        // Close custom spell modal
+        ctx.closeCustomSpellModal();
+        expect(customSpellModal.classList.contains('hidden')).toBe(true);
+
+        sheet.remove();
+    });
+
+    it('records damage dice, damage type, and modifiers for each castable level in custom spell dialog', async () => {
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { initModalsController } = await import('../../../src/views/characterSheet/controllers/modals.ctrl');
+        const sheet = document.createElement('el-character-sheet');
+        sheet.innerHTML = renderModals();
+        document.body.appendChild(sheet);
+
+        const customSpellModal = sheet.querySelector('#custom-spell-modal-container') as HTMLElement;
+        const hasDamageToggle = sheet.querySelector('#custom-spell-has-damage') as HTMLInputElement;
+        const damagePanel = sheet.querySelector('#custom-spell-damage-panel') as HTMLElement;
+        const damageDiceInput = sheet.querySelector('#custom-spell-damage-dice') as HTMLInputElement;
+        const damageTypeSelect = sheet.querySelector('#custom-spell-damage-type') as HTMLSelectElement;
+        const damageModInput = sheet.querySelector('#custom-spell-damage-mod') as HTMLInputElement;
+        const autoscaleBtn = sheet.querySelector('#custom-spell-autoscale-btn') as HTMLButtonElement;
+        const resetScalingBtn = sheet.querySelector('#custom-spell-reset-scaling-btn') as HTMLButtonElement;
+        const scalingTbody = sheet.querySelector('#custom-spell-scaling-tbody') as HTMLElement;
+        const levelInput = sheet.querySelector('#custom-spell-level') as HTMLInputElement;
+
+        expect(hasDamageToggle).not.toBeNull();
+        expect(damagePanel).not.toBeNull();
+        expect(damagePanel.classList.contains('hidden')).toBe(true);
+
+        const savedSpells: any[] = [];
+        const ctx: any = {
+            sheet,
+            dynamicContainer: sheet,
+            getCharacter: () => ({ spells: savedSpells }),
+            setCharacter: () => { },
+            spellMap: new Map(),
+            renderActiveCharacterView: () => { }
+        };
+        initModalsController(ctx);
+
+        ctx.openCustomSpellModal();
+        expect(customSpellModal.classList.contains('hidden')).toBe(false);
+
+        // Checking the damage toggle reveals the damage panel and populates rows
+        levelInput.value = '1';
+        hasDamageToggle.checked = true;
+        hasDamageToggle.dispatchEvent(new Event('change'));
+        expect(damagePanel.classList.contains('hidden')).toBe(false);
+
+        // For a Level 1 spell, should render 9 rows: 1st Level (Base) through 9th Level Slot
+        let rows = scalingTbody.querySelectorAll('tr[data-level]');
+        expect(rows.length).toBe(9);
+        expect(rows[0].textContent).toContain('1st Level (Base)');
+        expect(rows[8].textContent).toContain('9th Level Slot');
+
+        // Set base damage dice and damage type
+        damageDiceInput.value = '2d8';
+        damageDiceInput.dispatchEvent(new Event('input'));
+        damageTypeSelect.value = 'Radiant';
+        damageTypeSelect.dispatchEvent(new Event('change'));
+        damageModInput.value = '+3';
+        damageModInput.dispatchEvent(new Event('input'));
+
+        // Reset to base sets all rows to 2d8 and +3
+        resetScalingBtn.click();
+        rows = scalingTbody.querySelectorAll('tr[data-level]');
+        const firstDice = rows[0].querySelector('.scaling-row-dice') as HTMLInputElement;
+        const firstMod = rows[0].querySelector('.scaling-row-mod') as HTMLInputElement;
+        const firstPreview = rows[0].querySelector('.scaling-preview-pill') as HTMLElement;
+        expect(firstDice.value).toBe('2d8');
+        expect(firstMod.value).toBe('+3');
+        expect(firstPreview.textContent).toBe('2d8 +3 Radiant');
+
+        // Click auto-scale button (+1 die per level): 1st level = 2d8, 2nd = 3d8, ..., 9th = 10d8
+        autoscaleBtn.click();
+        rows = scalingTbody.querySelectorAll('tr[data-level]');
+        const level2Dice = rows[1].querySelector('.scaling-row-dice') as HTMLInputElement;
+        const level2Preview = rows[1].querySelector('.scaling-preview-pill') as HTMLElement;
+        const level9Dice = rows[8].querySelector('.scaling-row-dice') as HTMLInputElement;
+        expect(level2Dice.value).toBe('3d8');
+        expect(level2Preview.textContent).toBe('3d8 +3 Radiant');
+        expect(level9Dice.value).toBe('10d8');
+
+        // Modify modifier for a specific level (e.g. 2nd level to +5)
+        const level2Mod = rows[1].querySelector('.scaling-row-mod') as HTMLInputElement;
+        level2Mod.value = '+5';
+        level2Mod.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(level2Preview.textContent).toBe('3d8 +5 Radiant');
+
+        // Test cantrip scaling tiers when level is 0
+        levelInput.value = '0';
+        levelInput.dispatchEvent(new Event('change'));
+        rows = scalingTbody.querySelectorAll('tr[data-level]');
+        expect(rows.length).toBe(4);
+        expect(rows[0].textContent).toContain('Cantrip (Level 1–4)');
+        expect(rows[1].textContent).toContain('5th Level');
+        expect(rows[2].textContent).toContain('11th Level');
+        expect(rows[3].textContent).toContain('17th Level');
+
         sheet.remove();
     });
 });

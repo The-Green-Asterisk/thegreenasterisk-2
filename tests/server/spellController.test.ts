@@ -95,6 +95,57 @@ describe('SpellController', () => {
         expect(parsed.sourceTier).toBe('Custom Database');
     });
 
+    it('creates a custom spell recording damage dice, damage type, modifier, and scaling', async () => {
+        Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+
+        const mockSave = vi.fn().mockImplementation(async (entity) => ({ id: 43, ...entity }));
+        const mockCreate = vi.fn().mockImplementation((entity) => ({ ...entity }));
+        const mockFindOne = vi.fn().mockResolvedValue(null);
+        vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+            findOne: mockFindOne,
+            create: mockCreate,
+            save: mockSave,
+        } as any);
+
+        const customSpellBody = {
+            name: 'Swamp Fireball',
+            level: 3,
+            school: 'Evocation',
+            castingTime: '1 Action',
+            range: '150 feet',
+            duration: 'Instantaneous',
+            components: 'V, S',
+            description: 'Explosion of swamp fire.',
+            damageDice: '8d6',
+            damageType: 'Fire',
+            damageModifier: '+2',
+            damageScaling: [
+                { level: 3, label: 'Level 3', dice: '8d6', modifier: '+2' },
+                { level: 4, label: 'Level 4', dice: '9d6', modifier: '+2' }
+            ]
+        };
+
+        vi.spyOn(BaseController, 'readBody').mockResolvedValue(customSpellBody);
+
+        const postReq: Partial<http.IncomingMessage> = {
+            url: '/data/create-custom-spell',
+            method: 'POST'
+        };
+
+        const result = await SpellController.createCustomSpell(
+            postReq as http.IncomingMessage,
+            mockRes as http.ServerResponse
+        );
+
+        expect(result.status).toBe(201);
+        const parsed = JSON.parse(result.response);
+        expect(parsed.name).toBe('Swamp Fireball');
+        expect(parsed.damageDice).toBe('8d6');
+        expect(parsed.damageType).toBe('Fire');
+        expect(parsed.damageModifier).toBe('+2');
+        expect(parsed.damageScaling).toContain('Level 4');
+    });
+
     it('validates required fields when creating a custom spell', async () => {
         vi.spyOn(BaseController, 'readBody').mockResolvedValue({ school: 'Evocation' });
 
