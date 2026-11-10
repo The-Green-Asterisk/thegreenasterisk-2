@@ -1120,15 +1120,10 @@ export default class CharacterController extends BaseController {
             n.includes("level spells") ||
             n.startsWith("subclass:") ||
             n.startsWith("fighting style:") ||
-            // Class picks and stat-only features (class rules)
+            // Class picks, stat-only features, and passive species traits (rules data)
             usage.passive.has(n) ||
             usage.passive.has(base) ||
-            // Species traits and feats
-            n === "keen senses" ||
-            n === "fey ancestry" ||
-            n === "darkvision" ||
-            n === "trance" ||
-            n === "elven lineage" ||
+            // Feats
             n === "alert"
         ) {
             return null;

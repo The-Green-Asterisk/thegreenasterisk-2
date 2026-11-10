@@ -10,9 +10,10 @@ import {
     WeaponItem
 } from "./characterData";
 import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
-import { findClassRule, getClassRules } from "../../services/classRules";
+import { findClassRule, findSpeciesRule, getClassRules, getSpeciesRules } from "../../services/classRules";
+import { detectLineage, resolveSpeciesResources, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
-import { AbilityName, ClassDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
+import { AbilityName, ClassDefinition, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
@@ -415,6 +416,25 @@ export function parseDndBeyondCharacter(
             : undefined;
         return { def, subclass, level: Number(c.level) || 1 };
     });
+    // The character's species in the species rules (rule_species, via /get-rules); its lineage is matched once the
+    // resistances are known (getRuleLineage)
+    const ruleSpecies = findSpeciesRule(String(raw.race?.baseName || raw.race?.baseRaceName || raw.species || raw.race?.fullName || ""));
+    let ruleLineageMemo: LineageDefinition | undefined | null = null;
+    const getRuleLineage = (): LineageDefinition | undefined => {
+        if (ruleLineageMemo !== null) return ruleLineageMemo;
+        const traitNames = [
+            ...(raw.race?.racialTraits || []).map((rt: any) => String(rt?.definition?.name || rt?.name || "")),
+            ...(raw.options?.race || []).map((o: any) => String(o?.definition?.name || o?.label || o?.name || ""))
+        ];
+        ruleLineageMemo = detectLineage(ruleSpecies, {
+            texts: [raw.race?.subRaceShortName, raw.race?.subRaceName, raw.lineage, raw.race?.fullName].filter(Boolean),
+            featureNames: traitNames,
+            resistances: (raw.modifiers?.race || []).filter((m: any) => m?.type === "resistance").map((m: any) => String(m.subType || "")),
+            spellNames: (raw.spells?.race || []).map((sp: any) => String(sp?.definition?.name || ""))
+        });
+        return ruleLineageMemo;
+    };
+
     /** Modifiers from the class and subclass features the character's levels have unlocked (class rules data). */
     const ruleFeatureModifiers = ruleClasses.flatMap(({ def, subclass, level }: { def?: ClassDefinition; subclass?: any; level: number }) =>
         [...(def?.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])]
@@ -2058,52 +2078,19 @@ export function parseDndBeyondCharacter(
         }
     };
 
-    const raceNameLower = String(raw.race?.fullName || raw.race?.baseRaceName || raw.species || "").toLowerCase();
-
-    // 1. Dragonborn Breath Weapon & Draconic Flight
-    const breathWeaponUses = getActionMaxUses("Breath Weapon");
-    if (breathWeaponUses != null || raceNameLower.includes("dragonborn")) {
-        addResourceIfMissing("Breath Weapon", breathWeaponUses ?? profBonus, "long");
-        if (totalLevel >= 5) {
-            addResourceIfMissing("Draconic Flight", 1, "long");
-        }
+    // Species and lineage limited uses (species data); D&D Beyond's own count wins when it lists the action
+    const speciesAbilityMod = (ab: string) => abilityModsById[ABILITY_IDS[ab as AbilityName]] ?? 0;
+    for (const r of resolveSpeciesResources(ruleSpecies, getRuleLineage(), totalLevel, profBonus, speciesAbilityMod)) {
+        const ddbUses = [r.name, ...r.aliases].map(n => getActionMaxUses(n)).find(v => v != null);
+        addResourceIfMissing(r.name, ddbUses ?? r.total, r.resetOn, r.dieOrType);
     }
-
-    // 2. Dwarf Stonecunning
-    const stonecunningUses = getActionMaxUses("Stonecunning");
-    if (stonecunningUses != null || raceNameLower.includes("dwarf")) {
-        addResourceIfMissing("Stonecunning", stonecunningUses ?? profBonus, "long");
-    }
-
-    // 3. Orc Adrenaline Rush & Relentless Endurance
-    const adrenalineUses = getActionMaxUses("Adrenaline Rush");
-    if (adrenalineUses != null || raceNameLower.includes("orc")) {
-        addResourceIfMissing("Adrenaline Rush", adrenalineUses ?? profBonus, "short");
-        addResourceIfMissing("Relentless Endurance", 1, "long");
-    }
-
-    // 4. Goliath Giant Ancestry & Large Form
-    const giantAncestryUses =
-        getActionMaxUses("Giant Ancestry") ??
-        getActionMaxUses("Stone's Endurance") ??
-        getActionMaxUses("Cloud's Jaunt") ??
-        getActionMaxUses("Frost's Chill") ??
-        getActionMaxUses("Fire's Burn") ??
-        getActionMaxUses("Hill's Tumble") ??
-        getActionMaxUses("Storm's Thunder");
-    if (giantAncestryUses != null || raceNameLower.includes("goliath")) {
-        addResourceIfMissing("Giant Ancestry", giantAncestryUses ?? profBonus, "long");
-        if (totalLevel >= 5) {
-            addResourceIfMissing("Large Form", 1, "long");
-        }
-    }
-
-    // 5. Aasimar Healing Hands & Celestial Revelation
-    const healingHandsUses = getActionMaxUses("Healing Hands");
-    if (healingHandsUses != null || raceNameLower.includes("aasimar")) {
-        addResourceIfMissing("Healing Hands", healingHandsUses ?? 1, "long");
-        if (totalLevel >= 3) {
-            addResourceIfMissing("Celestial Revelation", 1, "long");
+    // Species uses D&D Beyond lists as limited-use actions, for species the rules don't match
+    for (const sp of getSpeciesRules()) {
+        for (const t of [...(sp.traits || []), ...(sp.lineages || []).flatMap(l => l.traits || [])]) {
+            if (!t.resource) continue;
+            const name = t.resource.name || traitBaseName(t.name);
+            const uses = [name, traitBaseName(t.name), ...(t.aliases || [])].map(n => getActionMaxUses(n)).find(v => v != null);
+            if (uses != null) addResourceIfMissing(name, uses, t.resource.resetOn);
         }
     }
 
@@ -2176,7 +2163,7 @@ export function parseDndBeyondCharacter(
     // Extract Species and Lineage / Heritage
     const rawRaceFullName = String(raw.race?.fullName || "").trim();
     const rawRaceBaseName = String(raw.race?.baseName || raw.race?.baseRaceName || raw.species || "").trim();
-    let detectedSpecies = rawRaceBaseName || rawRaceFullName || "Custom Species";
+    let detectedSpecies = ruleSpecies?.name || rawRaceBaseName || rawRaceFullName || "Custom Species";
     let detectedLineage = String(raw.race?.subRaceShortName || raw.race?.subRaceName || raw.lineage || "").trim();
 
     if (!detectedLineage && Array.isArray(raw.options?.race)) {
@@ -2189,38 +2176,10 @@ export function parseDndBeyondCharacter(
         }
     }
 
-    if (!detectedLineage && Array.isArray(raw.race?.racialTraits)) {
-        for (const rt of raw.race.racialTraits) {
-            const tName = String(rt?.definition?.name || rt?.name || "").toLowerCase();
-            if (tName.includes("infernal")) { detectedLineage = "Infernal"; break; }
-            if (tName.includes("abyssal")) { detectedLineage = "Abyssal"; break; }
-            if (tName.includes("chthonic")) { detectedLineage = "Chthonic"; break; }
-            if (tName.includes("wood elf")) { detectedLineage = "Wood Elf"; break; }
-            if (tName.includes("high elf")) { detectedLineage = "High Elf"; break; }
-            if (tName.includes("drow")) { detectedLineage = "Drow"; break; }
-        }
-    }
-
-    const speciesLower = detectedSpecies.toLowerCase();
-    if (speciesLower.includes("tiefling")) {
-        detectedSpecies = "Tiefling";
-        if (!detectedLineage) {
-            if (damageResistances.some(r => String(r).toLowerCase() === "fire")) {
-                detectedLineage = "Infernal";
-            } else if (damageResistances.some(r => String(r).toLowerCase() === "poison")) {
-                detectedLineage = "Abyssal";
-            } else if (damageResistances.some(r => String(r).toLowerCase() === "necrotic")) {
-                detectedLineage = "Chthonic";
-            }
-        }
-    } else if (speciesLower.includes("elf")) {
-        detectedSpecies = "Elf";
-    } else if (speciesLower.includes("dragonborn")) {
-        detectedSpecies = "Dragonborn";
-    } else if (speciesLower.includes("goliath")) {
-        detectedSpecies = "Goliath";
-    } else if (speciesLower.includes("gnome")) {
-        detectedSpecies = "Gnome";
+    // The lineage the species data best fits (names, trait names, spells, resistances), without its "(...)" note
+    if (!detectedLineage) {
+        const lin = getRuleLineage();
+        if (lin) detectedLineage = lin.name.replace(/\s*\(.*\)\s*$/, "");
     }
 
     const result: CharacterData = {
@@ -2584,7 +2543,6 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
     if (!character.classResources) {
         character.classResources = [];
     }
-    const raceLower = String(character.race || "").toLowerCase();
     const pb = character.vitals?.proficiencyBonus || 2;
     const existingResNames = new Set(character.classResources.map(r => r.name.toLowerCase()));
     const addIfMissing = (name: string, total: number, resetOn: "short" | "long", dieOrType?: string) => {
@@ -2594,20 +2552,11 @@ export function ensureClassResourcesOnCharacter(character: CharacterData, raw?: 
         }
     };
 
-    if (raceLower.includes("dragonborn")) {
-        addIfMissing("Breath Weapon", pb, "long");
-        if ((character.level || 1) >= 5) addIfMissing("Draconic Flight", 1, "long");
-    } else if (raceLower.includes("dwarf")) {
-        addIfMissing("Stonecunning", pb, "long");
-    } else if (raceLower.includes("orc")) {
-        addIfMissing("Adrenaline Rush", pb, "short");
-        addIfMissing("Relentless Endurance", 1, "long");
-    } else if (raceLower.includes("goliath")) {
-        addIfMissing("Giant Ancestry", pb, "long");
-        if ((character.level || 1) >= 5) addIfMissing("Large Form", 1, "long");
-    } else if (raceLower.includes("aasimar")) {
-        addIfMissing("Healing Hands", 1, "long");
-        if ((character.level || 1) >= 3) addIfMissing("Celestial Revelation", 1, "long");
+    // The species and lineage in the species rules, and their limited uses at the character's level
+    const species = findSpeciesRule(String(character.species || character.race || ""));
+    const lineage = detectLineage(species, { texts: [character.lineage || "", character.race || ""] });
+    for (const r of resolveSpeciesResources(species, lineage, character.level || 1, pb, abilityMod)) {
+        addIfMissing(r.name, r.total, r.resetOn, r.dieOrType);
     }
 }
 

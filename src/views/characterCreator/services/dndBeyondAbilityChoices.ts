@@ -1,3 +1,4 @@
+import { currentSpeciesTraits, setSpeciesPick } from "./speciesChoices";
 import { getData } from "@services/request";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { AsiChoice } from "../characterCreator.types";
@@ -72,7 +73,7 @@ export function applyDndBeyondAbilityChoices(ctx: CharacterCreatorContext, rawCh
         }
     }
 
-    // Origin feat(s): the background's, and a Human's extra one
+    // Origin feat(s): the background's, and any a species trait grants
     const findOriginFeat = (name: string) =>
         ctx.originFeats.find((f) => f.name.toLowerCase() === name.toLowerCase() || f.id === slug(name));
     const originIds = feats
@@ -80,7 +81,9 @@ export function applyDndBeyondAbilityChoices(ctx: CharacterCreatorContext, rawCh
         .map((f) => findOriginFeat(String(f.definition.name))?.id)
         .filter((id): id is string => !!id);
     if (originIds[0]) ctx.state.originFeatId = originIds[0];
-    if (originIds[1] && ctx.state.speciesId === "human") ctx.state.humanExtraFeatId = originIds[1];
+    // Further origin feats go to the species' feat picks (e.g. a Human's Versatile), when it has one
+    const featTrait = currentSpeciesTraits(ctx).find((t) => t.featPicks?.category === "origin");
+    originIds.slice(1, 1 + (featTrait?.featPicks?.count || 0)).forEach((id, i) => featTrait && setSpeciesPick(ctx, featTrait, i, id));
 
     // Each class's ASI / Epic Boon slot → the feat D&D Beyond granted through that class feature
     const featureIdBySlot = new Map<string, number>();

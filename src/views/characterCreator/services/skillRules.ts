@@ -1,3 +1,4 @@
+import { currentSpecies, getSpeciesFeatPicks, getSpeciesSkillPicks, traitBaseName } from "./speciesChoices";
 import { GeneralFeatDefinition, OriginFeatDefinition, StatModifier } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
@@ -80,14 +81,17 @@ function findFeat(ctx: CharacterCreatorContext, featId: string): OriginFeatDefin
     return ctx.originFeats.find((f) => f.id === featId) || ctx.generalFeats.find((f) => f.id === featId);
 }
 
-/** The origin feat, the Human Versatile feat, and feats taken in Ability Score Improvement slots. */
+/** The origin feat, feats from species traits (e.g. Versatile), and feats taken in Ability Score Improvement slots. */
 function getTakenFeats(ctx: CharacterCreatorContext): TakenFeat[] {
     const taken: TakenFeat[] = [];
     const origin = findFeat(ctx, ctx.state.originFeatId);
     if (origin) taken.push({ key: `origin:${origin.id}`, label: `${origin.name} (origin feat)`, feat: origin });
-    if (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId !== ctx.state.originFeatId) {
-        const versatile = findFeat(ctx, ctx.state.humanExtraFeatId);
-        if (versatile) taken.push({ key: `human-origin:${versatile.id}`, label: `${versatile.name} (Human Versatile feat)`, feat: versatile });
+    // Feats picked through species traits (e.g. a Human's Versatile); saved under "<species id>-origin:<feat id>"
+    const species = currentSpecies(ctx);
+    for (const { featId, trait } of getSpeciesFeatPicks(ctx)) {
+        if (featId === ctx.state.originFeatId) continue;
+        const feat = findFeat(ctx, featId);
+        if (feat) taken.push({ key: `${species?.id || "species"}-origin:${feat.id}`, label: `${feat.name} (${species?.name || "Species"} ${traitBaseName(trait.name)} feat)`, feat });
     }
     const isMulticlass = (ctx.state.classes || []).length > 1;
     for (const slot of getAsiSlots(ctx)) {
@@ -126,8 +130,7 @@ export function getGrantedSkills(ctx: CharacterCreatorContext): Map<string, stri
     const granted = new Map<string, string>();
     const bg = ctx.backgrounds.find((b) => b.id === ctx.state.backgroundId);
     for (const s of bg?.skills || []) granted.set(s, "Background");
-    if (ctx.state.speciesId === "human" && ctx.state.humanExtraSkill) granted.set(ctx.state.humanExtraSkill, "Human");
-    if (ctx.state.speciesId === "elf") granted.set(ctx.state.elfKeenSkill || "Perception", "Elf");
+    for (const { skill, source } of getSpeciesSkillPicks(ctx)) granted.set(skill, source);
     for (const m of getProgressionSkillModifiers(ctx)) {
         if (m.type === "proficiency_tier" && m.value !== "expertise" && m.skill !== "unproficient" && !granted.has(m.skill)) {
             granted.set(m.skill, m.source);

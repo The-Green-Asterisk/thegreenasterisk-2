@@ -81,11 +81,9 @@ export class CharacterCreatorController implements CharacterCreatorContext {
         alignment: "Neutral Good",
         gender: "",
         avatarUrl: "/storage/images/default-avatar.png",
-        speciesId: "human",
+        speciesId: SPECIES_2024[0]?.id || "",
         lineageId: "",
-        humanExtraSkill: "Perception",
-        humanExtraFeatId: "alert",
-        elfKeenSkill: "Perception",
+        speciesChoices: {},
         classId: "fighter",
         subclassId: "",
         classes: [

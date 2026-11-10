@@ -2982,4 +2982,20 @@ describe('Frontend View Templates', () => {
         expect(druid.actions.some((a: any) => a.name === 'Cosmic Omen' && a.type === 'Reaction')).toBe(true);
         expect(make('Druid', 5, 'Circle of the Stars').actions.some((a: any) => a.name === 'Cosmic Omen')).toBe(false);
     });
+
+    it('derives species uses and lineage from the species rules', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const char = parseDndBeyondCharacter({
+            id: 2, name: 'Drakon', modifiers: {}, inventory: [], spells: {},
+            stats: [1, 2, 3, 4, 5, 6].map(id => ({ id, value: 12 })),
+            race: { fullName: 'Dragonborn', baseName: 'Dragonborn', racialTraits: [{ definition: { name: 'Draconic Ancestry' } }] },
+            options: { race: [{ definition: { name: 'Silver Dragon' } }] },
+            classes: [{ level: 5, definition: { name: 'Fighter' } }]
+        });
+        expect(char.species).toBe('Dragonborn');
+        expect(char.lineage).toBe('Silver Dragon');
+        const names = (char.classResources || []).map((r: any) => `${r.name}:${r.total}`);
+        expect(names).toContain('Breath Weapon:3');
+        expect(names).toContain('Draconic Flight:1');
+    });
 });

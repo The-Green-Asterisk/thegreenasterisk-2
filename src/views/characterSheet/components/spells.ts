@@ -1,5 +1,5 @@
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
-import { findClassRule } from "../../../services/classRules";
+import { findClassRule, getSpeciesRules } from "../../../services/classRules";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -13,10 +13,9 @@ export function isCharacterSpeciesSpell(spell: SpellDefinition): boolean {
     return (
         src.includes("species") ||
         src.includes("race") ||
-        src.includes("tiefling") ||
-        src.includes("aasimar") ||
-        src.includes("elf") ||
-        src.includes("gnome")
+        // a species or lineage name (species data)
+        getSpeciesRules().some(sp => src.includes(sp.name.toLowerCase()) ||
+            (sp.lineages || []).some(l => src.includes(l.name.toLowerCase().split(/[ (]/)[0])))
     );
 }
 

@@ -5,14 +5,37 @@ export interface AbilityScoreIncreaseOption {
     description: string;
 }
 
+/**
+ * A species or lineage trait. The optional fields carry its mechanics so nothing is keyed on species names: stat
+ * modifiers ("perClassLevel" counts character levels here), a limited-use resource, spells it grants, skills or
+ * feats it lets the player pick, and dice that scale with character level.
+ */
+export interface SpeciesTrait {
+    name: string;
+    description: string;
+    /** Character level the trait starts at (e.g. Draconic Flight at 5) */
+    minLevel?: number;
+    modifiers?: StatModifier[];
+    /** Uses: total is a number or a template ("{{pb}}", "{{level}}", "{{cha}}"); name defaults to the trait's */
+    resource?: { name?: string; total: number | string; resetOn: "short" | "long"; die?: string };
+    /** Spells it grants; level is the character level they're gained at */
+    grantedSpells?: Array<{ spellName: string; level: number }>;
+    skillPicks?: FeatSkillPick[];
+    featPicks?: { count: number; category: "origin" | "general" };
+    /** The trait's scaling value by character level (e.g. Breath Weapon damage) */
+    scaleValues?: Array<{ minLevel: number; value: string }>;
+    /** Other names D&D Beyond uses for it or its uses (e.g. Giant Ancestry's "Stone's Endurance") */
+    aliases?: string[];
+    /** Creator state fields older saves kept this trait's picks in */
+    legacyStateKeys?: string[];
+}
+
 export interface LineageDefinition {
     id: string;
     name: string;
     description: string;
-    traits: Array<{
-        name: string;
-        description: string;
-    }>;
+    traits: SpeciesTrait[];
+    modifiers?: StatModifier[];
     spellsGranted?: Array<{
         level: number;
         spellName: string;
@@ -28,10 +51,7 @@ export interface SpeciesDefinition {
     size: 'Small' | 'Medium' | 'Small or Medium' | 'Medium or Small';
     speed: number;
     darkvision?: string;
-    traits: Array<{
-        name: string;
-        description: string;
-    }>;
+    traits: SpeciesTrait[];
     lineages?: LineageDefinition[];
     extraSkillCount?: number;
     extraFeatCount?: number;

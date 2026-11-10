@@ -1,7 +1,20 @@
+import { currentSpeciesTraits, setSpeciesPick, traitSlug } from "../services/speciesChoices";
 import { CharacterCreatorContext } from "./context";
+
+/** Enter or Space activates a card, like a click. */
+function activateOnKey(card: Element): void {
+    card.addEventListener("keydown", (e) => {
+        const key = (e as KeyboardEvent).key;
+        if (key === "Enter" || key === " ") {
+            e.preventDefault();
+            (card as HTMLElement).click();
+        }
+    });
+}
 
 export function initSpeciesController(ctx: CharacterCreatorContext): void {
     document.querySelectorAll(".species-card").forEach((card) => {
+        activateOnKey(card);
         card.addEventListener("click", () => {
             const spId = card.getAttribute("data-species-id") || "";
             ctx.state.speciesId = spId;
@@ -13,6 +26,7 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
     });
 
     document.querySelectorAll(".lineage-card").forEach((card) => {
+        activateOnKey(card);
         card.addEventListener("click", () => {
             ctx.state.lineageId = card.getAttribute("data-lineage-id") || "";
             ctx.renderStep(2);
@@ -20,20 +34,12 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    const humanSkill = document.getElementById("human-skill-select") as HTMLSelectElement;
-    humanSkill?.addEventListener("change", (e) => {
-        ctx.state.humanExtraSkill = (e.target as HTMLSelectElement).value;
-    });
-
-    const humanFeat = document.getElementById("human-feat-select") as HTMLSelectElement;
-    humanFeat?.addEventListener("change", (e) => {
-        ctx.state.humanExtraFeatId = (e.target as HTMLSelectElement).value;
-        ctx.updateLiveSummary();
-    });
-
-    const elfSkill = document.getElementById("elf-skill-select") as HTMLSelectElement;
-    elfSkill?.addEventListener("change", (e) => {
-        ctx.state.elfKeenSkill = (e.target as HTMLSelectElement).value;
-        ctx.updateLiveSummary();
+    document.querySelectorAll<HTMLSelectElement>(".species-pick-select").forEach((select) => {
+        select.addEventListener("change", () => {
+            const trait = currentSpeciesTraits(ctx).find((t) => traitSlug(t.name) === select.getAttribute("data-trait"));
+            if (!trait) return;
+            setSpeciesPick(ctx, trait, Number(select.getAttribute("data-index")) || 0, select.value);
+            ctx.updateLiveSummary();
+        });
     });
 }

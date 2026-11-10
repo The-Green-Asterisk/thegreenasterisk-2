@@ -2,6 +2,8 @@ import { CharacterData, DEFAULT_DND55_CONDITIONS } from "../characterData";
 import { resolveClassResources, resolveClassScaleValues } from "../../../rules/dnd5e_2024/classResources";
 import { AbilityName, ClassDefinition, ProgressionLevel } from "../../../rules/dnd5e_2024/types";
 import { resolveRuleClass } from "../classChoiceDecisions";
+import { findSpeciesRule } from "../../../services/classRules";
+import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, speciesScaleValue, traitBaseName } from "../../../rules/dnd5e_2024/speciesRules";
 
 const EXACT_CONDITION_NAMES: string[] = DEFAULT_DND55_CONDITIONS.map(c => c.name);
 const CONDITION_WORD_REGEX = new RegExp(`\\b(${EXACT_CONDITION_NAMES.join("|")})\\b`, "g");
@@ -457,6 +459,12 @@ function entityMatchesName(entity: string, name: string): boolean {
     return e === n || prefix === n || e.startsWith(`${n} `) || (e.length >= 4 && n.startsWith(`${e} `));
 }
 
+/** The character's species and lineage in the species rules. */
+function characterSpecies(character: CharacterData | null | undefined) {
+    const species = findSpeciesRule(String(character?.species || character?.race || ""));
+    return { species, lineage: detectLineage(species, { texts: [character?.lineage || "", character?.race || ""] }) };
+}
+
 /** The character's classes with their class rules (rule_classes, via /get-rules). */
 function characterRuleClasses(character: CharacterData | null | undefined) {
     return (character?.classes || []).map(c => ({ ...resolveRuleClass(c.name, c.subclass), level: Number(c.level) || 1, name: c.name }));
@@ -540,9 +548,11 @@ function inferScaleValueFromContext(ctx?: TemplatePlaceholderContext): string | 
         .find(v => v.names.some(n => entityMatchesName(nameLower, n)));
     if (scale) return scale.value;
 
-    // Dragonborn Breath Weapon
-    if (nameLower.includes("breath weapon")) {
-        return totalLvl >= 17 ? "4d10" : totalLvl >= 11 ? "3d10" : totalLvl >= 5 ? "2d10" : "1d10";
+    // Species trait scale values (e.g. Breath Weapon dice by character level)
+    const { species, lineage } = characterSpecies(char);
+    for (const t of activeSpeciesTraits(species, lineage, totalLvl)) {
+        const value = speciesScaleValue(t, totalLvl);
+        if (value && [traitBaseName(t.name), ...(t.aliases || [])].some(n => entityMatchesName(nameLower, n))) return value;
     }
 
     return `+${profBonus}`;
@@ -576,6 +586,11 @@ function inferLimitedUseFromContext(ctx?: TemplatePlaceholderContext): string {
     const resource = resolveClassResources(ruleClasses, ab => getAbilityMod(char, ABILITY_ABBR[ab]), profBonus)
         .find(r => [r.name, ...(r.aliases || [])].some(n => entityMatchesName(nameLower, n)));
     if (resource) return String(resource.total);
+    // Species and lineage limited uses (species data)
+    const sp = characterSpecies(char);
+    const speciesResource = resolveSpeciesResources(sp.species, sp.lineage, totalLvl, profBonus, ab => getAbilityMod(char, ab))
+        .find(r => [r.name, ...r.aliases].some(n => entityMatchesName(nameLower, n)));
+    if (speciesResource) return String(speciesResource.total);
     if (nameLower.includes("luck") || nameLower.includes("lucky")) {
         return String(profBonus);
     }

@@ -1,6 +1,7 @@
 import cache from "../cache";
 import AppDataSource from "./database";
 import RuleClass from "./database/entity/RuleClass";
+import RuleSpecies from "./database/entity/RuleSpecies";
 import RuleSubclass from "./database/entity/RuleSubclass";
 
 interface ProgressionLevelData {
@@ -19,8 +20,18 @@ export interface ServerClassRule {
     subclasses: Array<{ slug: string; name: string; progression: ProgressionLevelData[] }>;
 }
 
+interface SpeciesTraitData {
+    name: string;
+    resource?: { name?: string };
+    aliases?: string[];
+    grantedSpells?: unknown[];
+    scaleValues?: unknown[];
+}
+
 const CACHE_KEY = "class_rules_data";
+const SPECIES_CACHE_KEY = "species_traits_data";
 let lastLoaded: ServerClassRule[] = [];
+let lastSpeciesTraits: SpeciesTraitData[] = [];
 
 const slugify = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
@@ -36,7 +47,10 @@ function parse<T>(json: string | null | undefined, fallback: T): T {
 /** Loads class and subclass features and progression (rule_classes, rule_subclasses), cached for 10 minutes. */
 export async function loadClassRulesData(): Promise<ServerClassRule[]> {
     const cached = cache.get<ServerClassRule[]>(CACHE_KEY);
-    if (cached) return (lastLoaded = cached);
+    if (cached) {
+        lastSpeciesTraits = cache.get<SpeciesTraitData[]>(SPECIES_CACHE_KEY) || lastSpeciesTraits;
+        return (lastLoaded = cached);
+    }
     if (!AppDataSource.isInitialized) return lastLoaded;
     try {
         const [classes, subclasses] = await Promise.all([
@@ -57,6 +71,12 @@ export async function loadClassRulesData(): Promise<ServerClassRule[]> {
         }));
         cache.set(CACHE_KEY, rules, 600);
         lastLoaded = rules;
+        const species = await AppDataSource.getRepository(RuleSpecies).find();
+        lastSpeciesTraits = species.flatMap((sp) => [
+            ...parse<SpeciesTraitData[]>(sp.traitsJson, []),
+            ...parse<Array<{ traits?: SpeciesTraitData[] }>>(sp.lineagesJson, []).flatMap((l) => l?.traits || [])
+        ]).filter((t) => t?.name);
+        cache.set(SPECIES_CACHE_KEY, lastSpeciesTraits, 600);
     } catch (err) {
         console.warn("Could not load class rules:", err);
     }
@@ -104,6 +124,15 @@ export function classFeatureUsage(): { active: Set<string>; passive: Set<string>
                 const n = f.name.toLowerCase();
                 if (Array.isArray(f.modifiers) && f.modifiers.length > 0 && !f.actionGrant && !active.has(n)) passive.add(n);
             }
+        }
+    }
+    // Species traits: limited-use ones are active; ones that only change stats or senses are passive
+    for (const t of lastSpeciesTraits) {
+        const name = String(t.name).replace(/\s*\(Level \d+\)\s*$/i, "").toLowerCase();
+        if (t.resource) {
+            [name, String(t.resource.name || "").toLowerCase(), ...(t.aliases || []).map((a) => a.toLowerCase())].filter(Boolean).forEach((n) => active.add(n));
+        } else if (!t.grantedSpells?.length && !t.scaleValues?.length) {
+            passive.add(name);
         }
     }
     return { active, passive, grantTypes };

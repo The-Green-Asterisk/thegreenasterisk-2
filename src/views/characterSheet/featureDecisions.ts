@@ -7,7 +7,9 @@ import {
 import { applyProgressionChoiceOption } from "../../rules/dnd5e_2024/statModifierEvaluator";
 import { findClassOption } from "../../rules/dnd5e_2024/classOptions";
 import { classChoiceDecisionIds, classChoiceModifiers, classChoiceOptions, findChoiceOption, matchClassChoice, unlockedClassChoices } from "./classChoiceDecisions";
-import { findFeatRule, getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
+import { GeneralFeatDefinition, SpeciesDefinition, SpeciesTrait } from "../../rules/dnd5e_2024/types";
+import { detectLineage, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
+import { findFeatRule, getSpeciesRules, getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -132,79 +134,39 @@ export function buildResistanceChoiceOptions(): FeatureChoiceOption[] {
  * Infers which ability score IDs (1..6) a feat or feature allows the user to choose between
  * based on its name and description text.
  */
+const FEAT_ABILITY_IDS: Record<string, number> = { str: 1, dex: 2, con: 3, int: 4, wis: 5, cha: 6 };
+
+/** The species (or lineage) trait a feature is, by name or the part before a colon ("Fiendish Legacy: Infernal"). */
+function findSpeciesTrait(featureName: string): { species: SpeciesDefinition; trait: SpeciesTrait } | undefined {
+    const name = String(featureName || "").toLowerCase().trim();
+    const prefix = name.split(":")[0].trim();
+    for (const species of getSpeciesRules()) {
+        const traits = [...(species.traits || []), ...(species.lineages || []).flatMap(l => l.traits || [])];
+        const trait = traits.find(t => {
+            const tn = traitBaseName(t.name).toLowerCase();
+            return tn === name || tn === prefix || tn.split(":")[0].trim() === prefix;
+        });
+        if (trait) return { species, trait };
+    }
+    return undefined;
+}
+
 export function inferAllowedAbilityIdsFromFeature(featureName: string, description: string): number[] | null {
     const nameLower = String(featureName || "").toLowerCase();
     const cleanDesc = stripHtml(description).toLowerCase();
 
-    if (
-        nameLower.includes("ability score improvement") ||
-        nameLower.includes("ability score increase") ||
-        nameLower.includes("resilient") ||
-        nameLower.includes("skill expert")
-    ) {
+    // A feat's allowed abilities (feat data allowedStats), by its whole name or the part before a colon
+    const feat = findFeatRule(featureName) || findFeatRule(String(featureName || "").split(":")[0]);
+    const featStats = (feat as GeneralFeatDefinition | undefined)?.allowedStats;
+    if (Array.isArray(featStats) && featStats.length > 0) {
+        const ids = featStats.map(ab => FEAT_ABILITY_IDS[ab]).filter(Boolean);
+        if (ids.length > 0) return ids;
+    }
+    if (feat) return null;
+
+    // The Ability Score Improvement class feature (any ability)
+    if (nameLower.includes("ability score improvement") || nameLower.includes("ability score increase")) {
         return [1, 2, 3, 4, 5, 6];
-    }
-
-    if (nameLower.includes("elven accuracy")) {
-        return [2, 4, 5, 6];
-    }
-
-    if (
-        nameLower.includes("war caster") ||
-        nameLower.includes("fey touched") ||
-        nameLower.includes("shadow touched") ||
-        nameLower.includes("telekinetic") ||
-        nameLower.includes("telepathic") ||
-        nameLower.includes("spell sniper") ||
-        nameLower.includes("ritual caster") ||
-        nameLower.includes("inspiring leader")
-    ) {
-        return [4, 5, 6];
-    }
-
-    if (nameLower.includes("observant")) {
-        return [4, 5];
-    }
-
-    if (
-        nameLower.includes("crusher") ||
-        nameLower.includes("piercer") ||
-        nameLower.includes("slasher") ||
-        nameLower.includes("tavern brawler")
-    ) {
-        return [1, 2, 3];
-    }
-
-    if (
-        nameLower.includes("athlete") ||
-        nameLower.includes("light") && nameLower.includes("armor") ||
-        nameLower.includes("moderately armored") ||
-        nameLower.includes("weapon master") ||
-        nameLower.includes("defensive duelist") ||
-        nameLower.includes("dual wielder") ||
-        nameLower.includes("grappler") ||
-        nameLower.includes("mage slayer") ||
-        nameLower.includes("medium armor master") ||
-        nameLower.includes("mounted combatant") ||
-        nameLower.includes("polearm master") ||
-        nameLower.includes("sentinel") ||
-        nameLower.includes("shield master") ||
-        nameLower.includes("skulker") ||
-        nameLower.includes("charger")
-    ) {
-        return [1, 2];
-    }
-
-    if (nameLower.includes("heavy armor master") || nameLower.includes("heavily armored")) {
-        return [1, 3];
-    }
-
-    if (nameLower.includes("speedy")) {
-        return [2, 3];
-    }
-
-    if (nameLower.includes("poisoner")) {
-        return [2, 4];
     }
 
     // Parse "Increase your X, Y, or Z score by 1" or "Increase one ability score of your choice"
@@ -972,7 +934,11 @@ export function extractFeaturesAndApplyDecisions(
         }
 
         // Skills a feat lets the player choose (feat data skillPicks, e.g. Skilled, Skill Expert, Keen Mind)
-        const featPicks = category === "feat" ? findFeatRule(featureName)?.skillPicks || [] : [];
+        // ...or a species trait does (species data skillPicks, e.g. Skillful, Keen Senses)
+        const speciesTraitMatch = category === "race" ? findSpeciesTrait(featureName) : undefined;
+        const featPicks = category === "feat"
+            ? findFeatRule(featureName)?.skillPicks || []
+            : speciesTraitMatch?.trait.skillPicks || [];
         const toSkillKeys = (names?: string[]) => (names && names.length > 0 ? names.map(n => n.toLowerCase().replace(/\s+/g, "-")) : undefined);
         const featExpertisePicks = featPicks.filter(p => p.mode === "expertise");
         const featExpertiseCount = featExpertisePicks.reduce((sum, p) => sum + p.count, 0);
@@ -1027,8 +993,6 @@ export function extractFeaturesAndApplyDecisions(
                 m.type === "proficiency" &&
                 SKILL_KEY_SET.has(String(m.subType || "").toLowerCase())
         );
-        const isKeenSenses = nameLower.includes("keen senses");
-        const keenSensesAllowed = isKeenSenses ? ["insight", "perception", "survival"] : featProfAllowed;
 
         if (skillProfMods.length > 0) {
             skillProfMods.forEach((m, idx) => {
@@ -1038,19 +1002,19 @@ export function extractFeaturesAndApplyDecisions(
                     `skill-prof:${idx}`,
                     label,
                     `skill-prof:${skKey}`,
-                    buildSkillChoiceOptions("prof", keenSensesAllowed),
+                    buildSkillChoiceOptions("prof", featProfAllowed),
                     [m]
                 );
             });
-        } else if (featProfCount > 0 || isKeenSenses || nameLower === "skillful") {
-            const count = featProfCount > 0 ? featProfCount : 1;
+        } else if (featProfCount > 0) {
+            const count = featProfCount;
             const defaults = ["perception", "investigation", "insight"];
             for (let idx = 0; idx < count; idx++) {
                 registerDecision(
                     `skill-prof:${idx}`,
                     count > 1 ? `Skill Proficiency #${idx + 1}` : "Skill Proficiency",
                     `skill-prof:${defaults[idx] || "perception"}`,
-                    buildSkillChoiceOptions("prof", keenSensesAllowed),
+                    buildSkillChoiceOptions("prof", featProfAllowed),
                     []
                 );
             }
@@ -1093,13 +1057,9 @@ export function extractFeaturesAndApplyDecisions(
         const resMods = featureMods.filter(
             m => !consumedModUids.has(m._modUid) && m.type === "resistance"
         );
-        if (
-            resMods.length > 0 ||
-            nameLower.includes("fiendish legacy") ||
-            nameLower.includes("hellish resistance") ||
-            nameLower.includes("draconic ancestry") ||
-            nameLower.includes("elemental adept")
-        ) {
+        // A species trait whose species' lineages each grant a resistance (e.g. Draconic Ancestry, Fiendish Legacy)
+        const lineageResistance = (speciesTraitMatch?.species.lineages || []).some(l => (l.modifiers || []).some(m => m.target === "defenses.resistance"));
+        if (resMods.length > 0 || lineageResistance || nameLower.includes("elemental adept")) {
             if (resMods.length > 0) {
                 resMods.forEach((m, idx) => {
                     const dmgKey = String(m.subType || "fire").toLowerCase();
@@ -1112,11 +1072,10 @@ export function extractFeaturesAndApplyDecisions(
                     );
                 });
             } else {
-                const defaultRes = nameLower.includes("poison")
-                    ? "resistance:poison"
-                    : nameLower.includes("necrotic")
-                      ? "resistance:necrotic"
-                      : "resistance:fire";
+                // The resistance of the lineage the feature names, if any
+                const named = speciesTraitMatch ? detectLineage(speciesTraitMatch.species, { texts: [featureName] }) : undefined;
+                const namedRes = (named?.modifiers || []).find(m => m.target === "defenses.resistance")?.value;
+                const defaultRes = namedRes ? `resistance:${String(namedRes).toLowerCase()}` : "none";
                 registerDecision(
                     "resistance:0",
                     "Damage Resistance",

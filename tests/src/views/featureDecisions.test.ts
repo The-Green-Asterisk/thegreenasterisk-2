@@ -340,4 +340,13 @@ describe("Feature Decisions Progression Choice Integration", () => {
         const prof = keenMind.find(d => d.id.includes(":skill-prof:"))!;
         expect(prof.options.map(o => o.value)).toEqual(["skill-prof:arcana", "skill-prof:history", "skill-prof:investigation", "skill-prof:nature", "skill-prof:religion"]);
     });
+
+    it("offers a feat's ability increase from the feat data's allowed abilities", () => {
+        const raw = { classes: [], feats: [{ definition: { id: 951, name: "Inspiring Leader" }, componentId: 951 }] };
+        const mods = [{ type: "bonus", subType: "charisma-score", value: 1, componentId: 951, _sourceKey: "feat", isGranted: true }];
+        const decisions = extractFeaturesAndApplyDecisions(raw, mods, {}).features.find(f => f.name === "Inspiring Leader")!.decisions!;
+        const asi = decisions.find(d => d.id.includes(":asi:"))!;
+        expect(asi.options.map(o => o.value)).toEqual(["ability:5:1", "ability:6:1"]);
+        expect(asi.selectedValue).toBe("ability:6:1");
+    });
 });

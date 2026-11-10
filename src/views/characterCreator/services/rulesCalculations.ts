@@ -1,3 +1,5 @@
+import { speciesMaxHpBonus } from "../../../rules/dnd5e_2024/speciesRules";
+import { currentLineage, currentSpecies, hasOriginOrSpeciesFeat } from "./speciesChoices";
 import {
     AbilityName,
     BASE_ARMOR_2024,
@@ -253,14 +255,12 @@ export function getMaxHp(ctx: CharacterCreatorContext): number {
 
     const totalLevel = ctx.getTotalLevel();
     // Tough feat bonus (+2 HP per level)
-    if (ctx.state.originFeatId === "tough" || (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId === "tough")) {
+    if (hasOriginOrSpeciesFeat(ctx, "tough")) {
         hp += 2 * totalLevel;
     }
 
-    // Dwarven Toughness (+1 HP per level)
-    if (ctx.state.speciesId === "dwarf") {
-        hp += totalLevel;
-    }
+    // Species and lineage hit point bonuses (e.g. Dwarven Toughness: +1 per level)
+    hp += speciesMaxHpBonus(currentSpecies(ctx), currentLineage(ctx), totalLevel);
 
     // Class and subclass features (e.g. Draconic Resilience: +1 HP per Sorcerer level)
     for (const m of getProgressionModifiers(ctx)) {
@@ -302,7 +302,7 @@ export function getArmorClass(ctx: CharacterCreatorContext): number {
 export function getInitiative(ctx: CharacterCreatorContext): number {
     let init = getAbilityModifier(ctx, "dex");
     // Alert origin feat adds proficiency bonus
-    if (ctx.state.originFeatId === "alert" || (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId === "alert")) {
+    if (hasOriginOrSpeciesFeat(ctx, "alert")) {
         init += getProficiencyBonus(ctx);
     }
     // Class features that add an ability modifier to Initiative (e.g. Dread Ambusher)
@@ -317,9 +317,8 @@ export function getInitiative(ctx: CharacterCreatorContext): number {
 export function getSpeed(ctx: CharacterCreatorContext): number {
     const species = ctx.species.find((s) => s.id === ctx.state.speciesId);
     let speed = species?.speed || 30;
-    if (ctx.state.speciesId === "elf" && ctx.state.lineageId === "wood-elf") {
-        speed += 5;
-    }
+    // Lineage speed bonus (e.g. Wood Elf's Fleet of Foot)
+    speed += Number(currentLineage(ctx)?.speedBonus) || 0;
     // Class and subclass features (e.g. Fast Movement, Unarmored Movement, Roving), when their armor condition is met
     const armorCategory = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor)?.category || null;
     for (const m of getProgressionModifiers(ctx)) {

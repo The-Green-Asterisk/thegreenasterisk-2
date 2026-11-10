@@ -16,10 +16,12 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Skillful",
+                skillPicks: [{ count: 1, mode: "proficiency" }], legacyStateKeys: ["humanExtraSkill"],
                 description: "You gain proficiency in one skill of your choice."
             },
             {
                 name: "Versatile",
+                featPicks: { count: 1, category: "origin" }, legacyStateKeys: ["humanExtraFeatId"],
                 description: "You gain one Origin Feat of your choice."
             }
         ]
@@ -38,6 +40,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Keen Senses",
+                skillPicks: [{ count: 1, from: ["Insight", "Perception", "Survival"], mode: "proficiency" }], legacyStateKeys: ["elfKeenSkill"],
                 description: "You have proficiency in the Insight, Perception, or Survival skill."
             },
             {
@@ -116,14 +119,17 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         traits: [
             {
                 name: "Dwarven Resilience",
+                modifiers: [{ target: "defenses.resistance", type: "set", value: "poison" }],
                 description: "You have Resistance to Poison damage and Advantage on saving throws to avoid or end the Poisoned condition."
             },
             {
                 name: "Dwarven Toughness",
+                modifiers: [{ target: "vitals.maxHp", type: "bonus", perClassLevel: 1 }],
                 description: "Your Hit Point maximum increases by 1 for each level you possess."
             },
             {
                 name: "Stonecunning",
+                resource: { total: "{{pb}}", resetOn: "long" },
                 description: "As a Bonus Action, you gain Tremorsense with a range of 60 feet for 10 minutes while on stone surfaces. You can use this a number of times equal to your Proficiency Bonus per Long Rest."
             }
         ]
@@ -213,6 +219,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Breath Weapon",
+                resource: { total: "{{pb}}", resetOn: "long" }, scaleValues: [{ minLevel: 1, value: "1d10" }, { minLevel: 5, value: "2d10" }, { minLevel: 11, value: "3d10" }, { minLevel: 17, value: "4d10" }],
                 description: "When you take the Attack action, you can replace one of your attacks with an exhalation of magical energy in a 15-foot cone or 30-foot line (1d10 damage of your draconic ancestry type, scaling to 2d10 at 5th, 3d10 at 11th, and 4d10 at 17th level; Dex save DC 8 + Con mod + PB). Usable PB times per Long Rest."
             },
             {
@@ -225,20 +232,21 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Draconic Flight (Level 5)",
+                minLevel: 5, resource: { name: "Draconic Flight", total: 1, resetOn: "long" },
                 description: "Starting at level 5, as a Bonus Action you can sprout spectral wings and gain a Fly Speed equal to your Speed for 10 minutes once per Long Rest."
             }
         ],
         lineages: [
-            { id: "black", name: "Black Dragon (Acid)", description: "Line 30 ft, Acid damage and Acid resistance.", traits: [] },
-            { id: "blue", name: "Blue Dragon (Lightning)", description: "Line 30 ft, Lightning damage and Lightning resistance.", traits: [] },
-            { id: "brass", name: "Brass Dragon (Fire)", description: "Line 30 ft, Fire damage and Fire resistance.", traits: [] },
-            { id: "bronze", name: "Bronze Dragon (Lightning)", description: "Line 30 ft, Lightning damage and Lightning resistance.", traits: [] },
-            { id: "copper", name: "Copper Dragon (Acid)", description: "Line 30 ft, Acid damage and Acid resistance.", traits: [] },
-            { id: "gold", name: "Gold Dragon (Fire)", description: "Cone 15 ft, Fire damage and Fire resistance.", traits: [] },
-            { id: "green", name: "Green Dragon (Poison)", description: "Cone 15 ft, Poison damage and Poison resistance.", traits: [] },
-            { id: "red", name: "Red Dragon (Fire)", description: "Cone 15 ft, Fire damage and Fire resistance.", traits: [] },
-            { id: "silver", name: "Silver Dragon (Cold)", description: "Cone 15 ft, Cold damage and Cold resistance.", traits: [] },
-            { id: "white", name: "White Dragon (Cold)", description: "Cone 15 ft, Cold damage and Cold resistance.", traits: [] }
+            { id: "black", modifiers: [{ target: "defenses.resistance", type: "set", value: "acid" }], name: "Black Dragon (Acid)", description: "Line 30 ft, Acid damage and Acid resistance.", traits: [] },
+            { id: "blue", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning" }], name: "Blue Dragon (Lightning)", description: "Line 30 ft, Lightning damage and Lightning resistance.", traits: [] },
+            { id: "brass", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }], name: "Brass Dragon (Fire)", description: "Line 30 ft, Fire damage and Fire resistance.", traits: [] },
+            { id: "bronze", modifiers: [{ target: "defenses.resistance", type: "set", value: "lightning" }], name: "Bronze Dragon (Lightning)", description: "Line 30 ft, Lightning damage and Lightning resistance.", traits: [] },
+            { id: "copper", modifiers: [{ target: "defenses.resistance", type: "set", value: "acid" }], name: "Copper Dragon (Acid)", description: "Line 30 ft, Acid damage and Acid resistance.", traits: [] },
+            { id: "gold", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }], name: "Gold Dragon (Fire)", description: "Cone 15 ft, Fire damage and Fire resistance.", traits: [] },
+            { id: "green", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison" }], name: "Green Dragon (Poison)", description: "Cone 15 ft, Poison damage and Poison resistance.", traits: [] },
+            { id: "red", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }], name: "Red Dragon (Fire)", description: "Cone 15 ft, Fire damage and Fire resistance.", traits: [] },
+            { id: "silver", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold" }], name: "Silver Dragon (Cold)", description: "Cone 15 ft, Cold damage and Cold resistance.", traits: [] },
+            { id: "white", modifiers: [{ target: "defenses.resistance", type: "set", value: "cold" }], name: "White Dragon (Cold)", description: "Cone 15 ft, Cold damage and Cold resistance.", traits: [] }
         ]
     },
     {
@@ -251,12 +259,13 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         traits: [
             {
                 name: "Otherworldly Presence",
+                grantedSpells: [{ spellName: "Thaumaturgy", level: 1 }],
                 description: "You know the Thaumaturgy cantrip."
             }
         ],
         lineages: [
             {
-                id: "abyssal",
+                id: "abyssal", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison" }],
                 name: "Abyssal (Chaotic Evil)",
                 description: "Poison resistance, Poison Spray cantrip, Ray of Sickness at level 3, Hold Person at level 5.",
                 traits: [{ name: "Fiendish Legacy: Abyssal", description: "Resistance to Poison damage." }],
@@ -267,7 +276,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "chthonic",
+                id: "chthonic", modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic" }],
                 name: "Chthonic (Neutral Evil)",
                 description: "Necrotic resistance, Chill Touch cantrip, False Life at level 3, Ray of Enfeeblement at level 5.",
                 traits: [{ name: "Fiendish Legacy: Chthonic", description: "Resistance to Necrotic damage." }],
@@ -278,7 +287,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "infernal",
+                id: "infernal", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }],
                 name: "Infernal (Lawful Evil)",
                 description: "Fire resistance, Fire Bolt cantrip, Hellish Rebuke at level 3, Darkness at level 5.",
                 traits: [{ name: "Fiendish Legacy: Infernal", description: "Resistance to Fire damage." }],
@@ -300,6 +309,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         traits: [
             {
                 name: "Adrenaline Rush",
+                resource: { total: "{{pb}}", resetOn: "short" },
                 description: "You can take the Dash action as a Bonus Action a number of times equal to your Proficiency Bonus per Short or Long Rest. When you do so, you gain Temporary Hit Points equal to your Proficiency Bonus."
             },
             {
@@ -312,6 +322,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Relentless Endurance",
+                resource: { total: 1, resetOn: "long" },
                 description: "When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead. Once you use this trait, you can't do so again until you finish a Long Rest."
             }
         ]
@@ -325,10 +336,12 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         traits: [
             {
                 name: "Giant Ancestry",
+                resource: { total: "{{pb}}", resetOn: "long" }, aliases: ["Cloud's Jaunt", "Fire's Burn", "Frost's Chill", "Hill's Tumble", "Stone's Endurance", "Storm's Thunder"],
                 description: "You inherit supernatural boons from your giant kin, usable a number of times equal to your Proficiency Bonus per Long Rest."
             },
             {
                 name: "Large Form (Level 5)",
+                minLevel: 5, resource: { name: "Large Form", total: 1, resetOn: "long" },
                 description: "Starting at level 5, as a Bonus Action you can transform into Large size for 10 minutes. During this transformation, you gain Advantage on Strength checks and your speed increases by 10 feet. Usable once per Long Rest."
             },
             {
@@ -355,6 +368,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         traits: [
             {
                 name: "Celestial Resistance",
+                modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic" }, { target: "defenses.resistance", type: "set", value: "radiant" }],
                 description: "You have Resistance to Necrotic damage and Radiant damage."
             },
             {
@@ -363,14 +377,17 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Healing Hands",
+                resource: { total: 1, resetOn: "long" },
                 description: "As a Magic action, you can touch a creature and roll a number of d4s equal to your Proficiency Bonus. The creature regains Hit Points equal to the total rolled. Once per Long Rest."
             },
             {
                 name: "Light Bearer",
+                grantedSpells: [{ spellName: "Light", level: 1 }],
                 description: "You know the Light cantrip, using Charisma, Wisdom, or Intelligence as your spellcasting ability."
             },
             {
                 name: "Celestial Revelation (Level 3)",
+                minLevel: 3, resource: { name: "Celestial Revelation", total: 1, resetOn: "long" },
                 description: "At level 3, you can transform for 1 minute as a Bonus Action once per Long Rest, choosing Heavenly Wings (Fly Speed and radiant damage), Inner Radiance (radiant aura damage), or Necrotic Shroud (frighten foes and deal necrotic damage)."
             }
         ]

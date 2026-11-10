@@ -55,9 +55,8 @@ export interface CreatorState {
     avatarUrl: string;
     speciesId: string;
     lineageId: string;
-    humanExtraSkill: string;
-    humanExtraFeatId: string;
-    elfKeenSkill: string;
+    /** Skills or feats picked through species traits (Skillful, Versatile, Keen Senses), by trait slug */
+    speciesChoices: Record<string, string[]>;
     classId: string;
     subclassId: string;
     classes: CharacterClassChoice[];

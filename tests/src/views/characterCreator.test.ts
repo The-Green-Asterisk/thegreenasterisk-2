@@ -770,6 +770,30 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.getMaxExpertiseCount()).toBe(1);
         });
 
+        it("takes species skill and feat picks from species data, reading older saves' fields", () => {
+            setup([{ classId: "fighter", level: 4 }]);
+            ctrl.state.speciesId = "human";
+            ctrl.state.speciesChoices = { skillful: ["Stealth"], versatile: ["tough"] };
+            const payload = ctrl.buildPayload();
+            expect(payload.skills.find((s: any) => s.name === "Stealth").proficiency).toBe("proficient");
+            expect(payload.features.some((f: any) => f.name === "Tough")).toBe(true);
+            const withTough = ctrl.getMaxHp();
+            ctrl.state.speciesChoices = { skillful: ["Stealth"], versatile: [""] };
+            expect(withTough - ctrl.getMaxHp()).toBe(8);
+
+            // An older save kept the Human's picks in humanExtraSkill / humanExtraFeatId
+            ctrl.state.speciesChoices = {};
+            Object.assign(ctrl.state, { humanExtraSkill: "Survival", humanExtraFeatId: "tough" });
+            expect(ctrl.buildPayload().skills.find((s: any) => s.name === "Survival").proficiency).toBe("proficient");
+            expect(ctrl.getMaxHp()).toBe(withTough);
+
+            // The species step renders a labelled select per pick
+            ctrl.renderStep(2);
+            const select = document.getElementById("species-pick-versatile-0") as HTMLSelectElement;
+            expect(document.querySelector('label[for="species-pick-versatile-0"]')).toBeTruthy();
+            expect(select.querySelector('option[value="tough"]')?.hasAttribute("selected")).toBe(true);
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };
@@ -1896,7 +1920,7 @@ describe("CharacterCreatorController", () => {
         ctrl.state.level = 5;
         ctrl.state.speciesId = "elf";
         ctrl.state.lineageId = "high-elf";
-        ctrl.state.elfKeenSkill = "Insight";
+        (ctrl.state as any).elfKeenSkill = "Insight"; // an older save's field, read through Keen Senses' legacyStateKeys
         ctrl.state.backgroundId = "sailor";
         ctrl.state.classId = "wizard";
         ctrl.state.classSkills = ["Arcana", "History"];
@@ -1904,7 +1928,7 @@ describe("CharacterCreatorController", () => {
         // Verify Step 2 renders Elf Keen Senses choice
         document.body.innerHTML = '<div id="creator-step-panels"></div><div id="creator-live-summary"></div>';
         ctrl.renderStep(2);
-        const elfSelect = document.getElementById("elf-skill-select") as HTMLSelectElement;
+        const elfSelect = document.getElementById("species-pick-keen-senses-0") as HTMLSelectElement;
         expect(elfSelect).toBeTruthy();
         expect(elfSelect.value).toBe("Insight");
 

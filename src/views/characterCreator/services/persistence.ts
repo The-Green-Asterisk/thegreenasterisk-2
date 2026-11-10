@@ -10,7 +10,10 @@ import {
     SPELLS_2024,
     WEAPON_MASTERIES
 } from "../../../rules/dnd5e_2024";
+import { featureUsage } from "../../../rules/dnd5e_2024/featureUsage";
+import { detectLineage, resolveSpeciesResources, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
 import { ALL_SKILLS } from "../characterCreator.types";
+import { currentLineage, getSpeciesFeatPicks, hasOriginOrSpeciesFeat } from "./speciesChoices";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
 import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
@@ -338,72 +341,14 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                 ].map((r: any) => String(r || "").toLowerCase());
                 const spellNames: string[] = Array.isArray(char.spells) ? char.spells.map((s: any) => String(s?.name || "").toLowerCase()) : [];
 
-                // 1. Match from char.lineage or char.subrace
-                if (lineageText) {
-                    matchedLin = activeSpecies.lineages.find((l) =>
-                        l.id === lineageText ||
-                        l.name.toLowerCase() === lineageText ||
-                        lineageText.includes(l.id) ||
-                        lineageText.includes(l.name.toLowerCase().split(" ")[0])
-                    );
-                }
-
-                // 2. Match from char.race (e.g. "Infernal Tiefling", "Wood Elf")
-                if (!matchedLin && raceText) {
-                    matchedLin = activeSpecies.lineages.find((l) =>
-                        raceText.includes(l.id) ||
-                        raceText.includes(l.name.toLowerCase().split(" ")[0])
-                    );
-                }
-
-                // 3. Species-specific heuristics
-                if (!matchedLin) {
-                    if (activeSpecies.id === "tiefling") {
-                        const isInfernal =
-                            featNames.some((n: string) => n.includes("infernal") || n.includes("hellish resistance")) ||
-                            featDescs.some((d: string) => d.includes("resistance to fire") || d.includes("hellish resistance")) ||
-                            resistances.includes("fire") ||
-                            spellNames.includes("fire bolt") ||
-                            spellNames.includes("hellish rebuke");
-                        const isAbyssal =
-                            featNames.some((n: string) => n.includes("abyssal")) ||
-                            featDescs.some((d: string) => d.includes("resistance to poison")) ||
-                            resistances.includes("poison") ||
-                            spellNames.includes("poison spray");
-                        const isChthonic =
-                            featNames.some((n: string) => n.includes("chthonic")) ||
-                            featDescs.some((d: string) => d.includes("resistance to necrotic")) ||
-                            resistances.includes("necrotic") ||
-                            spellNames.includes("chill touch");
-
-                        if (isInfernal) matchedLin = activeSpecies.lineages.find(l => l.id === "infernal");
-                        else if (isAbyssal) matchedLin = activeSpecies.lineages.find(l => l.id === "abyssal");
-                        else if (isChthonic) matchedLin = activeSpecies.lineages.find(l => l.id === "chthonic");
-                    } else if (activeSpecies.id === "elf") {
-                        const isWood = featNames.some((n: string) => n.includes("wood elf") || n.includes("fleet of foot") || n.includes("mask of the wild"));
-                        const isDrow = featNames.some((n: string) => n.includes("drow") || n.includes("superior darkvision"));
-                        const isHigh = featNames.some((n: string) => n.includes("high elf") || n.includes("cantrip"));
-
-                        if (isWood) matchedLin = activeSpecies.lineages.find(l => l.id === "wood-elf");
-                        else if (isDrow) matchedLin = activeSpecies.lineages.find(l => l.id === "drow");
-                        else if (isHigh) matchedLin = activeSpecies.lineages.find(l => l.id === "high-elf");
-                    } else if (activeSpecies.id === "dragonborn") {
-                        matchedLin = activeSpecies.lineages.find(l =>
-                            raceText.includes(l.id) || featNames.some((n: string) => n.includes(l.id))
-                        );
-                    } else if (activeSpecies.id === "goliath") {
-                        matchedLin = activeSpecies.lineages.find(l =>
-                            raceText.includes(l.id.replace("-giant", "")) ||
-                            featNames.some((n: string) => n.includes(l.id.replace("-giant", "")))
-                        );
-                    } else if (activeSpecies.id === "gnome") {
-                        if (raceText.includes("forest") || featNames.some((n: string) => n.includes("forest"))) {
-                            matchedLin = activeSpecies.lineages.find(l => l.id === "forest-gnome");
-                        } else if (raceText.includes("rock") || featNames.some((n: string) => n.includes("rock") || n.includes("tinker"))) {
-                            matchedLin = activeSpecies.lineages.find(l => l.id === "rock-gnome");
-                        }
-                    }
-                }
+                // Score each lineage against its own data: names, trait names, granted spells, resistances
+                matchedLin = detectLineage(activeSpecies, {
+                    texts: [lineageText, raceText],
+                    featureNames: featNames,
+                    featureDescriptions: featDescs,
+                    resistances,
+                    spellNames
+                });
 
                 ctx.state.lineageId = matchedLin?.id || activeSpecies.lineages[0].id;
             }
@@ -522,10 +467,9 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
                         return (
                             src.includes("species") ||
                             src.includes("race") ||
-                            src.includes("tiefling") ||
-                            src.includes("aasimar") ||
-                            src.includes("elf") ||
-                            src.includes("gnome") ||
+                            // a species or lineage name (species data)
+                            ctx.species.some((sp) => src.includes(sp.name.toLowerCase()) ||
+                                (sp.lineages || []).some((l) => src.includes(l.name.toLowerCase().split(/[ (]/)[0]))) ||
                             src.includes("pact of the tome")
                         );
                     })
@@ -728,24 +672,12 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
 
     // Species and Lineage innate spells
     const selectedLineage = species.lineages?.find((l) => l.id === ctx.state.lineageId);
-    const speciesSpells: Array<{ name: string; level: number }> = [];
-    if (species.id === "aasimar") {
-        speciesSpells.push({ name: "Light", level: 0 });
-    }
-    if (species.id === "tiefling") {
-        speciesSpells.push({ name: "Thaumaturgy", level: 0 });
-    }
-    if (selectedLineage && Array.isArray(selectedLineage.spellsGranted)) {
-        selectedLineage.spellsGranted.forEach((sg: any) => {
-            if (ctx.state.level >= sg.level) {
-                const spDef = getSpellDef(ctx, sg.spellName);
-                speciesSpells.push({
-                    name: sg.spellName,
-                    level: spDef ? spDef.level : (sg.level === 1 ? 0 : 1)
-                });
-            }
+    // Species, lineage, and trait spells (species data), by the level they're gained at
+    const speciesSpells: Array<{ name: string; level: number }> = speciesGrantedSpells(species, selectedLineage, ctx.getTotalLevel() || 1)
+        .map((sg) => {
+            const spDef = getSpellDef(ctx, sg.spellName);
+            return { name: sg.spellName, level: spDef ? spDef.level : (sg.level === 1 ? 0 : 1) };
         });
-    }
     for (const spItem of speciesSpells) {
         if (!spellsPayload.some((s) => s.name.toLowerCase() === spItem.name.toLowerCase())) {
             const spDef = getSpellDef(ctx, spItem.name);
@@ -882,8 +814,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             description: wrapHtmlParagraph(originFeat.benefits.join(" "))
         });
     }
-    if (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId) {
-        const extraOriginFeat = ctx.originFeats.find((f) => f.id === ctx.state.humanExtraFeatId);
+    // Feats picked through species traits (e.g. Versatile)
+    for (const { featId } of getSpeciesFeatPicks(ctx)) {
+        const extraOriginFeat = ctx.originFeats.find((f) => f.id === featId) || ctx.generalFeats.find((f) => f.id === featId);
         if (extraOriginFeat && extraOriginFeat.id !== originFeat?.id) {
             featsList.push({
                 name: extraOriginFeat.name,
@@ -1075,30 +1008,12 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         pb
     ).map(({ classId: _classId, aliases: _aliases, dieOrType, ...r }) => ({ ...r, ...(dieOrType ? { dieOrType } : {}), currentUsed: 0 }));
 
-    // Species & Origin Feat expendable resources
-    if (ctx.state.speciesId === "dragonborn") {
-        resourcesPayload.push({ name: "Breath Weapon", total: pb, resetOn: "long", currentUsed: 0 });
-        if (ctx.state.level >= 5) {
-            resourcesPayload.push({ name: "Draconic Flight", total: 1, resetOn: "long", currentUsed: 0 });
-        }
-    } else if (ctx.state.speciesId === "dwarf") {
-        resourcesPayload.push({ name: "Stonecunning", total: pb, resetOn: "long", currentUsed: 0 });
-    } else if (ctx.state.speciesId === "orc") {
-        resourcesPayload.push({ name: "Adrenaline Rush", total: pb, resetOn: "short", currentUsed: 0 });
-        resourcesPayload.push({ name: "Relentless Endurance", total: 1, resetOn: "long", currentUsed: 0 });
-    } else if (ctx.state.speciesId === "goliath") {
-        resourcesPayload.push({ name: "Giant Ancestry", total: pb, resetOn: "long", currentUsed: 0 });
-        if (ctx.state.level >= 5) {
-            resourcesPayload.push({ name: "Large Form", total: 1, resetOn: "long", currentUsed: 0 });
-        }
-    } else if (ctx.state.speciesId === "aasimar") {
-        resourcesPayload.push({ name: "Healing Hands", total: 1, resetOn: "long", currentUsed: 0 });
-        if (ctx.state.level >= 3) {
-            resourcesPayload.push({ name: "Celestial Revelation", total: 1, resetOn: "long", currentUsed: 0 });
-        }
+    // Species and lineage expendable resources (species data)
+    for (const r of resolveSpeciesResources(species, currentLineage(ctx), ctx.getTotalLevel() || 1, pb, (ab) => ctx.getAbilityModifier(ab as AbilityName))) {
+        resourcesPayload.push({ name: r.name, total: r.total, resetOn: r.resetOn, ...(r.dieOrType ? { dieOrType: r.dieOrType } : {}), currentUsed: 0 });
     }
 
-    if (ctx.state.originFeatId === "lucky" || (ctx.state.speciesId === "human" && ctx.state.humanExtraFeatId === "lucky")) {
+    if (hasOriginOrSpeciesFeat(ctx, "lucky")) {
         resourcesPayload.push({ name: "Luck Points", total: pb, resetOn: "long", currentUsed: 0 });
     }
 
@@ -1142,36 +1057,26 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             };
         });
 
+    const usage = featureUsage(ctx.classes, ctx.species);
     const inferFeatureActionType = (name: string, desc: string): "Action" | "Bonus Action" | "Reaction" | null => {
-        const n = (name || "").toLowerCase();
+        const n = (name || "").toLowerCase().trim();
         const d = (desc || "").toLowerCase();
+        const base = n.split(":")[0].trim();
+        const granted = usage.grantTypes.get(n) || usage.grantTypes.get(base);
+        if (granted) {
+            return granted === "Action" || granted === "Bonus Action" || granted === "Reaction" ? granted : null;
+        }
         if (
             n.includes("ability score improvement") ||
+            // Spellcasting features (the rules' two names for them)
             n === "spellcasting" ||
             n === "pact magic" ||
             n.includes("level spells") ||
             n.startsWith("subclass:") ||
-            n === "extra attack" ||
-            n === "two extra attacks" ||
-            n === "three extra attacks" ||
-            n.includes("swim form") ||
-            n.includes("fly form") ||
-            n === "keen senses" ||
-            n === "fey ancestry" ||
-            n === "darkvision" ||
-            n === "trance" ||
-            n === "unarmored defense" ||
-            n === "unarmored movement" ||
-            n === "fast movement" ||
-            n === "expertise" ||
-            n === "jack of all trades" ||
-            n === "evasion" ||
-            n === "danger sense" ||
             n.startsWith("fighting style:") ||
-            n.startsWith("primal order") ||
-            n.startsWith("divine order") ||
-            n === "elemental fury" ||
-            n === "blessed strikes" ||
+            // Class picks, stat-only features, and passive species traits (rules data)
+            usage.passive.has(n) ||
+            usage.passive.has(base) ||
             n === "alert"
         ) {
             return null;
@@ -1184,28 +1089,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         }
         if (
             /\bas a magic action\b|\btake a magic action\b|\bas an action\b|\btake an action\b|\bonce on each of your turns\b|\bonce per turn\b|\bwhen you hit\b|\bexpend a spell slot\b|\bexpend one use\b|\bexpend a use\b/i.test(d) ||
-            n.includes("wild shape") ||
-            n.includes("wild companion") ||
-            n.includes("wild resurgence") ||
-            n.includes("starry form") ||
-            n.includes("star map") ||
-            n.includes("channel divinity") ||
-            n.includes("bardic inspiration") ||
-            n.includes("second wind") ||
-            n.includes("action surge") ||
-            n.includes("flurry of blows") ||
-            n.includes("patient defense") ||
-            n.includes("step of the wind") ||
-            n.includes("stunning strike") ||
-            n.includes("lay on hands") ||
-            n.includes("divine smite") ||
-            n.includes("sneak attack") ||
-            n.includes("cunning action") ||
-            n.includes("cunning strike") ||
-            n.includes("uncanny dodge") ||
-            n.includes("innate sorcery") ||
-            n.includes("font of magic") ||
-            n.includes("arcane recovery")
+            // Features that spend a class or species resource, or grant an action (rules data)
+            usage.active.has(n) ||
+            usage.active.has(base)
         ) {
             if (d.includes("bonus action")) return "Bonus Action";
             if (d.includes("reaction")) return "Reaction";
@@ -1290,27 +1176,8 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     const chosenLineage = species.lineages?.find((l) => l.id === ctx.state.lineageId);
     const raceLabel = chosenLineage ? chosenLineage.name : species.name;
 
-    const damageResistances: string[] = [];
-    if (ctx.state.speciesId === "dragonborn") {
-        const ancestryChoice = (ctx.state.lineageId || "red").toLowerCase();
-        const ancestryMap: Record<string, string> = {
-            black: "Acid", copper: "Acid",
-            blue: "Lightning", bronze: "Lightning",
-            brass: "Fire", gold: "Fire", red: "Fire",
-            green: "Poison",
-            silver: "Cold", white: "Cold"
-        };
-        const dmg = ancestryMap[ancestryChoice] || "Fire";
-        damageResistances.push(dmg);
-    } else if (ctx.state.speciesId === "dwarf") {
-        damageResistances.push("Poison");
-    } else if (ctx.state.speciesId === "aasimar") {
-        damageResistances.push("Necrotic", "Radiant");
-    } else if (ctx.state.speciesId === "tiefling") {
-        if (ctx.state.lineageId === "abyssal") damageResistances.push("Poison");
-        else if (ctx.state.lineageId === "chthonic") damageResistances.push("Necrotic");
-        else damageResistances.push("Fire");
-    }
+    // Species and lineage damage resistances (species data)
+    const damageResistances: string[] = speciesResistances(species, chosenLineage, ctx.getTotalLevel() || 1);
 
     const maxHp = ctx.getMaxHp();
     const classSummaries = ctx.state.classes.map((cc) => {

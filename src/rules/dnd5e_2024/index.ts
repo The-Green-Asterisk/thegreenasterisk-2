@@ -10,3 +10,5 @@ export * from "./generalFeats";
 export * from "./multiclass";
 export * from "./statModifierEvaluator";
 export * from "./classResources";
+export * from "./speciesRules";
+export * from "./featureUsage";
