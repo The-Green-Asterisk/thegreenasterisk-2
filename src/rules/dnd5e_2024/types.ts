@@ -176,10 +176,25 @@ export type ModifierTarget =
     | "attacks.melee"
     | "attacks.ranged"
     | "attacks.spell"
+    | "attacks.two_handed_damage_floor"
     | "damage.melee"
     | "damage.ranged"
+    | "damage.melee_one_handed"
+    | "damage.thrown"
+    | "damage.cantrips"
+    | "damage.eldritch_blast"
+    | "damage.offhand_ability_mod"
+    | "spells.dc"
+    | "spells.attack"
     | "spells.saveDc"
     | "spells.attackBonus"
+    | "vitals.swim"
+    | "vitals.climb"
+    | "vitals.fly"
+    | "speeds.fly"
+    | "speeds.swim"
+    | "speeds.climb"
+    | `reactions.${string}`
     | "proficiencies.armor"
     | "proficiencies.weapons"
     | "proficiencies.tools"
@@ -217,7 +232,7 @@ export interface StatModifier {
     perClassLevel?: number;        // value × the granting class's level, e.g. Draconic Resilience HP
     abilities?: AbilityName[];     // unarmored_ac: abilities whose modifiers add to 10
     allowsShield?: boolean;        // unarmored_ac: still applies while holding a shield
-    requires?: "no-armor" | "no-heavy-armor" | "no-armor-or-shield"; // only applies in this armor state
+    requires?: "no-armor" | "no-heavy-armor" | "no-armor-or-shield" | "armor"; // only applies in this armor state
     condition?: string;
     /** Name of a sense the sheet doesn't know yet (senses.<key> targets) */
     label?: string;
