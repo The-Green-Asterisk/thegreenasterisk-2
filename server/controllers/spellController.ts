@@ -6,6 +6,7 @@ import { Spell } from "../services/database/entity/Spell";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
 import { flattenDndBeyondSpellDefinition, mergeSpellClasses } from "../services/dndBeyondSpell";
+import { extractSpellDamageInfo } from "../services/spellDamage";
 import BaseController from "./baseController";
 
 function slugify(text: string): string {
@@ -101,6 +102,11 @@ export default class SpellController extends BaseController {
                         ? JSON.stringify(rawSpell.classes)
                         : (typeof rawSpell.classes === "string" ? rawSpell.classes : undefined);
 
+                    const damageInfo = extractSpellDamageInfo(rawSpell);
+                    const damageScalingVal = rawSpell.damageScaling
+                        ? (typeof rawSpell.damageScaling === "string" ? rawSpell.damageScaling : JSON.stringify(rawSpell.damageScaling))
+                        : (damageInfo.damageScaling ? JSON.stringify(damageInfo.damageScaling) : undefined);
+
                     if (!existing) {
                         const created = spellRepo.create({
                             slug,
@@ -115,6 +121,12 @@ export default class SpellController extends BaseController {
                             concentration: !!rawSpell.concentration,
                             ritual: !!rawSpell.ritual,
                             description: finalDescription,
+                            damageDice: rawSpell.damageDice?.trim() || damageInfo.damageDice,
+                            damageType: rawSpell.damageType?.trim() || damageInfo.damageType,
+                            damageModifier: rawSpell.damageModifier !== undefined && rawSpell.damageModifier !== null
+                                ? String(rawSpell.damageModifier).trim()
+                                : damageInfo.damageModifier,
+                            damageScaling: damageScalingVal,
                             classes: classesVal,
                             imageUrl,
                             dndBeyondId,
@@ -160,12 +172,20 @@ export default class SpellController extends BaseController {
                             existing.description = finalDescription;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+                            if (!existing.damageDice && damageInfo.damageDice) existing.damageDice = damageInfo.damageDice;
+                            if (!existing.damageType && damageInfo.damageType) existing.damageType = damageInfo.damageType;
+                            if (!existing.damageModifier && damageInfo.damageModifier) existing.damageModifier = damageInfo.damageModifier;
+                            if (!existing.damageScaling && damageScalingVal) existing.damageScaling = damageScalingVal;
 
                             const saved = await spellRepo.save(existing);
                             cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                             cache.set(`spell_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
                             savedCount++;
-                        } else if (classesChanged) {
+                        } else if (classesChanged || (!existing.damageDice && damageInfo.damageDice)) {
+                            if (!existing.damageDice && damageInfo.damageDice) existing.damageDice = damageInfo.damageDice;
+                            if (!existing.damageType && damageInfo.damageType) existing.damageType = damageInfo.damageType;
+                            if (!existing.damageModifier && damageInfo.damageModifier) existing.damageModifier = damageInfo.damageModifier;
+                            if (!existing.damageScaling && damageScalingVal) existing.damageScaling = damageScalingVal;
                             await spellRepo.save(existing);
                         }
                     }
@@ -191,6 +211,8 @@ export default class SpellController extends BaseController {
                 const slug = (sp.id || slugify(sp.name)).slice(0, 255);
                 let existing = await spellRepo.findOne({ where: { slug } });
                 const classesJson = JSON.stringify(sp.classes || []);
+                const damageInfo = extractSpellDamageInfo(sp);
+                const damageScalingVal = damageInfo.damageScaling ? JSON.stringify(damageInfo.damageScaling) : undefined;
                 if (!existing) {
                     const created = spellRepo.create({
                         slug,
@@ -205,12 +227,20 @@ export default class SpellController extends BaseController {
                         concentration: !!sp.concentration,
                         ritual: !!sp.ritual,
                         description: sp.description,
+                        damageDice: damageInfo.damageDice,
+                        damageType: damageInfo.damageType,
+                        damageModifier: damageInfo.damageModifier,
+                        damageScaling: damageScalingVal,
                         classes: classesJson,
                         isCustom: false
                     });
                     await spellRepo.save(created);
-                } else if (!existing.classes) {
-                    existing.classes = classesJson;
+                } else if (!existing.classes || (!existing.damageDice && damageInfo.damageDice)) {
+                    if (!existing.classes) existing.classes = classesJson;
+                    if (!existing.damageDice && damageInfo.damageDice) existing.damageDice = damageInfo.damageDice;
+                    if (!existing.damageType && damageInfo.damageType) existing.damageType = damageInfo.damageType;
+                    if (!existing.damageModifier && damageInfo.damageModifier) existing.damageModifier = damageInfo.damageModifier;
+                    if (!existing.damageScaling && damageScalingVal) existing.damageScaling = damageScalingVal;
                     await spellRepo.save(existing);
                 }
             }
@@ -448,8 +478,22 @@ export default class SpellController extends BaseController {
                 }
             }
 
+            const mappedSpells = filtered.map(sp => {
+                if (!sp.damageDice) {
+                    const info = extractSpellDamageInfo(sp);
+                    return {
+                        ...sp,
+                        damageDice: info.damageDice,
+                        damageType: info.damageType,
+                        damageModifier: info.damageModifier,
+                        damageScaling: info.damageScaling ? JSON.stringify(info.damageScaling) : sp.damageScaling
+                    };
+                }
+                return sp;
+            });
+
             return {
-                response: JSON.stringify({ spells: filtered, fetchedOnline }),
+                response: JSON.stringify({ spells: mappedSpells, fetchedOnline }),
                 header: "application/json",
                 status: 200
             };
@@ -504,6 +548,13 @@ export default class SpellController extends BaseController {
                 }
 
                 if (dbSpell) {
+                    if (!dbSpell.damageDice) {
+                        const info = extractSpellDamageInfo(dbSpell);
+                        if (info.damageDice) dbSpell.damageDice = info.damageDice;
+                        if (info.damageType) dbSpell.damageType = info.damageType;
+                        if (info.damageModifier) dbSpell.damageModifier = info.damageModifier;
+                        if (info.damageScaling) dbSpell.damageScaling = JSON.stringify(info.damageScaling);
+                    }
                     if (preferRules2024 && isLegacySrdSource(dbSpell.source)) {
                         legacyDbSpellFallback = dbSpell;
                     } else {
@@ -627,6 +678,11 @@ export default class SpellController extends BaseController {
                 };
             }
 
+            const damageInfo = extractSpellDamageInfo(body as any);
+            const damageScalingStr = body.damageScaling
+                ? (typeof body.damageScaling === "string" ? body.damageScaling : JSON.stringify(body.damageScaling))
+                : (damageInfo.damageScaling ? JSON.stringify(damageInfo.damageScaling) : undefined);
+
             const customSpell = spellRepo.create({
                 slug: rawSlug,
                 name: body.name.trim(),
@@ -641,6 +697,12 @@ export default class SpellController extends BaseController {
                 ritual: !!body.ritual,
                 description: body.description.trim(),
                 imageUrl: body.imageUrl?.trim(),
+                damageDice: body.damageDice?.trim() || damageInfo.damageDice,
+                damageType: body.damageType?.trim() || damageInfo.damageType,
+                damageModifier: body.damageModifier !== undefined && body.damageModifier !== null
+                    ? String(body.damageModifier).trim()
+                    : damageInfo.damageModifier,
+                damageScaling: damageScalingStr,
                 isCustom: true
             });
 

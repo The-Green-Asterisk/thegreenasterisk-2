@@ -14,8 +14,9 @@ import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
 import { mergeRowItems } from "../services/characterItems";
 import { mergeVitals } from "../services/characterVitals";
-import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
 import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
+import { extractSpellDamageInfo, getSpellDamageDisplay, parseDamageScalingString } from "../services/spellDamage";
+import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
 import BaseController from "./baseController";
 import ItemController from "./itemController";
 import RulesController from "./rulesController";
@@ -454,7 +455,8 @@ export default class CharacterController extends BaseController {
                     character.features || [],
                     character.abilities || [],
                     character.vitals,
-                    record.source
+                    record.source,
+                    Number(character.level) || (character.classes || []).reduce((s: number, c: any) => s + (Number(c?.level) || 0), 0) || 1
                 );
                 if (normActions.changed) {
                     character.actions = normActions.actions;
@@ -473,7 +475,7 @@ export default class CharacterController extends BaseController {
                 });
             }
 
-            if (autoHealedPayload) {
+            if (autoHealedPayload && typeof repo.update === "function") {
                 record.payload = JSON.stringify(character);
                 void repo.update(record.id, { payload: record.payload }).catch(err => console.warn("Could not auto-heal character payload:", err));
             }
@@ -497,7 +499,7 @@ export default class CharacterController extends BaseController {
                         });
                     }
                 });
-                if (changedNotes) {
+                if (changedNotes && typeof repo.update === "function") {
                     if (character.vitals) character.vitals.savingThrowNotes = character.savingThrowNotes;
                     record.payload = JSON.stringify(character);
                     void repo.update(record.id, { payload: record.payload }).catch(err => console.warn("Could not auto-heal character saving throws:", err));
@@ -1164,7 +1166,8 @@ export default class CharacterController extends BaseController {
         features: any[],
         abilities: any[],
         vitals: any,
-        source?: string
+        source?: string,
+        characterLevel?: number
     ): { actions: any[]; changed: boolean } {
         const current = Array.isArray(existingActions) ? existingActions : [];
         // If D&D Beyond character already has full actions (cantrips or class actions), preserve as-is
@@ -1185,6 +1188,7 @@ export default class CharacterController extends BaseController {
         const pb = Number(vitals?.proficiencyBonus) || 2;
         const chaMod = Number(abilities?.find((a: any) => a?.abbr === "CHA")?.modifier) || 0;
         const hasAgonizingBlast = Array.isArray(features) && features.some((f) => String(f?.name || "").toLowerCase().includes("agonizing blast"));
+        const charLevel = Number(characterLevel) || 1;
 
         const cantripActions = cantripSpells.map((sp: any) => {
             const descLower = (sp.description || "").toLowerCase();
@@ -1193,8 +1197,18 @@ export default class CharacterController extends BaseController {
                 hitOrDc = `DC ${spellSaveDc} Save`;
             }
             let damageOrEffect = "Spell Effect";
-            if (String(sp.name || "").toLowerCase() === "eldritch blast" && hasAgonizingBlast) {
-                damageOrEffect = `1d10 ${chaMod >= 0 ? `+ ${chaMod}` : `- ${Math.abs(chaMod)}`} Force`;
+            const isEb = String(sp.name || "").toLowerCase() === "eldritch blast";
+            if (isEb) {
+                const beamCount = charLevel >= 17 ? 4 : charLevel >= 11 ? 3 : charLevel >= 5 ? 2 : 1;
+                const bonusStr = hasAgonizingBlast ? (chaMod >= 0 ? ` + ${chaMod}` : ` - ${Math.abs(chaMod)}`) : "";
+                damageOrEffect = beamCount > 1
+                    ? `${beamCount} beams • 1d10${bonusStr} Force each`
+                    : `1d10${bonusStr} Force`.trim();
+            } else {
+                const scaled = getSpellDamageDisplay(sp, 0, charLevel);
+                if (scaled) {
+                    damageOrEffect = scaled;
+                }
             }
             const castLower = String(sp.castingTime || "").toLowerCase();
             return {
@@ -1386,23 +1400,33 @@ export default class CharacterController extends BaseController {
             : (fallbackPayload?.equipment || []);
 
         const spells = record.spells && record.spells.length > 0
-            ? record.spells.map(sp => ({
-                id: sp.id,
-                name: sp.name,
-                level: sp.level,
-                school: sp.school,
-                source: sp.source,
-                prepared: sp.prepared,
-                alwaysPrepared: sp.alwaysPrepared,
-                viaFeature: sp.viaFeature || undefined,
-                castingTime: sp.castingTime,
-                range: sp.range,
-                duration: sp.duration,
-                components: sp.components,
-                concentration: sp.concentration,
-                ritual: sp.ritual,
-                description: sp.description || ""
-            }))
+            ? record.spells.map(sp => {
+                const damageInfo = extractSpellDamageInfo(sp);
+                const damageScaling = sp.damageScaling
+                    ? parseDamageScalingString(sp.damageScaling)
+                    : damageInfo.damageScaling;
+                return {
+                    id: sp.id,
+                    name: sp.name,
+                    level: sp.level,
+                    school: sp.school,
+                    source: sp.source,
+                    prepared: sp.prepared,
+                    alwaysPrepared: sp.alwaysPrepared,
+                    viaFeature: sp.viaFeature || undefined,
+                    castingTime: sp.castingTime,
+                    range: sp.range,
+                    duration: sp.duration,
+                    components: sp.components,
+                    concentration: sp.concentration,
+                    ritual: sp.ritual,
+                    description: sp.description || "",
+                    damageDice: sp.damageDice || damageInfo.damageDice,
+                    damageType: sp.damageType || damageInfo.damageType,
+                    damageModifier: sp.damageModifier || damageInfo.damageModifier,
+                    damageScaling
+                };
+            })
             : (fallbackPayload?.spells || []);
 
         const rawFeatures = record.features && record.features.length > 0
@@ -1445,7 +1469,8 @@ export default class CharacterController extends BaseController {
             features,
             abilities,
             vitals,
-            record.source
+            record.source,
+            Number(record.level) || Number(fallbackPayload?.level) || 1
         ).actions;
 
         const proficiencies = fallbackPayload?.proficiencies && typeof fallbackPayload.proficiencies === "object"
@@ -1705,23 +1730,35 @@ export default class CharacterController extends BaseController {
             if (Array.isArray(data.spells)) {
                 const spellRepo = AppDataSource.getRepository(CharacterSpell);
                 await spellRepo.delete({ savedCharacter: { id: savedCharacter.id } });
-                const spellEntities = data.spells.map((sp: any) => spellRepo.create({
-                    savedCharacter: charRef,
-                    name: sp.name,
-                    level: Number(sp.level) || 0,
-                    school: sp.school || "Evocation",
-                    source: sp.source || "Class",
-                    prepared: Boolean(sp.prepared),
-                    alwaysPrepared: Boolean(sp.alwaysPrepared),
-                    viaFeature: sp.viaFeature ? String(sp.viaFeature).slice(0, 100) : null,
-                    castingTime: sp.castingTime || "1 Action",
-                    range: sp.range || "Touch",
-                    duration: sp.duration || "Instantaneous",
-                    components: sp.components || "V, S",
-                    concentration: Boolean(sp.concentration),
-                    ritual: Boolean(sp.ritual),
-                    description: sp.description || undefined
-                }));
+                const spellEntities = data.spells.map((sp: any) => {
+                    const damageInfo = extractSpellDamageInfo(sp);
+                    const damageScalingStr = sp.damageScaling
+                        ? (typeof sp.damageScaling === "string" ? sp.damageScaling : JSON.stringify(sp.damageScaling))
+                        : (damageInfo.damageScaling ? JSON.stringify(damageInfo.damageScaling) : null);
+                    return spellRepo.create({
+                        savedCharacter: charRef,
+                        name: sp.name,
+                        level: Number(sp.level) || 0,
+                        school: sp.school || "Evocation",
+                        source: sp.source || "Class",
+                        prepared: Boolean(sp.prepared),
+                        alwaysPrepared: Boolean(sp.alwaysPrepared),
+                        viaFeature: sp.viaFeature ? String(sp.viaFeature).slice(0, 100) : null,
+                        castingTime: sp.castingTime || "1 Action",
+                        range: sp.range || "Touch",
+                        duration: sp.duration || "Instantaneous",
+                        components: sp.components || "V, S",
+                        concentration: Boolean(sp.concentration),
+                        ritual: Boolean(sp.ritual),
+                        description: sp.description || undefined,
+                        damageDice: sp.damageDice || damageInfo.damageDice || undefined,
+                        damageType: sp.damageType || damageInfo.damageType || undefined,
+                        damageModifier: sp.damageModifier !== undefined && sp.damageModifier !== null
+                            ? String(sp.damageModifier)
+                            : (damageInfo.damageModifier || undefined),
+                        damageScaling: damageScalingStr || undefined
+                    });
+                });
                 if (spellEntities.length > 0) await spellRepo.save(spellEntities);
             }
 
