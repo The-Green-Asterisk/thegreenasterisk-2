@@ -4,6 +4,8 @@ import RuleClass from "./database/entity/RuleClass";
 import RuleFeat from "./database/entity/RuleFeat";
 import RuleSpecies from "./database/entity/RuleSpecies";
 import RuleSubclass from "./database/entity/RuleSubclass";
+import { buildClassProgression, buildSubclassProgression } from "./database/rulesProgressionBuilder";
+import { SEED_CLASSES } from "./database/rulesSeed";
 
 interface ProgressionLevelData {
     level: number;
@@ -60,43 +62,65 @@ export async function loadClassRulesData(): Promise<ServerClassRule[]> {
             AppDataSource.getRepository(RuleClass).find(),
             AppDataSource.getRepository(RuleSubclass).find()
         ]);
-        const rules: ServerClassRule[] = classes.map((rc) => ({
-            slug: rc.slug,
-            name: rc.name,
-            featureNames: parse<Array<{ name: string }>>(rc.featuresJson, []).map((f) => f?.name).filter(Boolean),
-            features: parse<Array<{ name: string; level?: number }>>(rc.featuresJson, [])
-                .filter((f) => f?.name)
-                .map((f) => ({ name: f.name, level: Number(f.level) || 1 })),
-            progression: parse<ProgressionLevelData[]>(rc.progressionJson, []),
-            subclasses: subclasses
-                .filter((s) => s.classSlug === rc.slug)
-                .map((s) => ({ slug: slugify(s.slug || s.name), name: s.name, progression: parse<ProgressionLevelData[]>(s.progressionJson, []) }))
-        }));
-        cache.set(CACHE_KEY, rules, 600);
-        lastLoaded = rules;
+        if (classes.length > 0) {
+            const rules: ServerClassRule[] = classes.map((rc) => ({
+                slug: rc.slug,
+                name: rc.name,
+                featureNames: parse<Array<{ name: string }>>(rc.featuresJson, []).map((f) => f?.name).filter(Boolean),
+                features: parse<Array<{ name: string; level?: number }>>(rc.featuresJson, [])
+                    .filter((f) => f?.name)
+                    .map((f) => ({ name: f.name, level: Number(f.level) || 1 })),
+                progression: parse<ProgressionLevelData[]>(rc.progressionJson, []),
+                subclasses: subclasses
+                    .filter((s) => s.classSlug === rc.slug)
+                    .map((s) => ({ slug: slugify(s.slug || s.name), name: s.name, progression: parse<ProgressionLevelData[]>(s.progressionJson, []) }))
+            }));
+            cache.set(CACHE_KEY, rules, 600);
+            lastLoaded = rules;
+        }
         const species = await AppDataSource.getRepository(RuleSpecies).find();
-        lastSpeciesTraits = species.flatMap((sp) => [
-            ...parse<SpeciesTraitData[]>(sp.traitsJson, []),
-            ...parse<Array<{ traits?: SpeciesTraitData[] }>>(sp.lineagesJson, []).flatMap((l) => l?.traits || [])
-        ]).filter((t) => t?.name);
-        cache.set(SPECIES_CACHE_KEY, lastSpeciesTraits, 600);
+        if (species.length > 0) {
+            lastSpeciesTraits = species.flatMap((sp) => [
+                ...parse<SpeciesTraitData[]>(sp.traitsJson, []),
+                ...parse<Array<{ traits?: SpeciesTraitData[] }>>(sp.lineagesJson, []).flatMap((l) => l?.traits || [])
+            ]).filter((t) => t?.name);
+            cache.set(SPECIES_CACHE_KEY, lastSpeciesTraits, 600);
+        }
         const feats = await AppDataSource.getRepository(RuleFeat).find();
-        lastFeatMechanics = feats.map((f) => ({ name: f.name, ...parse<Record<string, unknown>>(f.mechanicsJson, {}) }));
-        cache.set("feat_mechanics_data", lastFeatMechanics, 600);
+        if (feats.length > 0) {
+            lastFeatMechanics = feats.map((f) => ({ name: f.name, ...parse<Record<string, unknown>>(f.mechanicsJson, {}) }));
+            cache.set("feat_mechanics_data", lastFeatMechanics, 600);
+        }
     } catch (err) {
         console.warn("Could not load class rules:", err);
     }
     return lastLoaded;
 }
 
+function getFallbackClassRules(): ServerClassRule[] {
+    return (SEED_CLASSES as any[]).map((c) => ({
+        slug: c.id,
+        name: c.name,
+        featureNames: (c.features || []).map((f: any) => f?.name).filter(Boolean),
+        features: (c.features || []).filter((f: any) => f?.name).map((f: any) => ({ name: f.name, level: Number(f.level) || 1 })),
+        progression: buildClassProgression(c.id, c.features || []),
+        subclasses: (c.subclasses || []).map((s: any) => ({
+            slug: slugify(s.id || s.name),
+            name: s.name,
+            progression: buildSubclassProgression(c.id, s)
+        }))
+    }));
+}
+
 /** The most recently loaded class rules (empty until loadClassRulesData has run). */
 export function getLoadedClassRules(): ServerClassRule[] {
-    return lastLoaded;
+    return lastLoaded.length > 0 ? lastLoaded : getFallbackClassRules();
 }
 
 export function findServerClassRule(nameOrSlug: string): ServerClassRule | undefined {
     const key = slugify(nameOrSlug);
-    return lastLoaded.find((r) => r.slug === key || slugify(r.name) === key);
+    const list = lastLoaded.length > 0 ? lastLoaded : getFallbackClassRules();
+    return list.find((r) => r.slug === key || slugify(r.name) === key);
 }
 
 function allLevels(rule: ServerClassRule): ProgressionLevelData[] {

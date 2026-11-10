@@ -101,6 +101,22 @@ export function computeSpellSlotsFromRules(classes: Array<{ name?: string; level
         if (hasAny) casters.push({ type: sc.type, level, table: sc.spellSlotsByLevel });
     }
 
+    if (casters.length === 0) {
+        const FULL_CASTERS = new Set(["bard", "cleric", "druid", "sorcerer", "wizard"]);
+        const HALF_CASTERS = new Set(["paladin", "ranger"]);
+        for (const c of classes || []) {
+            const key = slugify(c?.name || "");
+            const level = Math.max(1, Math.min(20, Number(c?.level) || 1));
+            if (FULL_CASTERS.has(key)) {
+                casters.push({ type: "full", level, table: MULTICLASS_SPELL_SLOTS });
+            } else if (HALF_CASTERS.has(key)) {
+                casters.push({ type: "half", level, table: MULTICLASS_SPELL_SLOTS });
+            } else if (key === "warlock") {
+                casters.push({ type: "pact", level });
+            }
+        }
+    }
+
     let standard = [0, 0, 0, 0, 0, 0, 0, 0, 0];
     const standardCasters = casters.filter((c) => c.type !== "pact");
     if (standardCasters.length === 1) {
