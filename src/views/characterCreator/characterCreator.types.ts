@@ -59,6 +59,8 @@ export interface CreatorState {
     details?: { faith?: string; age?: string; height?: string; weight?: string; hair?: string; eyes?: string; skin?: string; lifestyle?: string; experiencePoints?: number };
     notes?: Record<string, string>;
     currency?: { cp: number; sp: number; ep: number; gp: number; pp: number };
+    /** Ability the species' spells are cast with (e.g. a Tiefling's legacy: Int, Wis, or Cha) */
+    speciesSpellAbility?: AbilityName;
     /** Skills or feats picked through species traits (Skillful, Versatile, Keen Senses), by trait slug */
     speciesChoices: Record<string, string[]>;
     classId: string;

@@ -13,12 +13,12 @@ import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass
 import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
 import { featBonus, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
 import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
-import { detectLineage, resolveSpeciesResources, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
+import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
 import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
-import { readCampaign, readCompanions, readItemCharges, readItemChargePips, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
+import { readSpeciesSpellAbility, readCampaign, readCompanions, readItemCharges, readItemChargePips, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readNotes, readTrackingState } from "./dndBeyondExtras";
 import { applyGrantedWeapons, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
@@ -2302,6 +2302,14 @@ export function parseDndBeyondCharacter(
     // Everything else D&D Beyond knows: details, notes, currency, campaign, companions, and the player's own
     // proficiencies, defenses, actions, and items
     result.details = readDetails(raw);
+    // The species spells' ability: D&D Beyond's pick among the species data's options, else the first option
+    {
+        const lin = getRuleLineage();
+        const options = speciesSpellAbilityOptions(ruleSpecies, lin, totalLevel);
+        const picked = readSpeciesSpellAbility(raw, options);
+        const ability = resolveSpeciesSpellAbility(ruleSpecies, lin, totalLevel, picked);
+        if (ability) result.speciesSpellAbility = ability;
+    }
     result.notes = readNotes(raw);
     result.currency = readCurrency(raw);
     result.campaign = readCampaign(raw);

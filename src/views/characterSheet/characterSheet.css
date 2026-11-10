@@ -6136,3 +6136,13 @@ el-character-sheet.is-edit-mode .vital-hp .field-lock-btn {
     gap: 1rem;
     margin: 0 0 0.25rem 0;
 }
+
+.species-spellcasting-note {
+    margin: 0 0 0.75rem 0;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    background: var(--surface-alt);
+    color: var(--text);
+    font-size: 0.85rem;
+}

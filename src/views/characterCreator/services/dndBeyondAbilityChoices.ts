@@ -1,3 +1,5 @@
+import { readSpeciesSpellAbility } from "../../characterSheet/dndBeyondExtras";
+import { speciesSpellAbilityOptions } from "../../../rules/dnd5e_2024/speciesRules";
 import { currentSpeciesTraits, setSpeciesPick } from "./speciesChoices";
 import { getData } from "@services/request";
 import { AbilityName } from "../../../rules/dnd5e_2024";
@@ -170,6 +172,12 @@ function applyDndBeyondPicks(ctx: CharacterCreatorContext, raw: any, feats: any[
     const background = ctx.backgrounds.find((b) => b.id === ctx.state.backgroundId);
     const toolPick = picksFor(raw, "background").find((p) => /tool|instrument|gaming|kit|supplies/i.test(p.label));
     if (background && toolPick) ctx.state.bgTool = toolPick.picked;
+
+    // The ability the species' spells use (species data spellcastingAbilityOptions)
+    const species = ctx.species.find((sp) => sp.id === ctx.state.speciesId);
+    const lineage = species?.lineages?.find((l) => l.id === ctx.state.lineageId);
+    const speciesAbility = readSpeciesSpellAbility(raw, speciesSpellAbilityOptions(species, lineage, ctx.getTotalLevel() || 1));
+    if (speciesAbility) ctx.state.speciesSpellAbility = speciesAbility as AbilityName;
 
     // Skills species traits let the player pick (species data skillPicks)
     const raceSkillPicks = picksFor(raw, "race").map((p) => p.picked);

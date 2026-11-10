@@ -1,3 +1,5 @@
+import { speciesSpellcastingSummary } from "../components/details";
+import { isCharacterSpeciesSpell } from "../components/spells";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { CharacterData } from "../characterData";
@@ -380,11 +382,7 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
                     <div class="pdf-box-title">EQUIPMENT &amp; CURRENCY</div>
                     <!-- CURRENCY -->
                     <div class="pdf-currency-bar">
-                        <div class="pdf-curr-cell"><span class="pdf-curr-lbl">CP</span><span class="pdf-curr-val">___</span></div>
-                        <div class="pdf-curr-cell"><span class="pdf-curr-lbl">SP</span><span class="pdf-curr-val">___</span></div>
-                        <div class="pdf-curr-cell"><span class="pdf-curr-lbl">EP</span><span class="pdf-curr-val">___</span></div>
-                        <div class="pdf-curr-cell"><span class="pdf-curr-lbl">GP</span><span class="pdf-curr-val">___</span></div>
-                        <div class="pdf-curr-cell"><span class="pdf-curr-lbl">PP</span><span class="pdf-curr-val">___</span></div>
+                        ${(["cp", "sp", "ep", "gp", "pp"] as const).map(c => `<div class="pdf-curr-cell"><span class="pdf-curr-lbl">${c.toUpperCase()}</span><span class="pdf-curr-val">${data.currency ? Math.max(0, Number(data.currency[c]) || 0) : "___"}</span></div>`).join("")}
                     </div>
                     <!-- EQUIPMENT LIST -->
                     <table class="pdf-equip-table">
@@ -403,7 +401,7 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
     equipmentList.slice(0, equipLimit).forEach(eq => {
         p2 += `
             <tr>
-                <td class="pdf-equip-name">${escapeHtml(eq.name)}</td>
+                <td class="pdf-equip-name">${escapeHtml(eq.name)}${eq.charges ? ` <span class="pdf-equip-charges">(${eq.charges.max} charges)</span>` : ""}</td>
                 <td class="pdf-equip-qty">${eq.quantity || 1}</td>
                 <td class="pdf-equip-type">${escapeHtml(eq.type || "Item")}</td>
             </tr>
@@ -561,7 +559,124 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
         pages.push(p3);
     }
 
+    // ==========================================
+    // PAGE 4: LIMITED USES, DEFENSES, DETAILS & NOTES
+    // ==========================================
+    const p4 = renderDetailsPage(data, pageClass, name, classSummary, formatLabel, isRemarkable);
+    if (p4) pages.push(p4);
+
     return pages;
+}
+
+/** Text the player wrote, cut to fit a printed box, line breaks kept. */
+function printableText(value: string | undefined, limit: number): string {
+    // Player notes are plain text: printed as written (escaped), not parsed as HTML
+    const clean = String(value || "").replace(/\r\n/g, "\n").trim();
+    const cut = clean.length > limit ? `${clean.slice(0, limit).trimEnd()}… (continued on the character sheet)` : clean;
+    return escapeHtml(cut).replace(/\r?\n/g, "<br>");
+}
+
+/**
+ * The Details & Notes page: limited uses with fill-in bubbles (class and species resources, item charges), defenses,
+ * character details, personality, backstory and notes, and companions. Left out when there's nothing to print.
+ */
+function renderDetailsPage(data: CharacterData, pageClass: string, name: string, classSummary: string, formatLabel: string, isRemarkable: boolean): string | undefined {
+    const uses = [
+        ...(data.classResources || []).filter(r => r.total > 0).map(r => ({ name: r.name, total: r.total, reset: r.resetOn === "short" ? "Short Rest" : "Long Rest" })),
+        ...[...(data.equipment || []), ...(data.weapons || [])].filter(i => i.charges).map(i => ({
+            name: i.name, total: i.charges!.max, reset: i.charges!.resetLabel || (i.charges!.resetOn === "dawn" ? "Dawn" : i.charges!.resetOn === "short" ? "Short Rest" : i.charges!.resetOn === "long" ? "Long Rest" : "")
+        }))
+    ];
+    const defenses = [
+        ...(data.damageResistances || data.vitals?.damageResistances || []).map(r => `${r} (Resistance)`),
+        ...(data.proficiencies?.defenses || []).filter(d => !/\(resistance\)/i.test(d)),
+        ...(data.conditionImmunities || data.vitals?.conditionImmunities || []).map(c => `${c} (Condition Immunity)`)
+    ];
+    const details = data.details || {};
+    const detailPairs: Array<[string, unknown]> = [
+        ["Gender", details.gender], ["Age", details.age], ["Height", details.height], ["Weight", details.weight],
+        ["Hair", details.hair], ["Eyes", details.eyes], ["Skin", details.skin], ["Faith", details.faith],
+        ["Lifestyle", details.lifestyle], ["XP", details.experiencePoints]
+    ].filter(([, v]) => v !== undefined && String(v).trim() !== "") as Array<[string, unknown]>;
+    const notes = data.notes || {};
+    const personality: Array<[string, string | undefined]> = [
+        ["Personality Traits", notes.personalityTraits], ["Ideals", notes.ideals], ["Bonds", notes.bonds], ["Flaws", notes.flaws], ["Appearance", notes.appearance]
+    ];
+    const otherNotes: Array<[string, string | undefined]> = [
+        ["Backstory", notes.backstory], ["Allies", notes.allies], ["Organizations", notes.organizations], ["Enemies", notes.enemies],
+        ["Personal Possessions", notes.personalPossessions], ["Other Holdings", notes.otherHoldings], ["Other Notes", notes.otherNotes]
+    ];
+    const hasText = [...personality, ...otherNotes].some(([, v]) => v && v.trim());
+    const companions = data.companions || [];
+    const speciesCasting = (data.spells || []).some(s => isCharacterSpeciesSpell(s)) ? speciesSpellcastingSummary(data) : undefined;
+    if (uses.length === 0 && defenses.length === 0 && detailPairs.length === 0 && !hasText && companions.length === 0 && !speciesCasting) return undefined;
+
+    const limit = isRemarkable ? 500 : 700;
+    const textBox = (title: string, entries: Array<[string, string | undefined]>) => {
+        const filled = entries.filter(([, v]) => v && v.trim());
+        if (filled.length === 0) return "";
+        return `
+            <div class="pdf-outline-box">
+                <div class="pdf-box-title">${title}</div>
+                ${filled.map(([label, v]) => `<div class="pdf-note-entry"><div class="pdf-note-label">${escapeHtml(label)}</div><div class="pdf-note-text">${printableText(v, label === "Backstory" ? limit * 2 : limit)}</div></div>`).join("")}
+            </div>`;
+    };
+
+    return `
+    <div class="${pageClass}">
+        <div class="pdf-mini-header">
+            <span class="pdf-mini-name">${name}</span>
+            <span class="pdf-mini-class">${classSummary}</span>
+            <span class="pdf-mini-title">Details, Notes &amp; Limited Uses</span>
+        </div>
+
+        <div class="pdf-page2-grid">
+            <div class="pdf-page2-col">
+                ${uses.length > 0 ? `
+                <div class="pdf-outline-box">
+                    <div class="pdf-box-title">LIMITED USES</div>
+                    ${uses.map(u => `
+                        <div class="pdf-use-row">
+                            <span class="pdf-use-name">${escapeHtml(u.name)}${u.reset ? ` <span class="pdf-use-reset">(${escapeHtml(u.reset)})</span>` : ""}</span>
+                            <span class="pdf-use-bubbles">${u.total <= 12 ? "◯".repeat(u.total) : `___ / ${u.total}`}</span>
+                        </div>`).join("")}
+                </div>` : ""}
+                ${speciesCasting ? `
+                <div class="pdf-outline-box">
+                    <div class="pdf-box-title">SPECIES SPELLCASTING</div>
+                    <div class="pdf-note-text">${escapeHtml(data.lineage || data.species || "Species")} spells use ${speciesCasting.ability}: save DC ${speciesCasting.dc}, spell attack ${speciesCasting.attack >= 0 ? "+" : ""}${speciesCasting.attack}</div>
+                </div>` : ""}
+                ${defenses.length > 0 ? `
+                <div class="pdf-outline-box">
+                    <div class="pdf-box-title">DEFENSES</div>
+                    <div class="pdf-note-text">${escapeHtml(defenses.join(", "))}</div>
+                </div>` : ""}
+                ${detailPairs.length > 0 ? `
+                <div class="pdf-outline-box">
+                    <div class="pdf-box-title">CHARACTER DETAILS</div>
+                    <div class="pdf-details-grid">
+                        ${detailPairs.map(([label, v]) => `<div class="pdf-detail-pair"><span class="pdf-note-label">${label}</span> ${escapeHtml(String(v))}</div>`).join("")}
+                    </div>
+                </div>` : ""}
+                ${companions.length > 0 ? `
+                <div class="pdf-outline-box">
+                    <div class="pdf-box-title">COMPANIONS</div>
+                    ${companions.map(c => `
+                        <div class="pdf-note-entry">
+                            <div class="pdf-note-label">${escapeHtml(c.name)}${c.type && c.type !== c.name ? ` (${escapeHtml(c.type)})` : ""}</div>
+                            <div class="pdf-note-text">${c.armorClass !== undefined ? `AC ${c.armorClass}` : ""}${c.maxHp !== undefined ? ` • HP ___ / ${c.maxHp}` : ""}</div>
+                        </div>`).join("")}
+                </div>` : ""}
+                ${textBox("PERSONALITY", personality)}
+            </div>
+            <div class="pdf-page2-col">
+                ${textBox("BACKSTORY &amp; NOTES", otherNotes)}
+            </div>
+        </div>
+
+        <div class="pdf-page-footer">Page 4 — Details, Notes &amp; Limited Uses | ${formatLabel} | The Green Asterisk</div>
+    </div>
+    `;
 }
 
 function getOrdinalSuffix(n: number): string {
@@ -1183,6 +1298,26 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
         }
 
         /* PAGE 2 LAYOUT */
+        .pdf-use-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 6px;
+            padding: 2px 0;
+            border-bottom: 0.5px dotted #64748b;
+            font-size: 9px;
+        }
+
+        .pdf-use-name { font-weight: 700; }
+        .pdf-use-reset { font-weight: 400; }
+        .pdf-use-bubbles { letter-spacing: 2px; white-space: nowrap; }
+
+        .pdf-note-entry + .pdf-note-entry { margin-top: 4px; }
+        .pdf-note-label { font-weight: 800; font-size: 8.5px; text-transform: uppercase; }
+        .pdf-note-text { font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; }
+        .pdf-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 9px; }
+        .pdf-equip-charges { font-weight: 400; font-size: 0.9em; }
+
         .pdf-page2-grid {
             display: grid;
             grid-template-columns: 1.1fr 0.9fr;

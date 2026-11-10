@@ -286,6 +286,8 @@ export interface CharacterData {
         otherNotes?: string;
     };
     currency?: { cp: number; sp: number; ep: number; gp: number; pp: number };
+    /** Ability the species' or lineage's spells are cast with (e.g. a Tiefling's Charisma) */
+    speciesSpellAbility?: "str" | "dex" | "con" | "int" | "wis" | "cha";
     campaign?: { name: string };
     /** Familiars, companions, and other creatures the character has */
     companions?: Array<{ name: string; type?: string; armorClass?: number; maxHp?: number; currentHp?: number; notes?: string }>;

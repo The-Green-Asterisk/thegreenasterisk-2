@@ -12,7 +12,7 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { featureUsage } from "../../../rules/dnd5e_2024/featureUsage";
 import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
-import { detectLineage, resolveSpeciesResources, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
+import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
 import { resolveFeatResources } from "../../../rules/dnd5e_2024/featRules";
@@ -503,6 +503,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
         }
         if (char.notes && typeof char.notes === "object") ctx.state.notes = { ...char.notes };
         if (char.currency && typeof char.currency === "object") ctx.state.currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...char.currency };
+        if (typeof char.speciesSpellAbility === "string" && !ctx.state.speciesSpellAbility) ctx.state.speciesSpellAbility = char.speciesSpellAbility;
 
         const submitBtn = document.getElementById("creator-submit-btn");
         if (submitBtn) {
@@ -1305,6 +1306,9 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     const notes = Object.fromEntries(Object.entries(ctx.state.notes || {}).filter(([, v]) => typeof v === "string" && v.trim()));
     if (Object.keys(notes).length > 0) characterPayload.notes = notes;
     if (ctx.state.currency) characterPayload.currency = { ...ctx.state.currency };
+    // The ability the species' spells use (the player's pick among the species data's options)
+    const speciesAbility = resolveSpeciesSpellAbility(species, currentLineage(ctx), ctx.getTotalLevel() || 1, ctx.state.speciesSpellAbility);
+    if (speciesAbility) characterPayload.speciesSpellAbility = speciesAbility;
 
     return characterPayload;
 }

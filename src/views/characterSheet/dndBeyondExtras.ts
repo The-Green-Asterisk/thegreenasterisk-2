@@ -246,3 +246,26 @@ export function readItemCharges(inv: any): ItemCharges | undefined {
 export function itemChargesKey(item: { id?: number; name: string }): string {
     return `item-${item.id ?? String(item.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
+
+const ABILITY_WORDS: Record<string, string> = {
+    str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma"
+};
+
+/**
+ * The ability D&D Beyond records for the species' spells: a species (race) choice whose picked option names one of the
+ * allowed abilities ("Charisma", "Charisma Score"). Undefined when there's no such pick.
+ */
+export function readSpeciesSpellAbility(raw: any, options: string[]): string | undefined {
+    if (options.length === 0) return undefined;
+    const defs = new Map<string, Map<number, string>>();
+    for (const cd of raw?.choices?.choiceDefinitions || []) {
+        if (cd?.id && Array.isArray(cd.options)) defs.set(String(cd.id), new Map(cd.options.map((o: any) => [Number(o.id), String(o.label || "")])));
+    }
+    for (const c of raw?.choices?.race || []) {
+        const picked = defs.get(`${c?.componentTypeId}-${c?.type}`)?.get(Number(c?.optionValue))?.toLowerCase().trim();
+        if (!picked) continue;
+        const ab = options.find((o) => picked === ABILITY_WORDS[o] || picked === `${ABILITY_WORDS[o]} score`);
+        if (ab) return ab;
+    }
+    return undefined;
+}

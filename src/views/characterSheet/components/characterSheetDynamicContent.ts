@@ -1,7 +1,7 @@
 import { CharacterData } from "../characterData";
 import { renderAbilityCards } from "./abilities";
 import { renderActions } from "./actions";
-import { renderDetailsAndNotes } from "./details";
+import { renderDetailsAndNotes, renderSpeciesSpellcasting } from "./details";
 import { renderEquipment } from "./equipment";
 import { renderFeatures } from "./features";
 import { renderHeroSection } from "./hero";
@@ -130,6 +130,7 @@ export function renderSheetContent(data: CharacterData): string {
                     <i class="fa-solid fa-circle-info"></i> <em>Click any spell below to view its full description (prefers Character Pull definition &rarr; Database &rarr; D&amp;D Beyond &rarr; Open5e).</em>
                 </div>
 
+                ${renderSpeciesSpellcasting(data)}
                 <div id="spells-grid">
                     ${renderSpellsByLevel(data.spells, data.spellSlots, data)}
                 </div>

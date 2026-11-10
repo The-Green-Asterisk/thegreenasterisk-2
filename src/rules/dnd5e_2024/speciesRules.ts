@@ -1,4 +1,4 @@
-import { LineageDefinition, SpeciesDefinition, SpeciesTrait, StatModifier } from "./types";
+import { AbilityName, LineageDefinition, SpeciesDefinition, SpeciesTrait, StatModifier } from "./types";
 
 const ABILITIES = ["str", "dex", "con", "int", "wis", "cha"];
 
@@ -179,4 +179,31 @@ export function detectLineage(species: SpeciesDefinition | undefined, ev: Lineag
         }
     }
     return best;
+}
+
+/**
+ * The abilities the species' and lineage's spells may be cast with (lineage and trait spellcastingAbilityOptions),
+ * in their listed order; empty when they grant no spells with an ability to choose.
+ */
+export function speciesSpellAbilityOptions(
+    species: SpeciesDefinition | undefined,
+    lineage: LineageDefinition | undefined,
+    level: number
+): AbilityName[] {
+    const out: AbilityName[] = [];
+    const add = (list?: AbilityName[]) => (list || []).forEach((ab) => { if (!out.includes(ab)) out.push(ab); });
+    add(lineage?.spellcastingAbilityOptions);
+    activeSpeciesTraits(species, lineage, level).forEach((t) => add(t.spellcastingAbilityOptions));
+    return out;
+}
+
+/** The species spells' ability: the player's pick when it's an option, else the first option. */
+export function resolveSpeciesSpellAbility(
+    species: SpeciesDefinition | undefined,
+    lineage: LineageDefinition | undefined,
+    level: number,
+    picked?: string
+): AbilityName | undefined {
+    const options = speciesSpellAbilityOptions(species, lineage, level);
+    return options.find((ab) => ab === picked) || options[0];
 }

@@ -1,4 +1,5 @@
 import { CharacterData } from "../characterData";
+import { isCharacterSpeciesSpell } from "./spells";
 
 /** Escapes text the player wrote (D&D Beyond notes, traits) for HTML; keeps their line breaks. */
 export function escapeText(value: unknown): string {
@@ -100,4 +101,31 @@ export function renderDetailsAndNotes(data: CharacterData): string {
                     <ul class="companion-list">${companions}</ul>
                 </section>` : ""}
         </div>`;
+}
+
+const ABILITY_LABELS: Record<string, { name: string; abbr: string }> = {
+    str: { name: "Strength", abbr: "STR" }, dex: { name: "Dexterity", abbr: "DEX" }, con: { name: "Constitution", abbr: "CON" },
+    int: { name: "Intelligence", abbr: "INT" }, wis: { name: "Wisdom", abbr: "WIS" }, cha: { name: "Charisma", abbr: "CHA" }
+};
+
+/** The species spells' ability, save DC, and attack bonus (e.g. "Charisma: save DC 17, spell attack +9"). */
+export function speciesSpellcastingSummary(data: CharacterData): { ability: string; dc: number; attack: number } | undefined {
+    const ab = data.speciesSpellAbility ? ABILITY_LABELS[data.speciesSpellAbility] : undefined;
+    if (!ab) return undefined;
+    const mod = data.abilities.find(a => a.abbr.toUpperCase() === ab.abbr)?.modifier ?? 0;
+    const pb = Number(data.vitals?.proficiencyBonus) || 2;
+    return { ability: ab.name, dc: 8 + pb + mod, attack: pb + mod };
+}
+
+/** A note above the spell list on how the species' spells are cast, when the character has species spells. */
+export function renderSpeciesSpellcasting(data: CharacterData): string {
+    const summary = speciesSpellcastingSummary(data);
+    const hasSpeciesSpells = (data.spells || []).some(s => isCharacterSpeciesSpell(s));
+    if (!summary || !hasSpeciesSpells) return "";
+    const attack = summary.attack >= 0 ? `+${summary.attack}` : String(summary.attack);
+    return `
+        <p class="species-spellcasting-note">
+            <i class="fa-solid fa-dna" aria-hidden="true"></i>
+            ${escapeText(data.lineage || data.species || "Species")} spells use <strong>${summary.ability}</strong>: save DC <strong>${summary.dc}</strong>, spell attack <strong>${attack}</strong>
+        </p>`;
 }

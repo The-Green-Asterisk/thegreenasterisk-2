@@ -3134,4 +3134,42 @@ describe('Frontend View Templates', () => {
         gp.dispatchEvent(new Event('change'));
         expect(char.currency?.gp).toBe(12);
     });
+
+    it('prints details, notes, uses, coins, and species spellcasting in the PDF, and notes species spellcasting on the sheet', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const { generatePdfHtmlPages } = await import('../../../src/views/characterSheet/services/pdfExport');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/characterSheet.template');
+        const char = parseDndBeyondCharacter({
+            id: 6, name: 'Printed', modifiers: {}, inventory: [
+                { id: 802, quantity: 1, equipped: false, definition: { id: 9002, name: 'Wand of Web', filterType: 'Wand', magic: true }, limitedUse: { maxUses: 7, numberUsed: 0, resetType: 'Dawn' } }
+            ],
+            stats: [1, 2, 3, 4, 5, 6].map(id => ({ id, value: id === 4 ? 16 : 10 })),
+            classes: [{ level: 1, definition: { name: 'Fighter' } }],
+            race: { fullName: 'Infernal Tiefling', baseName: 'Tiefling' },
+            spells: { race: [{ definition: { name: 'Thaumaturgy', level: 0 } }] },
+            choices: {
+                choiceDefinitions: [{ id: '2-3', options: [{ id: 1, label: 'Intelligence' }, { id: 2, label: 'Charisma' }] }],
+                race: [{ componentTypeId: 2, type: 3, optionValue: 1, label: 'Choose a Level 1 Option' }]
+            },
+            traits: { flaws: 'Too <curious>\nand nosy' },
+            currencies: { cp: 0, sp: 4, ep: 0, gp: 10, pp: 0 }
+        });
+
+        // D&D Beyond's pick, among the Tiefling legacy's options
+        expect(char.speciesSpellAbility).toBe('int');
+
+        const pages = generatePdfHtmlPages(char);
+        const last = pages[pages.length - 1];
+        expect(last).toContain('LIMITED USES');
+        expect(last).toContain('Wand of Web');
+        expect(last).toContain('Too &lt;curious&gt;<br>and nosy');
+        expect(last).toContain('SPECIES SPELLCASTING');
+        expect(last).toContain('use Intelligence: save DC 13, spell attack +5');
+        expect(pages[1]).toContain('<span class="pdf-curr-lbl">GP</span><span class="pdf-curr-val">10</span>');
+        expect(pages[1]).toContain('(7 charges)');
+
+        const sheet = document.createElement('div');
+        sheet.innerHTML = renderSheetContent(char);
+        expect(sheet.querySelector('.species-spellcasting-note')?.textContent).toContain('Intelligence');
+    });
 });

@@ -50,7 +50,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         ],
         lineages: [
             {
-                id: "high-elf",
+                id: "high-elf", spellcastingAbilityOptions: ["int", "wis", "cha"],
                 name: "High Elf",
                 description: "Steeped in arcane tradition, you inherit spells from the Wizard list and can change cantrips on a Long Rest.",
                 traits: [
@@ -66,7 +66,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "wood-elf",
+                id: "wood-elf", spellcastingAbilityOptions: ["int", "wis", "cha"],
                 name: "Wood Elf",
                 description: "Swift guardians of ancient forests, wood elves move with extraordinary quickness and druidic stealth.",
                 speedBonus: 5,
@@ -87,7 +87,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "drow",
+                id: "drow", spellcastingAbilityOptions: ["int", "wis", "cha"],
                 name: "Drow",
                 description: "Children of the Underdark blessed with superior darkvision and shadowy magic.",
                 darkvision: "Darkvision 120 ft.",
@@ -174,7 +174,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         ],
         lineages: [
             {
-                id: "forest-gnome",
+                id: "forest-gnome", spellcastingAbilityOptions: ["int", "wis", "cha"],
                 name: "Forest Gnome",
                 description: "Attuned to woodcraft and illusion, forest gnomes can communicate with small forest creatures.",
                 traits: [
@@ -189,7 +189,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "rock-gnome",
+                id: "rock-gnome", spellcastingAbilityOptions: ["int", "wis", "cha"],
                 name: "Rock Gnome",
                 description: "Master tinkers and ingenious inventors who construct tiny mechanical marvels.",
                 traits: [
@@ -258,14 +258,14 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         darkvision: "Darkvision 60 ft.",
         traits: [
             {
-                name: "Otherworldly Presence",
+                name: "Otherworldly Presence", spellcastingAbilityOptions: ["int", "wis", "cha"],
                 grantedSpells: [{ spellName: "Thaumaturgy", level: 1 }],
                 description: "You know the Thaumaturgy cantrip."
             }
         ],
         lineages: [
             {
-                id: "abyssal", modifiers: [{ target: "defenses.resistance", type: "set", value: "poison" }],
+                id: "abyssal", spellcastingAbilityOptions: ["int", "wis", "cha"], modifiers: [{ target: "defenses.resistance", type: "set", value: "poison" }],
                 name: "Abyssal (Chaotic Evil)",
                 description: "Poison resistance, Poison Spray cantrip, Ray of Sickness at level 3, Hold Person at level 5.",
                 traits: [{ name: "Fiendish Legacy: Abyssal", description: "Resistance to Poison damage." }],
@@ -276,7 +276,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "chthonic", modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic" }],
+                id: "chthonic", spellcastingAbilityOptions: ["int", "wis", "cha"], modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic" }],
                 name: "Chthonic (Neutral Evil)",
                 description: "Necrotic resistance, Chill Touch cantrip, False Life at level 3, Ray of Enfeeblement at level 5.",
                 traits: [{ name: "Fiendish Legacy: Chthonic", description: "Resistance to Necrotic damage." }],
@@ -287,7 +287,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 ]
             },
             {
-                id: "infernal", modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }],
+                id: "infernal", spellcastingAbilityOptions: ["int", "wis", "cha"], modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }],
                 name: "Infernal (Lawful Evil)",
                 description: "Fire resistance, Fire Bolt cantrip, Hellish Rebuke at level 3, Darkness at level 5.",
                 traits: [{ name: "Fiendish Legacy: Infernal", description: "Resistance to Fire damage." }],
@@ -381,7 +381,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
                 description: "As a Magic action, you can touch a creature and roll a number of d4s equal to your Proficiency Bonus. The creature regains Hit Points equal to the total rolled. Once per Long Rest."
             },
             {
-                name: "Light Bearer",
+                name: "Light Bearer", spellcastingAbilityOptions: ["cha"],
                 grantedSpells: [{ spellName: "Light", level: 1 }],
                 description: "You know the Light cantrip, using Charisma, Wisdom, or Intelligence as your spellcasting ability."
             },

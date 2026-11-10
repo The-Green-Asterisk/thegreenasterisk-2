@@ -1,3 +1,4 @@
+import { AbilityName } from "../../../rules/dnd5e_2024";
 import { currentSpeciesTraits, setSpeciesPick, traitSlug } from "../services/speciesChoices";
 import { CharacterCreatorContext } from "./context";
 
@@ -32,6 +33,12 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
             ctx.renderStep(2);
             ctx.updateLiveSummary();
         });
+    });
+
+    const abilitySelect = document.getElementById("species-spell-ability-select") as HTMLSelectElement | null;
+    abilitySelect?.addEventListener("change", () => {
+        ctx.state.speciesSpellAbility = abilitySelect.value as AbilityName;
+        ctx.updateLiveSummary();
     });
 
     document.querySelectorAll<HTMLSelectElement>(".species-pick-select").forEach((select) => {

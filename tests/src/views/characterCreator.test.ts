@@ -916,6 +916,27 @@ describe("CharacterCreatorController", () => {
             expect(payload.currency).toEqual({ cp: 0, sp: 0, ep: 0, gp: 25, pp: 0 });
         });
 
+        it("lets the player pick the species spells' ability and saves it", async () => {
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.state.speciesId = "tiefling";
+            ctrl.state.lineageId = "infernal";
+            expect(ctrl.buildPayload().speciesSpellAbility).toBe("int");
+            ctrl.renderStep(2);
+            const select = document.getElementById("species-spell-ability-select") as HTMLSelectElement;
+            expect(document.querySelector('label[for="species-spell-ability-select"]')).toBeTruthy();
+            expect(Array.from(select.options).map((o) => o.value)).toEqual(["int", "wis", "cha"]);
+            select.value = "cha";
+            select.dispatchEvent(new Event("change"));
+            expect(ctrl.buildPayload().speciesSpellAbility).toBe("cha");
+
+            // Aasimar's Light Bearer is always Charisma: no choice to show
+            ctrl.state.speciesId = "aasimar";
+            ctrl.state.lineageId = "";
+            ctrl.renderStep(2);
+            expect(document.getElementById("species-spell-ability-select")).toBeNull();
+            expect(ctrl.buildPayload().speciesSpellAbility).toBe("cha");
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };

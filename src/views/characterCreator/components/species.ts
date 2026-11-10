@@ -1,7 +1,30 @@
 import { SpeciesDefinition } from "../../../rules/dnd5e_2024";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
-import { currentSpeciesTraits, getSpeciesPicks, traitBaseName, traitSlug } from "../services/speciesChoices";
+import { currentLineage, currentSpecies, currentSpeciesTraits, getSpeciesPicks, traitBaseName, traitSlug } from "../services/speciesChoices";
+import { resolveSpeciesSpellAbility, speciesSpellAbilityOptions } from "../../../rules/dnd5e_2024/speciesRules";
+
+const ABILITY_NAMES: Record<string, string> = {
+    str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma"
+};
+
+/** A select for the ability the species' spells use, when the species data offers a choice. */
+function renderSpeciesSpellAbility(ctx: CharacterCreatorContext): string {
+    const species = currentSpecies(ctx);
+    const lineage = currentLineage(ctx);
+    const options = speciesSpellAbilityOptions(species, lineage, ctx.getTotalLevel() || 1);
+    if (options.length < 2) return "";
+    const current = resolveSpeciesSpellAbility(species, lineage, ctx.getTotalLevel() || 1, ctx.state.speciesSpellAbility);
+    return `
+        <div class="creator-detail-box">
+            <div class="creator-form-group">
+                <label class="creator-label" for="species-spell-ability-select">${lineage?.name || species?.name || "Species"} Spellcasting Ability</label>
+                <select id="species-spell-ability-select" class="creator-select">
+                    ${options.map((ab) => `<option value="${ab}" ${ab === current ? "selected" : ""}>${ABILITY_NAMES[ab]}</option>`).join("")}
+                </select>
+            </div>
+        </div>`;
+}
 
 /** A select for each skill or feat a species or lineage trait lets the player pick (species data). */
 function renderSpeciesPicks(ctx: CharacterCreatorContext, species: SpeciesDefinition): string {
@@ -90,6 +113,7 @@ export function renderStep2Species(ctx: CharacterCreatorContext): string {
             ` : ""}
 
             ${renderSpeciesPicks(ctx, currentSpecies)}
+            ${renderSpeciesSpellAbility(ctx)}
         </div>
     `;
 }

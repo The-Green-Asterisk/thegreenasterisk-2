@@ -20,6 +20,8 @@ export interface SpeciesTrait {
     resource?: { name?: string; total: number | string; resetOn: "short" | "long"; die?: string };
     /** Spells it grants; level is the character level they're gained at */
     grantedSpells?: Array<{ spellName: string; level: number }>;
+    /** The abilities the player may cast its spells with (one entry = fixed, e.g. Light Bearer's Charisma) */
+    spellcastingAbilityOptions?: AbilityName[];
     skillPicks?: FeatSkillPick[];
     featPicks?: { count: number; category: "origin" | "general" };
     /** The trait's scaling value by character level (e.g. Breath Weapon damage) */
@@ -36,6 +38,8 @@ export interface LineageDefinition {
     description: string;
     traits: SpeciesTrait[];
     modifiers?: StatModifier[];
+    /** The abilities the player may cast the lineage's spells with (chosen with the lineage) */
+    spellcastingAbilityOptions?: AbilityName[];
     spellsGranted?: Array<{
         level: number;
         spellName: string;
