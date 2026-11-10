@@ -5,6 +5,8 @@ import { CharacterCreatorContext } from "../controllers/context";
 /** A modifier from a class/subclass progression feature or chosen option, with what granted it. */
 export interface ProgressionModifier extends StatModifier {
     source: string;
+    /** From a chosen option (applied to the saved character with the option, not with the class's features) */
+    fromChoice?: boolean;
     classId: string;
     /** The granting class's level, for valueByLevel / perClassLevel */
     classLevel: number;
@@ -205,7 +207,7 @@ export function getProgressionModifiers(ctx: CharacterCreatorContext): Progressi
                 const opt = choice.options?.find((o) => o.id === optId);
                 if (!opt) continue;
                 const source = opt.name === choice.name ? opt.name : `${choice.name}: ${opt.name}`;
-                for (const m of opt.modifiers || []) result.push({ ...m, source, classId, classLevel });
+                for (const m of opt.modifiers || []) result.push({ ...m, source, fromChoice: true, classId, classLevel });
             }
         }
     }

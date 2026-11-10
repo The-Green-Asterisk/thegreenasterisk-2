@@ -1,3 +1,5 @@
+import { escapeText } from "./details";
+import { effectsForAllSaves, rowText } from "../../../rules/dnd5e_2024/saveEffects";
 import { CharacterData } from "../characterData";
 
 
@@ -314,7 +316,11 @@ export function renderVitalsSection(data: CharacterData): string {
 }
 
 export function renderSavingThrowNotes(data: CharacterData): string {
-    const notes = data.savingThrowNotes || data.vitals?.savingThrowNotes || [];
+    // Effects on every save, with what grants them, then other roll notes; effects on one ability are on its card
+    const notes = [
+        ...effectsForAllSaves(data.saveEffects).map((e) => `${rowText(e)}${e.sources.length ? ` (${e.sources.join(", ")})` : ""}`),
+        ...(data.savingThrowNotes || data.vitals?.savingThrowNotes || [])
+    ];
     const resistances = data.damageResistances || data.vitals?.damageResistances || [];
     const immunities = data.conditionImmunities || data.vitals?.conditionImmunities || [];
 
@@ -324,7 +330,7 @@ export function renderSavingThrowNotes(data: CharacterData): string {
         blocks.push(`
             <div class="saving-throw-notes-row" aria-label="Saving Throw Modifiers">
                 <span class="saving-throw-notes-label"><i class="fa-solid fa-shield-halved"></i> Saving Throws:</span>
-                <span class="saving-throw-notes-text">${notes.join("; ")}</span>
+                <span class="saving-throw-notes-text">${notes.map((n) => escapeText(n)).join("; ")}</span>
             </div>
         `);
     }

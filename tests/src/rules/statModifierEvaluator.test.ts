@@ -309,23 +309,23 @@ describe("StatModifierEvaluator", () => {
     });
 
     describe("Advantage, Disadvantage, and +N/-N Modifiers", () => {
-        it("applies advantage and disadvantage to saving throws and adds notes", () => {
+        it("applies advantage and disadvantage to saving throws as save effects named by their source", () => {
             const char = createMockCharacter();
-            expect(char.savingThrowNotes).toBeUndefined();
+            expect(char.saveEffects).toBeUndefined();
 
-            // Advantage on CON saves (Concentration)
-            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, 1);
-            expect(char.savingThrowNotes).toContain("Advantage on CON saving throws (to maintain Concentration)");
-            expect(char.vitals.savingThrowNotes).toContain("Advantage on CON saving throws (to maintain Concentration)");
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, 1, "War Caster");
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "concentration" }, 1, "Eldritch Mind");
+            expect(char.saveEffects).toEqual([{ ability: "con", effect: "advantage", against: "concentration", sources: ["War Caster", "Eldritch Mind"] }]);
 
-            // Disadvantage on all saves
-            applyStatModifier(char, { target: "saves.all", type: "disadvantage", condition: "while poisoned" }, 1);
-            expect(char.savingThrowNotes).toContain("Disadvantage on all saving throws (while poisoned)");
+            applyStatModifier(char, { target: "saves.all", type: "disadvantage", condition: "while poisoned" }, 1, "Curse");
+            expect(char.saveEffects).toContainEqual({ ability: undefined, effect: "disadvantage", against: "while poisoned", sources: ["Curse"] });
 
-            // Revert Advantage
-            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, -1);
-            expect(char.savingThrowNotes).not.toContain("Advantage on CON saving throws (to maintain Concentration)");
-            expect(char.savingThrowNotes).toContain("Disadvantage on all saving throws (while poisoned)");
+            // Undoing one source keeps the effect while another still grants it
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "to maintain Concentration" }, -1, "War Caster");
+            expect(char.saveEffects?.find((e) => e.ability === "con")?.sources).toEqual(["Eldritch Mind"]);
+            applyStatModifier(char, { target: "saves.con", type: "advantage", condition: "concentration" }, -1, "Eldritch Mind");
+            expect(char.saveEffects?.some((e) => e.ability === "con")).toBe(false);
+            expect(char.savingThrowNotes || []).toEqual([]);
         });
 
         it("applies advantage and disadvantage to skills and adjusts passive perception by +/-5", () => {

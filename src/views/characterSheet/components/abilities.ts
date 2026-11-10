@@ -1,4 +1,19 @@
+import { abilityKey, cardText, effectsForAbility } from "../../../rules/dnd5e_2024/saveEffects";
 import { CharacterData } from "../characterData";
+import { escapeText } from "./details";
+
+/** An ability's save effects ("Advantage: Concentration", with what grants it), or its older note. */
+function renderSaveEffects(data: CharacterData, abbr: string, legacyNote?: string): string {
+    const ability = abilityKey(abbr);
+    if (data.saveEffects && ability) {
+        return effectsForAbility(data.saveEffects, ability).map((e) => `
+                <div class="ability-note">
+                    <span aria-hidden="true">★</span> ${escapeText(cardText(e))}
+                    ${e.sources.length ? `<span class="ability-note-source">${escapeText(e.sources.join(", "))}</span>` : ""}
+                </div>`).join("");
+    }
+    return legacyNote ? `<div class="ability-note"><span aria-hidden="true">★</span> ${escapeText(legacyNote)}</div>` : "";
+}
 
 export function renderAbilityCards(data: CharacterData): string {
     return data.abilities.map((ability, index) => {
@@ -17,7 +32,7 @@ export function renderAbilityCards(data: CharacterData): string {
                     <span class="save-val">${saveSign}</span>
                     ${profBadge}
                 </div>
-                ${ability.notes ? `<div class="ability-note" title="${ability.notes}">★ ${ability.notes}</div>` : ''}
+                ${renderSaveEffects(data, ability.abbr, ability.notes)}
             </div>
         `;
     }).join('');

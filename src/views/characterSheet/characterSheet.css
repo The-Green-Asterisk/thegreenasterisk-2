@@ -1783,6 +1783,13 @@ el-character-sheet .content-slate section {
     line-height: 1.1;
 }
 
+.ability-note-source {
+    display: block;
+    margin-top: 0.1rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
 /* ==========================================================================
    Resources & Spell Slots Section
    ========================================================================== */

@@ -1,3 +1,4 @@
+import { abilityKey, effectsFromLegacyNotes, mergeSaveEffects, normalizeAgainst, SaveEffect, saveEffectsFromRules } from "../../rules/dnd5e_2024/saveEffects";
 import {
     AbilityScore,
     ActionItem,
@@ -297,6 +298,25 @@ export function parseDndBeyondCharacter(
         }
     });
 
+    // componentId -> name of the feature, feat, trait, option, background, or item a modifier comes from
+    const componentNameMap = new Map<number, string>();
+    const nameComponent = (x: any) => {
+        const id = Number(x?.definition?.id ?? x?.id);
+        const name = String(x?.definition?.name ?? x?.name ?? "").trim();
+        if (id && name && !componentNameMap.has(id)) componentNameMap.set(id, name);
+    };
+    (raw.classes || []).forEach((c: any) => {
+        [...(c.classFeatures || []), ...(c.definition?.classFeatures || []), ...(c.subclassDefinition?.classFeatures || [])].forEach(nameComponent);
+    });
+    (raw.feats || []).forEach(nameComponent);
+    (raw.race?.racialTraits || []).forEach(nameComponent);
+    Object.values(raw.options || {}).forEach((list: any) => Array.isArray(list) && list.forEach(nameComponent));
+    rawInventory.forEach((item: any) => {
+        nameComponent(item);
+        if (item?.definition?.id && item.definition.name) componentNameMap.set(Number(item.id), item.definition.name);
+    });
+    if (raw.background?.definition) nameComponent(raw.background);
+
     // Helper for raw flat value on a modifier (handles value vs fixedValue)
     const getModFlatValue = (m: any): number => {
         const v = m?.value !== null && m?.value !== undefined ? Number(m.value) : Number(m?.fixedValue);
@@ -443,7 +463,7 @@ export function parseDndBeyondCharacter(
         [...(def?.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])]
             .filter((pl) => pl.level <= level)
             .flatMap((pl) => pl.features || [])
-            .flatMap((f) => (f.modifiers || []).map((m) => ({ ...m, classLevel: level })))
+            .flatMap((f) => (f.modifiers || []).map((m) => ({ ...m, classLevel: level, _source: f.name })))
     );
     const ruleMods = (target: string, type: string) => ruleFeatureModifiers.filter((m: any) => m.target === target && m.type === type);
     const ruleAbilityMod = (m: StatModifier) => {
@@ -487,7 +507,6 @@ export function parseDndBeyondCharacter(
         else if (opt) featMechanics.push({ name: opt.name, modifiers: opt.modifiers });
     }
     const featMods = (target: string, type?: string) => featModifiers(featMechanics, target, type);
-    const hasConcentrationAdvantage = featMods("saves.con", "advantage").some(m => /concentration/i.test(String(m.condition || "")));
     const featSense = (target: string): string | undefined => {
         const v = featMods(target, "set")[0]?.value;
         return v === undefined ? undefined : typeof v === "number" ? `${v} ft.` : String(v);
@@ -604,31 +623,6 @@ export function parseDndBeyondCharacter(
 
         const save = modifier + profSaveContribution + globalSaveBonus + specificSaveBonus + cvSaveBonus;
 
-        const saveNotes: string[] = [];
-        if (
-            meta.abbr === "CON" &&
-            (allMods.some(
-                m =>
-                    m.friendlySubtypeName?.toLowerCase().includes("concentration") ||
-                    m.subType?.toLowerCase().includes("concentration")
-            ) ||
-                hasConcentrationAdvantage)
-        ) {
-            saveNotes.push("Advantage on Concentration");
-        }
-
-        // Only ability-specific advantage notes stay on individual ability cards (general saving throw notes appear in their own dedicated row)
-        const advSaveMods = allMods.filter(
-            m =>
-                m.type === "advantage" &&
-                m.subType === `${meta.key}-saving-throws`
-        );
-        advSaveMods.forEach(m => {
-            const rest = String(m.restriction || "").trim();
-            const label = rest ? `Advantage (${rest})` : "Advantage on saves";
-            if (!saveNotes.includes(label)) saveNotes.push(label);
-        });
-
         const baseVal = baseAbilityScoresMap[id] ?? score;
         abilities.push({
             name: meta.name,
@@ -638,48 +632,32 @@ export function parseDndBeyondCharacter(
             save,
             proficientSave: isProf,
             baseScore: baseVal,
-            bonus: score - baseVal,
-            notes: saveNotes.length > 0 ? saveNotes.join("; ") : undefined
+            bonus: score - baseVal
         });
     }
 
-    // Saving Throw Modifiers (displayed once on its own row underneath the vitals section)
+    // Saving throw advantage, disadvantage, and situational bonuses, merged with their sources: D&D Beyond's
+    // modifiers (named by the feature, feat, trait, or item that grants each) and the feat and class rules data
     const savingThrowNotes: string[] = [];
-
+    const saveEffectList: SaveEffect[] = [];
     allMods.forEach(m => {
+        const sub = String(m.subType || "").toLowerCase();
+        const isAllSaves = sub === "saving-throws";
+        const ability = sub.endsWith("-saving-throws") ? abilityKey(sub.replace("-saving-throws", "")) : undefined;
+        if (!isAllSaves && !ability) return;
+        const source = componentNameMap.get(Number(m.componentId));
+        const sources = source ? [source] : [];
         if (m.type === "advantage" || m.type === "disadvantage") {
-            const isAdv = m.type === "advantage";
-            const sub = String(m.subType || "").toLowerCase();
-            if (sub === "saving-throws") {
-                const rest = String(m.restriction || "").trim();
-                const text = isAdv
-                    ? (rest ? `Advantage (${rest})` : "Advantage on saving throws")
-                    : (rest ? `Disadvantage (${rest})` : "Disadvantage on saving throws");
-                if (!savingThrowNotes.includes(text)) savingThrowNotes.push(text);
-            } else if (sub.endsWith("-saving-throws")) {
-                const statKey = sub.replace("-saving-throws", "");
-                const statName = statKey.charAt(0).toUpperCase() + statKey.slice(1);
-                const rest = String(m.restriction || "").trim();
-                const text = isAdv
-                    ? (rest ? `Advantage on ${statName} saves (${rest})` : `Advantage on ${statName} saves`)
-                    : (rest ? `Disadvantage on ${statName} saves (${rest})` : `Disadvantage on ${statName} saves`);
-                if (!savingThrowNotes.includes(text)) savingThrowNotes.push(text);
-            }
-        } else if ((m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "saving-throws" && !isUnrestrictedMod(m)) {
-            const rest = String(m.restriction || "").trim();
-            const val = resolveModValue(m);
-            const valStr = val >= 0 ? `+${val}` : `${val}`;
-            const text = rest ? `${valStr} on saving throws (${rest})` : `${valStr} on saving throws`;
-            if (!savingThrowNotes.includes(text)) savingThrowNotes.push(text);
+            saveEffectList.push({ ability, effect: m.type, against: normalizeAgainst(m.restriction), sources });
+        } else if ((m.type === "bonus" || m.type === "stacking-bonus") && isAllSaves && !isUnrestrictedMod(m)) {
+            saveEffectList.push({ effect: "bonus", value: resolveModValue(m), against: normalizeAgainst(m.restriction), sources });
         }
     });
-
-    if (
-        hasConcentrationAdvantage &&
-        !savingThrowNotes.some(n => n.toLowerCase().includes("concentration"))
-    ) {
-        savingThrowNotes.push("Advantage on Constitution saves (to maintain Concentration)");
-    }
+    saveEffectList.push(...saveEffectsFromRules([
+        ...featMechanics.map((f: any) => ({ name: f.name, modifiers: f.modifiers })),
+        ...ruleFeatureModifiers.map((m: any) => ({ name: m._source, modifiers: [m] }))
+    ]));
+    const saveEffects = mergeSaveEffects(saveEffectList);
 
     // Damage Resistances & Condition Immunities (from modifiers, species traits, or saved data)
     const damageResistances: string[] = [];
@@ -2258,6 +2236,7 @@ export function parseDndBeyondCharacter(
             conditionImmunities
         },
         savingThrowNotes,
+        saveEffects,
         damageResistances,
         conditionImmunities,
         abilities,
@@ -2693,6 +2672,14 @@ export function ensureSavingThrowNotesOnCharacter(character: CharacterData, raw?
     }
     if (character.vitals && !Array.isArray(character.vitals.conditionImmunities)) {
         character.vitals.conditionImmunities = character.conditionImmunities;
+    }
+
+    // Characters saved before save effects: read the effects out of the card and row sentences, keep other notes
+    if (!Array.isArray(character.saveEffects) && Array.isArray(character.abilities)) {
+        const { effects, otherNotes } = effectsFromLegacyNotes(character.abilities, character.savingThrowNotes);
+        character.saveEffects = effects;
+        character.savingThrowNotes = otherNotes;
+        character.abilities.forEach(a => { delete a.notes; });
     }
 
     // Check if abilities have repeated saving throw notes from older saved payloads

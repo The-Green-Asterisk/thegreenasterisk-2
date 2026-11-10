@@ -1,6 +1,7 @@
 import { CharacterData } from "../../views/characterSheet/characterData";
 import { AbilityName, StatModifier } from "./types";
 import { findClassOption } from "./classOptions";
+import { abilityKey, applySaveEffect, normalizeAgainst, SaveEffect } from "./saveEffects";
 
 function syncCharacterNote(character: CharacterData, note: string, add: boolean): void {
     if (!character) return;
@@ -33,7 +34,13 @@ function syncCharacterNote(character: CharacterData, note: string, add: boolean)
     }
 }
 
-export function applyStatModifier(character: CharacterData, mod: StatModifier, sign: 1 | -1): void {
+/** Adds or removes a save effect from a source on the character. */
+function syncSaveEffect(character: CharacterData, effect: SaveEffect, add: boolean): void {
+    character.saveEffects = applySaveEffect(character.saveEffects, effect, !add);
+}
+
+/** Applies (sign 1) or undoes (sign -1) a modifier; `source` names what grants it, for save effects. */
+export function applyStatModifier(character: CharacterData, mod: StatModifier, sign: 1 | -1, source?: string): void {
     if (!character || !mod) return;
 
     const target = mod.target;
@@ -135,9 +142,7 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
                     a.save += sign * delta;
                 });
             } else if (type === "advantage" || type === "disadvantage") {
-                const advText = type === "advantage" ? "Advantage" : "Disadvantage";
-                const note = `${advText} on all saving throws${mod.condition ? ` (${mod.condition})` : ""}`;
-                syncCharacterNote(character, note, sign === 1);
+                syncSaveEffect(character, { effect: type, against: normalizeAgainst(mod.condition), sources: source ? [source] : [] }, sign === 1);
             }
         } else {
             const ability = character.abilities.find(a => a.abbr.toLowerCase() === saveKey);
@@ -148,9 +153,12 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
                 } else if (type === "bonus" || type === "penalty") {
                     ability.save += sign * delta;
                 } else if (type === "advantage" || type === "disadvantage") {
-                    const advText = type === "advantage" ? "Advantage" : "Disadvantage";
-                    const note = `${advText} on ${ability.abbr} saving throws${mod.condition ? ` (${mod.condition})` : ""}`;
-                    syncCharacterNote(character, note, sign === 1);
+                    syncSaveEffect(character, {
+                        ability: abilityKey(ability.abbr),
+                        effect: type,
+                        against: normalizeAgainst(mod.condition),
+                        sources: source ? [source] : []
+                    }, sign === 1);
                 }
             }
         }
@@ -371,7 +379,7 @@ export function applyProgressionChoiceOption(
 
     if (Array.isArray(option.modifiers)) {
         for (const mod of option.modifiers) {
-            applyStatModifier(character, mod, sign);
+            applyStatModifier(character, mod, sign, option.name);
         }
     }
 

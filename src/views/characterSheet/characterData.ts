@@ -1,3 +1,5 @@
+import type { SaveEffect } from "../../rules/dnd5e_2024/saveEffects";
+
 export interface SpellDefinition {
     id: string | number;
     name: string;
@@ -225,7 +227,10 @@ export interface CharacterData {
         damageResistances?: string[];
         conditionImmunities?: string[];
     };
+    /** Notes about rolls besides saves (initiative, skill checks, attacks); before saveEffects, saves' notes too */
     savingThrowNotes?: string[];
+    /** Advantage, disadvantage, and situational bonuses on saving throws, merged, with their sources */
+    saveEffects?: SaveEffect[];
     damageResistances?: string[];
     conditionImmunities?: string[];
     abilities: AbilityScore[];

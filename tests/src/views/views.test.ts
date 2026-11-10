@@ -2633,8 +2633,8 @@ describe('Frontend View Templates', () => {
         };
 
         const char = parseDndBeyondCharacter(mockCharacterWithSaveAdv, '145444938');
-        expect(char.savingThrowNotes).toBeDefined();
-        expect(char.savingThrowNotes).toContain('Advantage (against being charmed, and magic can’t put you to sleep)');
+        // Wording that says more than a condition is kept as written; it applies to every save
+        expect(char.saveEffects).toEqual([{ ability: undefined, effect: 'advantage', against: 'against being charmed, and magic can’t put you to sleep', sources: [] }]);
 
         // Individual ability cards must NOT repeat the general saving throw advantage
         char.abilities.forEach(ability => {
@@ -2644,8 +2644,8 @@ describe('Frontend View Templates', () => {
         // In rendered HTML, the note must appear exactly once in .saving-throw-notes-row directly under abilities-container
         const html = renderSheetContent(char);
         expect(html).toContain('saving-throw-notes-row');
-        expect(html).toContain('Advantage (against being charmed, and magic can’t put you to sleep)');
-        const occurrences = (html.match(/Advantage \(against being charmed, and magic can’t put you to sleep\)/g) || []).length;
+        expect(html).toContain('Advantage on saving throws against being charmed, and magic can’t put you to sleep');
+        const occurrences = (html.match(/against being charmed, and magic can’t put you to sleep/g) || []).length;
         expect(occurrences).toBe(1);
         expect(html.indexOf('abilities-container')).toBeLessThan(html.indexOf('saving-throw-notes-row'));
         expect(html.indexOf('saving-throw-notes-row')).toBeLessThan(html.indexOf('vitals-grid'));
@@ -2663,7 +2663,9 @@ describe('Frontend View Templates', () => {
             ]
         };
         ensureSavingThrowNotesOnCharacter(legacyChar);
-        expect(legacyChar.savingThrowNotes).toContain('Advantage (against being charmed, and magic can’t put you to sleep)');
+        // The note on every card was an effect on every save
+        expect(legacyChar.saveEffects).toEqual([{ ability: undefined, effect: 'advantage', against: 'against being charmed, and magic can’t put you to sleep', sources: [] }]);
+        expect(legacyChar.savingThrowNotes).toEqual([]);
         legacyChar.abilities.forEach((a: any) => {
             expect(a.notes).toBeUndefined();
         });
@@ -2843,7 +2845,7 @@ describe('Frontend View Templates', () => {
         });
         expect(char.vitals.speed).toBe('40 ft.');
         expect(char.vitals.blindsight).toBe('10 ft.');
-        expect(char.savingThrowNotes?.some((n: string) => /concentration/i.test(n))).toBe(true);
+        expect(char.saveEffects).toContainEqual({ ability: 'con', effect: 'advantage', against: 'concentration', sources: ['War Caster'] });
         expect(char.classResources?.find((r: any) => r.name === 'Luck Points')?.total).toBe(2);
     });
 

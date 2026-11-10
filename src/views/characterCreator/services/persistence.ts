@@ -12,11 +12,13 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { featureUsage } from "../../../rules/dnd5e_2024/featureUsage";
 import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
-import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
+import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, traitBaseName, resolveSpeciesSpellAbility, speciesGrantedSpells, speciesResistances } from "../../../rules/dnd5e_2024/speciesRules";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
 import { resolveFeatResources } from "../../../rules/dnd5e_2024/featRules";
 import { isImportedCharacter, keepPlayState, mergeImportedCharacter } from "./importLocks";
+import { saveEffectsFromRules } from "../../../rules/dnd5e_2024/saveEffects";
+import { findFeatRule } from "../../../services/classRules";
 import { getOrdinalSuffix } from "../components/class";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
 import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
@@ -1297,6 +1299,15 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             })
         )
     };
+
+    // Save advantage and disadvantage from feats, class features, and species traits; chosen options add theirs below
+    const level = ctx.getTotalLevel() || 1;
+    characterPayload.saveEffects = saveEffectsFromRules([
+        ...featsList.filter((f) => f.type === "Feat").map((f) => ({ name: f.name, modifiers: findFeatRule(f.name)?.modifiers })),
+        ...progressionMods.filter((m) => !m.fromChoice).map((m) => ({ name: m.source, modifiers: [m] })),
+        ...(chosenLineage?.modifiers ? [{ name: chosenLineage.name, modifiers: chosenLineage.modifiers }] : []),
+        ...activeSpeciesTraits(species, chosenLineage, level).map((t) => ({ name: traitBaseName(t.name), modifiers: t.modifiers }))
+    ]);
 
     for (const opt of selectedProgressionOptions) {
         applyProgressionChoiceOption(characterPayload, opt, 1);
