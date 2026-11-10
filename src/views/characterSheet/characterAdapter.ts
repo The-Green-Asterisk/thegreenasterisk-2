@@ -1609,7 +1609,7 @@ export function parseDndBeyondCharacter(
                     ? `${beamCount} beams • 1d10${bonusStr} Force each`
                     : `1d10${bonusStr} Force`.trim();
             } else {
-                const scaledDamage = getSpellDamageDisplay(spell, 0, totalLevel);
+                const scaledDamage = getSpellDamageDisplay(spell, 0, totalLevel, spellMod);
                 if (scaledDamage) {
                     const scaledParts = scaledDamage.match(/^(\d+d\d+)(?:\s*([+-]\s*\d+))?(?:\s+([A-Za-z]+))?/);
                     const dice = scaledParts ? scaledParts[1] : (dmgMatch ? dmgMatch[1] : "");

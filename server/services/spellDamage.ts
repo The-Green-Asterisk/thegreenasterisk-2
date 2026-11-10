@@ -12,7 +12,7 @@ export interface SpellDamageInfo {
     damageScaling?: SpellDamageScalingRow[];
 }
 
-const DAMAGE_TYPES = [
+export const DAMAGE_TYPES = [
     "Acid",
     "Bludgeoning",
     "Cold",
@@ -28,6 +28,191 @@ const DAMAGE_TYPES = [
     "Thunder",
     "Healing"
 ];
+
+const CLASS_SPELLCASTING_ABILITY: Record<string, string> = {
+    artificer: "INT",
+    bard: "CHA",
+    cleric: "WIS",
+    druid: "WIS",
+    paladin: "CHA",
+    ranger: "WIS",
+    sorcerer: "CHA",
+    warlock: "CHA",
+    wizard: "INT"
+};
+
+const ABILITY_ID_TO_ABBR: Record<number, string> = {
+    1: "STR",
+    2: "DEX",
+    3: "CON",
+    4: "INT",
+    5: "WIS",
+    6: "CHA"
+};
+
+export function getSpellcastingModifier(
+    character?: any,
+    spell?: { source?: string } | null
+): number | undefined {
+    if (typeof character === "number") {
+        return character;
+    }
+    if (!character || typeof character !== "object") {
+        return undefined;
+    }
+
+    const findModForAbbr = (abbr?: string): number | undefined => {
+        if (!abbr) return undefined;
+        const cleanAbbr = abbr.trim().toUpperCase();
+        if (Array.isArray(character.abilities)) {
+            const found = character.abilities.find((a: any) =>
+                a && (String(a.abbr || "").toUpperCase() === cleanAbbr || String(a.name || "").toLowerCase() === abbr.toLowerCase())
+            );
+            if (found && typeof found.modifier === "number") {
+                return found.modifier;
+            }
+        }
+        if (Array.isArray(character.stats)) {
+            const found = character.stats.find((s: any) =>
+                s && (String(s.abbr || "").toUpperCase() === cleanAbbr || String(s.name || "").toLowerCase() === abbr.toLowerCase())
+            );
+            if (found) {
+                if (typeof found.modifier === "number") return found.modifier;
+                if (typeof found.score === "number") return Math.floor((found.score - 10) / 2);
+            }
+        }
+        return undefined;
+    };
+
+    // 1. If spell has a specific source class, try to match it against character's classes or standard rules
+    const sourceLower = String(spell?.source || "").trim().toLowerCase();
+    if (sourceLower && Array.isArray(character.classes)) {
+        const matchingClass = character.classes.find((c: any) => {
+            const cName = String(c.name || c.definition?.name || "").toLowerCase();
+            const subName = String(c.subclass || c.subclassDefinition?.name || "").toLowerCase();
+            return cName === sourceLower || subName === sourceLower || sourceLower.includes(cName);
+        });
+        if (matchingClass) {
+            const abilityId = Number(matchingClass.definition?.spellCastingAbilityId || matchingClass.subclassDefinition?.spellCastingAbilityId);
+            if (abilityId && ABILITY_ID_TO_ABBR[abilityId]) {
+                const mod = findModForAbbr(ABILITY_ID_TO_ABBR[abilityId]);
+                if (mod !== undefined) return mod;
+            }
+            const mappedAbbr = CLASS_SPELLCASTING_ABILITY[matchingClass.name?.toLowerCase()];
+            if (mappedAbbr) {
+                const mod = findModForAbbr(mappedAbbr);
+                if (mod !== undefined) return mod;
+            }
+        }
+    }
+
+    // 2. If source matches a standard spellcasting class name directly
+    if (sourceLower && CLASS_SPELLCASTING_ABILITY[sourceLower]) {
+        const mod = findModForAbbr(CLASS_SPELLCASTING_ABILITY[sourceLower]);
+        if (mod !== undefined) return mod;
+    }
+
+    // 3. Inspect character.vitals.spellcastingAbility (e.g. "Charisma (+4)", "Wisdom (+3)", "CHA")
+    const scAbility = String(character.vitals?.spellcastingAbility || "").trim();
+    if (scAbility && scAbility.toLowerCase() !== "none") {
+        const parenMatch = scAbility.match(/\(([+-]?\d+)\)/);
+        if (parenMatch) {
+            return parseInt(parenMatch[1], 10);
+        }
+        const wordMatch = scAbility.match(/^[a-zA-Z]+/);
+        if (wordMatch) {
+            const mod = findModForAbbr(wordMatch[0]);
+            if (mod !== undefined) return mod;
+        }
+    }
+
+    // 4. Fallback to spellAttackBonus - proficiencyBonus if present
+    if (
+        typeof character.vitals?.spellAttackBonus === "number" &&
+        typeof character.vitals?.proficiencyBonus === "number"
+    ) {
+        return character.vitals.spellAttackBonus - character.vitals.proficiencyBonus;
+    }
+
+    // 5. Check character.classes for any spellcaster class
+    if (Array.isArray(character.classes)) {
+        for (const c of character.classes) {
+            const cName = String(c.name || c.definition?.name || "").toLowerCase();
+            const mappedAbbr = CLASS_SPELLCASTING_ABILITY[cName];
+            if (mappedAbbr) {
+                const mod = findModForAbbr(mappedAbbr);
+                if (mod !== undefined) return mod;
+            }
+        }
+    }
+
+    // 6. Highest mental stat (INT, WIS, CHA) if abilities present
+    if (Array.isArray(character.abilities) && character.abilities.length > 0) {
+        const mentalAbbrs = ["CHA", "WIS", "INT"];
+        const mods = mentalAbbrs
+            .map(abbr => findModForAbbr(abbr))
+            .filter((m): m is number => m !== undefined);
+        if (mods.length > 0) {
+            return Math.max(...mods);
+        }
+    }
+
+    return undefined;
+}
+
+export function replaceModInString(str: string, modNumber: number): string {
+    if (!str || typeof str !== "string") return str;
+
+    return str.replace(/([+-])?(\s*)MOD\b/gi, (_match, sign, space) => {
+        let val = modNumber;
+        if (sign === "-") {
+            val = -val;
+        }
+        const signStr = val >= 0 ? "+" : "-";
+        const absVal = Math.abs(val);
+        if (space) {
+            return `${signStr}${space}${absVal}`;
+        }
+        return val >= 0 ? `+${val}` : `${val}`;
+    });
+}
+
+export function getSpellDamageType(
+    spell?: { damageType?: string; description?: string; damageScaling?: unknown } | null,
+    damageText?: string
+): string | undefined {
+    if (spell?.damageType && typeof spell.damageType === "string" && spell.damageType.trim()) {
+        return spell.damageType.trim();
+    }
+    if (damageText) {
+        for (const dt of DAMAGE_TYPES) {
+            const regex = new RegExp(`\\b${dt}\\b`, "i");
+            if (regex.test(damageText)) {
+                return dt;
+            }
+        }
+    }
+    if (spell) {
+        const extracted = extractSpellDamageInfo(spell);
+        if (extracted.damageType) {
+            return extracted.damageType;
+        }
+    }
+    if (spell?.description && /\b(regains?\s+(?:hit\s+points|hp)|healing\b|heals?\s+\d+d\d+)/i.test(spell.description)) {
+        return "Healing";
+    }
+    return undefined;
+}
+
+export function isHealingSpell(
+    spell?: { damageType?: string; description?: string; damageScaling?: unknown } | null,
+    damageTextOrType?: string
+): boolean {
+    const type = getSpellDamageType(spell, damageTextOrType) || damageTextOrType;
+    if (!type) return false;
+    const lower = type.toLowerCase();
+    return lower === "healing" || lower === "heal" || lower.includes("heal");
+}
 
 function capitalize(s: string): string {
     if (!s) return "";
@@ -59,6 +244,7 @@ export function parseDamageScalingString(raw: unknown): SpellDamageScalingRow[] 
 }
 
 export function extractSpellDamageInfo(spell: {
+    name?: string;
     level?: number;
     description?: string;
     damageDice?: string;
@@ -69,13 +255,104 @@ export function extractSpellDamageInfo(spell: {
 }): SpellDamageInfo {
     const baseLevel = Number(spell.level) || 0;
     const desc = spell.description || "";
+    const cleanDesc = desc.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&ndash;/gi, "–");
+    const isDiceLike = (str: string) => /^\d*d\d+/i.test(str.trim()) || /^[-+]?\d+$/.test(str.trim()) || str.trim() === "—";
 
     let damageDice = spell.damageDice ? String(spell.damageDice).trim() : undefined;
+    if (damageDice && !isDiceLike(damageDice)) {
+        damageDice = undefined;
+    }
+
     let damageType = spell.damageType ? capitalize(String(spell.damageType).trim()) : undefined;
     let damageModifier = spell.damageModifier !== undefined && spell.damageModifier !== null
         ? String(spell.damageModifier).trim()
         : undefined;
     let damageScaling = parseDamageScalingString(spell.damageScaling);
+
+    if (damageScaling && Array.isArray(damageScaling)) {
+        const hasInvalidLevels = baseLevel > 0 && damageScaling.some(r => Number(r.level) < baseLevel);
+        const hasGarbageDice = damageScaling.some(r => !isDiceLike(String(r.dice || "")));
+        if (hasInvalidLevels || hasGarbageDice) {
+            damageScaling = undefined;
+        }
+    }
+
+    // Special cases by spell name
+    const spellName = String(spell.name || "").trim();
+    if (spellName === "True Strike") {
+        return {
+            damageDice: "—",
+            damageType: "Radiant",
+            damageModifier: undefined,
+            damageScaling: [
+                { level: 1, label: "Level 1–4", dice: "—", modifier: "" },
+                { level: 5, label: "Level 5–10", dice: "1d6", modifier: "" },
+                { level: 11, label: "Level 11–16", dice: "2d6", modifier: "" },
+                { level: 17, label: "Level 17–20", dice: "3d6", modifier: "" }
+            ]
+        };
+    }
+    if (spellName === "Toll the Dead") {
+        return {
+            damageDice: "1d8 (or 1d12)",
+            damageType: "Necrotic",
+            damageModifier: undefined,
+            damageScaling: [
+                { level: 1, label: "Level 1–4", dice: "1d8 (or 1d12)", modifier: "" },
+                { level: 5, label: "Level 5–10", dice: "2d8 (or 2d12)", modifier: "" },
+                { level: 11, label: "Level 11–16", dice: "3d8 (or 3d12)", modifier: "" },
+                { level: 17, label: "Level 17–20", dice: "4d8 (or 4d12)", modifier: "" }
+            ]
+        };
+    }
+    if (spellName === "Shillelagh") {
+        return {
+            damageDice: "1d8",
+            damageType: "Force",
+            damageModifier: undefined,
+            damageScaling: [
+                { level: 1, label: "Level 1–4", dice: "1d8", modifier: "" },
+                { level: 5, label: "Level 5–10", dice: "1d10", modifier: "" },
+                { level: 11, label: "Level 11–16", dice: "1d12", modifier: "" },
+                { level: 17, label: "Level 17–20", dice: "2d6", modifier: "" }
+            ]
+        };
+    }
+    if (spellName === "Shadow Blade") {
+        return {
+            damageDice: "2d8",
+            damageType: "Psychic",
+            damageModifier: undefined,
+            damageScaling: [
+                { level: 2, label: "Level 2", dice: "2d8", modifier: "" },
+                { level: 3, label: "Level 3", dice: "3d8", modifier: "" },
+                { level: 4, label: "Level 4", dice: "3d8", modifier: "" },
+                { level: 5, label: "Level 5", dice: "4d8", modifier: "" },
+                { level: 6, label: "Level 6", dice: "4d8", modifier: "" },
+                { level: 7, label: "Level 7", dice: "5d8", modifier: "" },
+                { level: 8, label: "Level 8", dice: "5d8", modifier: "" },
+                { level: 9, label: "Level 9", dice: "5d8", modifier: "" }
+            ]
+        };
+    }
+    if (spellName === "False Life") {
+        return {
+            damageDice: "2d4",
+            damageType: "Healing",
+            damageModifier: "+4",
+            damageScaling: [
+                { level: 1, label: "Level 1", dice: "2d4", modifier: "+4" },
+                { level: 2, label: "Level 2", dice: "2d4", modifier: "+9" },
+                { level: 3, label: "Level 3", dice: "2d4", modifier: "+14" },
+                { level: 4, label: "Level 4", dice: "2d4", modifier: "+19" },
+                { level: 5, label: "Level 5", dice: "2d4", modifier: "+24" },
+                { level: 6, label: "Level 6", dice: "2d4", modifier: "+29" },
+                { level: 7, label: "Level 7", dice: "2d4", modifier: "+34" },
+                { level: 8, label: "Level 8", dice: "2d4", modifier: "+39" },
+                { level: 9, label: "Level 9", dice: "2d4", modifier: "+44" }
+            ]
+        };
+    }
 
     // 1. Check embedded HTML or Markdown damage blocks in description if fields are missing
     if ((!damageDice || !damageScaling || damageScaling.length === 0) && desc) {
@@ -109,12 +386,12 @@ export function extractSpellDamageInfo(spell: {
                 } else if (total) {
                     const typeMatch = total.match(/[a-zA-Z]+/g);
                     const candidate = typeMatch?.[typeMatch.length - 1];
-                    if (candidate && candidate.toLowerCase() !== "damage") {
+                    if (candidate && candidate.toLowerCase() !== "damage" && isDamageType(candidate)) {
                         damageType = capitalize(candidate);
                     }
                 }
             }
-            if (dice || cleanMod) {
+            if (dice && isDiceLike(dice)) {
                 htmlRows.push({ level: lvl, label: col1, dice, modifier: cleanMod });
             }
         }
@@ -160,7 +437,7 @@ export function extractSpellDamageInfo(spell: {
                 }
             }
 
-            if (dice && dice.toLowerCase() !== "damage dice") {
+            if (dice && dice.toLowerCase() !== "damage dice" && isDiceLike(dice)) {
                 mdRows.push({ level: lvl, label: col1, dice, modifier: cleanMod });
             }
         }
@@ -190,7 +467,8 @@ export function extractSpellDamageInfo(spell: {
             const damageTypePattern = DAMAGE_TYPES.join("|");
             const stdMatch = new RegExp(`\\b(\\d+d\\d+(?:\\s*[+-]\\s*(?:\\d+|\\{\\{[^}]+\\}\\}))?)\\s*(${damageTypePattern})\\s+damage\\b`, "i").exec(desc)
                 || new RegExp(`\\b(?:takes?|dealing|deals?|taking)\\s+(\\d+d\\d+(?:\\s*[+-]\\s*(?:\\d+|\\{\\{[^}]+\\}\\}))?)\\s*(?:extra\\s+)?(${damageTypePattern})\\b`, "i").exec(desc)
-                || new RegExp(`\\b(${damageTypePattern})\\s+damage\\s+(?:equal to\\s+)?(\\d+d\\d+(?:\\s*[+-]\\s*(?:\\d+|\\{\\{[^}]+\\}\\}))?)\\b`, "i").exec(desc);
+                || new RegExp(`\\b(${damageTypePattern})\\s+damage\\s+(?:equal to\\s+)?(\\d+d\\d+(?:\\s*[+-]\\s*(?:\\d+|\\{\\{[^}]+\\}\\}))?)\\b`, "i").exec(desc)
+                || new RegExp(`\\bbase damage is\\s+(\\d+d\\d+)\\b`, "i").exec(desc);
 
             if (stdMatch) {
                 if (/\d+d\d+/i.test(stdMatch[1])) {
@@ -204,12 +482,13 @@ export function extractSpellDamageInfo(spell: {
         }
 
         if (!damageDice) {
-            const healMatch = /\bregains?\s+(?:Hit Points equal to\s+)?(\d+d\d+(?:\s*[+-]\s*(?:\d+|\{\{[^}]+\}\}|your\s+spellcasting\s+ability\s+modifier))?)\b/i.exec(desc)
-                || /\bheals?\s+(?:for\s+)?(\d+d\d+(?:\s*[+-]\s*(?:\d+|\{\{[^}]+\}\}))?)\b/i.exec(desc);
+            const healMatch = /\bregains?\s+(?:a\s+number\s+of\s+)?(?:Hit Points equal to\s+)?(\d+d\d+(?:\s*(?:plus|\+)\s*(?:\d+|\{\{[^}]+\}\}|your\s+spellcasting\s+ability\s+modifier))?)\b/i.exec(desc)
+                || /\bheals?\s+(?:for\s+)?(\d+d\d+(?:\s*[+-]\s*(?:\d+|\{\{[^}]+\}\}))?)\b/i.exec(desc)
+                || /\brestores?\s+(\d+d\d+)\s+(?:hit points|Hit Points|HP)/i.exec(desc);
             if (healMatch && healMatch[1]) {
-                damageDice = healMatch[1].replace(/\+?\s*your\s+spellcasting\s+ability\s+modifier/i, "").trim();
+                damageDice = healMatch[1].replace(/(?:plus|\+)?\s*your\s+spellcasting\s+ability\s+modifier/i, "").trim();
                 damageType = "Healing";
-                if (!damageModifier && /your\s+spellcasting\s+ability\s+modifier/i.test(healMatch[1])) {
+                if (!damageModifier && /(?:plus|\+)\s*your\s+spellcasting\s+ability\s+modifier/i.test(healMatch[1])) {
                     damageModifier = "+MOD";
                 }
             }
@@ -276,16 +555,17 @@ export function extractSpellDamageInfo(spell: {
 
             if (baseLevel === 0) {
                 // Cantrips scale by character level at levels 1, 5, 11, and 17 (e.g. Acid Splash, Fire Bolt)
-                const cantripUpgradeMatch = /(?:increases by|extra|additional|\+)\s*(\d+)d(\d+)\s*(?:damage|healing)?\s*when you reach\s*(?:levels?\s*)?5/i.exec(desc)
-                    || /when you reach\s*(?:levels?\s*)?5(?:th)?\s*\((?:level\s*)?(\d+)d(\d+)\)/i.exec(desc);
+                const cantripUpgradeMatch = /(?:increases by|extra|additional|\+)\s*(\d+)d(\d+)\s*(?:damage|healing)?\s*when you reach\s*(?:levels?\s*)?5/i.exec(cleanDesc)
+                    || /when you reach\s*(?:levels?\s*)?5(?:th)?\s*(?:level\s*)?\((?:level\s*)?(\d+)d(\d+)\)/i.exec(cleanDesc)
+                    || /creates two beams at level 5/i.exec(cleanDesc);
 
                 let incCount = 1;
                 let incDie = dieSize;
                 if (cantripUpgradeMatch) {
-                    if (/when you reach/i.test(cantripUpgradeMatch[0]) && cantripUpgradeMatch[0].includes("(")) {
+                    if (/when you reach/i.test(cantripUpgradeMatch[0]) && cantripUpgradeMatch[0].includes("(") && cantripUpgradeMatch[1]) {
                         incCount = Math.max(1, Number(cantripUpgradeMatch[1]) - baseCount);
                         incDie = Number(cantripUpgradeMatch[2]) || dieSize;
-                    } else {
+                    } else if (cantripUpgradeMatch[1]) {
                         incCount = Number(cantripUpgradeMatch[1]) || 1;
                         incDie = Number(cantripUpgradeMatch[2]) || dieSize;
                     }
@@ -298,11 +578,9 @@ export function extractSpellDamageInfo(spell: {
                     { level: 17, label: "Level 17–20", dice: `${baseCount + 3 * incCount}d${incDie}`, modifier: modStr }
                 ];
             } else {
-                const upcastRegex = /(?:Using a Higher-Level Spell Slot|At Higher Levels)[.:]\s*([^\n\r<]+)/i;
-                const upcastSection = upcastRegex.exec(desc)?.[1] || desc;
-
-                const incMatch = /(?:increases by|extra|additional|\+)\s*(\d+)d(\d+)\s*(?:damage|healing)?\s*(?:for each|per)\s*(?:slot\s+)?level above\s*(\d+)(?:st|nd|rd|th)?/i.exec(upcastSection)
-                    || /\(\+?(\d+)d(\d+)\s+(?:damage\s+)?per\s+slot\s+level\s+above\s+(\d+)(?:st|nd|rd|th)?\)/i.exec(upcastSection);
+                const incMatch = /(?:increases?(?:\s+for\s+[^.]+?)?\s+by|extra|additional|\+)\s*(\d+)d(\d+)[^.]*?(?:for each|per)\s*(?:(?:spell\s+)?slot\s+)?(?:level\s+)?above\s*(\d+)(?:st|nd|rd|th)?/i.exec(cleanDesc)
+                    || /(?:\+?(\d+)d(\d+)\s+(?:damage\s+)?per\s+(?:spell\s+)?slot\s+(?:level\s+)?above\s*(\d+)(?:st|nd|rd|th)?)/i.exec(cleanDesc)
+                    || /(?:damage|healing)\s+increases?\s+by\s*(\d+)d(\d+)[^.]*?(?:for each|per)\s*(?:(?:spell\s+)?slot\s+)?(?:level\s+)?above\s*(\d+)(?:st|nd|rd|th)?/i.exec(cleanDesc);
 
                 if (incMatch) {
                     const incCount = Number(incMatch[1]) || 1;
@@ -347,31 +625,58 @@ export function getSpellDamageDisplay(
         damageType?: string;
         damageModifier?: string;
         damageScaling?: SpellDamageScalingRow[] | unknown;
+        source?: string;
+        description?: string;
     },
-    castAtLevelOrOptions?: number | { castAtLevel?: number; characterLevel?: number },
-    characterLevelArg?: number
+    castAtLevelOrOptions?: number | { castAtLevel?: number; characterLevel?: number; spellcastingMod?: number; character?: any },
+    characterLevelArg?: number,
+    spellcastingModOrCharacterArg?: number | any
 ): string {
     let castAtLevel: number | undefined;
     let characterLevel: number | undefined;
+    let spellcastingMod: number | undefined;
 
     if (typeof castAtLevelOrOptions === "object" && castAtLevelOrOptions !== null) {
         castAtLevel = castAtLevelOrOptions.castAtLevel;
         characterLevel = castAtLevelOrOptions.characterLevel;
+        if (typeof castAtLevelOrOptions.spellcastingMod === "number") {
+            spellcastingMod = castAtLevelOrOptions.spellcastingMod;
+        } else if (castAtLevelOrOptions.character) {
+            spellcastingMod = getSpellcastingModifier(castAtLevelOrOptions.character, spell);
+        }
     } else {
         castAtLevel = castAtLevelOrOptions;
         characterLevel = characterLevelArg;
     }
 
+    if (spellcastingMod === undefined && spellcastingModOrCharacterArg !== undefined) {
+        if (typeof spellcastingModOrCharacterArg === "number") {
+            spellcastingMod = spellcastingModOrCharacterArg;
+        } else if (typeof spellcastingModOrCharacterArg === "object" && spellcastingModOrCharacterArg !== null) {
+            spellcastingMod = getSpellcastingModifier(spellcastingModOrCharacterArg, spell);
+        }
+    }
+
     const hasExplicitLevel = spell.level !== undefined && spell.level !== null;
     let scaling = parseDamageScalingString(spell.damageScaling);
-    if (!scaling || scaling.length === 0) {
+    let extractedType: string | undefined;
+    let extractedMod: string | undefined;
+    if (!scaling || scaling.length === 0 || !spell.damageType || !spell.damageModifier) {
         const extracted = extractSpellDamageInfo(spell);
-        scaling = extracted.damageScaling;
+        if (!scaling || scaling.length === 0) {
+            scaling = extracted.damageScaling;
+        }
+        if (!spell.damageType) {
+            extractedType = extracted.damageType;
+        }
+        if (!spell.damageModifier && extracted.damageModifier) {
+            extractedMod = extracted.damageModifier;
+        }
     }
     const baseLevel = hasExplicitLevel ? Number(spell.level) : (scaling?.[0]?.level ?? 1);
 
     let dice = spell.damageDice || "";
-    let mod = spell.damageModifier || "";
+    let mod = spell.damageModifier || extractedMod || "";
 
     if (scaling && scaling.length > 0) {
         const isCharacterScaling = (hasExplicitLevel && baseLevel === 0) || scaling.some(r => {
@@ -410,6 +715,11 @@ export function getSpellDamageDisplay(
         }
     }
 
+    if (typeof spellcastingMod === "number") {
+        mod = replaceModInString(mod, spellcastingMod);
+        dice = replaceModInString(dice, spellcastingMod);
+    }
+
     if (!dice && !mod) return "";
 
     const cleanMod = mod.trim();
@@ -417,21 +727,27 @@ export function getSpellDamageDisplay(
         ? (cleanMod.startsWith("+") || cleanMod.startsWith("-") ? cleanMod : `+${cleanMod}`)
         : "";
 
-    const typeStr = spell.damageType ? ` ${spell.damageType}` : "";
+    const resolvedType = spell.damageType || extractedType;
+    const typeStr = resolvedType ? ` ${resolvedType}` : "";
     return `${dice}${formattedMod}${typeStr}`.trim();
 }
 
 export function resolveActionSpellDamage(
     action: { name: string; damageOrEffect?: string; spellName?: string; notes?: string },
-    character?: { level?: number; classes?: Array<{ level?: number }>; spells?: Array<any>; spellSlots?: any }
+    character?: { level?: number; classes?: Array<{ level?: number }>; spells?: Array<any>; spellSlots?: any; abilities?: any[]; vitals?: any }
 ): { damageOrEffect: string; isScaled: boolean; scaledTierLabel?: string } {
-    const fallback = action.damageOrEffect || "—";
+    const spellName = action.spellName || action.name;
+    const spell = (character?.spells || []).find(s => s && s.name && s.name.toLowerCase() === spellName.toLowerCase());
+    const spellcastingMod = character ? getSpellcastingModifier(character, spell) : undefined;
+
+    let fallback = action.damageOrEffect || "—";
+    if (spellcastingMod !== undefined && fallback && fallback.includes("MOD")) {
+        fallback = replaceModInString(fallback, spellcastingMod);
+    }
     if (!character) {
         return { damageOrEffect: fallback, isScaled: false };
     }
 
-    const spellName = action.spellName || action.name;
-    const spell = (character.spells || []).find(s => s && s.name && s.name.toLowerCase() === spellName.toLowerCase());
     if (!spell) {
         return { damageOrEffect: fallback, isScaled: false };
     }
@@ -455,14 +771,14 @@ export function resolveActionSpellDamage(
             const isScaled = beamCount > 1;
             const tierLabel = charLevel >= 17 ? "Level 17–20 (4 Beams)" : charLevel >= 11 ? "Level 11–16 (3 Beams)" : charLevel >= 5 ? "Level 5–10 (2 Beams)" : "Level 1–4";
             return {
-                damageOrEffect: damageStr,
+                damageOrEffect: spellcastingMod !== undefined ? replaceModInString(damageStr, spellcastingMod) : damageStr,
                 isScaled,
                 scaledTierLabel: isScaled ? tierLabel : undefined
             };
         }
 
-        const scaledDisplay = getSpellDamageDisplay(spell, undefined, charLevel);
-        const baseDisplay = getSpellDamageDisplay(spell, undefined, 1);
+        const scaledDisplay = getSpellDamageDisplay(spell, undefined, charLevel, spellcastingMod);
+        const baseDisplay = getSpellDamageDisplay(spell, undefined, 1, spellcastingMod);
         const isScaled = charLevel >= 5 && !!scaledDisplay && scaledDisplay !== baseDisplay;
         const tierLabel = charLevel >= 17 ? "Level 17–20" : charLevel >= 11 ? "Level 11–16" : charLevel >= 5 ? "Level 5–10" : "Level 1–4";
 
@@ -472,7 +788,10 @@ export function resolveActionSpellDamage(
             const currentDiceMatch = (action.damageOrEffect || "").match(/(\d+d\d+)/);
 
             if (scaledDice && currentDiceMatch) {
-                const updated = action.damageOrEffect!.replace(currentDiceMatch[1], scaledDice);
+                let updated = action.damageOrEffect!.replace(currentDiceMatch[1], scaledDice);
+                if (spellcastingMod !== undefined && updated.includes("MOD")) {
+                    updated = replaceModInString(updated, spellcastingMod);
+                }
                 return {
                     damageOrEffect: updated,
                     isScaled,
@@ -503,8 +822,8 @@ export function resolveActionSpellDamage(
     const castLevel = isPactMagic ? pactSlotLevel : (slotLevelMatch ? Number(slotLevelMatch[1]) : undefined);
 
     if (castLevel && castLevel > Number(spell.level)) {
-        const scaledDisplay = getSpellDamageDisplay(spell, castLevel);
-        const baseDisplay = getSpellDamageDisplay(spell, Number(spell.level));
+        const scaledDisplay = getSpellDamageDisplay(spell, castLevel, undefined, spellcastingMod);
+        const baseDisplay = getSpellDamageDisplay(spell, Number(spell.level), undefined, spellcastingMod);
 
         if (scaledDisplay && scaledDisplay !== baseDisplay) {
             const scaledDiceMatch = scaledDisplay.match(/^(\d+d\d+)/);
@@ -512,7 +831,10 @@ export function resolveActionSpellDamage(
             const currentDiceMatch = (action.damageOrEffect || "").match(/(\d+d\d+)/);
 
             if (scaledDice && currentDiceMatch) {
-                const updated = action.damageOrEffect!.replace(currentDiceMatch[1], scaledDice);
+                let updated = action.damageOrEffect!.replace(currentDiceMatch[1], scaledDice);
+                if (spellcastingMod !== undefined && updated.includes("MOD")) {
+                    updated = replaceModInString(updated, spellcastingMod);
+                }
                 return {
                     damageOrEffect: updated,
                     isScaled: true,
@@ -527,6 +849,21 @@ export function resolveActionSpellDamage(
             };
         }
     }
+
+    let defaultDisplay = getSpellDamageDisplay(spell, undefined, undefined, spellcastingMod);
+    if (defaultDisplay) {
+        if (!action.damageOrEffect || action.damageOrEffect === "Spell Effect") {
+            return {
+                damageOrEffect: defaultDisplay,
+                isScaled: false
+            };
+        }
+    }
+
+    return {
+        damageOrEffect: fallback,
+        isScaled: false
+    };
 
     return {
         damageOrEffect: fallback,
