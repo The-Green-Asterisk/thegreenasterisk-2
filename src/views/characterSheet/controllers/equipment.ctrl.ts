@@ -15,12 +15,6 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
         row.addEventListener("click", () => {
             void ctx.openItemModal(itemName, itemId || undefined, itemType || undefined);
         });
-        row.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                void ctx.openItemModal(itemName, itemId || undefined, itemType || undefined);
-            }
-        });
     });
 
     // Item equip toggle buttons

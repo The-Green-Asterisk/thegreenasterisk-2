@@ -101,10 +101,10 @@ export function renderHeroSection(data: CharacterData): string {
                 <div class="identity-info">
                     <div class="title-row">
                         <h1 class="character-name">${data.name}${nameLockBadge}</h1>
-                        <div class="inspiration-badge ${data.vitals.heroicInspiration ? 'active' : ''}" id="inspiration-toggle" title="Heroic Inspiration (Click to toggle)">
-                            <i class="fa-solid fa-star"></i>
+                        <button type="button" class="inspiration-badge ${data.vitals.heroicInspiration ? 'active' : ''}" id="inspiration-toggle" aria-pressed="${data.vitals.heroicInspiration ? 'true' : 'false'}" title="Heroic Inspiration (Click to toggle)">
+                            <i class="fa-solid fa-star" aria-hidden="true"></i>
                             <span>Heroic Inspiration</span>
-                        </div>
+                        </button>
                     </div>
                     <p class="character-classes">
                         ${classText}${classLockBadge}

@@ -13,12 +13,6 @@ export function initActionsController(ctx: CharacterSheetContext) {
         card.addEventListener("click", () => {
             ctx.openActionModal(actionIndex);
         });
-        card.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                ctx.openActionModal(actionIndex);
-            }
-        });
     });
 
     // Action spell links

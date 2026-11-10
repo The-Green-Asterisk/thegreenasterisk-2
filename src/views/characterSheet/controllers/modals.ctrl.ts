@@ -1,3 +1,4 @@
+import { initDialogFocus } from "./dialogFocus";
 import { restoreUsePips } from "../components/usesTracker";
 import { getData, postData } from "@services/request";
 import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
@@ -16,6 +17,9 @@ import { initSpellsController } from "./spells.ctrl";
 import { initWeaponsController } from "./weapons.ctrl";
 
 export function initModalsController(ctx: CharacterSheetContext) {
+    // Tab stays in an open dialog, and focus returns to its opener when it closes
+    initDialogFocus(ctx.sheet);
+
     const sheet = ctx.sheet;
 
     // Spell modal elements
@@ -511,12 +515,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     ? `<ul class="manage-abbrev-spell-list">
                         ${levelSpells.map(s => `
                             <li class="manage-abbrev-spell-row" data-current-spell-name="${encodeURIComponent(s.name)}">
-                                <div class="manage-abbrev-spell-main" data-preview-spell-name="${encodeURIComponent(s.name)}" title="Click to view spell description">
+                                <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-spell-name="${encodeURIComponent(s.name)}" title="Click to view spell description">
                                     <span class="manage-abbrev-spell-name">${s.name}</span>
                                     <span class="manage-abbrev-spell-meta">${s.school} • ${s.castingTime}</span>
                                     ${s.concentration ? '<span class="manage-mini-tag conc">C</span>' : ''}
                                     ${s.ritual ? '<span class="manage-mini-tag ritual">R</span>' : ''}
-                                </div>
+                                </button>
                                 <button type="button" class="manage-remove-spell-btn" data-remove-spell-name="${encodeURIComponent(s.name)}" title="Remove ${s.name} from character spell list" aria-label="Remove ${s.name}">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
@@ -885,12 +889,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const isMagic = isMundaneEquipment(w.name) ? false : !!w.isMagic;
                 return `
                     <li class="manage-abbrev-spell-row" data-current-weapon-idx="${idx}">
-                        <div class="manage-abbrev-spell-main" data-preview-weapon-name="${encodeURIComponent(w.name)}" title="Click to view weapon details">
+                        <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-weapon-name="${encodeURIComponent(w.name)}" title="Click to view weapon details">
                             <span class="manage-abbrev-spell-name">${w.name}</span>
                             <span class="manage-abbrev-spell-meta">${w.category || 'Weapon'} • ${w.damage || '—'}</span>
                             ${isMagic ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
                             ${w.mastery?.unlocked ? `<span class="manage-mini-tag ritual">${w.mastery.name}</span>` : ''}
-                        </div>
+                        </button>
                         <button type="button" class="manage-remove-spell-btn" data-remove-weapon-name="${encodeURIComponent(w.name)}" title="Remove ${w.name} from character sheet" aria-label="Remove ${w.name}">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
@@ -906,12 +910,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const isMagic = isMundaneEquipment(e.name) ? false : !!e.isMagic;
                 return `
                     <li class="manage-abbrev-spell-row" data-current-equipment-idx="${idx}">
-                        <div class="manage-abbrev-spell-main" data-preview-equipment-name="${encodeURIComponent(e.name)}" data-preview-equipment-type="${encodeURIComponent(e.type || 'Equipment')}" title="Click to view item details">
+                        <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-equipment-name="${encodeURIComponent(e.name)}" data-preview-equipment-type="${encodeURIComponent(e.type || 'Equipment')}" title="Click to view item details">
                             <span class="manage-abbrev-spell-name">${e.name}</span>
                             <span class="manage-abbrev-spell-meta">${e.type || 'Item'}${isMagic && e.rarity && e.rarity !== 'Common' ? ` • ${e.rarity}` : ''}${e.quantity > 1 ? ` ×${e.quantity}` : ''}</span>
                             ${isMagic ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
                             ${e.equipped ? '<span class="manage-mini-tag ritual">Equipped</span>' : ''}
-                        </div>
+                        </button>
                         <button type="button" class="manage-remove-spell-btn" data-remove-equipment-name="${encodeURIComponent(e.name)}" title="Remove ${e.name} from character sheet" aria-label="Remove ${e.name}">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>

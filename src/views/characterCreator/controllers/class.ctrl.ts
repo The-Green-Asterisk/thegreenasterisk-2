@@ -78,18 +78,10 @@ export function initClassController(ctx: CharacterCreatorContext): void {
     document.querySelectorAll(".level-card-header").forEach((header) => {
         header.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
+            // The level badge handles itself; the collapse button (keyboard path) and the rest of the header toggle
             if (target.closest(".progression-lvl-badge")) return;
             const box = header.closest(".level-progression-box") as HTMLElement | null;
             if (box) toggleBoxCollapse(box);
-        });
-        header.addEventListener("keydown", (e: any) => {
-            if (e.key === "Enter" || e.key === " ") {
-                const target = e.target as HTMLElement;
-                if (target.closest(".progression-lvl-badge")) return;
-                e.preventDefault();
-                const box = header.closest(".level-progression-box") as HTMLElement | null;
-                if (box) toggleBoxCollapse(box);
-            }
         });
     });
 

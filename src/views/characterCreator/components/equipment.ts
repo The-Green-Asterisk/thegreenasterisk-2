@@ -115,7 +115,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                 </div>
 
                 <div class="creator-form-group" style="justify-content: flex-start;">
-                    <label class="creator-label">Shield</label>
+                    <span class="creator-label">Shield</span>
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding-top: 0.5rem;">
                         <input type="checkbox" id="char-shield-checkbox" ${ctx.state.hasShield ? "checked" : ""} />
                         <strong>Equip Shield (+2 AC)</strong>
@@ -141,7 +141,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                         const isProf = ctx.isProficientWithWeapon(w.name);
 
                         return `
-                            <div class="item-check-row weapon-row ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}">
+                            <div class="item-check-row weapon-row ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}" role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate>
                                 <div class="item-row-left">
                                     <div class="item-row-title">
                                         ${w.name} (${w.category})

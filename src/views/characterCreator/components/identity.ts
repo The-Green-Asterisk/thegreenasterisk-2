@@ -92,7 +92,7 @@ export function renderStep1Identity(ctx: CharacterCreatorContext): string {
                     <input type="text" id="char-gender-input" class="creator-input" placeholder="e.g. Female (She/Her)" value="${escape(ctx.state.gender)}" />
                 </div>
                 <div class="creator-form-group" style="grid-column: 1 / -1;">
-                    <label class="creator-label">Character Avatar</label>
+                    <span class="creator-label" id="char-avatar-heading">Character Avatar</span>
                     <div class="creator-avatar-picker">
                         <div class="creator-avatar-preview">
                             <img id="char-avatar-preview-img" src="${escape(ctx.state.avatarUrl || '/storage/images/default-avatar.png')}" alt="Avatar Preview" />
@@ -107,7 +107,7 @@ export function renderStep1Identity(ctx: CharacterCreatorContext): string {
                             </div>
                             <div class="creator-avatar-divider"><span>OR PROVIDE IMAGE URL</span></div>
                             <div class="creator-avatar-url-row">
-                                <input type="text" id="char-avatar-input" class="creator-input" placeholder="https://example.com/character-portrait.png" value="${escape(ctx.state.avatarUrl)}" />
+                                <input type="text" id="char-avatar-input" class="creator-input" aria-label="Avatar image URL" placeholder="https://example.com/character-portrait.png" value="${escape(ctx.state.avatarUrl)}" />
                             </div>
                         </div>
                     </div>

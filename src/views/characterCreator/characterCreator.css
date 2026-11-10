@@ -122,23 +122,37 @@ el-character-creator,
     min-width: 650px;
 }
 
+.stepper-list > li {
+    display: flex;
+    flex: 1;
+}
+
+/* Step buttons: the current step's circle is filled, completed ones tinted, later ones plain (no fading, so every
+   label keeps full contrast) */
 .stepper-item {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex: 1;
+    min-height: 32px;
+    padding: 0.15rem 0.25rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     cursor: pointer;
-    opacity: 0.55;
-    transition: opacity 0.2s ease;
     user-select: none;
 }
 
-.stepper-item.active {
-    opacity: 1;
+.stepper-item:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
 }
 
-.stepper-item.completed {
-    opacity: 0.85;
+.stepper-item.active .stepper-label {
+    font-weight: 800;
 }
 
 .stepper-circle {
@@ -1157,7 +1171,7 @@ el-character-creator,
     gap: 0.25rem;
     font-size: 0.72rem;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-on-ui-accent);
     background: var(--ui-accent);
     padding: 0.1rem 0.5rem;
     border-radius: 9999px;
@@ -1175,7 +1189,7 @@ el-character-creator,
 .package-card-header .equip-package-btn.equipped {
     background: var(--ui-accent);
     border-color: var(--ui-accent);
-    color: #ffffff;
+    color: var(--text-on-ui-accent);
     font-weight: 700;
     box-shadow: 0 2px 4px rgba(var(--ui-accent-rgb, 41, 112, 27), 0.25);
 }
@@ -1208,19 +1222,19 @@ el-character-creator,
 .equipment-stat-alert.warning {
     background: rgba(234, 179, 8, 0.12);
     border: 1px solid rgba(234, 179, 8, 0.4);
-    color: #eab308;
+    color: var(--status-warning);
 }
 
 .equipment-stat-alert.danger {
     background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.4);
-    color: #ef4444;
+    color: var(--status-danger);
 }
 
 .equipment-stat-alert.success {
     background: rgba(34, 197, 94, 0.12);
     border: 1px solid rgba(34, 197, 94, 0.4);
-    color: #22c55e;
+    color: var(--status-success);
 }
 
 .stat-req-pill {
@@ -1237,19 +1251,19 @@ el-character-creator,
 
 .stat-req-pill.met {
     background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+    color: var(--status-success);
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .stat-req-pill.unmet {
     background: rgba(234, 179, 8, 0.15);
-    color: #eab308;
+    color: var(--status-warning);
     border: 1px solid rgba(234, 179, 8, 0.4);
 }
 
 .stat-req-pill.non-prof {
     background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    color: var(--status-danger);
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
@@ -1334,19 +1348,19 @@ el-character-creator,
 
 .spell-count-badge.info {
     background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
+    color: var(--status-info);
     border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .spell-count-badge.maxed {
     background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+    color: var(--status-success);
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .spell-count-badge.over-limit {
     background: rgba(239, 68, 68, 0.18);
-    color: #ef4444;
+    color: var(--status-danger);
     border: 1px solid rgba(239, 68, 68, 0.45);
     box-shadow: 0 0 6px rgba(239, 68, 68, 0.25);
 }
@@ -1439,7 +1453,7 @@ el-character-creator,
 
 .spell-tab-btn.active {
     background: var(--ui-accent);
-    color: #ffffff;
+    color: var(--text-on-ui-accent);
     border-color: var(--ui-accent);
 }
 
@@ -1613,7 +1627,7 @@ el-character-creator,
 
 .prog-filter-btn.active {
     background: var(--ui-accent);
-    color: #fff;
+    color: var(--text-on-ui-accent);
 }
 
 .prog-expand-btn {
@@ -1656,13 +1670,11 @@ el-character-creator,
 }
 
 .level-progression-box.locked {
-    border-left: 4px solid var(--border-soft);
-    opacity: 0.82;
+    border-left: 4px dashed var(--border-mid);
 }
 
-/* Selections inside locked levels are disabled */
+/* Selections inside locked levels are disabled (the controls are dimmed; the text describing them stays readable) */
 .level-progression-box.locked .level-choice-box {
-    opacity: 0.55;
     background: rgba(0, 0, 0, 0.02);
     border: 1px dashed var(--border-soft);
     border-radius: var(--radius-sm);
@@ -1700,6 +1712,18 @@ el-character-creator,
 .level-progression-box .progression-lvl-badge {
     pointer-events: auto !important;
     cursor: pointer !important;
+    font: inherit;
+    min-height: 24px;
+}
+
+.progression-lvl-badge:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}
+
+/* Feature cards inside a level aren't selectable cards: no inner scroll region */
+.ability-feature-card {
+    overflow: visible;
 }
 
 .choice-locked-tag {
@@ -1986,7 +2010,7 @@ el-character-creator,
     padding: 0.35rem 0.75rem;
     border-radius: var(--radius-sm);
     background: rgba(220, 38, 38, 0.12);
-    color: #ef4444;
+    color: var(--status-danger);
     border: 1px solid rgba(220, 38, 38, 0.3);
     cursor: pointer;
     transition: background 0.15s ease;
@@ -2183,7 +2207,7 @@ el-character-creator,
 
 .progression-lvl-badge.badge-unlocked {
     background: var(--ui-accent);
-    color: #fff;
+    color: var(--text-on-ui-accent);
 }
 
 .progression-lvl-badge.badge-locked {
@@ -2245,26 +2269,26 @@ el-character-creator,
 
 .progression-feature-tag.asi {
     background: rgba(234, 179, 8, 0.15);
-    color: #ca8a04;
+    color: var(--status-warning);
     border: 1px solid rgba(234, 179, 8, 0.35);
 }
 
 .progression-feature-tag.subclass {
     background: rgba(99, 102, 241, 0.15);
-    color: #6366f1;
+    color: var(--status-indigo);
     border: 1px solid rgba(99, 102, 241, 0.35);
 }
 
 .progression-feature-tag.epic,
 .progression-feature-tag.capstone {
     background: rgba(236, 72, 153, 0.15);
-    color: #ec4899;
+    color: var(--status-pink);
     border: 1px solid rgba(236, 72, 153, 0.35);
 }
 
 .progression-feature-tag.magic {
     background: rgba(14, 165, 233, 0.15);
-    color: #0284c7;
+    color: var(--status-info);
     border: 1px solid rgba(14, 165, 233, 0.35);
 }
 
@@ -2308,7 +2332,7 @@ el-character-creator,
 
 .progression-status-pill.status-unlocked {
     background: rgba(34, 197, 94, 0.15);
-    color: #16a34a;
+    color: var(--status-success);
     border: 1px solid rgba(34, 197, 94, 0.35);
 }
 
@@ -2365,7 +2389,7 @@ el-character-creator,
 
 .class-prereq-badge.met {
     background: rgba(34, 197, 94, 0.12);
-    color: #16a34a;
+    color: var(--status-success);
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
@@ -2377,13 +2401,13 @@ el-character-creator,
 
 .class-prereq-badge.info {
     background: rgba(14, 165, 233, 0.1);
-    color: #0284c7;
+    color: var(--status-info);
     border: 1px solid rgba(14, 165, 233, 0.25);
 }
 
 :root[data-theme="dark"] .class-prereq-badge.info {
     background: rgba(14, 165, 233, 0.2);
-    color: #7dd3fc;
+    color: var(--status-info);
     border-color: rgba(14, 165, 233, 0.35);
 }
 
@@ -2447,4 +2471,24 @@ textarea.creator-input {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 110px), 1fr));
     gap: 0.5rem;
+}
+
+
+/* Unavailable class cards stay readable: their prerequisite badge says why (WCAG 1.4.3); the dashed border, lock
+   badge, and grayscale mark them unavailable */
+.select-card.disabled {
+    opacity: 0.85 !important;
+    border-style: dashed !important;
+}
+
+/* A locked level's feature descriptions are content to read, not controls: full contrast, marked locked by border */
+.level-progression-box.locked .ability-feature-card {
+    opacity: 1 !important;
+    filter: none;
+    border-style: dashed;
+}
+
+/* Level feature cards describe; they aren't clickable */
+.ability-feature-card {
+    cursor: default;
 }

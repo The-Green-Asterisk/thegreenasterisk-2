@@ -403,6 +403,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         const inspirationToggle = sheet.querySelector<HTMLElement>("#inspiration-toggle");
         if (inspirationToggle) {
             inspirationToggle.classList.toggle("active", !!inspiration);
+            inspirationToggle.setAttribute("aria-pressed", String(!!inspiration));
         }
 
         currentHp = Number(activeCharacter.vitals.currentHp) || 0;

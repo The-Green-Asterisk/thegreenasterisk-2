@@ -937,6 +937,38 @@ describe("CharacterCreatorController", () => {
             expect(ctrl.buildPayload().speciesSpellAbility).toBe("cha");
         });
 
+        it("keeps the creator keyboard-usable: step buttons, labelled fields, and option cards with roles", async () => {
+            const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+            const shell = characterCreatorTemplate();
+            expect(shell.getAttribute("role")).toBe("main");
+            const nav = shell.querySelector(".creator-stepper")!;
+            expect(nav.tagName).toBe("NAV");
+            expect(nav.querySelector('[aria-current="step"]')?.tagName).toBe("BUTTON");
+            expect(nav.querySelectorAll("li > button.stepper-item").length).toBe(9);
+            setup([{ classId: "fighter", level: 1 }]);
+            ctrl.renderStep(4);
+            expect(document.querySelector('label[for="bg-stat-a"]')).toBeTruthy();
+            expect(document.querySelector('label[for="bg-tool-granted"]')).toBeTruthy();
+            const bgCard = document.querySelector('.background-card') as HTMLElement;
+            expect(bgCard.getAttribute("role")).toBe("radio");
+            expect(bgCard.getAttribute("tabindex")).toBe("0");
+
+            // Enter on an option card picks it, and focus stays on that option after the step re-renders
+            const { bindNavigationEvents } = await import("../../../src/views/characterCreator/controllers/navigation.ctrl");
+            bindNavigationEvents(ctrl as any);
+            const other = Array.from(document.querySelectorAll<HTMLElement>('.background-card')).find((c) => c.getAttribute("aria-checked") === "false")!;
+            const id = other.getAttribute("data-background-id");
+            other.focus();
+            other.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+            expect(ctrl.state.backgroundId).toBe(id);
+            expect((document.activeElement as HTMLElement)?.getAttribute("data-background-id")).toBe(id);
+
+            ctrl.renderStep(7);
+            const weaponRow = document.querySelector('.weapon-row') as HTMLElement;
+            expect(weaponRow.getAttribute("role")).toBe("checkbox");
+            expect(weaponRow.getAttribute("aria-checked")).toMatch(/true|false/);
+        });
+
         it("applies Wizard Scholar from the Class step when proficient, and warns when not", () => {
             setup([{ classId: "wizard", level: 2 }], "sage"); // Sage: Arcana, History
             ctrl.state.subclassFeatureChoices = { "wizard-2-scholar": "arcana" };

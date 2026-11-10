@@ -41,7 +41,7 @@ export function renderStep3Class(ctx: CharacterCreatorContext): string {
                         </p>
                     </div>
 
-                    <div class="card-select-grid">
+                    <div class="card-select-grid" role="radiogroup" aria-label="${isPrimary ? "Primary class" : `Class ${classIdx + 1}`}">
                         ${ctx.classes.map((c) => {
                     const isSelected = classChoice.classId === c.id;
                     let isDisabled = false;
@@ -68,6 +68,7 @@ export function renderStep3Class(ctx: CharacterCreatorContext): string {
                                 <div class="select-card class-card ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}" 
                                      data-class-index="${classIdx}" 
                                      data-class-id="${c.id}"
+                                     role="radio" aria-checked="${isSelected}" tabindex="${isDisabled ? "-1" : "0"}" data-kbd-activate
                                      ${isDisabled ? `aria-disabled="true" title="${reasonTitle}"` : ""}>
                                     <div class="card-title-row">
                                         <h4 class="card-title">${c.name}</h4>
@@ -329,7 +330,7 @@ export function renderLevelChoices(ctx: CharacterCreatorContext, cls: ClassDefin
                             ${BASE_WEAPONS_2024.filter((w) => cls.weaponProficiencies.some((p) => p.includes("Martial") || w.category.includes("Simple"))).map((w) => {
                 const isSelected = ctx.state.weaponMasteries.includes(w.name);
                 return `
-                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}" data-class-index="${classIdx}">
+                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}" data-class-index="${classIdx}" role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate>
                                         <div class="skill-info">
                                             <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                             <span class="skill-name">${w.name}</span>
@@ -357,9 +358,9 @@ export function renderLevelChoices(ctx: CharacterCreatorContext, cls: ClassDefin
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> Subclass Selection (Level 3)</h5>
                         <p class="card-body">${getClsFeatureDesc(`${cls.name} Subclass`, `Choose a ${cls.name} specialization that grants you features at certain ${cls.name} levels.`, 3)}</p>
-                        <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                        <div class="card-select-grid" role="radiogroup" aria-label="${cls.name} subclass" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                             ${deduplicatedSubclasses.map((sub) => `
-                                <div class="select-card subclass-card ${currentSubId === sub.id ? "selected" : ""}" data-class-index="${classIdx}" data-subclass-id="${sub.id}">
+                                <div class="select-card subclass-card ${currentSubId === sub.id ? "selected" : ""}" data-class-index="${classIdx}" data-subclass-id="${sub.id}" role="radio" aria-checked="${currentSubId === sub.id}" tabindex="0" data-kbd-activate>
                                     <div class="card-title-row">
                                         <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
@@ -577,11 +578,11 @@ export function renderClassProgression(ctx: CharacterCreatorContext, cls: ClassD
 
         const boxHtml = `
                 <div class="creator-detail-box level-progression-box progression-row ${isUnlocked ? "unlocked" : "locked"}${isCollapsed ? " is-collapsed" : ""}" data-class-index="${classIdx}" data-level="${lvl}">
-                    <div class="level-card-header" role="button" tabindex="0" title="Click to ${isCollapsed ? "expand" : "collapse"} Level ${lvl} details">
+                    <div class="level-card-header" title="Click to ${isCollapsed ? "expand" : "collapse"} Level ${lvl} details">
                         <div class="level-header-title">
-                            <span class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" role="button" tabindex="0" title="${isUnlocked ? (lvl === charLevel ? `Click to lock ${cls.name} Level ${lvl}` : `Click to set ${cls.name} to Level ${lvl}`) : `Click to unlock ${cls.name} Level ${lvl}`}" data-class-index="${classIdx}" data-level="${lvl}">
-                                ${isUnlocked ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-lock"></i>`} Level ${lvl}
-                            </span>
+                            <button type="button" class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" title="${isUnlocked ? (lvl === charLevel ? `Click to lock ${cls.name} Level ${lvl}` : `Click to set ${cls.name} to Level ${lvl}`) : `Click to unlock ${cls.name} Level ${lvl}`}" data-class-index="${classIdx}" data-level="${lvl}">
+                                ${isUnlocked ? `<i class="fa-solid fa-check" aria-hidden="true"></i>` : `<i class="fa-solid fa-lock" aria-hidden="true"></i>`} Level ${lvl}<span class="visually-hidden">: ${isUnlocked ? (lvl === charLevel ? `lock ${cls.name} Level ${lvl}` : `set ${cls.name} to Level ${lvl}`) : `unlock ${cls.name} Level ${lvl}`}</span>
+                            </button>
                             <h4 class="level-title-text">${cls.name} Level ${lvl} Abilities</h4>
                         </div>
                         <div class="level-header-meta">

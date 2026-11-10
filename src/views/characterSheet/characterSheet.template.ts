@@ -21,7 +21,7 @@ import {
 const html = Helpers.html;
 
 const characterSheetTemplate = () => html`
-    <el-character-sheet>
+    <el-character-sheet role="main">
         <div class="content-slate">
             ${renderLoaderBar()}
             <div id="dnd-beyond-note" class="hidden">

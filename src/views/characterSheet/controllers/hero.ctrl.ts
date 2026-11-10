@@ -10,6 +10,7 @@ export function initHeroController(ctx: CharacterSheetContext) {
         inspirationToggle.addEventListener("click", () => {
             const nextActive = !inspirationToggle.classList.contains("active");
             inspirationToggle.classList.toggle("active", nextActive);
+            inspirationToggle.setAttribute("aria-pressed", String(nextActive));
 
             character.vitals.heroicInspiration = nextActive;
             if (!character.trackingState) {

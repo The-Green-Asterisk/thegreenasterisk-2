@@ -63,11 +63,11 @@ export function renderWeapons(data: CharacterData): string {
 
         const charges = w.charges ? renderUsesTracker(w.name, itemChargesKey(w), w.charges.max, w.charges.resetOn, w.charges.resetLabel) : '';
         const card = `
-            <div class="weapon-card ${w.equipped ? 'is-equipped' : ''} clickable-weapon-card" data-weapon-name="${encodeURIComponent(w.name)}" data-weapon-id="${w.definitionId || w.id || ''}" data-weapon-type="Weapon" tabindex="0" role="button" title="Click to view details and tiered info">
+            <div class="weapon-card ${w.equipped ? 'is-equipped' : ''} clickable-weapon-card" data-weapon-name="${encodeURIComponent(w.name)}" data-weapon-id="${w.definitionId || w.id || ''}" data-weapon-type="Weapon" title="Click to view details and tiered info">
                 <div class="weapon-card-header">
                     <div class="weapon-title-group">
                         <h4 class="weapon-name">
-                            <i class="fa-solid fa-khanda weapon-icon"></i> ${w.name}
+                            <i class="fa-solid fa-khanda weapon-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${w.name}</button>
                         </h4>
                         <span class="weapon-category">${w.category}</span>
                     </div>

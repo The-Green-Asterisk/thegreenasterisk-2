@@ -3220,4 +3220,40 @@ describe('Frontend View Templates', () => {
         expect(document.activeElement).toBe(btn);
         sheet.remove();
     });
+
+    it('keeps the sheet keyboard-usable: no nested controls, real buttons, and focus kept in open dialogs', async () => {
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+        const { initDialogFocus } = await import('../../../src/views/characterSheet/controllers/dialogFocus');
+        const sheet = document.createElement('div');
+        sheet.innerHTML = renderSheetContent(darvellData) + renderModals();
+        document.body.appendChild(sheet);
+
+        // Cards aren't buttons themselves; their names are, so the controls inside them aren't nested
+        expect(sheet.querySelectorAll('.equipment-row[role="button"], .weapon-card[role="button"], .action-card[role="button"]').length).toBe(0);
+        expect(sheet.querySelector('.equipment-row .card-open-btn')?.tagName).toBe('BUTTON');
+        expect(sheet.querySelector('.action-card .card-open-btn')?.tagName).toBe('BUTTON');
+        const inspiration = sheet.querySelector('#inspiration-toggle')!;
+        expect(inspiration.tagName).toBe('BUTTON');
+        expect(inspiration.getAttribute('aria-pressed')).toMatch(/true|false/);
+
+        // Tab wraps inside an open dialog and focus returns to the opener when it closes
+        initDialogFocus(sheet);
+        const opener = sheet.querySelector('.card-open-btn') as HTMLButtonElement;
+        opener.focus();
+        const dialog = sheet.querySelector('#action-modal-container') as HTMLElement;
+        dialog.classList.remove('hidden');
+        dialog.setAttribute('aria-hidden', 'false');
+        await new Promise(r => setTimeout(r, 0));
+        const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button'));
+        buttons[buttons.length - 1].focus();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+        expect(document.activeElement).toBe(buttons[0]);
+        dialog.classList.add('hidden');
+        dialog.setAttribute('aria-hidden', 'true');
+        await new Promise(r => setTimeout(r, 0));
+        expect(document.activeElement).toBe(opener);
+        sheet.remove();
+    });
 });

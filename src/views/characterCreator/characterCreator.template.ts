@@ -3,48 +3,66 @@ import Helpers from "@services/helpers";
 const html = Helpers.html;
 
 export const characterCreatorTemplate = () => html`
-    <el-character-creator class="character-creator-view">
+    <el-character-creator class="character-creator-view" role="main">
         <div class="creator-container content-slate">
-            <div class="creator-stepper" role="tablist" aria-label="Creation Steps">
+            <nav class="creator-stepper" aria-label="Creation steps">
                 <ol class="stepper-list" id="creator-stepper-list">
-                    <li class="stepper-item active" data-step="1">
-                        <span class="stepper-circle">1</span>
-                        <span class="stepper-label">Identity</span>
+                    <li>
+                        <button type="button" class="stepper-item active" data-step="1" aria-current="step">
+                            <span class="stepper-circle" aria-hidden="true">1</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 1: </span>Identity</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="2">
-                        <span class="stepper-circle">2</span>
-                        <span class="stepper-label">Species</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="2">
+                            <span class="stepper-circle" aria-hidden="true">2</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 2: </span>Species</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="3">
-                        <span class="stepper-circle">3</span>
-                        <span class="stepper-label">Class</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="3">
+                            <span class="stepper-circle" aria-hidden="true">3</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 3: </span>Class</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="4">
-                        <span class="stepper-circle">4</span>
-                        <span class="stepper-label">Background</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="4">
+                            <span class="stepper-circle" aria-hidden="true">4</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 4: </span>Background</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="5">
-                        <span class="stepper-circle">5</span>
-                        <span class="stepper-label">Abilities</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="5">
+                            <span class="stepper-circle" aria-hidden="true">5</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 5: </span>Abilities</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="6">
-                        <span class="stepper-circle">6</span>
-                        <span class="stepper-label">Skills</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="6">
+                            <span class="stepper-circle" aria-hidden="true">6</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 6: </span>Skills</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="7">
-                        <span class="stepper-circle">7</span>
-                        <span class="stepper-label">Equipment</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="7">
+                            <span class="stepper-circle" aria-hidden="true">7</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 7: </span>Equipment</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="8">
-                        <span class="stepper-circle">8</span>
-                        <span class="stepper-label">Spells</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="8">
+                            <span class="stepper-circle" aria-hidden="true">8</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 8: </span>Spells</span>
+                        </button>
                     </li>
-                    <li class="stepper-item" data-step="9">
-                        <span class="stepper-circle">9</span>
-                        <span class="stepper-label">Review</span>
+                    <li>
+                        <button type="button" class="stepper-item" data-step="9">
+                            <span class="stepper-circle" aria-hidden="true">9</span>
+                            <span class="stepper-label"><span class="visually-hidden">Step 9: </span>Review</span>
+                        </button>
                     </li>
                 </ol>
-            </div>
+            </nav>
 
             <header class="creator-header">
                 <div class="creator-header-main">

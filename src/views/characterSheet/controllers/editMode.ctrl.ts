@@ -32,6 +32,24 @@ export function parseClassInputString(str: string): Array<{ name: string; level:
     return parsed.length > 0 ? parsed : [{ name: trimmed, level: 1 }];
 }
 
+const INLINE_EDITOR_LABELS: Record<string, string> = {
+    name: "Character name",
+    race: "Species",
+    background: "Background",
+    alignment: "Alignment",
+    "vitals.currentHp": "Current hit points",
+    "vitals.maxHp": "Max HP",
+    "vitals.tempHp": "Temporary hit points"
+};
+
+/** An inline editor's accessible name: a known field's name, else its path in words ("vitals.armorClass" → "Armor class"). */
+export function inlineEditorLabel(path: string): string {
+    if (INLINE_EDITOR_LABELS[path]) return INLINE_EDITOR_LABELS[path];
+    const last = path.split(/[.[\]]/).filter(Boolean).pop() || path;
+    const words = last.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").toLowerCase();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function initEditModeController(ctx: CharacterSheetContext) {
     function parsePathSegments(path: string): Array<string | number> {
         const segments: Array<string | number> = [];
@@ -82,6 +100,8 @@ export function initEditModeController(ctx: CharacterSheetContext) {
         const input = document.createElement("input");
         input.className = "card-inline-editor";
         input.type = numeric ? "number" : "text";
+        // Inline editors replace the visible text, so they carry its name for screen readers (WCAG 4.1.2)
+        input.setAttribute("aria-label", inlineEditorLabel(path));
         input.value = value === null || value === undefined ? "" : String(value);
         input.style.textAlign = textAlign;
         input.addEventListener("input", () => {
@@ -196,6 +216,7 @@ export function initEditModeController(ctx: CharacterSheetContext) {
             classInput.value = classStr;
             classInput.placeholder = "e.g. Bard 9 (Glamour) / Warlock 10";
             classInput.title = "Class and Level (e.g. Bard 9 / Warlock 10)";
+            classInput.setAttribute("aria-label", "Classes and levels");
             classInput.style.width = "100%";
             classInput.style.maxWidth = "420px";
 
@@ -263,6 +284,7 @@ export function initEditModeController(ctx: CharacterSheetContext) {
             maxHpInput.value = String(activeCharacter.vitals.maxHp);
             maxHpInput.min = "1";
             maxHpInput.title = "Maximum Hit Points";
+            maxHpInput.setAttribute("aria-label", "Max HP");
             maxHpInput.addEventListener("input", () => {
                 const nextMax = Math.max(1, Number(maxHpInput.value || 1));
                 ctx.setMaxHp(nextMax);
@@ -303,6 +325,7 @@ export function initEditModeController(ctx: CharacterSheetContext) {
                 baseInput.min = "1";
                 baseInput.max = "30";
                 baseInput.title = "Base score (modifiers stack on top)";
+                baseInput.setAttribute("aria-label", `Base ${ctx.getCharacter()?.abilities[index]?.name || "ability"} score`);
 
                 const totalHint = document.createElement("span");
                 totalHint.className = "ability-total-hint";

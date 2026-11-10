@@ -160,6 +160,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
             const isSelected = chosen.includes(sp.name);
             return `
                                             <div class="item-check-row feature-spell-row ${isSelected ? "selected" : ""}"
+                                                 role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate
                                                  data-feature-section-id="${sec.id}"
                                                  data-spell-name="${sp.name}"
                                                  data-spell-school="${sp.school}"

@@ -16,14 +16,11 @@ export function renderActions(data: CharacterData): string {
             <div
                 class="action-card clickable-action-card ${action.spellName ? 'has-spell' : ''}"
                 data-action-index="${index}"
-                role="button"
-                tabindex="0"
-                aria-haspopup="dialog"
                 title="Click to view full action details"
             >
                 <div class="action-header">
                     <div>
-                        <h4 class="action-name">${action.name}</h4>
+                        <h4 class="action-name"><button type="button" class="card-open-btn" aria-haspopup="dialog">${action.name}</button></h4>
                         <span class="action-badge ${action.type.toLowerCase().replace(/ /g, '-')}">${action.type}</span>
                     </div>
                     ${spellBtn}

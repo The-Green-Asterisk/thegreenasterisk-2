@@ -62,6 +62,7 @@ export function initResourcesController(ctx: CharacterSheetContext) {
         ctx.updateSlotCounters();
         const inspirationToggle = ctx.sheet.querySelector<HTMLElement>("#inspiration-toggle");
         inspirationToggle?.classList.add("active");
+        inspirationToggle?.setAttribute("aria-pressed", "true");
         if (character) {
             character.vitals.heroicInspiration = true;
         }

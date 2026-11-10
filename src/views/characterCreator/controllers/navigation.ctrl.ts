@@ -189,6 +189,8 @@ export function goToStep(ctx: CharacterCreatorContext, step: number): void {
         const stepNum = Number(el.getAttribute("data-step"));
         el.classList.toggle("active", stepNum === step);
         el.classList.toggle("completed", stepNum < step);
+        if (stepNum === step) el.setAttribute("aria-current", "step");
+        else el.removeAttribute("aria-current");
     });
 
     // Update step counter text
@@ -212,6 +214,26 @@ export function goToStep(ctx: CharacterCreatorContext, step: number): void {
     ctx.updateLiveSummary();
     if (typeof window !== "undefined") {
         window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+}
+
+let keyboardActivationBound = false;
+
+/**
+ * Enter or Space activates option cards marked data-kbd-activate (role radio/checkbox), as a click would; focus
+ * returns to the same option after the step re-renders.
+ */
+function activateOptionFromKeyboard(e: KeyboardEvent): void {
+    if ((e.key !== "Enter" && e.key !== " ") || e.defaultPrevented) return;
+    const el = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-kbd-activate]");
+    if (!el || el !== e.target || el.getAttribute("aria-disabled") === "true") return;
+    e.preventDefault();
+    const kind = Array.from(el.classList).find((c) => c.endsWith("-card") || c.endsWith("-row")) || "";
+    const ids = Array.from(el.attributes).filter((a) => a.name.startsWith("data-") && a.name !== "data-kbd-activate");
+    el.click();
+    if (!document.contains(el)) {
+        const selector = `.${kind}${ids.map((a) => `[${a.name}="${CSS.escape(a.value)}"]`).join("")}`;
+        document.querySelector<HTMLElement>(selector)?.focus();
     }
 }
 
@@ -269,6 +291,11 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
         if (typeof document !== "undefined" && document.body) {
             navObserver.observe(document.body, { attributes: true, attributeFilter: ["style", "class"] });
         }
+    }
+
+    if (!keyboardActivationBound) {
+        keyboardActivationBound = true;
+        document.addEventListener("keydown", activateOptionFromKeyboard);
     }
 
     window.addEventListener("keydown", (e) => {

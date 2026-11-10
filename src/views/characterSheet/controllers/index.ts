@@ -16,3 +16,4 @@ export * from "./vitals.ctrl";
 export * from "./weapons.ctrl";
 
 export * from "./details.ctrl";
+export * from "./dialogFocus";

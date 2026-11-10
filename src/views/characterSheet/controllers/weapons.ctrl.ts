@@ -15,12 +15,6 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
         card.addEventListener("click", () => {
             void ctx.openItemModal(weaponName, weaponId || undefined, weaponType);
         });
-        card.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                void ctx.openItemModal(weaponName, weaponId || undefined, weaponType);
-            }
-        });
     });
 
     // Weapon equip toggle buttons

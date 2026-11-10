@@ -40,9 +40,9 @@ export function renderEquipment(data: CharacterData): string {
         const rarityBadge = !isMagic ? '' : (item.rarity && item.rarity !== 'Common' ? `<span class="item-badge rarity-${item.rarity.toLowerCase().replace(/\s+/g, '-')}">${item.rarity}</span>` : '');
         const charges = item.charges ? renderUsesTracker(item.name, itemChargesKey(item), item.charges.max, item.charges.resetOn, item.charges.resetLabel) : '';
         const card = `
-            <div class="equipment-row clickable-item-card" data-item-name="${encodeURIComponent(item.name)}" data-item-id="${item.definitionId || item.id || ''}" data-item-type="${item.type || ''}" tabindex="0" role="button" title="Click to view details and tiered info">
+            <div class="equipment-row clickable-item-card" data-item-name="${encodeURIComponent(item.name)}" data-item-id="${item.definitionId || item.id || ''}" data-item-type="${item.type || ''}" title="Click to view details and tiered info">
                 <div class="item-info">
-                    <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon"></i> ${item.name}</span>
+                    <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${item.name}</button></span>
                     <span class="item-type">${item.type}</span>
                 </div>
                 <div class="item-badges">
