@@ -114,17 +114,18 @@ They can sit on:
   - `"{{str}}"`…`"{{cha}}"`: ability modifiers, minimum 1 where resources use them
   - `"{{plus}}"`: an item's +N
 - `valueByLevel[classLevel]` (Unarmored Movement), `perClassLevel` (Tough's +2 HP per level).
-- `requires`: `"no-armor"`, `"no-heavy-armor"` or `"no-armor-or-shield"`. It limits the modifier to an armor state.
+- `requires`: `"no-armor"`, `"no-heavy-armor"`, `"no-armor-or-shield"`, or `"armor"`. It limits the modifier to an armor state.
 - `condition`: what an advantage applies to ("concentration", "charmed", ...).
 
 ### Targets and types that are read today
 
 | Stat | Target | Types | Notes / examples |
 |---|---|---|---|
-| Armor Class | `vitals.ac` | `unarmored_ac` (`abilities`, `allowsShield`), `bonus` (+`requires`) | Unarmored Defense, Draconic Resilience, Bracers of Defense, Cloak of Protection |
+| Armor Class | `vitals.ac` | `unarmored_ac` (`abilities`, `allowsShield`), `bonus` (+`requires`) | Unarmored Defense, Draconic Resilience, Bracers of Defense, Cloak of Protection, Defense (`requires: "armor"`) |
 | Armor Class | `vitals.ac.mediumArmorMaxDex` | `set` | Medium Armor Master |
 | Max HP | `vitals.maxHp` | `bonus` (`perClassLevel`) | Tough, Dwarven Toughness |
 | Speed | `vitals.speed` | `bonus` (`valueByLevel`, `requires`) | Unarmored Movement, Speedy |
+| Special speeds | `vitals.climb`, `vitals.swim`, `speeds.fly`, `vitals.fly` | `set` (`"walk"`, `"equal_walk"`, or number) | Athlete, Roving, Aquatic Affinity, Aspect of the Spider/Panther/Pike, Falcon |
 | Initiative | `vitals.initiative` | `bonus` (`"{{pb}}"`), `ability_mod`, `advantage` | Alert, Dread Ambusher; item advantage becomes a note |
 | Ability scores | `abilities.<ab>` | `set` (at least N), `bonus` | Belts, Amulet of Health, Ioun Stones (items) |
 | Saves | `saves.<ab>` | `proficiency_tier`, `bonus`, `advantage`/`disadvantage` (+`condition`) | Disciplined Survivor, War Caster |
@@ -134,12 +135,14 @@ They can sit on:
 | Checks | `checks.all` | `bonus` (items) | Luckstone |
 | Spells | `spells.attack`, `spells.dc` | `bonus` (items: best counts, no stacking) | Rod of the Pact Keeper `{{plus}}` |
 | Weapon attacks | `attacks.ranged`, `attacks.melee` | `bonus` | Archery |
-| Weapon damage | `damage.melee_one_handed`, `damage.thrown` | `bonus` | Dueling, Thrown Weapon Fighting |
+| Weapon attack floor | `attacks.two_handed_damage_floor` | `set` | Great Weapon Fighting (min 3 on damage dice) |
+| Weapon damage | `damage.melee_one_handed`, `damage.thrown`, `damage.offhand_ability_mod` | `bonus` | Dueling, Thrown Weapon Fighting, Two-Weapon Fighting |
+| Cantrip damage | `damage.cantrips`, `damage.eldritch_blast` | `ability_mod`, `bonus` | Potent Spellcasting (Cleric/Druid), Agonizing Blast |
 | Item's own +N | `item.plus` | `set` | Holy Avenger 3, Sun Blade 2, staves 2 |
 | Defenses | `defenses.resistance` (`immunity`, `vulnerability` on the options path) | `set` (`value` = damage type) | species lineages, Draconic Sorcery |
 | Special senses | `senses.<key>`, or `vitals.darkvision`/`blindsight`/`tremorsense`/`truesight`/`devilsSight` | `set` (at least N ft.), `bonus` (N ft. farther, or N ft.) + `label` for new senses | Umbral Sight, Devil's Sight, Goggles of Night |
 | Proficiencies | `proficiencies.armor.*`, `proficiencies.weapons.*` | `set` | applied on the options path only (`statModifierEvaluator`) |
-| Spells/features/actions | `spells.grant`, `spells.alwaysPrepared`, `spells.atWill`, `features.grant`, `actions.*` | `grant_spell`, `grant_feature`, `grant_action` | options path; prefer the structured fields below |
+| Spells/features/actions | `spells.grant`, `spells.alwaysPrepared`, `spells.atWill`, `features.grant`, `actions.*`, `reactions.*` | `grant_spell`, `grant_feature`, `grant_action` | options path (Protection, Interception); prefer the structured fields below |
 
 ### Structured fields beyond modifiers
 
@@ -238,14 +241,6 @@ New UI for data-driven features follows the same rules.
 
 ## Known gaps
 
-- **Targets in the seed data that nothing reads:**
-  - `vitals.swim`, `vitals.climb`, `speeds.fly`
-  - `damage.cantrips`
-  - `reactions.*`
-  - `attacks.two_handed_damage_floor` (Great Weapon Fighting)
-  - `damage.offhand_ability_mod` (Two-Weapon Fighting)
-- `ModifierTarget` declares `spells.saveDc`/`spells.attackBonus`, but the data and code use `spells.dc`/`spells.attack`. Use the latter.
-- The Defense fighting style's `vitals.ac` bonus has no "while wearing armor" `requires` value. Imports get it right from D&D Beyond's `armored-armor-class`.
 - Items that can be wielded as weapons ("can be wielded as a quarterstaff") are still detected from description text (`extractGrantedWeaponFromItem`).
 - Conditional item effects aren't expressible yet and were left out: Hammer of Thunderbolts, Defender, Boots of Speed.
 - Manuals and Tomes raise ability scores permanently when read. They aren't an equipped effect.
