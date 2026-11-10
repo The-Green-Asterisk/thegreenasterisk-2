@@ -266,7 +266,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
         lineages: [
             {
                 id: "abyssal", spellcastingAbilityOptions: ["int", "wis", "cha"], modifiers: [{ target: "defenses.resistance", type: "set", value: "poison" }],
-                name: "Abyssal (Chaotic Evil)",
+                name: "Abyssal Tiefling",
                 description: "Poison resistance, Poison Spray cantrip, Ray of Sickness at level 3, Hold Person at level 5.",
                 traits: [{ name: "Fiendish Legacy: Abyssal", description: "Resistance to Poison damage." }],
                 spellsGranted: [
@@ -277,7 +277,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 id: "chthonic", spellcastingAbilityOptions: ["int", "wis", "cha"], modifiers: [{ target: "defenses.resistance", type: "set", value: "necrotic" }],
-                name: "Chthonic (Neutral Evil)",
+                name: "Chthonic Tiefling",
                 description: "Necrotic resistance, Chill Touch cantrip, False Life at level 3, Ray of Enfeeblement at level 5.",
                 traits: [{ name: "Fiendish Legacy: Chthonic", description: "Resistance to Necrotic damage." }],
                 spellsGranted: [
@@ -288,7 +288,7 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 id: "infernal", spellcastingAbilityOptions: ["int", "wis", "cha"], modifiers: [{ target: "defenses.resistance", type: "set", value: "fire" }],
-                name: "Infernal (Lawful Evil)",
+                name: "Infernal Tiefling",
                 description: "Fire resistance, Fire Bolt cantrip, Hellish Rebuke at level 3, Darkness at level 5.",
                 traits: [{ name: "Fiendish Legacy: Infernal", description: "Resistance to Fire damage." }],
                 spellsGranted: [
