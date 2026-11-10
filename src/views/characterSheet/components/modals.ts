@@ -49,80 +49,453 @@ export function renderModals(): string {
         </div>
 
         <!-- ADD CUSTOM SPELL MODAL -->
-        <div id="custom-spell-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true">
+        <div id="custom-spell-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="custom-spell-title">
             <div class="spell-modal-dialog custom-spell-dialog">
                 <header class="spell-modal-header">
                     <div class="spell-modal-title-group">
-                        <h2 class="modal-spell-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Add Custom Spell</h2>
-                        <div class="modal-spell-sub">Saves into local database and attaches to active character sheet</div>
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Homebrew</span>
+                            <span class="modal-badge source-badge">Local Database</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="custom-spell-title">Add Custom Spell</h2>
+                        <div class="modal-spell-sub">Save a custom spell to your local database and attach it to your active sheet</div>
                     </div>
                     <button type="button" class="spell-modal-close" id="custom-spell-close-btn" aria-label="Close custom spell modal">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </header>
+
+                <div id="custom-spell-status" class="status-msg hidden" role="status" aria-live="polite"></div>
+
                 <form id="custom-spell-form" class="custom-spell-form">
-                    <div class="form-grid">
-                        <label class="form-field full-width">
-                            <span>Spell Name *</span>
-                            <input type="text" id="custom-spell-name" required placeholder="e.g. Eldritch Flash" />
-                        </label>
-                        <label class="form-field">
-                            <span>Level (0 for Cantrip) *</span>
-                            <input type="number" id="custom-spell-level" min="0" max="9" value="1" required />
-                        </label>
-                        <label class="form-field">
-                            <span>School *</span>
-                            <select id="custom-spell-school" required>
-                                <option value="Abjuration">Abjuration</option>
-                                <option value="Conjuration">Conjuration</option>
-                                <option value="Divination">Divination</option>
-                                <option value="Enchantment">Enchantment</option>
-                                <option value="Evocation" selected>Evocation</option>
-                                <option value="Illusion">Illusion</option>
-                                <option value="Necromancy">Necromancy</option>
-                                <option value="Transmutation">Transmutation</option>
-                            </select>
-                        </label>
-                        <label class="form-field">
-                            <span>Casting Time *</span>
-                            <input type="text" id="custom-spell-casting-time" value="1 action" required />
-                        </label>
-                        <label class="form-field">
-                            <span>Range *</span>
-                            <input type="text" id="custom-spell-range" value="60 feet" required />
-                        </label>
-                        <label class="form-field">
-                            <span>Duration *</span>
-                            <input type="text" id="custom-spell-duration" value="Instantaneous" required />
-                        </label>
-                        <label class="form-field">
-                            <span>Components</span>
-                            <input type="text" id="custom-spell-components" value="V, S" />
-                        </label>
-                        <div class="form-checkboxes full-width">
-                            <label class="form-inline-checkbox">
-                                <input type="checkbox" id="custom-spell-ritual" />
-                                <span>Ritual</span>
-                            </label>
-                            <label class="form-inline-checkbox">
-                                <input type="checkbox" id="custom-spell-concentration" />
-                                <span>Concentration</span>
+                    <div class="custom-spell-form-body">
+                        <!-- Basic Info Section -->
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <span class="form-section-title"><i class="fa-solid fa-sparkles"></i> Basic Information</span>
+                            </div>
+                            <div class="form-grid">
+                                <label class="form-field full-width">
+                                    <span class="form-label">Spell Name <span class="required-star">*</span></span>
+                                    <input type="text" id="custom-spell-name" required placeholder="e.g. Eldritch Flash" autocomplete="off" />
+                                </label>
+                                <label class="form-field">
+                                    <span class="form-label">Level (0 for Cantrip) <span class="required-star">*</span></span>
+                                    <input type="number" id="custom-spell-level" min="0" max="9" value="1" required />
+                                </label>
+                                <label class="form-field">
+                                    <span class="form-label">Magic School <span class="required-star">*</span></span>
+                                    <select id="custom-spell-school" required>
+                                        <option value="Abjuration">Abjuration</option>
+                                        <option value="Conjuration">Conjuration</option>
+                                        <option value="Divination">Divination</option>
+                                        <option value="Enchantment">Enchantment</option>
+                                        <option value="Evocation" selected>Evocation</option>
+                                        <option value="Illusion">Illusion</option>
+                                        <option value="Necromancy">Necromancy</option>
+                                        <option value="Transmutation">Transmutation</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Casting Properties Section -->
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <span class="form-section-title"><i class="fa-solid fa-stopwatch"></i> Casting &amp; Range</span>
+                            </div>
+                            <div class="form-grid">
+                                <label class="form-field">
+                                    <span class="form-label">Casting Time <span class="required-star">*</span></span>
+                                    <input type="text" id="custom-spell-casting-time" value="1 action" required placeholder="e.g. 1 action, 1 bonus action" />
+                                </label>
+                                <label class="form-field">
+                                    <span class="form-label">Range / Area <span class="required-star">*</span></span>
+                                    <input type="text" id="custom-spell-range" value="60 feet" required placeholder="e.g. Self, 60 feet, Touch" />
+                                </label>
+                                <label class="form-field">
+                                    <span class="form-label">Duration <span class="required-star">*</span></span>
+                                    <input type="text" id="custom-spell-duration" value="Instantaneous" required placeholder="e.g. Instantaneous, 1 minute" />
+                                </label>
+                                <label class="form-field">
+                                    <span class="form-label">Components</span>
+                                    <input type="text" id="custom-spell-components" value="V, S" placeholder="e.g. V, S, M (a pinch of sulfur)" />
+                                </label>
+                                <div class="form-checkboxes full-width">
+                                    <label class="form-toggle-pill" for="custom-spell-ritual">
+                                        <input type="checkbox" id="custom-spell-ritual" />
+                                        <span class="toggle-pill-ui">
+                                            <i class="fa-solid fa-book-skull"></i>
+                                            <span>Ritual Spell</span>
+                                        </span>
+                                    </label>
+                                    <label class="form-toggle-pill" for="custom-spell-concentration">
+                                        <input type="checkbox" id="custom-spell-concentration" />
+                                        <span class="toggle-pill-ui">
+                                            <i class="fa-solid fa-brain"></i>
+                                            <span>Requires Concentration</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Damage & Level Scaling Section -->
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <span class="form-section-title"><i class="fa-solid fa-burst"></i> Damage &amp; Level Scaling (Optional)</span>
+                            </div>
+                            <div class="form-checkboxes full-width">
+                                <label class="form-toggle-pill" for="custom-spell-has-damage">
+                                    <input type="checkbox" id="custom-spell-has-damage" />
+                                    <span class="toggle-pill-ui">
+                                        <i class="fa-solid fa-dice-d20"></i>
+                                        <span>Record Damage Dice, Damage Type &amp; Scaling Modifiers</span>
+                                    </span>
+                                </label>
+                            </div>
+                            <div id="custom-spell-damage-panel" class="custom-spell-damage-panel hidden">
+                                <div class="form-grid">
+                                    <label class="form-field">
+                                        <span class="form-label">Base Damage / Healing Dice</span>
+                                        <input type="text" id="custom-spell-damage-dice" placeholder="e.g. 2d8, 3d6, 1d10" autocomplete="off" />
+                                    </label>
+                                    <label class="form-field">
+                                        <span class="form-label">Damage Type</span>
+                                        <select id="custom-spell-damage-type">
+                                            <option value="Fire" selected>Fire</option>
+                                            <option value="Acid">Acid</option>
+                                            <option value="Bludgeoning">Bludgeoning</option>
+                                            <option value="Cold">Cold</option>
+                                            <option value="Force">Force</option>
+                                            <option value="Lightning">Lightning</option>
+                                            <option value="Necrotic">Necrotic</option>
+                                            <option value="Piercing">Piercing</option>
+                                            <option value="Poison">Poison</option>
+                                            <option value="Psychic">Psychic</option>
+                                            <option value="Radiant">Radiant</option>
+                                            <option value="Slashing">Slashing</option>
+                                            <option value="Thunder">Thunder</option>
+                                            <option value="Healing">Healing</option>
+                                            <option value="Typeless">Typeless / Other</option>
+                                        </select>
+                                    </label>
+                                    <label class="form-field">
+                                        <span class="form-label">Base Modifier (Optional)</span>
+                                        <input type="text" id="custom-spell-damage-mod" placeholder="e.g. +3 or {{modifier:cha}}" autocomplete="off" />
+                                    </label>
+                                    <label class="form-field">
+                                        <span class="form-label">Damage Scaling Mode</span>
+                                        <select id="custom-spell-scaling-type">
+                                            <option value="auto" selected>Auto (Character Level for Cantrips, Slot Level for Leveled)</option>
+                                            <option value="character">Character Level (Cantrips &amp; Level Scaling: 1st, 5th, 11th, 17th)</option>
+                                            <option value="slot">Spell Slot Level (1st–9th Level Slot Upcasting)</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div class="scaling-subhead">
+                                    <div class="scaling-subhead-info">
+                                        <span class="scaling-subhead-title" id="custom-spell-scaling-title"><i class="fa-solid fa-layer-group"></i> Modifiers &amp; Dice per Level</span>
+                                        <span class="form-field-hint" id="custom-spell-scaling-hint">Customize damage dice and modifiers for each level at which this spell scales.</span>
+                                    </div>
+                                    <div class="scaling-subhead-actions">
+                                        <button type="button" class="scaling-action-btn" id="custom-spell-autoscale-btn" title="Add +1 die for each higher level based on your base dice">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-scale (+1 die / tier)
+                                        </button>
+                                        <button type="button" class="scaling-action-btn secondary" id="custom-spell-reset-scaling-btn" title="Reset all levels to base damage dice and modifier">
+                                            <i class="fa-solid fa-rotate-left"></i> Reset to Base
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="scaling-table-wrap">
+                                    <table class="custom-spell-scaling-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="col-level" id="custom-spell-scaling-col-header">Scaling Level</th>
+                                                <th class="col-dice">Damage Dice</th>
+                                                <th class="col-mod">Modifier</th>
+                                                <th class="col-preview">Total Damage</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="custom-spell-scaling-tbody">
+                                            <!-- Dynamically generated rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Description Section -->
+                        <div class="form-section">
+                            <div class="form-section-header description-header">
+                                <span class="form-section-title"><i class="fa-solid fa-feather-pointed"></i> Spell Description <span class="required-star">*</span></span>
+                                <button type="button" class="markup-guide-btn" id="custom-spell-guide-btn" title="View D&amp;D Beyond description placeholders and rule tags guide">
+                                    <i class="fa-solid fa-circle-question"></i> Placeholder &amp; Tag Guide
+                                </button>
+                            </div>
+                            <p class="form-field-hint">
+                                Dynamic placeholders (like <code>{{savedc:cha}}</code> or <code>{{modifier:int}}</code>) and tags (like <code>[condition]Prone[/condition]</code> or <code>[rule]Advantage[/rule]</code>) are supported.
+                            </p>
+                            <label class="form-field full-width">
+                                <textarea id="custom-spell-description" rows="6" required placeholder="Describe what the spell does, saving throws, damage formulas, and upcasting benefits..."></textarea>
                             </label>
                         </div>
-                        <label class="form-field full-width">
-                            <span>Description *</span>
-                            <textarea id="custom-spell-description" rows="5" required placeholder="Describe what the spell does..."></textarea>
-                        </label>
-                        <label class="form-field full-width">
-                            <span>Illustration Image URL</span>
-                            <input type="url" id="custom-spell-image" placeholder="https://..." />
-                        </label>
+
+                        <!-- Media / Extras Section -->
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <span class="form-section-title"><i class="fa-solid fa-image"></i> Illustration (Optional)</span>
+                            </div>
+                            <div class="form-field full-width">
+                                <span class="form-label">Spell Artwork</span>
+                                <p class="form-field-hint">Upload an image file from your device or paste an external image URL.</p>
+                                <div class="custom-spell-image-controls">
+                                    <div class="custom-spell-image-input-wrap">
+                                        <input type="url" id="custom-spell-image" placeholder="Paste image URL (https://...)" autocomplete="off" />
+                                        <button type="button" class="custom-spell-upload-btn" id="custom-spell-upload-trigger-btn" title="Choose an image file from your device">
+                                            <i class="fa-solid fa-upload"></i> Upload Image
+                                        </button>
+                                        <input type="file" id="custom-spell-file-input" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" />
+                                    </div>
+                                    <div id="custom-spell-upload-status" class="custom-spell-upload-status hidden" role="status"></div>
+                                    <div id="custom-spell-image-preview-wrap" class="custom-spell-image-preview-wrap hidden">
+                                        <img id="custom-spell-image-preview" src="" alt="Spell illustration preview" />
+                                        <button type="button" id="custom-spell-image-clear-btn" class="custom-spell-image-clear-btn" title="Remove image">
+                                            <i class="fa-solid fa-xmark"></i> Clear Image
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <footer class="spell-modal-footer form-footer">
                         <button type="button" class="modal-action-btn secondary" id="custom-spell-cancel-btn">Cancel</button>
-                        <button type="submit" class="modal-action-btn primary" id="custom-spell-submit-btn">Save Spell</button>
+                        <button type="submit" class="modal-action-btn primary" id="custom-spell-submit-btn">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Spell
+                        </button>
                     </footer>
                 </form>
+            </div>
+        </div>
+
+        <!-- D&D BEYOND DESCRIPTION PLACEHOLDERS & TAGS GUIDE MODAL -->
+        <div id="markup-guide-modal-container" class="spell-modal-backdrop markup-guide-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="markup-guide-title">
+            <div class="spell-modal-dialog markup-guide-dialog">
+                <header class="spell-modal-header">
+                    <div class="spell-modal-title-group">
+                        <div class="modal-type-chips">
+                            <span class="modal-badge school-badge"><i class="fa-solid fa-code"></i> D&amp;D Beyond Markup</span>
+                            <span class="modal-badge source-badge">Syntax Reference</span>
+                        </div>
+                        <h2 class="modal-spell-title" id="markup-guide-title"><i class="fa-solid fa-book-bookmark"></i> Placeholders &amp; Rule Tags Guide</h2>
+                        <div class="modal-spell-sub">Dynamic character calculations and interactive pop-up links for your descriptions</div>
+                    </div>
+                    <button type="button" class="spell-modal-close" id="markup-guide-close-btn" aria-label="Close syntax guide">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </header>
+
+                <div class="spell-modal-body markup-guide-body">
+                    <!-- Intro banner -->
+                    <div class="guide-callout info">
+                        <i class="fa-solid fa-circle-info guide-callout-icon"></i>
+                        <div>
+                            <strong>Live Dynamic Evaluation:</strong> Text wrapped in double curly braces <code>{{...}}</code> automatically pulls from the active character's stats (scores, modifiers, DC, level, proficiency bonus). Bracketed tags <code>[...]...[/...]</code> automatically render interactive buttons (for conditions, spells, items) or official rules glossary links.
+                        </div>
+                    </div>
+
+                    <!-- Category 1: Dynamic Placeholders -->
+                    <section class="guide-section">
+                        <h3 class="guide-section-title"><i class="fa-solid fa-calculator"></i> Dynamic Value Placeholders</h3>
+                        <p class="guide-section-desc">Replaced with live calculated values based on the character sheet.</p>
+                        
+                        <div class="guide-table-wrap">
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>Placeholder</th>
+                                        <th>What It Calculates</th>
+                                        <th>Example Output</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>{{savedc:cha}}</code></td>
+                                        <td>Spell Save DC using specified stat (8 + PB + Mod). Use multiple stats like <code>{{savedc:wis,int}}</code> to pick the highest.</td>
+                                        <td><span class="guide-sample-val">15</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{spellattack:int}}</code></td>
+                                        <td>Spell Attack modifier (PB + Mod). Pre-pends <code>+</code> or <code>-</code>.</td>
+                                        <td><span class="guide-sample-val">+7</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{modifier:cha}}</code></td>
+                                        <td>Ability modifier for <code>str</code>, <code>dex</code>, <code>con</code>, <code>int</code>, <code>wis</code>, or <code>cha</code>.</td>
+                                        <td><span class="guide-sample-val">+4</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{score:con}}</code></td>
+                                        <td>Raw ability score (e.g. 10, 14, 18).</td>
+                                        <td><span class="guide-sample-val">16</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{proficiency}}</code> or <code>{{pb}}</code></td>
+                                        <td>Character's Proficiency Bonus.</td>
+                                        <td><span class="guide-sample-val">+3</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{classlevel}}</code></td>
+                                        <td>Level in the spellcasting or feature source class.</td>
+                                        <td><span class="guide-sample-val">5</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{characterlevel}}</code></td>
+                                        <td>Total character level across all classes.</td>
+                                        <td><span class="guide-sample-val">7</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{scalevalue}}</code></td>
+                                        <td>Scale die/value for the feature (e.g. Sneak Attack, Bardic Inspiration).</td>
+                                        <td><span class="guide-sample-val">1d8</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{limiteduse}}</code></td>
+                                        <td>Max resource uses (or spellcasting mod, min 1).</td>
+                                        <td><span class="guide-sample-val">4</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>{{maxhp}}</code>, <code>{{speed}}</code></td>
+                                        <td>Character vitals (Maximum Hit Points, Walk Speed in feet).</td>
+                                        <td><span class="guide-sample-val">42</span>, <span class="guide-sample-val">30</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Formatting & Math Flags -->
+                        <div class="guide-subsection">
+                            <h4 class="guide-subsection-title"><i class="fa-solid fa-square-root-variable"></i> Math Formulas &amp; Formatting Modifiers</h4>
+                            <div class="guide-cards-grid">
+                                <div class="guide-card">
+                                    <div class="guide-card-header">
+                                        <code>{{(classlevel/2)@rounddown}}</code>
+                                    </div>
+                                    <div class="guide-card-body">
+                                        Calculates half level rounded down (e.g. Level 5 becomes 2). Supports <code>@rounddown</code>, <code>@roundup</code>, or <code>@round</code>.
+                                    </div>
+                                </div>
+                                <div class="guide-card">
+                                    <div class="guide-card-header">
+                                        <code>{{((classlevel-1)/7)@rounddown,min:1}}</code>
+                                    </div>
+                                    <div class="guide-card-body">
+                                        Nested arithmetic with minimum or maximum bounds using <code>,min:N</code> or <code>,max:N</code>.
+                                    </div>
+                                </div>
+                                <div class="guide-card">
+                                    <div class="guide-card-header">
+                                        <code>{{(13+modifier:dex)#unsigned}}</code>
+                                    </div>
+                                    <div class="guide-card-body">
+                                        Calculates armor/save formula without a leading plus sign using the <code>#unsigned</code> flag.
+                                    </div>
+                                </div>
+                                <div class="guide-card">
+                                    <div class="guide-card-header">
+                                        <code>{{modifier:str+proficiency}}</code>
+                                    </div>
+                                    <div class="guide-card-body">
+                                        Adds multiple dynamic stats together with signed formatting.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Category 2: Interactive Tags -->
+                    <section class="guide-section">
+                        <h3 class="guide-section-title"><i class="fa-solid fa-tags"></i> Interactive Rule &amp; Content Tags</h3>
+                        <p class="guide-section-desc">Wrap keywords in bracketed tags to turn them into clickable pop-ups or rules links.</p>
+
+                        <div class="guide-table-wrap">
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tag Syntax</th>
+                                        <th>Action &amp; Target</th>
+                                        <th>Preview</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>[condition]Prone[/condition]</code></td>
+                                        <td>Opens the interactive condition details dialog for any 5e condition.</td>
+                                        <td><span class="guide-badge-sample condition"><i class="fa-solid fa-circle-exclamation"></i> Prone</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[spell]Fireball[/spell]</code></td>
+                                        <td>Opens the spell details card from the database.</td>
+                                        <td><span class="guide-badge-sample spell"><i class="fa-solid fa-wand-magic-sparkles"></i> Fireball</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[item]Potion of Healing[/item]</code></td>
+                                        <td>Opens the item/equipment detail modal. Also supports <code>[weapon]</code> and <code>[armor]</code>.</td>
+                                        <td><span class="guide-badge-sample item"><i class="fa-solid fa-shield-halved"></i> Potion of Healing</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[rule]Advantage[/rule]</code></td>
+                                        <td>Links to the 2024 D&amp;D Rules Glossary for rules, cover, combat, etc.</td>
+                                        <td><span class="guide-badge-sample rule"><i class="fa-solid fa-book"></i> Advantage</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[action]Disengage[/action]</code></td>
+                                        <td>Links to the action definition (Dash, Disengage, Dodge, Help, Hide, Ready, etc.).</td>
+                                        <td><span class="guide-badge-sample action"><i class="fa-solid fa-bolt"></i> Disengage</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[skill]Stealth[/skill]</code></td>
+                                        <td>Links to skill checks, senses (<code>[sense]Darkvision[/sense]</code>), or masteries (<code>[mastery]Push[/mastery]</code>).</td>
+                                        <td><span class="guide-badge-sample rule"><i class="fa-solid fa-book"></i> Stealth</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[feat]War Caster[/feat]</code></td>
+                                        <td>Links directly to the D&amp;D Beyond Feats glossary.</td>
+                                        <td><span class="guide-badge-sample feat"><i class="fa-solid fa-medal"></i> War Caster</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>[condition]incapacitated;stunned[/condition]</code></td>
+                                        <td><strong>Custom label:</strong> Use a semicolon <code>[tag]target;display_label[/tag]</code> to link to a rule while displaying custom wording.</td>
+                                        <td><span class="guide-badge-sample condition"><i class="fa-solid fa-circle-exclamation"></i> stunned</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Category 3: Live Example -->
+                    <section class="guide-section">
+                        <div class="guide-example-header">
+                            <h3 class="guide-section-title"><i class="fa-solid fa-flask"></i> Complete Example</h3>
+                            <button type="button" class="guide-copy-btn" id="markup-guide-copy-example-btn" title="Copy snippet to clipboard">
+                                <i class="fa-regular fa-copy"></i> Copy Example
+                            </button>
+                        </div>
+                        <div class="guide-code-box" id="markup-guide-example-text">You unleash a flash of twilight energy. Each creature in a 15-foot cube must make a Dexterity saving throw (DC {{savedc:cha}}). On a failed save, a target takes 2d8 + {{modifier:cha#unsigned}} Radiant damage and has the [condition]Blinded[/condition] condition until the start of your next turn. On a successful save, it takes half as much damage and isn't blinded.
+
+If you take the [action]Disengage[/action] action before casting this spell, your [skill]Stealth[/skill] checks have [rule]Advantage[/rule] for 1 minute.</div>
+                    </section>
+                </div>
+
+                <footer class="spell-modal-footer">
+                    <span class="modal-footer-source">D&amp;D 5.5 / 2024 Rules Compatible</span>
+                    <button type="button" class="modal-action-btn primary" id="markup-guide-done-btn">
+                        <i class="fa-solid fa-check"></i> Got It
+                    </button>
+                </footer>
             </div>
         </div>
 
