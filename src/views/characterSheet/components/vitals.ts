@@ -1,6 +1,6 @@
-import { escapeText } from "./details";
 import { effectsForAllSaves, rowText } from "../../../rules/dnd5e_2024/saveEffects";
 import { CharacterData } from "../characterData";
+import { escapeText } from "./details";
 
 
 interface BadgeSvgConfig {
@@ -373,4 +373,75 @@ export function renderSpecialSensesList(data: CharacterData): string {
                         <div class="special-sense-row"><span>Truesight</span><strong class="sense-truesight-val">${formatSense(data.vitals.truesight)}</strong></div>
                         ${(data.vitals.otherSenses || []).map((s) => `<div class="special-sense-row" data-sense="${escapeText(s.key)}"><span>${escapeText(s.label)}</span><strong>${escapeText(formatSense(s.range))}</strong></div>`).join("")}
                     `;
+}
+
+/** Sticky Vitals Bar that morphs into view when scrolling past the vitals section */
+export function renderStickyVitalsBar(data: CharacterData): string {
+    const currentHp = Number(data.vitals.currentHp) || 0;
+    const maxHp = Math.max(1, Number(data.vitals.maxHp) || 1);
+    const tempHp = Number(data.vitals.tempHp) || 0;
+    const isDying = currentHp === 0;
+    const percentage = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));
+
+    return `
+        <aside id="sticky-vitals-bar" class="sticky-vitals-bar ${isDying ? 'is-dying' : ''}" aria-label="Quick Vitals Bar" title="Click bar to scroll to top">
+            <div class="sticky-vital-hp ${isDying ? 'is-dying' : ''}">
+                <div class="sticky-hp-header">
+                    <span class="sticky-hp-title"><i class="fa-solid fa-heart-pulse"></i> HP</span>
+                    <span class="sticky-hp-ratio" id="sticky-hp-ratio">${currentHp} / ${maxHp} Max${tempHp > 0 ? ` (+${tempHp} Temp)` : ''}</span>
+                    <span class="sticky-hp-dying-badge ${isDying ? '' : 'hidden'}" id="sticky-hp-dying-badge" style="${isDying ? '' : 'display: none;'}">DYING</span>
+                </div>
+                <div class="sticky-hp-gauge">
+                    <div class="sticky-hp-bar-fill" id="sticky-hp-bar-fill" style="width: ${percentage}%;"></div>
+                </div>
+                <div class="sticky-hp-controls">
+                    <button type="button" class="hp-btn sticky-hp-btn" data-hp-delta="-5" title="Subtract 5 HP">-5</button>
+                    <button type="button" class="hp-btn sticky-hp-btn" data-hp-delta="-1" title="Subtract 1 HP">-1</button>
+                    <div class="hp-input-cluster sticky-hp-input-cluster">
+                        <label class="hp-input-wrap sticky-hp-input-wrap" title="Current hit points">
+                            <span class="hp-input-label">HP</span>
+                            <input id="sticky-hp-display" class="hp-value-input sticky-hp-value-input hp-current-input" type="number" min="0" max="${data.vitals.maxHp}" step="1" value="${currentHp}" aria-label="Current hit points" />
+                        </label>
+                        <label class="hp-input-wrap sticky-hp-input-wrap" title="Temporary hit points">
+                            <span class="hp-input-label">Temp</span>
+                            <input id="sticky-temp-hp-display" class="hp-value-input sticky-hp-value-input temp-hp-input" type="number" min="0" step="1" value="${tempHp}" aria-label="Temporary hit points" />
+                        </label>
+                    </div>
+                    <button type="button" class="hp-btn sticky-hp-btn" data-hp-delta="1" title="Add 1 HP">+1</button>
+                    <button type="button" class="hp-btn sticky-hp-btn" data-hp-delta="5" title="Add 5 HP">+5</button>
+                </div>
+            </div>
+
+            <div class="sticky-vitals-badges">
+                <div class="sticky-vital-badge sticky-vital-ac" title="Armor Class">
+                    <div class="sticky-vital-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="sticky-vital-content">
+                        <div class="sticky-vital-val" id="sticky-vital-ac-val">${data.vitals.armorClass}</div>
+                        <div class="sticky-vital-label">AC</div>
+                    </div>
+                </div>
+
+                <div class="sticky-vital-badge sticky-vital-dc" title="Spell Save DC">
+                    <div class="sticky-vital-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <div class="sticky-vital-content">
+                        <div class="sticky-vital-val" id="sticky-vital-dc-val">${data.vitals.spellSaveDc}</div>
+                        <div class="sticky-vital-label">SAVE DC</div>
+                    </div>
+                </div>
+
+                <div class="sticky-vital-badge sticky-vital-attack" title="Spell Attack Bonus">
+                    <div class="sticky-vital-icon"><i class="fa-solid fa-crosshairs"></i></div>
+                    <div class="sticky-vital-content">
+                        <div class="sticky-vital-val" id="sticky-vital-attack-val">+${data.vitals.spellAttackBonus}</div>
+                        <div class="sticky-vital-label">SPELL ATK</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sticky-vitals-scroll-cue" aria-hidden="true" title="Click bar to scroll to top">
+                <i class="fa-solid fa-chevron-up"></i>
+                <span class="sticky-scroll-text">TOP</span>
+            </div>
+        </aside>
+    `;
 }

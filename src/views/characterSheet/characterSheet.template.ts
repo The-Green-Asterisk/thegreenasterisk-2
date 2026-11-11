@@ -7,12 +7,13 @@ import {
     renderHeroSection,
     renderLoaderBar,
     renderModals,
+    renderSavingThrowNotes,
     renderSheetContent,
     renderSkills,
     renderSpellCard,
     renderSpellSlotsAndResources,
     renderSpellsByLevel,
-    renderSavingThrowNotes,
+    renderStickyVitalsBar,
     renderVitalsSection,
     renderWeapons
 } from "./components/index";
@@ -47,13 +48,11 @@ export {
     renderFeatures,
     renderHeroSection,
     renderLoaderBar,
-    renderModals,
-    renderSheetContent,
+    renderModals, renderSavingThrowNotes, renderSheetContent,
     renderSkills,
     renderSpellCard,
     renderSpellSlotsAndResources,
-    renderSpellsByLevel,
-    renderSavingThrowNotes,
+    renderSpellsByLevel, renderStickyVitalsBar,
     renderVitalsSection,
     renderWeapons
 };

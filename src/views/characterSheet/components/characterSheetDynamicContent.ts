@@ -8,7 +8,7 @@ import { renderHeroSection } from "./hero";
 import { renderSpellSlotsAndResources } from "./resources";
 import { renderSkills } from "./skills";
 import { describePreparedByClass, getCharacterSpellLevelLimits, renderSpellsByLevel } from "./spells";
-import { renderSavingThrowNotes, renderVitalsSection } from "./vitals";
+import { renderSavingThrowNotes, renderStickyVitalsBar, renderVitalsSection } from "./vitals";
 import { renderWeapons } from "./weapons";
 
 export function renderSheetContent(data: CharacterData): string {
@@ -21,6 +21,7 @@ export function renderSheetContent(data: CharacterData): string {
     const highLevelCount = spellsList.filter(s => s.level >= 4).length;
 
     return `
+        ${renderStickyVitalsBar(data)}
         ${renderHeroSection(data)}
 
         <section class="vitals-section" aria-label="Core Combat Statistics">

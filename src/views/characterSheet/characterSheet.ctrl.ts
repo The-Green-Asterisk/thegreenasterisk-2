@@ -228,6 +228,47 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 hpBarFill.style.backgroundColor = "#10b981";
             }
         }
+
+        const stickyHpDisplay = sheet.querySelector<HTMLInputElement>("#sticky-hp-display");
+        const stickyTempHpDisplay = sheet.querySelector<HTMLInputElement>("#sticky-temp-hp-display");
+        const stickyHpRatio = sheet.querySelector<HTMLElement>("#sticky-hp-ratio");
+        const stickyHpBarFill = sheet.querySelector<HTMLElement>("#sticky-hp-bar-fill");
+        const stickyBar = sheet.querySelector<HTMLElement>("#sticky-vitals-bar");
+        const stickyHpModule = sheet.querySelector<HTMLElement>(".sticky-vital-hp");
+        const stickyDyingBadge = sheet.querySelector<HTMLElement>("#sticky-hp-dying-badge");
+
+        if (stickyBar) {
+            stickyBar.classList.toggle("is-dying", isDying);
+        }
+        if (stickyHpModule) {
+            stickyHpModule.classList.toggle("is-dying", isDying);
+        }
+        if (stickyDyingBadge) {
+            stickyDyingBadge.classList.toggle("hidden", !isDying);
+            stickyDyingBadge.style.display = isDying ? "" : "none";
+        }
+        if (stickyHpDisplay) {
+            stickyHpDisplay.value = currentHp.toString();
+            stickyHpDisplay.max = String(maxHp);
+        }
+        if (stickyTempHpDisplay) {
+            stickyTempHpDisplay.value = tempHp.toString();
+        }
+        if (stickyHpRatio) {
+            stickyHpRatio.textContent = `${currentHp} / ${maxHp} Max${tempHp > 0 ? ` (+${tempHp} Temp)` : ''}`;
+        }
+        if (stickyHpBarFill) {
+            const percentage = Math.max(0, Math.min(100, Math.round((currentHp / Math.max(1, maxHp)) * 100)));
+            stickyHpBarFill.style.width = `${percentage}%`;
+            if (percentage <= 25) {
+                stickyHpBarFill.style.backgroundColor = "#ef4444";
+            } else if (percentage <= 50) {
+                stickyHpBarFill.style.backgroundColor = "#f59e0b";
+            } else {
+                stickyHpBarFill.style.backgroundColor = "#10b981";
+            }
+        }
+
         if (activeCharacter) {
             activeCharacter.vitals.currentHp = currentHp;
             activeCharacter.vitals.tempHp = tempHp;
@@ -836,6 +877,14 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         if (invEl) invEl.textContent = String(char.vitals.passiveInvestigation);
         const insEl = sheet.querySelector<HTMLElement>(".vital-passive-insight .vital-val, .sense-passive-insight-val");
         if (insEl) insEl.textContent = String(char.vitals.passiveInsight);
+
+        // Update sticky vitals bar stats if rendered
+        const stickyAcEl = sheet.querySelector<HTMLElement>("#sticky-vital-ac-val");
+        if (stickyAcEl) stickyAcEl.textContent = String(char.vitals.armorClass);
+        const stickyDcEl = sheet.querySelector<HTMLElement>("#sticky-vital-dc-val");
+        if (stickyDcEl) stickyDcEl.textContent = String(char.vitals.spellSaveDc);
+        const stickyAtkEl = sheet.querySelector<HTMLElement>("#sticky-vital-attack-val");
+        if (stickyAtkEl) stickyAtkEl.textContent = `+${char.vitals.spellAttackBonus}`;
 
         updateHpDisplay();
 

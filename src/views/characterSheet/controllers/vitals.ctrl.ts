@@ -26,8 +26,34 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.scheduleDebouncedAutoSave();
     });
 
+    // Sticky vitals bar HP input listeners
+    const stickyHpDisplay = ctx.sheet.querySelector<HTMLInputElement>("#sticky-hp-display");
+    const stickyTempHpDisplay = ctx.sheet.querySelector<HTMLInputElement>("#sticky-temp-hp-display");
+
+    stickyHpDisplay?.addEventListener("input", (e) => {
+        e.stopPropagation();
+        const maxHp = ctx.getMaxHp();
+        const next = Number(stickyHpDisplay.value);
+        const resolved = Number.isFinite(next) ? Math.max(0, Math.min(maxHp, Math.round(next))) : 0;
+        ctx.setCurrentHp(resolved);
+        ctx.updateHpDisplay();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    });
+
+    stickyTempHpDisplay?.addEventListener("input", (e) => {
+        e.stopPropagation();
+        const next = Number(stickyTempHpDisplay.value);
+        const resolved = Number.isFinite(next) ? Math.max(0, Math.round(next)) : 0;
+        ctx.setTempHp(resolved);
+        ctx.updateHpDisplay();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    });
+
     ctx.sheet.querySelectorAll<HTMLButtonElement>("[data-hp-delta]").forEach(btn => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
             const delta = Number(btn.getAttribute("data-hp-delta"));
             if (isNaN(delta)) return;
             ctx.applyHpDelta(delta);
@@ -36,6 +62,57 @@ export function initVitalsController(ctx: CharacterSheetContext) {
             ctx.scheduleDebouncedAutoSave();
         });
     });
+
+    // Sticky vitals bar scroll-to-top on click, preserving input/button interaction
+    const stickyBar = ctx.sheet.querySelector<HTMLElement>("#sticky-vitals-bar");
+    stickyBar?.querySelectorAll<HTMLElement>("input, label, button").forEach(el => {
+        el.addEventListener("click", (e) => e.stopPropagation());
+    });
+
+    stickyBar?.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest("button, input, label")) {
+            return;
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    // Sticky bar scroll detection: morph into sticky bar when scrolling past the vitals section
+    function getNavBottom(): number {
+        const nav = document.getElementById("site-nav");
+        if (!nav) return 0;
+        const isHidden = nav.style.display === "none" || window.getComputedStyle(nav).display === "none";
+        if (isHidden) return 0;
+        const rect = nav.getBoundingClientRect();
+        return rect.bottom > 0 ? Math.ceil(rect.bottom) : 0;
+    }
+
+    function checkStickyVitals() {
+        const bar = ctx.sheet.querySelector<HTMLElement>("#sticky-vitals-bar");
+        const vitalsSection = ctx.sheet.querySelector<HTMLElement>(".vitals-section");
+        if (!bar || !vitalsSection) return;
+
+        const navBottom = getNavBottom();
+        bar.style.top = `${navBottom}px`;
+
+        const vitalsRect = vitalsSection.getBoundingClientRect();
+        // Morphs into sticky bar when the sheet scrolls past the vitals section
+        const isPast = vitalsRect.bottom <= navBottom;
+        bar.classList.toggle("is-sticky", isPast);
+    }
+
+    const sheetWithScroll = ctx.sheet as HTMLElement & { _stickyVitalsScrollHandler?: () => void };
+    if (sheetWithScroll._stickyVitalsScrollHandler) {
+        window.removeEventListener("scroll", sheetWithScroll._stickyVitalsScrollHandler);
+        window.removeEventListener("resize", sheetWithScroll._stickyVitalsScrollHandler);
+        document.removeEventListener("fullscreenchange", sheetWithScroll._stickyVitalsScrollHandler);
+    }
+    sheetWithScroll._stickyVitalsScrollHandler = checkStickyVitals;
+    window.addEventListener("scroll", checkStickyVitals, { passive: true });
+    window.addEventListener("resize", checkStickyVitals, { passive: true });
+    document.addEventListener("fullscreenchange", checkStickyVitals, { passive: true });
+
+    checkStickyVitals();
 
     // Death Saves Mechanism
     const rollBtn = ctx.sheet.querySelector<HTMLButtonElement>("#death-save-roll-btn");
