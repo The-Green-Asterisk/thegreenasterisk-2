@@ -205,10 +205,10 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
                         <div class="pdf-sense-item"><strong>${data.vitals.passiveInvestigation}</strong> Passive Investigation</div>
                         <div class="pdf-sense-item"><strong>${data.vitals.passiveInsight}</strong> Passive Insight</div>
                         ${(() => {
-                            // Every sense the character has (none listed as "None"), including senses added by rules data
-                            const senses = listSenses(data.vitals).map((s) => `${s.label} ${s.range}`);
-                            return senses.length ? `<div class="pdf-sense-item"><strong>Senses:</strong> ${escapeHtml(senses.join(", "))}</div>` : "";
-                        })()}
+            // Every sense the character has (none listed as "None"), including senses added by rules data
+            const senses = listSenses(data.vitals).map((s) => `${s.label} ${s.range}`);
+            return senses.length ? `<div class="pdf-sense-item"><strong>Senses:</strong> ${escapeHtml(senses.join(", "))}</div>` : "";
+        })()}
                     </div>
                 </div>
 
