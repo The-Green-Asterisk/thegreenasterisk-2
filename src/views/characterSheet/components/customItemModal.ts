@@ -151,8 +151,11 @@ export function renderCustomItemModal(kind: CustomItemKind): string {
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-header">
+                            <div class="form-section-header description-header">
                                 <span class="form-section-title"><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i> Description <span class="required-star">*</span></span>
+                                <button type="button" class="markup-guide-btn" id="${p}-guide-btn" aria-haspopup="dialog" title="View D&amp;D Beyond description placeholders and rule tags guide">
+                                    <i class="fa-solid fa-circle-question" aria-hidden="true"></i> Placeholder &amp; Tag Guide
+                                </button>
                             </div>
                             <p class="form-field-hint" id="${p}-description-hint">
                                 Dynamic placeholders (like <code>{{modifier:str}}</code>) and tags (like <code>[condition]Prone[/condition]</code>) are supported.

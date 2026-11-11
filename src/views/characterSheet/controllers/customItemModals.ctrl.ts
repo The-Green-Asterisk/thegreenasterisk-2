@@ -105,6 +105,11 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
     // True while the dialog shows effects the item follows by name (the seed list) rather than its own
     const effectsFromRule: Record<CustomItemKind, boolean> = { "weapon": false, "magic-item": false };
 
+    const markupGuideOpen = () => {
+        const guide = sheet.querySelector<HTMLElement>("#markup-guide-modal-container");
+        return !!guide && !guide.classList.contains("hidden");
+    };
+
     const isOpen = (kind: CustomItemKind) => {
         const modal = q(kind, "modal-container");
         return !!modal && !modal.classList.contains("hidden");
@@ -210,6 +215,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
     function close(kind: CustomItemKind) {
         const modal = q(kind, "modal-container");
         if (!modal) return;
+        if (markupGuideOpen()) ctx.closeMarkupGuideModal();
         modal.classList.remove("visible");
         modal.classList.add("hidden");
         modal.setAttribute("aria-hidden", "true");
@@ -370,6 +376,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         if (!modal) continue;
 
         q(kind, "close-btn")?.addEventListener("click", () => close(kind));
+        q<HTMLButtonElement>(kind, "guide-btn")?.addEventListener("click", () => ctx.openMarkupGuideModal());
         q(kind, "cancel-btn")?.addEventListener("click", () => close(kind));
         modal.addEventListener("click", (event) => {
             if (event.target === modal) close(kind);
@@ -421,7 +428,8 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
     }
 
     document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
+        // With the guide open over the dialog, Escape closes just the guide (the sheet's own handler does that)
+        if (event.key !== "Escape" || markupGuideOpen()) return;
         const openKind = KINDS.find(isOpen);
         if (openKind) close(openKind);
     });
