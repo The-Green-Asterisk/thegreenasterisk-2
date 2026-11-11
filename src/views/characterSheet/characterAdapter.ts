@@ -2518,18 +2518,18 @@ export function ensureBaseScoresOnCharacter(character: CharacterData, rawPayload
 
             // General regex matching: e.g. "Charisma score increases by 2", "+1 Charisma", "increase your Charisma score by 1"
             const statRegexes: Array<[string, RegExp]> = [
-                ["STR", /(?:\+([1-4])\s+strength|strength\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
-                ["DEX", /(?:\+([1-4])\s+dexterity|dexterity\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
-                ["CON", /(?:\+([1-4])\s+constitution|constitution\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
-                ["INT", /(?:\+([1-4])\s+intelligence|intelligence\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
-                ["WIS", /(?:\+([1-4])\s+wisdom|wisdom\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i],
-                ["CHA", /(?:\+([1-4])\s+charisma|charisma\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4]))/i]
+                ["STR", /(?:\+([1-4])\s+strength|strength\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4])|increase\s+(?:your\s+)?strength\s+(?:score\s+)?by\s+([1-4])|increase\s+[^.\n\r]*by\s+([1-4])[^.\n\r]*\(?\s*strength)/i],
+                ["DEX", /(?:\+([1-4])\s+dexterity|dexterity\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4])|increase\s+(?:your\s+)?dexterity\s+(?:score\s+)?by\s+([1-4])|increase\s+[^.\n\r]*by\s+([1-4])[^.\n\r]*\(?\s*dexterity)/i],
+                ["CON", /(?:\+([1-4])\s+constitution|constitution\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4])|increase\s+(?:your\s+)?constitution\s+(?:score\s+)?by\s+([1-4])|increase\s+[^.\n\r]*by\s+([1-4])[^.\n\r]*\(?\s*constitution)/i],
+                ["INT", /(?:\+([1-4])\s+intelligence|intelligence\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4])|increase\s+(?:your\s+)?intelligence\s+(?:score\s+)?by\s+([1-4])|increase\s+[^.\n\r]*by\s+([1-4])[^.\n\r]*\(?\s*intelligence)/i],
+                ["WIS", /(?:\+([1-4])\s+wisdom|wisdom\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4])|increase\s+(?:your\s+)?wisdom\s+(?:score\s+)?by\s+([1-4])|increase\s+[^.\n\r]*by\s+([1-4])[^.\n\r]*\(?\s*wisdom)/i],
+                ["CHA", /(?:\+([1-4])\s+charisma|charisma\s+(?:score\s+)?(?:increases?|is\s+increased)\s+by\s+([1-4])|increase\s+(?:your\s+)?charisma\s+(?:score\s+)?by\s+([1-4])|increase\s+[^.\n\r]*by\s+([1-4])[^.\n\r]*\(?\s*charisma)/i]
             ];
 
             for (const [abbr, regex] of statRegexes) {
                 const match = regex.exec(text);
                 if (match) {
-                    const val = Number(match[1] || match[2]) || 0;
+                    const val = Number(match[1] || match[2] || match[3] || match[4]) || 0;
                     featureBonuses[abbr] += val;
                 }
             }
