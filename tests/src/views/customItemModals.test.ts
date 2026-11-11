@@ -26,6 +26,8 @@ async function setup(character: any = null) {
         sheet,
         getCharacter: () => character,
         syncSheetStats: vi.fn(),
+        openMarkupGuideModal: vi.fn(),
+        closeMarkupGuideModal: vi.fn(),
         persistTrackerSnapshot: vi.fn(),
         scheduleDebouncedAutoSave: vi.fn()
     };
@@ -35,7 +37,7 @@ async function setup(character: any = null) {
         $(`${kind}-form`).dispatchEvent(new Event("submit", { cancelable: true }));
         await new Promise(r => setTimeout(r, 0));
     };
-    return { modals, $, submit, addItemToCharacter };
+    return { modals, $, submit, addItemToCharacter, ctx, sheet };
 }
 
 beforeEach(() => {
@@ -327,5 +329,33 @@ describe("item charges in the dialogs", () => {
         await submit("custom-magic-item");
         expect(postData.mock.calls[0][1].charges).toEqual({ max: 3, resetOn: "long" });
         expect(addItemToCharacter).toHaveBeenCalled();
+    });
+});
+
+describe("placeholder and tag guide in the item dialogs", () => {
+    it("opens from the weapon dialog, and Escape then leaves the weapon dialog open", async () => {
+        const { modals, $, ctx, sheet } = await setup();
+        sheet.insertAdjacentHTML("beforeend", '<div id="markup-guide-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-hidden="true"></div>');
+        modals.open("weapon");
+        $<HTMLButtonElement>("custom-weapon-guide-btn").click();
+        expect(ctx.openMarkupGuideModal).toHaveBeenCalled();
+
+        const guide = $("markup-guide-modal-container");
+        guide.classList.remove("hidden");
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        expect($("custom-weapon-modal-container").classList.contains("hidden")).toBe(false);
+
+        guide.classList.add("hidden");
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        expect($("custom-weapon-modal-container").classList.contains("hidden")).toBe(true);
+    });
+
+    it("closes the guide along with the dialog it opened over", async () => {
+        const { modals, $, ctx, sheet } = await setup();
+        sheet.insertAdjacentHTML("beforeend", '<div id="markup-guide-modal-container" class="spell-modal-backdrop" role="dialog"></div>');
+        modals.open("magic-item");
+        expect($("custom-magic-item-guide-btn")).not.toBeNull();
+        modals.close("magic-item");
+        expect(ctx.closeMarkupGuideModal).toHaveBeenCalled();
     });
 });

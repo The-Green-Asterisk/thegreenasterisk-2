@@ -15,7 +15,7 @@ import { renderWeapons } from "../components/weapons";
 import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
 import { applySpellEditToCopies, chargesFromDb, databaseId } from "../services/characterCopies";
-import { canEditDbEntry, describePropagation, describeRequestError, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
+import { canEditDbEntry, describePropagation, describeRequestError, releaseBodyScrollIfNoDialogOpen, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
 import { customItemKindFor, initCustomItemModals } from "./customItemModals.ctrl";
 import { customItemNoun } from "../components/customItemModal";
 import { createLockPanel } from "./definitionLockPanel";
@@ -2049,8 +2049,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
     }
 
+    // The Placeholder & Tag Guide button that opened the guide (spell, weapon, or magic item dialog), for focus on close
+    let markupGuideOpener: HTMLElement | null = null;
+
     function openMarkupGuideModal() {
         if (!markupGuideModal) return;
+        markupGuideOpener = document.activeElement as HTMLElement | null;
         markupGuideModal.classList.remove("hidden");
         markupGuideModal.classList.add("visible");
         markupGuideModal.setAttribute("aria-hidden", "false");
@@ -2063,20 +2067,11 @@ export function initModalsController(ctx: CharacterSheetContext) {
         markupGuideModal.classList.remove("visible");
         markupGuideModal.classList.add("hidden");
         markupGuideModal.setAttribute("aria-hidden", "true");
-        const anyOtherModalOpen = [
-            modalBackdrop,
-            customSpellModal,
-            itemModalBackdrop,
-            actionModalBackdrop,
-            conditionsModalBackdrop,
-            conditionDetailBackdrop,
-            manageSpellsBackdrop,
-            manageItemsBackdrop
-        ].some(m => m && !m.classList.contains("hidden"));
-        if (!anyOtherModalOpen) {
-            document.body.style.overflow = "";
-        }
-        customSpellGuideBtn?.focus();
+        // The guide opens over the spell, weapon, and magic item dialogs; any of them keeps the page from scrolling
+        releaseBodyScrollIfNoDialogOpen(sheet);
+        const opener = markupGuideOpener && markupGuideOpener.isConnected ? markupGuideOpener : customSpellGuideBtn;
+        markupGuideOpener = null;
+        opener?.focus();
     }
 
     function setItemEditTarget(item: any) {
