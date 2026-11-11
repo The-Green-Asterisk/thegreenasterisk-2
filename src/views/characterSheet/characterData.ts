@@ -23,7 +23,7 @@ export interface SpellDefinition {
     damageDice?: string;
     damageType?: string;
     damageModifier?: string;
-    damageScaling?: Array<{ level: number | string; label: string; dice: string; modifier: string }>;
+    damageScaling?: Array<{ level: number | string; label: string; dice: string; modifier: string; effect?: string }>;
     /** Slot level at which this spell is being cast/displayed (for upcast spell entries). */
     castAtLevel?: number;
 }
