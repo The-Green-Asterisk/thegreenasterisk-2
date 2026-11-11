@@ -1,6 +1,6 @@
 import el from "@elements";
 import FileService from "@services/fileService";
-import { getData, postData } from "@services/request";
+import { getData, postData, putData } from "@services/request";
 import { getSpellcastingModifier, getSpellDamageDisplay, getSpellDamageType, getSpellEffectDisplay, isHealingSpell, replaceModInString, resolveActionSpellDamage } from "../../../services/spellDamage";
 import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
 import { renderEquipment } from "../components/equipment";
@@ -14,6 +14,11 @@ import { restoreUsePips } from "../components/usesTracker";
 import { renderWeapons } from "../components/weapons";
 import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
+import { applySpellEditToCopies, databaseId } from "../services/characterCopies";
+import { canEditDbEntry, describePropagation, describeRequestError, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
+import { customItemKindFor, initCustomItemModals } from "./customItemModals.ctrl";
+import { customItemNoun } from "../components/customItemModal";
+import { createLockPanel } from "./definitionLockPanel";
 import { initDialogFocus } from "./dialogFocus";
 import { initEquipmentController } from "./equipment.ctrl";
 import { initSpellsController } from "./spells.ctrl";
@@ -49,6 +54,13 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const modalSpellImage = sheet.querySelector<HTMLImageElement>("#modal-spell-image");
     const modalDescription = sheet.querySelector<HTMLElement>("#modal-spell-description");
     const modalSource = sheet.querySelector<HTMLElement>("#modal-spell-source");
+    const modalSpellEditBtn = sheet.querySelector<HTMLButtonElement>("#modal-spell-edit-btn");
+    const modalSpellCopyLockBtn = sheet.querySelector<HTMLButtonElement>("#modal-spell-copy-lock-btn");
+    let spellModalName = "";
+    // The database row behind the open spell, once we know the viewer may edit it
+    let spellModalDbSpell: any = null;
+    // Bumped on every open, so a slow lookup for a spell that's no longer shown is ignored
+    let spellModalToken = 0;
 
     // Item modal elements
     const itemModalBackdrop = sheet.querySelector<HTMLElement>("#item-modal-container");
@@ -69,6 +81,11 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const modalItemQtyInc = sheet.querySelector<HTMLButtonElement>("#modal-item-qty-inc");
     const modalItemQuantityInput = sheet.querySelector<HTMLInputElement>("#modal-item-quantity-input");
     let currentItemModalName = "";
+    const modalItemEditBtn = sheet.querySelector<HTMLButtonElement>("#modal-item-edit-btn");
+    const modalItemCopyLockBtn = sheet.querySelector<HTMLButtonElement>("#modal-item-copy-lock-btn");
+    const modalItemEditLabel = sheet.querySelector<HTMLElement>("#modal-item-edit-label");
+    let itemModalDbItem: any = null;
+    let itemModalToken = 0;
 
     // Action modal elements
     const actionModalBackdrop = sheet.querySelector<HTMLElement>("#action-modal-container");
@@ -112,6 +129,36 @@ export function initModalsController(ctx: CharacterSheetContext) {
     const customSpellScalingTitle = sheet.querySelector<HTMLElement>("#custom-spell-scaling-title");
     const customSpellScalingHint = sheet.querySelector<HTMLElement>("#custom-spell-scaling-hint");
     const customSpellLevelInput = sheet.querySelector<HTMLInputElement>("#custom-spell-level");
+    const customSpellTitle = sheet.querySelector<HTMLElement>("#custom-spell-title");
+    const customSpellSubtitle = sheet.querySelector<HTMLElement>("#custom-spell-subtitle");
+    const customSpellSubmitBtn = sheet.querySelector<HTMLButtonElement>("#custom-spell-submit-btn");
+    // The database spell being edited; null while adding a new one
+    let editingSpell: any = null;
+    let customSpellOpener: HTMLElement | null = null;
+    const spellFieldValue = (id: string) => {
+        const field = sheet.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`#custom-spell-${id}`);
+        if (!field) return "";
+        return field instanceof HTMLInputElement && field.type === "checkbox" ? String(field.checked) : field.value.trim();
+    };
+    const spellLockPanel = createLockPanel(sheet.querySelector<HTMLElement>("#custom-spell-locks"), customSpellForm, [
+        { key: "name", label: "Name", read: () => spellFieldValue("name") },
+        { key: "level", label: "Level", read: () => spellFieldValue("level") },
+        { key: "school", label: "School", read: () => spellFieldValue("school") },
+        { key: "castingTime", label: "Casting Time", read: () => spellFieldValue("casting-time") },
+        { key: "range", label: "Range / Area", read: () => spellFieldValue("range") },
+        { key: "duration", label: "Duration", read: () => spellFieldValue("duration") },
+        { key: "components", label: "Components", read: () => spellFieldValue("components") },
+        { key: "ritual", label: "Ritual", read: () => spellFieldValue("ritual") },
+        { key: "concentration", label: "Concentration", read: () => spellFieldValue("concentration") },
+        {
+            key: "damage", label: "Damage & Scaling", read: () => [
+                spellFieldValue("has-damage"), spellFieldValue("damage-dice"), spellFieldValue("damage-type"), spellFieldValue("damage-mod"),
+                ...Array.from(customSpellScalingTbody?.querySelectorAll<HTMLInputElement>("input") || []).map(i => i.value.trim())
+            ].join("|")
+        },
+        { key: "description", label: "Description", read: () => spellFieldValue("description") },
+        { key: "imageUrl", label: "Illustration", read: () => spellFieldValue("image") }
+    ]);
 
     // Markup / Placeholder guide modal elements
     const markupGuideModal = sheet.querySelector<HTMLElement>("#markup-guide-modal-container");
@@ -173,6 +220,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
     let activeConditionDetailName = "";
 
     let cachedDbSpells: SpellDefinition[] = [];
+    // The database rows behind cachedDbSpells (same order), for editing; empty when the search fell back offline
+    let cachedDbSpellRows: any[] = [];
     let manageSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
     function getActiveConditionsState(): { activeSet: Set<string>; exhaustionLevel: number } {
@@ -658,6 +707,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (!exists) {
             activeCharacter.spells.push({
                 id: spell.id,
+                spellId: spell.spellId,
                 name: spell.name,
                 level: Number(spell.level) || 0,
                 school: spell.school || "Universal",
@@ -753,6 +803,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         >
                             ${isAdded ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> Add'}
                         </button>
+                        ${canEditDbEntry(cachedDbSpellRows[idx]) ? `
+                        <button type="button" class="manage-db-edit-btn" data-db-edit-idx="${idx}" aria-haspopup="dialog" aria-label="Edit ${escapeHtml(spell.name)}">
+                            <i class="fa-solid fa-pen" aria-hidden="true"></i> Edit
+                        </button>` : ''}
                     </div>
                 `;
             })
@@ -771,6 +825,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 } else {
                     addSpellToCharacter(spell);
                 }
+            });
+        });
+
+        manageSpellsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-edit-btn[data-db-edit-idx]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const row = cachedDbSpellRows[Number(btn.getAttribute("data-db-edit-idx") || "-1")];
+                if (row) openCustomSpellModal(row);
             });
         });
 
@@ -798,6 +860,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
 
         let dbList: SpellDefinition[] = [];
+        cachedDbSpellRows = [];
         let serverResponded = false;
         lastSearchFetchedOnline = false;
         try {
@@ -805,8 +868,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (Array.isArray(res?.spells)) {
                 serverResponded = true;
                 lastSearchFetchedOnline = !!res?.fetchedOnline;
+                cachedDbSpellRows = res.spells;
                 dbList = res.spells.map(s => ({
                     id: s.dndBeyondId || s.id,
+                    spellId: databaseId(s.id),
                     name: s.name,
                     level: Number(s.level) || 0,
                     school: s.school || "Universal",
@@ -1058,6 +1123,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
                 activeCharacter.weapons.push({
                     id: item.dndBeyondId || item.id,
+                    itemId: databaseId(item.id),
                     definitionId: item.id,
                     name: item.name,
                     quantity: 1,
@@ -1084,6 +1150,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (!equipExists) {
             activeCharacter.equipment.push({
                 id: item.dndBeyondId || item.id,
+                itemId: databaseId(item.id),
                 definitionId: item.id,
                 name: item.name,
                 quantity: 1,
@@ -1185,6 +1252,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         >
                             ${isAdded ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> Add'}
                         </button>
+                        ${canEditDbEntry(item) ? `
+                        <button type="button" class="manage-db-edit-btn" data-db-item-edit-idx="${idx}" aria-haspopup="dialog" aria-label="Edit ${escapeHtml(String(item.name))}">
+                            <i class="fa-solid fa-pen" aria-hidden="true"></i> Edit
+                        </button>` : ''}
                     </div>
                 `;
             })
@@ -1204,6 +1275,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 } else {
                     addItemToCharacter(item);
                 }
+            });
+        });
+
+        manageItemsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-edit-btn[data-db-item-edit-idx]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const item = cachedDbItems[Number(btn.getAttribute("data-db-item-edit-idx") || "-1")];
+                if (item) customItemModals.open(customItemKindFor(item), item);
             });
         });
 
@@ -1338,6 +1417,25 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
     }
 
+    function refreshManageSpellsIfOpen() {
+        if (!manageSpellsBackdrop || manageSpellsBackdrop.classList.contains("hidden")) return;
+        renderManageCurrentSpellsPanel();
+        void fetchDatabaseSpellsForManageModal();
+    }
+
+    /** Copies an edit onto the active sheet's unlocked copies of the spell (the server does every other character) */
+    function applySpellEditToCharacter(oldName: string, spell: any) {
+        const character = ctx.getCharacter();
+        const result = applySpellEditToCopies(character, oldName, spell);
+        if (!character || result.updated === 0) return;
+        const id = databaseId(spell.id);
+        const updatedCopy = character.spells.find(sp => sp.spellId === id);
+        ctx.spellMap.delete(oldName.toLowerCase());
+        if (updatedCopy) ctx.spellMap.set(updatedCopy.name.toLowerCase(), updatedCopy);
+        ctx.renderActiveCharacterView();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
     function showCustomSpellStatus(message: string, isError = false) {
         if (!customSpellStatus) return;
         customSpellStatus.textContent = message;
@@ -1345,10 +1443,65 @@ export function initModalsController(ctx: CharacterSheetContext) {
         customSpellStatus.classList.remove("hidden");
     }
 
+    /** The open sheet's copies of a spell or item, by name (a spell can appear more than once, e.g. upcast) */
+    function characterCopies(kind: "spell" | "item", name: string): Array<{ locked?: boolean }> {
+        const character = ctx.getCharacter();
+        const key = name.toLowerCase();
+        if (!character || !key) return [];
+        return kind === "spell"
+            ? (character.spells || []).filter(sp => sp.name.toLowerCase() === key)
+            : [...(character.weapons || []), ...(character.equipment || [])].filter(i => i.name.toLowerCase() === key);
+    }
+
+    function paintCopyLockButton(button: HTMLButtonElement | null, copies: Array<{ locked?: boolean }>) {
+        if (!button) return;
+        button.classList.toggle("hidden", copies.length === 0);
+        const on = copies.length > 0 && copies.every(c => !!c.locked);
+        button.setAttribute("aria-pressed", String(on));
+        button.classList.toggle("is-locked", on);
+        const icon = button.querySelector("i");
+        if (icon) icon.className = `fa-solid ${on ? "fa-lock" : "fa-lock-open"}`;
+    }
+
+    function toggleCopyLock(kind: "spell" | "item", name: string, button: HTMLButtonElement | null) {
+        const copies = characterCopies(kind, name);
+        if (copies.length === 0) return;
+        const lock = !copies.every(c => !!c.locked);
+        copies.forEach(c => {
+            if (lock) c.locked = true;
+            else delete c.locked;
+        });
+        paintCopyLockButton(button, copies);
+        if (kind === "spell") refreshSheetSpellsView();
+        else refreshSheetItemsView();
+        ctx.persistTrackerSnapshot();
+        ctx.scheduleDebouncedAutoSave();
+    }
+
+    function setSpellEditTarget(spell: any) {
+        spellModalDbSpell = canEditDbEntry(spell) ? spell : null;
+        modalSpellEditBtn?.classList.toggle("hidden", !spellModalDbSpell);
+    }
+
+    /** Character-pull spells skip the database fetch, so look the row up separately to learn whether it's editable */
+    async function resolveSpellEditTarget(spellName: string, token: number) {
+        try {
+            const query = new URLSearchParams({ name: spellName, preferRules2024: ctx.prefer2024Rules.value ? "1" : "0" });
+            const response = await getData<any>(`/get-spell?${query.toString()}`);
+            if (token === spellModalToken) setSpellEditTarget(response?.spell || response);
+        } catch {
+            // No database row means nothing to edit
+        }
+    }
+
     async function openSpellModal(spellName: string, spellId?: number | string) {
         const decodedName = decodeURIComponent(spellName).trim();
         const localSpell = ctx.spellMap.get(decodedName.toLowerCase());
         if (!modalBackdrop) return;
+        const token = ++spellModalToken;
+        setSpellEditTarget(null);
+        spellModalName = localSpell?.name || decodedName;
+        paintCopyLockButton(modalSpellCopyLockBtn, characterCopies("spell", spellModalName));
 
         const displayName = localSpell ? localSpell.name : decodedName;
         const displaySchool = localSpell?.school || "Universal";
@@ -1435,7 +1588,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         // Prefer the spell definition that came in with the character pull, and persist it into the database
         if (hasCharacterPullDefinition && localSpell) {
-            void postData("/sync-character-spells", { spells: [localSpell] }).catch(() => { });
+            const syncing = postData("/sync-character-spells", { spells: [localSpell] }).catch(() => { });
+            if (el.isAuth) void syncing.then(() => resolveSpellEditTarget(decodedName, token));
             return;
         }
 
@@ -1508,7 +1662,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     modalSource.innerHTML = `<strong>Source Tier:</strong> ${spellSourceTier || 'Local Database'} • <em>${independentSpell.source || 'SRD / Custom'}</em>`;
                 }
 
-                if (localSpell) {
+                if (token === spellModalToken) setSpellEditTarget(independentSpell);
+
+                // A copy locked on this character keeps its own text
+                if (localSpell && !localSpell.locked) {
                     localSpell.description = independentSpell.description;
                     localSpell.castingTime = independentSpell.castingTime || localSpell.castingTime;
                     localSpell.range = independentSpell.range || localSpell.range;
@@ -1690,6 +1847,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         <input
                             type="text"
                             class="scaling-table-input scaling-row-dice"
+                            aria-label="${escapeHtml(tier.label)} damage dice"
                             data-level="${tier.levelNumber}"
                             placeholder="e.g. 2d8"
                             value="${escapeHtml(rowDice)}"
@@ -1700,6 +1858,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         <input
                             type="text"
                             class="scaling-table-input scaling-row-mod"
+                            aria-label="${escapeHtml(tier.label)} modifier"
                             data-level="${tier.levelNumber}"
                             placeholder="e.g. +3 or +MOD"
                             value="${escapeHtml(rowMod)}"
@@ -1710,6 +1869,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         <input
                             type="text"
                             class="scaling-table-input scaling-row-effect"
+                            aria-label="${escapeHtml(tier.label)} scaling effect"
                             data-level="${tier.levelNumber}"
                             placeholder="e.g. 2 targets or 15 ft. radius"
                             value="${escapeHtml(rowEffect)}"
@@ -1737,12 +1897,110 @@ export function initModalsController(ctx: CharacterSheetContext) {
         });
     }
 
-    function openCustomSpellModal() {
+    function setCustomSpellMode(spell: any) {
+        if (customSpellTitle) customSpellTitle.textContent = spell ? "Edit Spell" : "Add Custom Spell";
+        if (customSpellSubtitle) customSpellSubtitle.textContent = spell
+            ? `Update ${spell.name} in the local database`
+            : "Save a custom spell to your local database and attach it to your active sheet";
+        if (customSpellSubmitBtn) {
+            customSpellSubmitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> ${spell ? "Save Changes" : "Save Spell"}`;
+        }
+    }
+
+    /** The dialog appends its damage table to the description on save; editing starts from the text before it */
+    function stripGeneratedDamageBlock(description: string): string {
+        const idx = description.indexOf('<div class="spell-damage-scaling-block">');
+        return (idx === -1 ? description : description.slice(0, idx)).trim();
+    }
+
+    function parseDamageScalingRows(raw: unknown): Array<{ level: number; label: string; dice: string; modifier: string; effect?: string }> {
+        let rows: any = raw;
+        if (typeof raw === "string") {
+            try {
+                rows = JSON.parse(raw);
+            } catch {
+                rows = [];
+            }
+        }
+        return Array.isArray(rows)
+            ? rows.map(r => ({ level: Number(r?.level), label: String(r?.label || `Level ${r?.level}`), dice: String(r?.dice || ""), modifier: String(r?.modifier || ""), effect: r?.effect ? String(r.effect) : undefined }))
+                .filter(r => Number.isFinite(r.level))
+            : [];
+    }
+
+    function fillCustomSpellForm(spell: any) {
+        const level = Number(spell.level) || 0;
+        const setValue = (id: string, value: unknown) => {
+            const field = sheet.querySelector<HTMLInputElement | HTMLTextAreaElement>(id);
+            if (field) field.value = value === undefined || value === null ? "" : String(value);
+        };
+        const setChecked = (id: string, checked: boolean) => {
+            const box = sheet.querySelector<HTMLInputElement>(id);
+            if (box) box.checked = checked;
+        };
+
+        setValue("#custom-spell-name", spell.name);
+        setValue("#custom-spell-level", level);
+        setSelectValue(sheet.querySelector<HTMLSelectElement>("#custom-spell-school"), spell.school || "Evocation");
+        setValue("#custom-spell-casting-time", spell.castingTime);
+        setValue("#custom-spell-range", spell.range);
+        setValue("#custom-spell-duration", spell.duration);
+        setValue("#custom-spell-components", spell.components);
+        setChecked("#custom-spell-ritual", !!spell.ritual);
+        setChecked("#custom-spell-concentration", !!spell.concentration);
+        setValue("#custom-spell-description", stripGeneratedDamageBlock(String(spell.description || "")));
+        setValue("#custom-spell-image", spell.imageUrl);
+        updateCustomSpellImagePreview(spell.imageUrl || "");
+
+        const rows = parseDamageScalingRows(spell.damageScaling);
+        const hasDamage = !!spell.damageDice || rows.length > 0;
+        if (!hasDamage) return;
+
+        if (customSpellHasDamage) customSpellHasDamage.checked = true;
+        customSpellDamagePanel?.classList.remove("hidden");
+        if (customSpellDamageDice) customSpellDamageDice.value = spell.damageDice || "";
+        setSelectValue(customSpellDamageType, spell.damageType || "Fire");
+        if (customSpellDamageMod) customSpellDamageMod.value = spell.damageModifier || "";
+        const characterTiers = [1, 5, 11, 17];
+        const looksCharacterScaled = level > 0 && rows.length > 0 && rows.every(r => characterTiers.includes(r.level));
+        if (customSpellScalingType) customSpellScalingType.value = looksCharacterScaled ? "character" : "auto";
+
+        renderCustomSpellScalingRows({ resetToBase: true });
+        rows.forEach(r => {
+            const tr = customSpellScalingTbody?.querySelector<HTMLTableRowElement>(`tr[data-level="${r.level}"]`);
+            if (!tr) return;
+            const dice = tr.querySelector<HTMLInputElement>(".scaling-row-dice");
+            const mod = tr.querySelector<HTMLInputElement>(".scaling-row-mod");
+            const effect = tr.querySelector<HTMLInputElement>(".scaling-row-effect");
+            if (dice) dice.value = r.dice;
+            if (mod) mod.value = r.modifier;
+            if (effect) effect.value = r.effect || "";
+        });
+        updateCustomSpellScalingPreviews();
+    }
+
+    /** With a database spell, the dialog edits it; without one, it adds a new spell (keeping any unsaved draft) */
+    function openCustomSpellModal(spell?: any) {
         if (!customSpellModal) return;
         if (customSpellStatus) {
             customSpellStatus.className = "status-msg hidden";
             customSpellStatus.textContent = "";
         }
+        if (spell || editingSpell) {
+            customSpellForm?.reset();
+            resetCustomSpellImageState();
+            resetCustomSpellDamageState();
+        }
+        customSpellOpener = document.activeElement as HTMLElement | null;
+        editingSpell = spell ?? null;
+        setCustomSpellMode(editingSpell);
+        if (editingSpell) {
+            fillCustomSpellForm(editingSpell);
+            spellLockPanel.start(editingSpell.lockedFields, !editingSpell.isCustom);
+        } else {
+            spellLockPanel.stop();
+        }
+        if (!el.isAuth) showCustomSpellStatus("Log in to save custom spells.", true);
         customSpellModal.classList.remove("hidden");
         customSpellModal.classList.add("visible");
         customSpellModal.setAttribute("aria-hidden", "false");
@@ -1757,9 +2015,17 @@ export function initModalsController(ctx: CharacterSheetContext) {
         }
         resetCustomSpellImageState();
         resetCustomSpellDamageState();
+        if (editingSpell) {
+            customSpellForm?.reset();
+            editingSpell = null;
+            setCustomSpellMode(null);
+        }
+        spellLockPanel.stop();
         customSpellModal.classList.remove("visible");
         customSpellModal.classList.add("hidden");
         customSpellModal.setAttribute("aria-hidden", "true");
+        restoreFocusAfterClose(customSpellOpener, sheet);
+        customSpellOpener = null;
         const anyOtherModalOpen = [
             modalBackdrop,
             markupGuideModal,
@@ -1805,17 +2071,28 @@ export function initModalsController(ctx: CharacterSheetContext) {
         customSpellGuideBtn?.focus();
     }
 
+    function setItemEditTarget(item: any) {
+        itemModalDbItem = canEditDbEntry(item) ? item : null;
+        if (itemModalDbItem && modalItemEditLabel) {
+            modalItemEditLabel.textContent = `Edit ${customItemNoun(customItemKindFor(itemModalDbItem))}`;
+        }
+        modalItemEditBtn?.classList.toggle("hidden", !itemModalDbItem);
+    }
+
     async function openItemModal(itemName: string, itemId?: number | string, itemType?: string) {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter) return;
         const decodedName = decodeURIComponent(itemName).trim();
         if (!itemModalBackdrop) return;
+        const token = ++itemModalToken;
+        setItemEditTarget(null);
 
         const localWeapon = activeCharacter.weapons?.find(w => w.name.toLowerCase() === decodedName.toLowerCase());
         const localEquipment = activeCharacter.equipment.find(e => e.name.toLowerCase() === decodedName.toLowerCase());
 
         const displayName = localWeapon?.name || localEquipment?.name || decodedName;
         currentItemModalName = displayName;
+        paintCopyLockButton(modalItemCopyLockBtn, characterCopies("item", displayName));
         const currentQty = localWeapon ? (localWeapon.quantity ?? 1) : localEquipment ? (localEquipment.quantity ?? 1) : 1;
         if (modalItemQuantityInput) modalItemQuantityInput.value = String(currentQty);
         const isMundane = isMundaneEquipment(displayName);
@@ -1951,8 +2228,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     modalItemSource.innerHTML = `<strong>Source Tier:</strong> ${independentRes.sourceTier || 'Local Database'} • <em>${itemObj.source || 'Standard / SRD'}</em>`;
                 }
 
-                if (localWeapon && finalItemImg) localWeapon.imageUrl = finalItemImg;
-                if (localEquipment && finalItemImg) localEquipment.imageUrl = finalItemImg;
+                if (token === itemModalToken) setItemEditTarget(itemObj);
+
+                if (localWeapon && finalItemImg && !localWeapon.locked) localWeapon.imageUrl = finalItemImg;
+                if (localEquipment && finalItemImg && !localEquipment.locked) localEquipment.imageUrl = finalItemImg;
             }
         } catch (err) {
             console.warn("Could not fetch independent item payload, kept local data:", err);
@@ -2173,6 +2452,34 @@ export function initModalsController(ctx: CharacterSheetContext) {
     ctx.closeConditionsModal = closeConditionsModal;
     ctx.openConditionDetailModal = openConditionDetailModal;
     ctx.closeConditionDetailModal = closeConditionDetailModal;
+
+    const customItemModals = initCustomItemModals(ctx, {
+        addItemToCharacter,
+        refreshSheetItemsView,
+        onSaved: () => {
+            if (!manageItemsBackdrop || manageItemsBackdrop.classList.contains("hidden")) return;
+            renderManageCurrentItemsPanel();
+            void fetchDatabaseItemsForManageModal();
+        }
+    });
+    ctx.openCustomItemModal = customItemModals.open;
+
+    modalSpellCopyLockBtn?.addEventListener("click", () => toggleCopyLock("spell", spellModalName, modalSpellCopyLockBtn));
+    modalItemCopyLockBtn?.addEventListener("click", () => toggleCopyLock("item", currentItemModalName, modalItemCopyLockBtn));
+
+    modalSpellEditBtn?.addEventListener("click", () => {
+        const spell = spellModalDbSpell;
+        if (!spell) return;
+        closeSpellModal();
+        openCustomSpellModal(spell);
+    });
+
+    modalItemEditBtn?.addEventListener("click", () => {
+        const item = itemModalDbItem;
+        if (!item) return;
+        closeItemModal();
+        customItemModals.open(customItemKindFor(item), item);
+    });
 
     // Delegated click listener across sheet for [condition], [action], [rules], and [spell] links
     sheet.addEventListener("click", (event) => {
@@ -2592,7 +2899,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
     customSpellForm?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const activeCharacter = ctx.getCharacter();
-        if (!activeCharacter) {
+        const originalSpell = editingSpell;
+        if (!el.isAuth) {
+            showCustomSpellStatus("Log in to save custom spells.", true);
+            return;
+        }
+        if (!activeCharacter && !originalSpell) {
             showCustomSpellStatus("Load a character before adding custom spells.", true);
             return;
         }
@@ -2647,7 +2959,11 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const scalingMode = customSpellScalingType?.value || "auto";
         const isCharacterScaling = scalingMode === "character" || (scalingMode === "auto" && Number(levelSelect?.value || "0") === 0);
 
-        if (hasDamage && (baseDamageDice || scalingRows.length > 0)) {
+        // Official spells an admin edits keep their own text; only homebrew gets the generated damage table
+        const appendDamageTable = !originalSpell || !!originalSpell.isCustom
+            || String(originalSpell.description || "").includes('<div class="spell-damage-scaling-block">');
+
+        if (appendDamageTable && hasDamage && (baseDamageDice || scalingRows.length > 0)) {
             const hasAnyEffects = scalingRows.some(r => !!r.effect);
             const baseModStr = baseDamageMod ? (baseDamageMod.startsWith("+") || baseDamageMod.startsWith("-") ? ` ${baseDamageMod}` : ` +${baseDamageMod}`) : "";
             const baseTotalStr = baseDamageDice ? `${baseDamageDice}${baseModStr} ${damageType}` : (hasAnyEffects ? 'Scaling Effect' : damageType);
@@ -2717,6 +3033,15 @@ export function initModalsController(ctx: CharacterSheetContext) {
         showCustomSpellStatus("Saving spell to local database...");
 
         try {
+            if (originalSpell) {
+                const updated = await putData<any>("/edit-custom-spell", { ...spellPayload, id: originalSpell.id, lockedFields: spellLockPanel.locks() });
+                applySpellEditToCharacter(originalSpell.name, updated);
+                refreshManageSpellsIfOpen();
+                showCustomSpellStatus(`Spell "${updated.name}" updated.${describePropagation(updated.propagation)}`);
+                setTimeout(() => closeCustomSpellModal(), 800);
+                return;
+            }
+
             const savedSpell = await postData<any>("/create-custom-spell", spellPayload);
             showCustomSpellStatus(`Spell "${spellPayload.name}" saved successfully to database!`);
 
@@ -2734,13 +3059,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 imageUrl: spellPayload.imageUrl,
                 source: "Custom Homebrew",
                 id: savedSpell?.id,
+                spellId: databaseId(savedSpell?.id),
                 damageDice: baseDamageDice || undefined,
                 damageType: hasDamage ? damageType : undefined,
                 damageModifier: baseDamageMod || undefined,
                 damageScaling: scalingRows.length > 0 ? scalingRows : undefined
             };
 
-            activeCharacter.spells.unshift(newSpellDef);
+            activeCharacter!.spells.unshift(newSpellDef);
             ctx.spellMap.set(newSpellDef.name.toLowerCase(), newSpellDef);
             ctx.renderActiveCharacterView();
 
@@ -2751,13 +3077,11 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 resetCustomSpellDamageState();
             }, 800);
         } catch (error: any) {
-            console.error("Failed to create custom spell:", error);
-            showCustomSpellStatus(`Could not save custom spell: ${error?.message || error}`, true);
+            console.error("Failed to save custom spell:", error);
+            showCustomSpellStatus(`Could not save spell: ${describeRequestError(error)}`, true);
         } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Save Spell';
-            }
+            if (submitBtn) submitBtn.disabled = false;
+            setCustomSpellMode(editingSpell);
         }
     });
 

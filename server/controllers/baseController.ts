@@ -25,6 +25,13 @@ export default class BaseController {
         });
     }
 
+    /** Admins can edit anything; everyone else only what they created. Rows with no creator are admin-only. */
+    static canEditOwned(user: { id: number; isAdmin?: boolean } | undefined, createdById?: number | null): boolean {
+        if (!user) return false;
+        if (user.isAdmin) return true;
+        return createdById !== undefined && createdById !== null && Number(createdById) === Number(user.id);
+    }
+
     static parseUrlQuery(incomingUrl?: string) {
         if (!incomingUrl) return {};
         const parsedUrl = new URL(incomingUrl ?? '', 'http://localhost');

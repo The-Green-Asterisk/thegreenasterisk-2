@@ -1,6 +1,7 @@
 import el from "@elements";
 import { delData, getData, postData, putData } from "@services/request";
 import { loadClassRules } from "../../services/classRules";
+import { carryLockedCopiesAndLinks } from "./services/characterCopies";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
@@ -946,6 +947,8 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.vitals.spellcastingAbility = recomputed.vitals.spellcastingAbility;
                 activeCharacter.abilities = recomputed.abilities;
                 activeCharacter.skills = recomputed.skills;
+                // Weapons locked on this character stay as they are, and the rest keep their database links
+                carryLockedCopiesAndLinks(recomputed, activeCharacter);
                 activeCharacter.weapons = recomputed.weapons;
                 if (activeCharacter.trackingState?.itemQuantities) {
                     const quantities = activeCharacter.trackingState.itemQuantities;
@@ -1260,6 +1263,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             } else {
                 delete parsed.lockedFields;
             }
+            // Spells and items locked on this character stay as they are, and every copy keeps its database link
+            if (isSameCharacter && activeCharacter) {
+                carryLockedCopiesAndLinks(parsed, activeCharacter);
+            }
             if (parsed.spells?.length) {
                 void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });
             }
@@ -1393,6 +1400,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         closeActionModal: () => { },
         openFeatureModal: () => { },
         openCustomSpellModal: () => { },
+        openCustomItemModal: () => { },
         closeCustomSpellModal: () => { },
         openMarkupGuideModal: () => { },
         closeMarkupGuideModal: () => { },

@@ -3,7 +3,10 @@ import cache from "../cache";
 import AppDataSource from "../services/database";
 import { Item } from "../services/database/entity/Item";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
+import { propagateItemEdit } from "../services/characterCopies";
+import { differsFrom, ITEM_LOCK_COLUMNS, keepLockedFields, normalizeLockedFields } from "../services/definitionLocks";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 function slugify(text: string): string {
     return text
@@ -209,7 +212,8 @@ export default class ItemController extends BaseController {
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             savedCount++;
-                        } else if (isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>" || isMundane) {
+                        } else if (!existing.isCustom && (isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>" || isMundane)) {
+                            const before = { ...existing };
                             existing.name = name;
                             existing.filterType = "Weapon";
                             existing.rarity = rarity;
@@ -223,6 +227,7 @@ export default class ItemController extends BaseController {
                             if (desc) existing.description = desc;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+                            keepLockedFields(existing, before, ITEM_LOCK_COLUMNS);
                             const saved = await itemRepo.save(existing);
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
@@ -300,7 +305,8 @@ export default class ItemController extends BaseController {
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             savedCount++;
-                        } else if (isPotion || isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>" || isMundane) {
+                        } else if (!existing.isCustom && (isPotion || isLegacySrdSource(existing.source) || !existing.description || existing.description === "<p>No description provided.</p>" || isMundane)) {
+                            const before = { ...existing };
                             existing.name = name;
                             if (isPotion) {
                                 existing.filterType = "Potion";
@@ -322,6 +328,7 @@ export default class ItemController extends BaseController {
                             if (desc) existing.description = desc;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+                            keepLockedFields(existing, before, ITEM_LOCK_COLUMNS);
                             const saved = await itemRepo.save(existing);
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
@@ -382,6 +389,7 @@ export default class ItemController extends BaseController {
             // Auto-heal any misclassified potions/oils in the database
             for (const item of allItems) {
                 if (isPotionOrOil(item.name, item.category, item.filterType)) {
+                    const before = { ...item };
                     let changed = false;
                     if (item.filterType !== "Potion") {
                         item.filterType = "Potion";
@@ -422,7 +430,8 @@ export default class ItemController extends BaseController {
                         item.rarity = "Very Rare";
                         changed = true;
                     }
-                    if (changed) {
+                    keepLockedFields(item, before, ITEM_LOCK_COLUMNS);
+                    if (changed && differsFrom(item, before)) {
                         await itemRepo.save(item);
                         const slug = item.slug || slugify(item.name);
                         cache.del(`item_detail_${slug}_pref2024`);
@@ -550,6 +559,7 @@ export default class ItemController extends BaseController {
                 }
 
                 if (dbItem) {
+                    const before = { ...dbItem };
                     if (isPotionOrOil(dbItem.name, dbItem.category, dbItem.filterType)) {
                         let changed = false;
                         if (dbItem.filterType !== "Potion") {
@@ -591,7 +601,8 @@ export default class ItemController extends BaseController {
                             dbItem.rarity = "Very Rare";
                             changed = true;
                         }
-                        if (changed) {
+                        keepLockedFields(dbItem, before, ITEM_LOCK_COLUMNS);
+                        if (changed && differsFrom(dbItem, before)) {
                             await itemRepo.save(dbItem);
                         }
                     } else if (isMundaneEquipment(dbItem.name) && (dbItem.isMagic || dbItem.filterType === "Magic Item")) {
@@ -600,12 +611,14 @@ export default class ItemController extends BaseController {
                         if (dbItem.filterType === "Magic Item") {
                             dbItem.filterType = dbItem.damage ? "Weapon" : "Equipment";
                         }
-                        await itemRepo.save(dbItem);
+                        keepLockedFields(dbItem, before, ITEM_LOCK_COLUMNS);
+                        if (differsFrom(dbItem, before)) await itemRepo.save(dbItem);
                     }
 
                     if (dbItem.slug === "quarterstaff" && dbItem.description && (dbItem.description.includes("woodlands") || dbItem.description.includes("can be wielded as a magic quarterstaff"))) {
                         dbItem.description = "<p>Proficiency with a Quarterstaff allows you to add your proficiency bonus to the attack roll for any attack you make with it.</p><p><strong>Versatile:</strong> This weapon can be used with one or two hands. A damage value in parentheses appears with the property—the damage when the weapon is used with two hands to make a melee attack.</p>";
-                        await itemRepo.save(dbItem);
+                        keepLockedFields(dbItem, before, ITEM_LOCK_COLUMNS);
+                        if (differsFrom(dbItem, before)) await itemRepo.save(dbItem);
                     }
 
                     if (preferRules2024 && isLegacySrdSource(dbItem.source)) {
@@ -700,7 +713,40 @@ export default class ItemController extends BaseController {
         };
     }
 
+    /** The fields the Add/Edit Custom Weapon and Magic Item dialogs control, normalized the same way for both */
+    private static customItemFields(body: Partial<Item>) {
+        const cost = body.cost !== undefined && body.cost !== null && String(body.cost).trim() !== "" ? Number(body.cost) : undefined;
+        return {
+            name: String(body.name || "").trim(),
+            filterType: body.filterType?.trim() || "Item",
+            rarity: body.rarity?.trim() || "Common",
+            isMagic: !!body.isMagic,
+            requiresAttunement: !!body.requiresAttunement,
+            category: body.category?.trim() || undefined,
+            damage: body.damage?.trim() || undefined,
+            range: body.range?.trim() || undefined,
+            properties: body.properties?.trim() || undefined,
+            mastery: body.mastery?.trim() || undefined,
+            weight: Number(body.weight) || 0,
+            cost: cost !== undefined && !Number.isNaN(cost) ? cost : undefined,
+            description: String(body.description || "").trim(),
+            imageUrl: body.imageUrl?.trim() || undefined
+        };
+    }
+
+    private static clearItemCache(slug: string) {
+        cache.del([`item_detail_${slug}`, `item_detail_${slug}_pref2024`, `item_detail_${slug}_mixed`]);
+    }
+
     public static async createCustomItem(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify({ error: "Log in to add custom items." }),
+                status: 401
+            };
+        }
+
         try {
             const body = await BaseController.readBody<Partial<Item>>(req);
             if (!body || !body.name || !body.description) {
@@ -735,23 +781,11 @@ export default class ItemController extends BaseController {
             }
 
             const customItem = itemRepo.create({
+                ...this.customItemFields(body),
                 slug: rawSlug,
-                name: body.name.trim(),
-                filterType: body.filterType?.trim() || "Item",
-                rarity: body.rarity?.trim() || "Common",
-                isMagic: !!body.isMagic,
-                requiresAttunement: !!body.requiresAttunement,
                 source: body.source?.trim() || "Custom / Homebrew",
-                category: body.category?.trim(),
-                damage: body.damage?.trim(),
-                range: body.range?.trim(),
-                properties: body.properties?.trim(),
-                mastery: body.mastery?.trim(),
-                weight: Number(body.weight) || 0,
-                cost: body.cost !== undefined ? Number(body.cost) : undefined,
-                description: body.description.trim(),
-                imageUrl: body.imageUrl?.trim(),
-                isCustom: true
+                isCustom: true,
+                createdById: currentUser.id
             });
 
             const saved = await itemRepo.save(customItem);
@@ -759,6 +793,7 @@ export default class ItemController extends BaseController {
                 sourceTier: "Custom Database",
                 item: saved
             };
+            this.clearItemCache(rawSlug);
             cache.set(`item_detail_${rawSlug}`, JSON.stringify(responseItem), 3600);
 
             return {
@@ -767,6 +802,106 @@ export default class ItemController extends BaseController {
             };
         } catch (error: any) {
             console.error("Error creating custom item:", error);
+            return {
+                response: JSON.stringify({ error: error.message || "Internal server error" }),
+                status: 500
+            };
+        }
+    }
+
+    /** Creators can edit their own custom items; admins can edit any item. Source, modifiers, and IDs stay as they were. */
+    public static async editCustomItem(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify({ error: "Log in to edit items." }),
+                status: 401
+            };
+        }
+
+        try {
+            const body = await BaseController.readBody<Partial<Item>>(req);
+            const id = Number(body?.id);
+            if (!body || !Number.isInteger(id) || id <= 0) {
+                return {
+                    response: JSON.stringify({ error: "Item ID is required." }),
+                    status: 400
+                };
+            }
+            if (!body.name || !body.description) {
+                return {
+                    response: JSON.stringify({ error: "Name and description are required." }),
+                    status: 400
+                };
+            }
+
+            const newSlug = slugify(body.name);
+            if (!newSlug) {
+                return {
+                    response: JSON.stringify({ error: "Invalid item name." }),
+                    status: 400
+                };
+            }
+
+            if (!AppDataSource.isInitialized) {
+                return {
+                    response: JSON.stringify({ error: "Database not initialized." }),
+                    status: 503
+                };
+            }
+
+            const itemRepo = AppDataSource.getRepository(Item);
+            const item = await itemRepo.findOne({ where: { id } });
+            if (!item) {
+                return {
+                    response: JSON.stringify({ error: "Item not found." }),
+                    status: 404
+                };
+            }
+
+            if (!BaseController.canEditOwned(currentUser, item.createdById)) {
+                return {
+                    response: JSON.stringify({ error: "You can only edit items you created." }),
+                    status: 403
+                };
+            }
+
+            const oldSlug = item.slug;
+            const oldNameBeforeEdit = item.name;
+            if (newSlug !== oldSlug) {
+                const clash = await itemRepo.findOne({ where: { slug: newSlug } });
+                if (clash && clash.id !== item.id) {
+                    return {
+                        response: JSON.stringify({ error: "An item with this name already exists in the database." }),
+                        status: 409
+                    };
+                }
+            }
+
+            Object.assign(item, this.customItemFields(body), { slug: newSlug });
+            if ((body as any).lockedFields !== undefined) {
+                item.lockedFields = normalizeLockedFields((body as any).lockedFields, ITEM_LOCK_COLUMNS);
+            }
+            // TypeORM skips undefined on save, so a field the dialog cleared has to become null
+            for (const key of ["category", "damage", "range", "properties", "mastery", "cost", "imageUrl"] as const) {
+                if (item[key] === undefined || item[key] === "") (item as any)[key] = null;
+            }
+            const saved = await itemRepo.save(item);
+
+            this.clearItemCache(oldSlug);
+            this.clearItemCache(newSlug);
+
+            const propagation = await propagateItemEdit(saved, oldNameBeforeEdit).catch((err) => {
+                console.error("Could not copy the item edit onto characters:", err);
+                return null;
+            });
+
+            return {
+                response: JSON.stringify({ sourceTier: saved.isCustom ? "Custom Database" : "Database", item: saved, propagation }),
+                status: 200
+            };
+        } catch (error: any) {
+            console.error("Error editing item:", error);
             return {
                 response: JSON.stringify({ error: error.message || "Internal server error" }),
                 status: 500

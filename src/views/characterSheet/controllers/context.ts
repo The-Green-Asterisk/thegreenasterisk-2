@@ -1,4 +1,5 @@
 import { CharacterData, SpellDefinition } from "../characterData";
+import { CustomItemKind } from "../components/customItemModal";
 
 export type SavedCharacterSummary = {
     id: number;
@@ -62,7 +63,10 @@ export interface CharacterSheetContext {
     openActionModal: (actionIndex: number) => void;
     closeActionModal: () => void;
     openFeatureModal: (featureIndex: number) => void;
-    openCustomSpellModal: () => void;
+    /** With a database spell, opens the dialog to edit it instead of adding one */
+    openCustomSpellModal: (spell?: any) => void;
+    /** With a database item, opens the dialog to edit it instead of adding one */
+    openCustomItemModal: (kind: CustomItemKind, item?: Record<string, any>) => void;
     closeCustomSpellModal: () => void;
     openMarkupGuideModal: () => void;
     closeMarkupGuideModal: () => void;

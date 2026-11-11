@@ -2,6 +2,7 @@ import http from 'http';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import BaseController from '../../server/controllers/baseController';
+import SessionController from '../../server/controllers/sessionController';
 import ItemController, { getItemSearchAliases, isPotionOrOil } from '../../server/controllers/itemController';
 import AppDataSource from '../../server/services/database';
 
@@ -17,6 +18,7 @@ describe('ItemController', () => {
         mockRes = {};
         cache.del('item_detail_dagger');
         cache.del('item_detail_potion-of-healing');
+        vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 7, isAdmin: false } as any);
     });
 
     it('returns 400 when name is missing', async () => {

@@ -2,6 +2,7 @@ import http from 'http';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import BaseController from '../../server/controllers/baseController';
+import SessionController from '../../server/controllers/sessionController';
 import SpellController from '../../server/controllers/spellController';
 import AppDataSource from '../../server/services/database';
 
@@ -16,6 +17,7 @@ describe('SpellController', () => {
         };
         mockRes = {};
         cache.del('spell_detail_vicious-mockery');
+        vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 7, isAdmin: false } as any);
     });
 
     it('returns 400 when name is missing', async () => {

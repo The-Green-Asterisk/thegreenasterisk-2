@@ -86,6 +86,9 @@ export function renderSheetContent(data: CharacterData): string {
                             <button class="manage-weapons-btn" id="open-manage-weapons-btn" title="Search database items and manage weapons inventory">
                                 <i class="fa-solid fa-khanda"></i> Manage Weapons/Items
                             </button>
+                            <button type="button" class="add-custom-item-btn" id="open-custom-weapon-btn" aria-haspopup="dialog" title="Add a custom weapon to this character and the database">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Custom Weapon
+                            </button>
                         </div>
                     </div>
                     <div class="weapons-grid">
@@ -210,6 +213,9 @@ export function renderSheetContent(data: CharacterData): string {
                         <div class="equipment-header-actions">
                             <button class="manage-equipment-btn" id="open-manage-equipment-btn" title="Search database items and manage equipment inventory">
                                 <i class="fa-solid fa-shield"></i> Manage Weapons/Items
+                            </button>
+                            <button type="button" class="add-custom-item-btn" id="open-custom-magic-item-btn" aria-haspopup="dialog" title="Add a custom magic item to this character and the database">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Custom Magic Item
                             </button>
                         </div>
                     </div>
