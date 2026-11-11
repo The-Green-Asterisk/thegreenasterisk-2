@@ -1838,6 +1838,160 @@ describe('Frontend View Templates', () => {
         expect(letterStyles).toContain('height: 1056px');
     });
 
+    it('includes damage and scaling effects in PDF spell entries', async () => {
+        const { generatePdfHtmlPages } = await import(
+            '../../../src/views/characterSheet/services/pdfExport'
+        );
+        const { darvellData } = await import(
+            '../../../src/views/characterSheet/characterData'
+        );
+
+        const spellChar: any = {
+            ...darvellData,
+            name: 'Archmage',
+            level: 5,
+            classes: [{ name: 'Wizard', level: 5 }],
+            vitals: {
+                ...darvellData.vitals,
+                spellSaveDc: 15,
+                spellAttackBonus: 7,
+                spellcastingAbility: 'Intelligence'
+            },
+            spellSlots: {
+                level1: { total: 4, label: '1st Level' },
+                level2: { total: 3, label: '2nd Level' },
+                level3: { total: 2, label: '3rd Level' }
+            },
+            spells: [
+                {
+                    name: 'Eldritch Blast',
+                    level: 0,
+                    castingTime: '1 Action',
+                    range: '120 ft.',
+                    damageDice: '1d10',
+                    damageType: 'Force',
+                    damageScaling: [
+                        { level: 1, label: 'Cantrip (1-4)', dice: '1d10', modifier: '', effect: '1 beam' },
+                        { level: 5, label: 'Cantrip (5-10)', dice: '1d10', modifier: '', effect: '2 beams' }
+                    ]
+                },
+                {
+                    name: 'Hold Person',
+                    level: 2,
+                    castingTime: '1 Action',
+                    range: '60 ft.',
+                    damageScaling: [
+                        { level: 2, label: 'Level 2', dice: '', modifier: '', effect: '1 humanoid' },
+                        { level: 3, label: 'Level 3', dice: '', modifier: '', effect: '2 humanoids' }
+                    ]
+                },
+                {
+                    name: 'Fireball',
+                    level: 3,
+                    castingTime: '1 Action',
+                    range: '150 ft.',
+                    damageDice: '8d6',
+                    damageType: 'Fire',
+                    damageScaling: [
+                        { level: 3, label: 'Level 3', dice: '8d6', modifier: '', effect: '20 ft. radius' },
+                        { level: 4, label: 'Level 4', dice: '9d6', modifier: '', effect: '20 ft. radius' }
+                    ]
+                }
+            ]
+        };
+
+        const pages = generatePdfHtmlPages(spellChar);
+        expect(pages.length).toBeGreaterThanOrEqual(3);
+
+        const spellPage = pages[2];
+        expect(spellPage).toContain('pdf-spell-damage');
+        expect(spellPage).toContain('pdf-spell-effect');
+        expect(spellPage).toContain('1d10 Force');
+        expect(spellPage).toContain('2 beams');
+        expect(spellPage).toContain('1 humanoid');
+        expect(spellPage).toContain('8d6 Fire');
+        expect(spellPage).toContain('20 ft. radius');
+    });
+
+    it('creates a second spell list page when the spell list exceeds one page', async () => {
+        const { generatePdfHtmlPages } = await import(
+            '../../../src/views/characterSheet/services/pdfExport'
+        );
+        const { darvellData } = await import(
+            '../../../src/views/characterSheet/characterData'
+        );
+
+        // Create a character with a large spell list that overflows one page
+        const spells: any[] = [];
+        // 6 cantrips
+        for (let i = 1; i <= 6; i++) {
+            spells.push({ name: `Cantrip ${i}`, level: 0, castingTime: '1 Action', range: '60 ft.' });
+        }
+        // 6 spells for each level 1 through 9 (54 spells)
+        for (let lvl = 1; lvl <= 9; lvl++) {
+            for (let i = 1; i <= 6; i++) {
+                spells.push({
+                    name: `Level ${lvl} Spell ${i}`,
+                    level: lvl,
+                    castingTime: '1 Action',
+                    range: '60 ft.',
+                    damageDice: `${lvl}d6`,
+                    damageType: 'Fire',
+                    damageScaling: [{ level: lvl, label: `Level ${lvl}`, dice: `${lvl}d6`, modifier: '', effect: `${lvl} targets` }]
+                });
+            }
+        }
+
+        const largeCaster: any = {
+            ...darvellData,
+            name: 'Grand Archmage',
+            level: 20,
+            classes: [{ name: 'Wizard', level: 20 }],
+            vitals: {
+                ...darvellData.vitals,
+                spellSaveDc: 19,
+                spellAttackBonus: 11,
+                spellcastingAbility: 'Intelligence'
+            },
+            spellSlots: {
+                level1: { total: 4 },
+                level2: { total: 3 },
+                level3: { total: 3 },
+                level4: { total: 3 },
+                level5: { total: 3 },
+                level6: { total: 2 },
+                level7: { total: 2 },
+                level8: { total: 1 },
+                level9: { total: 1 }
+            },
+            spells,
+            notes: {
+                backstory: 'A venerable wizard who studied magic for centuries.'
+            }
+        };
+
+        const pages = generatePdfHtmlPages(largeCaster);
+        // Expect 5 pages: Page 1 (core), Page 2 (features), Page 3 (spells part 1), Page 4 (spells part 2), Page 5 (details)
+        expect(pages.length).toBe(5);
+
+        // Spell Page 1
+        expect(pages[2]).toContain('Spellcasting &amp; Spell Slots (Page 1 of 2)');
+        expect(pages[2]).toContain('Page 3 — Spellcasting &amp; Spell Slots (Part 1)');
+        expect(pages[2]).toContain('CANTRIPS (0 LEVEL)');
+        expect(pages[2]).toContain('1ST LEVEL');
+
+        // Spell Page 2
+        expect(pages[3]).toContain('Spellcasting &amp; Spell Slots (Page 2 of 2)');
+        expect(pages[3]).toContain('Page 4 — Spellcasting &amp; Spell Slots (Part 2)');
+        expect(pages[3]).toContain('9TH LEVEL');
+        expect(pages[3]).toContain('9d6 Fire');
+        expect(pages[3]).toContain('9 targets');
+
+        // Details Page (Page 5)
+        expect(pages[4]).toContain('Page 5 — Details, Notes &amp; Limited Uses');
+        expect(pages[4]).toContain('A venerable wizard who studied magic for centuries.');
+    });
+
     it('renders export PDF format selection modal in character sheet template', () => {
         const sheet = characterSheetTemplate();
         const exportModal = sheet.querySelector('#export-pdf-modal-container');
