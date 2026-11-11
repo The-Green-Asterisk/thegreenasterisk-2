@@ -132,8 +132,15 @@ function splitDamage(damage?: string | null): { die?: string; type?: string } {
  *
  * With `effects` (the edit changed the item's effects): unlocked copies take the new effects, and locked copies
  * that follow the item's effects by name get the old ones written onto them, so they stay exactly as they were.
+ * With `charges` (the edit set the item's charges): unlocked copies take the new count and reset, keeping the
+ * charges they've spent up to the new count; no charges takes them away.
  */
-export async function propagateItemEdit(item: Item, oldName: string, effects?: { previousModifiers: any[] }): Promise<PropagationResult> {
+export async function propagateItemEdit(
+    item: Item,
+    oldName: string,
+    options: { effects?: { previousModifiers: any[] }; charges?: boolean } = {}
+): Promise<PropagationResult> {
+    const { effects } = options;
     const repo = AppDataSource.getRepository<CharacterInventoryItem>("CharacterInventoryItem");
     const rows = await repo.find({
         where: [{ itemId: item.id }, { itemId: IsNull(), name: oldName }],
@@ -187,8 +194,13 @@ export async function propagateItemEdit(item: Item, oldName: string, effects?: {
         entry.modifiers = effects.previousModifiers;
         return true;
     };
-    const takeEffects = (entry: any) => {
+    const newCharges = parseJsonField(item.chargesJson) as { max: number; resetOn: string; resetLabel?: string } | undefined;
+    const takeEffects = (entry: any, chargesToo = true) => {
         if (effects) entry.modifiers = Array.isArray(newModifiers) ? newModifiers : [];
+        if (options.charges && chargesToo) {
+            if (newCharges) entry.charges = { ...newCharges, used: Math.min(Number(entry.charges?.used) || 0, newCharges.max) };
+            else delete entry.charges;
+        }
     };
     await rewritePayloads([...characterIds], (payload) => {
         let touched = false;
@@ -210,13 +222,15 @@ export async function propagateItemEdit(item: Item, oldName: string, effects?: {
             });
             touched = true;
         }
+        // A weapon's charges show on its weapon card; its equipment twin doesn't get a second set
+        const hasWeaponTwin = (Array.isArray(payload.weapons) ? payload.weapons : []).some((w: any) => isCopyOf(w, "itemId", item.id, oldName));
         for (const entry of Array.isArray(payload.equipment) ? payload.equipment : []) {
             if (!isCopyOf(entry, "itemId", item.id, oldName)) continue;
             if (entry.locked) {
                 touched = freezeEffects(entry) || touched;
                 continue;
             }
-            takeEffects(entry);
+            takeEffects(entry, !hasWeaponTwin);
             Object.assign(entry, payloadCommon, {
                 type: item.category || item.filterType || entry.type,
                 filterType: item.filterType || entry.filterType

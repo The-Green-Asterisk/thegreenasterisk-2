@@ -6,7 +6,7 @@ import { CharacterSheetContext } from "./context";
 import { createLockPanel, LockField } from "./definitionLockPanel";
 import { findItemRule, upsertItemRule } from "../../../services/classRules";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
-import { applyItemEditToCopies, EffectsEdit } from "../services/characterCopies";
+import { applyItemEditToCopies, ChargesDefinition, chargesFromDb, EffectsEdit } from "../services/characterCopies";
 import { createItemEffectsEditor } from "./itemEffectsEditor";
 import { describePropagation, describeRequestError, releaseBodyScrollIfNoDialogOpen, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
 
@@ -155,6 +155,10 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         q<HTMLTextAreaElement>(kind, "description")!.value = item.description || "";
         input(kind, "image")!.value = item.imageUrl || "";
         updateImagePreview(kind, item.imageUrl || "");
+        const charges = chargesFromDb(item.chargesJson);
+        input(kind, "charges-max")!.value = charges ? String(charges.max) : "";
+        setSelectValue(select(kind, "charges-reset"), charges?.resetOn || "long");
+        input(kind, "charges-label")!.value = charges?.resetLabel || "";
 
         if (kind === "weapon") {
             setSelectValue(select(kind, "category"), item.category || "Simple Melee");
@@ -220,6 +224,17 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         openers[kind] = null;
     }
 
+    /** The dialog's charges, null for none, or undefined when the count isn't a whole number from 0 to 99 */
+    function readCharges(kind: CustomItemKind): ChargesDefinition | null | undefined {
+        const raw = input(kind, "charges-max")?.value.trim() || "";
+        const max = raw === "" ? 0 : Number(raw);
+        if (!Number.isInteger(max) || max < 0 || max > 99) return undefined;
+        if (max === 0) return null;
+        const resetOn = (select(kind, "charges-reset")?.value || "long") as ChargesDefinition["resetOn"];
+        const resetLabel = input(kind, "charges-label")?.value.trim();
+        return resetLabel ? { max, resetOn, resetLabel } : { max, resetOn };
+    }
+
     function buildPayload(kind: CustomItemKind): DbItem {
         const original = editing[kind];
         const weight = input(kind, "weight")?.value.trim();
@@ -233,6 +248,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
             cost: cost ? Number(cost) : undefined,
             description: q<HTMLTextAreaElement>(kind, "description")?.value.trim() || "",
             imageUrl: input(kind, "image")?.value.trim() || undefined,
+            charges: readCharges(kind),
             source: "Custom Homebrew"
         };
 
@@ -267,7 +283,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
 
     /** Copies an edit onto the active sheet's unlocked copies of the item (the server does every other character) */
     function applyEditToCharacter(oldName: string, item: DbItem, effects?: EffectsEdit) {
-        const result = applyItemEditToCopies(ctx.getCharacter(), oldName, item, effects);
+        const result = applyItemEditToCopies(ctx.getCharacter(), oldName, item, effects, chargesFromDb(item.chargesJson) ?? null);
         if (result.updated === 0 && !effects) return;
         deps.refreshSheetItemsView();
         ctx.syncSheetStats();
@@ -291,6 +307,12 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         if (kind === "weapon" && !DICE_PATTERN.test(String(payload.damageDie))) {
             showStatus(kind, "Damage Dice must look like 1d8 or 2d6 + 1.", true);
             input(kind, "damage-dice")?.focus();
+            return;
+        }
+
+        if (payload.charges === undefined) {
+            showStatus(kind, "Charges must be a whole number from 0 to 99.", true);
+            input(kind, "charges-max")?.focus();
             return;
         }
 

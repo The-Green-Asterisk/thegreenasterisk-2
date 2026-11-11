@@ -84,8 +84,9 @@ describe('editing an item\'s effects', () => {
         expect(result.status).toBe(200);
         expect(JSON.parse(row.modifiersJson)).toEqual([{ target: 'vitals.ac', type: 'bonus', value: 2 }]);
         expect(cache.get('dnd_rules_all')).toBeUndefined();
-        const effects = propagate.mock.calls[0][2];
-        expect(effects?.previousModifiers).toEqual(seedItemModifiers('Cloak of Protection'));
+        const options = propagate.mock.calls[0][2];
+        expect(options?.effects?.previousModifiers).toEqual(seedItemModifiers('Cloak of Protection'));
+        expect(options?.charges).toBe(false);
     });
 
     it('leaves the effects alone when the dialog sent none', async () => {
@@ -98,7 +99,7 @@ describe('editing an item\'s effects', () => {
         await ItemController.editCustomItem(editReq(), res);
 
         expect(row.modifiersJson).toBe('[{"target":"checks.all","type":"bonus","value":1}]');
-        expect(propagate.mock.calls[0][2]).toBeUndefined();
+        expect(propagate.mock.calls[0][2]?.effects).toBeUndefined();
     });
 });
 
@@ -124,11 +125,77 @@ describe('effects reach characters', () => {
             }
         });
 
-        await propagateItemEdit(item, 'Belt of Might', { previousModifiers: previous });
+        await propagateItemEdit(item, 'Belt of Might', { effects: { previousModifiers: previous } });
 
         const written = Object.fromEntries((update.mock.calls as any[]).map(([id, { payload }]) => [id, JSON.parse(payload)]));
         expect(written[1].equipment[0].modifiers).toEqual([{ target: 'abilities.str', type: 'set', value: 23 }]);
         expect(written[2].equipment[0].modifiers).toEqual(previous);
         expect(written[2].equipment[1].modifiers).toEqual([]);
+    });
+});
+
+describe('item charges', () => {
+    it('stores a whole number of charges with a known reset, and nothing otherwise', async () => {
+        const { sanitizeItemCharges } = await import('../../server/services/database/itemMechanics');
+        expect(JSON.parse(sanitizeItemCharges({ max: 7, resetOn: 'dawn', resetLabel: ' 1d6 + 1 at dawn ', used: 3 })!)).toEqual({ max: 7, resetOn: 'dawn', resetLabel: '1d6 + 1 at dawn' });
+        expect(JSON.parse(sanitizeItemCharges({ max: 3, resetOn: 'whenever' })!)).toEqual({ max: 3, resetOn: 'long' });
+        expect(sanitizeItemCharges({ max: 0 })).toBeNull();
+        expect(sanitizeItemCharges({ max: 2.5 })).toBeNull();
+        expect(sanitizeItemCharges({ max: 100 })).toBeNull();
+        expect(sanitizeItemCharges(null)).toBeNull();
+    });
+
+    it('saves charges from the dialog, clears them when it sends none, and tells propagation', async () => {
+        vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 1, isAdmin: true } as any);
+        const row: any = { id: 7, slug: 'wand-of-mud', name: 'Wand of Mud', description: 'x', isCustom: true, createdById: 1, chargesJson: null };
+        mockRepos({ Item: { findOne: vi.fn(async ({ where }) => (where.id === 7 || where.slug === row.slug ? row : null)), save: vi.fn(async (r) => r) } });
+        const propagate = vi.spyOn(copies, 'propagateItemEdit').mockResolvedValue({ updated: 0, locked: 0 });
+
+        vi.spyOn(BaseController, 'readBody').mockResolvedValueOnce({ id: 7, name: 'Wand of Mud', description: 'x', charges: { max: 7, resetOn: 'dawn' } });
+        await ItemController.editCustomItem({ url: '/data/edit-custom-item', method: 'PUT' } as http.IncomingMessage, res);
+        expect(JSON.parse(row.chargesJson)).toEqual({ max: 7, resetOn: 'dawn' });
+        expect(propagate.mock.calls[0][2]?.charges).toBe(true);
+
+        vi.spyOn(BaseController, 'readBody').mockResolvedValueOnce({ id: 7, name: 'Wand of Mud', description: 'x', charges: null });
+        await ItemController.editCustomItem({ url: '/data/edit-custom-item', method: 'PUT' } as http.IncomingMessage, res);
+        expect(row.chargesJson).toBeNull();
+    });
+
+    it('fills in charges from a D&D Beyond pull only where the item has none', async () => {
+        const rows: Record<string, any> = {
+            'wand-of-web': { id: 1, slug: 'wand-of-web', name: 'Wand of Web', description: 'Webs', source: 'D&D Beyond', isCustom: false, chargesJson: null },
+            'wand-of-mud': { id: 2, slug: 'wand-of-mud', name: 'Wand of Mud', description: 'Mud', source: 'D&D Beyond', isCustom: false, chargesJson: '{"max":3,"resetOn":"long"}' }
+        };
+        const save = vi.fn(async (r) => r);
+        mockRepos({ Item: { findOne: vi.fn(async ({ where }) => rows[where.slug] ?? null), save, create: vi.fn((e) => ({ ...e })) } });
+
+        await ItemController.upsertItemsFromCharacter([], [
+            { name: 'Wand of Web', type: 'Wand', isMagic: true, rarity: 'Uncommon', charges: { max: 7, used: 2, resetOn: 'dawn' } },
+            { name: 'Wand of Mud', type: 'Wand', isMagic: true, rarity: 'Uncommon', charges: { max: 7, used: 0, resetOn: 'dawn' } },
+            { name: 'Wand of Fog', type: 'Wand', isMagic: true, rarity: 'Uncommon', charges: { max: 5, used: 0, resetOn: 'dawn' } }
+        ]);
+
+        expect(JSON.parse(rows['wand-of-web'].chargesJson)).toEqual({ max: 7, resetOn: 'dawn' });
+        expect(JSON.parse(rows['wand-of-mud'].chargesJson)).toEqual({ max: 3, resetOn: 'long' });
+        const created = save.mock.calls.map((c: any[]) => c[0]).find((r: any) => r.name === 'Wand of Fog');
+        expect(JSON.parse(created.chargesJson)).toEqual({ max: 5, resetOn: 'dawn' });
+    });
+
+    it('gives unlocked copies the new charges, keeping what they spent, and skips a weapon\'s equipment twin', async () => {
+        const update = vi.fn(async () => undefined);
+        mockRepos({
+            CharacterInventoryItem: { find: vi.fn(async () => [{ name: 'Staff of Bogs', itemId: 3, locked: false, damage: '1d6 Bludgeoning', savedCharacter: { id: 1 } }]), save: vi.fn(async (r) => r) },
+            SavedCharacter: {
+                find: vi.fn(async () => [{ id: 1, payload: JSON.stringify({
+                    weapons: [{ name: 'Staff of Bogs', itemId: 3, charges: { max: 10, used: 8, resetOn: 'dawn' } }],
+                    equipment: [{ name: 'Staff of Bogs', itemId: 3 }]
+                }) }]),
+                update
+            }
+        });
+        await propagateItemEdit({ id: 3, name: 'Staff of Bogs', damage: '1d6 Bludgeoning', chargesJson: '{"max":6,"resetOn":"dawn","resetLabel":"1d6 at dawn"}', description: 'x' } as any, 'Staff of Bogs', { charges: true });
+        const written = JSON.parse((update.mock.calls[0] as any[])[1].payload);
+        expect(written.weapons[0].charges).toEqual({ max: 6, resetOn: 'dawn', resetLabel: '1d6 at dawn', used: 6 });
+        expect(written.equipment[0].charges).toBeUndefined();
     });
 });

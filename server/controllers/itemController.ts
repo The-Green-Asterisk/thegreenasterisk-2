@@ -4,7 +4,7 @@ import AppDataSource from "../services/database";
 import { Item } from "../services/database/entity/Item";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { propagateItemEdit } from "../services/characterCopies";
-import { sanitizeItemModifiers, seedItemModifiers } from "../services/database/itemMechanics";
+import { sanitizeItemCharges, sanitizeItemModifiers, seedItemModifiers } from "../services/database/itemMechanics";
 import { differsFrom, ITEM_LOCK_COLUMNS, keepLockedFields, normalizeLockedFields } from "../services/definitionLocks";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
@@ -176,6 +176,12 @@ export default class ItemController extends BaseController {
                         if (rawWep?.grantedBy && existing) {
                             continue;
                         }
+                        // Charges from the pull fill in an item that has none; ones set in the Edit dialog stay
+                        const pulledCharges = sanitizeItemCharges(rawWep?.charges);
+                        if (existing && pulledCharges && !existing.chargesJson) {
+                            existing.chargesJson = pulledCharges;
+                            await itemRepo.save(existing);
+                        }
 
                         const sourceLabel = (rawWep.source
                             ? (String(rawWep.source).toLowerCase().includes("d&d beyond") || String(rawWep.source).toLowerCase().includes("custom")
@@ -217,6 +223,7 @@ export default class ItemController extends BaseController {
                                 description: desc,
                                 imageUrl,
                                 dndBeyondId,
+                                chargesJson: pulledCharges,
                                 isCustom: false
                             });
                             const saved = await itemRepo.save(created);
@@ -271,6 +278,11 @@ export default class ItemController extends BaseController {
                         if (rawEq?.grantedBy && existing) {
                             continue;
                         }
+                        const pulledCharges = sanitizeItemCharges(rawEq?.charges);
+                        if (existing && pulledCharges && !existing.chargesJson) {
+                            existing.chargesJson = pulledCharges;
+                            await itemRepo.save(existing);
+                        }
 
                         const sourceLabel = (rawEq.source
                             ? (String(rawEq.source).toLowerCase().includes("d&d beyond") || String(rawEq.source).toLowerCase().includes("custom")
@@ -310,6 +322,7 @@ export default class ItemController extends BaseController {
                                 description: desc,
                                 imageUrl,
                                 dndBeyondId,
+                                chargesJson: pulledCharges,
                                 isCustom: false
                             });
                             const saved = await itemRepo.save(created);
@@ -795,6 +808,7 @@ export default class ItemController extends BaseController {
             const customItem = itemRepo.create({
                 ...this.customItemFields(body),
                 ...(Array.isArray(modifiers) ? { modifiersJson: sanitizeItemModifiers(modifiers) ?? undefined } : {}),
+                chargesJson: sanitizeItemCharges((body as any).charges),
                 slug: rawSlug,
                 source: body.source?.trim() || "Custom / Homebrew",
                 isCustom: true,
@@ -901,6 +915,8 @@ export default class ItemController extends BaseController {
                 item.lockedFields = normalizeLockedFields((body as any).lockedFields, ITEM_LOCK_COLUMNS);
             }
             if (modifiersChanged) item.modifiersJson = sanitizeItemModifiers((body as any).modifiers) as string;
+            const chargesChanged = (body as any).charges !== undefined;
+            if (chargesChanged) item.chargesJson = sanitizeItemCharges((body as any).charges);
             // TypeORM skips undefined on save, so a field the dialog cleared has to become null
             for (const key of ["category", "damage", "range", "properties", "mastery", "cost", "imageUrl"] as const) {
                 if (item[key] === undefined || item[key] === "") (item as any)[key] = null;
@@ -911,7 +927,10 @@ export default class ItemController extends BaseController {
             this.clearItemCache(newSlug);
             cache.del("dnd_rules_all");
 
-            const propagation = await propagateItemEdit(saved, oldNameBeforeEdit, modifiersChanged ? { previousModifiers } : undefined).catch((err) => {
+            const propagation = await propagateItemEdit(saved, oldNameBeforeEdit, {
+                effects: modifiersChanged ? { previousModifiers } : undefined,
+                charges: chargesChanged
+            }).catch((err) => {
                 console.error("Could not copy the item edit onto characters:", err);
                 return null;
             });

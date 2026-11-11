@@ -1,5 +1,5 @@
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
-import { CharacterData, EquipmentItem, SpellDefinition, WeaponItem } from "../characterData";
+import { CharacterData, EquipmentItem, ItemCharges, SpellDefinition, WeaponItem } from "../characterData";
 
 /**
  * A character's spells and items are its own copies of database rows (linked by spellId / itemId). These mirror
@@ -78,6 +78,29 @@ export function applySpellEditToCopies(character: CharacterData | null, oldName:
     return result;
 }
 
+/** An item's charges as stored on its database row (chargesJson), without the spent count, or undefined for none */
+export type ChargesDefinition = Omit<ItemCharges, "used">;
+
+export function chargesFromDb(raw: unknown): ChargesDefinition | undefined {
+    let parsed: any = raw;
+    if (typeof raw === "string") {
+        try {
+            parsed = JSON.parse(raw);
+        } catch {
+            return undefined;
+        }
+    }
+    const max = Number(parsed?.max);
+    if (!parsed || !Number.isInteger(max) || max < 1) return undefined;
+    const resetOn = ["short", "long", "dawn", "manual"].includes(parsed.resetOn) ? parsed.resetOn : "long";
+    return parsed.resetLabel ? { max, resetOn, resetLabel: String(parsed.resetLabel) } : { max, resetOn };
+}
+
+/** A copy's charges after its item's charges change: the new count and reset, keeping what it spent up to the new count */
+function nextCharges(current: ItemCharges | undefined, charges: ChargesDefinition | null): ItemCharges | undefined {
+    return charges ? { ...charges, used: Math.min(current?.used || 0, charges.max) } : undefined;
+}
+
 /** "1d8 Slashing" → dice "1d8", type "Slashing" */
 function splitDamage(damage: unknown): { dice?: string; type?: string } {
     const match = String(damage || "").trim().match(/^(.*?)\s+([A-Za-z]+)$/);
@@ -91,7 +114,14 @@ function splitDamage(damage: unknown): { dice?: string; type?: string } {
 export type EffectsEdit = { modifiers: StatModifier[]; previousModifiers: StatModifier[] };
 
 /** Copies an edited item onto the character's unlocked weapon and equipment copies of it */
-export function applyItemEditToCopies(character: CharacterData | null, oldName: string, item: any, effects?: EffectsEdit): CopyUpdateResult {
+export function applyItemEditToCopies(
+    character: CharacterData | null,
+    oldName: string,
+    item: any,
+    effects?: EffectsEdit,
+    /** The item's new charges (null: none); leave out when the edit didn't touch them */
+    charges?: ChargesDefinition | null
+): CopyUpdateResult {
     const result = { updated: 0, locked: 0 };
     const id = databaseId(item?.id);
     if (!character || !id) return result;
@@ -106,6 +136,7 @@ export function applyItemEditToCopies(character: CharacterData | null, oldName: 
             return;
         }
         if (effects) w.modifiers = clone(effects.modifiers);
+        if (charges !== undefined) w.charges = nextCharges(w.charges, charges);
         Object.assign(w, {
             itemId: id,
             name: item.name,
@@ -125,6 +156,7 @@ export function applyItemEditToCopies(character: CharacterData | null, oldName: 
         result.updated++;
     });
 
+    const hasWeaponTwin = (character.weapons || []).some((w: WeaponItem) => isCopyOf(w, "itemId", id, oldName));
     (character.equipment || []).forEach((e: EquipmentItem) => {
         if (!isCopyOf(e, "itemId", id, oldName)) return;
         if (e.locked) {
@@ -133,6 +165,8 @@ export function applyItemEditToCopies(character: CharacterData | null, oldName: 
             return;
         }
         if (effects) e.modifiers = clone(effects.modifiers);
+        // A weapon's charges show on its weapon card; its equipment twin doesn't get a second set
+        if (charges !== undefined && !hasWeaponTwin) e.charges = nextCharges(e.charges, charges);
         Object.assign(e, {
             itemId: id,
             name: item.name,

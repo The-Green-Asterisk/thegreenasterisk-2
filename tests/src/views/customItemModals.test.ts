@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const postData = vi.fn(async (_path: string, body: any) => ({ item: { id: 50, ...body } }));
-const putData = vi.fn(async (_path: string, body: any) => ({ item: { ...body } }));
+// Like the server, the saved row comes back with its charges as chargesJson
+const asRow = (body: any) => ({ ...body, chargesJson: body.charges ? JSON.stringify(body.charges) : null });
+const postData = vi.fn(async (_path: string, body: any) => ({ item: { id: 50, ...asRow(body) } }));
+const putData = vi.fn(async (_path: string, body: any) => ({ item: asRow(body) }));
 vi.mock("@services/request", () => ({ getData: vi.fn(async () => undefined), postData, putData }));
 
 const auth = { isAuth: true, currentUser: { id: 7, isAdmin: false } as any };
@@ -268,5 +270,62 @@ describe("item effects on character copies", () => {
         });
         expect(char.equipment[0].modifiers[0].value).toBe(23);
         expect(char.equipment[1].modifiers[0].value).toBe(21);
+    });
+});
+
+describe("item charges in the dialogs", () => {
+    it("fills charges in when editing, sends them on save, and sends none when cleared", async () => {
+        const { modals, $, submit } = await setup();
+        modals.open("magic-item", { id: 8, name: "Wand of Mud", filterType: "Wand", description: "Squelch", chargesJson: '{"max":7,"resetOn":"dawn","resetLabel":"1d6 + 1 at dawn"}' });
+        expect($("custom-magic-item-charges-max").value).toBe("7");
+        expect($<HTMLSelectElement>("custom-magic-item-charges-reset").value).toBe("dawn");
+        expect($("custom-magic-item-charges-label").value).toBe("1d6 + 1 at dawn");
+
+        $("custom-magic-item-charges-max").value = "5";
+        await submit("custom-magic-item");
+        expect(putData.mock.calls[0][1].charges).toEqual({ max: 5, resetOn: "dawn", resetLabel: "1d6 + 1 at dawn" });
+
+        modals.open("magic-item", { id: 8, name: "Wand of Mud", filterType: "Wand", description: "Squelch", chargesJson: '{"max":5,"resetOn":"dawn"}' });
+        $("custom-magic-item-charges-max").value = "0";
+        await submit("custom-magic-item");
+        expect(putData.mock.calls[1][1].charges).toBeNull();
+    });
+
+    it("won't save a charge count that isn't a whole number from 0 to 99", async () => {
+        const { modals, $, submit } = await setup();
+        modals.open("magic-item", { id: 8, name: "Wand of Mud", filterType: "Wand", description: "Squelch" });
+        $("custom-magic-item-charges-max").value = "2.5";
+        await submit("custom-magic-item");
+        expect(putData).not.toHaveBeenCalled();
+        expect($("custom-magic-item-status").textContent).toContain("whole number from 0 to 99");
+    });
+
+    it("updates the open sheet's copies, keeping spent charges up to the new count, and skips a weapon's equipment twin", async () => {
+        const character = {
+            weapons: [{ name: "Staff of Bogs", itemId: 3, damage: "1d6 Bludgeoning", charges: { max: 10, used: 8, resetOn: "dawn" } }],
+            equipment: [{ name: "Staff of Bogs", itemId: 3, type: "Staff" }, { name: "Wand of Mud", itemId: 8, type: "Wand", charges: { max: 7, used: 2, resetOn: "dawn" } }]
+        };
+        const { modals, $, submit } = await setup(character);
+        modals.open("weapon", { id: 3, name: "Staff of Bogs", filterType: "Weapon", category: "Simple Melee", damage: "1d6 Bludgeoning", description: "Boggy", chargesJson: '{"max":10,"resetOn":"dawn"}' });
+        $("custom-weapon-charges-max").value = "6";
+        await submit("custom-weapon");
+        expect(character.weapons[0].charges).toEqual({ max: 6, resetOn: "dawn", used: 6 });
+        expect((character.equipment[0] as any).charges).toBeUndefined();
+
+        modals.open("magic-item", { id: 8, name: "Wand of Mud", filterType: "Wand", description: "Squelch", chargesJson: '{"max":7,"resetOn":"dawn"}' });
+        $("custom-magic-item-charges-max").value = "0";
+        await submit("custom-magic-item");
+        expect((character.equipment[1] as any).charges).toBeUndefined();
+    });
+
+    it("gives a new item its charges, all unspent", async () => {
+        const { modals, $, submit, addItemToCharacter } = await setup({ weapons: [], equipment: [] });
+        modals.open("magic-item");
+        $("custom-magic-item-name").value = "Wand of Fog";
+        $<HTMLTextAreaElement>("custom-magic-item-description").value = "Foggy.";
+        $("custom-magic-item-charges-max").value = "3";
+        await submit("custom-magic-item");
+        expect(postData.mock.calls[0][1].charges).toEqual({ max: 3, resetOn: "long" });
+        expect(addItemToCharacter).toHaveBeenCalled();
     });
 });

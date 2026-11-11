@@ -126,6 +126,32 @@ export function renderCustomItemModal(kind: CustomItemKind): string {
 
                         <div class="form-section">
                             <div class="form-section-header">
+                                <span class="form-section-title"><i class="fa-solid fa-battery-half" aria-hidden="true"></i> Charges (Optional)</span>
+                            </div>
+                            <p class="form-field-hint" id="${p}-charges-hint">Leave at 0 for an item without charges. The sheet shows charges as use boxes and refills them when they come back.</p>
+                            <div class="form-grid">
+                                <label class="form-field">
+                                    <span class="form-label">Charges</span>
+                                    <input type="number" id="${p}-charges-max" min="0" max="99" step="1" inputmode="numeric" placeholder="0" aria-describedby="${p}-charges-hint" />
+                                </label>
+                                <label class="form-field">
+                                    <span class="form-label">Charges come back</span>
+                                    <select id="${p}-charges-reset">
+                                        <option value="long" selected>On a long rest</option>
+                                        <option value="short">On a short or long rest</option>
+                                        <option value="dawn">At dawn</option>
+                                        <option value="manual">Only when marked by hand</option>
+                                    </select>
+                                </label>
+                                <label class="form-field full-width">
+                                    <span class="form-label">How they come back (optional)</span>
+                                    <input type="text" id="${p}-charges-label" maxlength="100" placeholder="e.g. 1d6 + 1 at dawn" autocomplete="off" />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="form-section-header">
                                 <span class="form-section-title"><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i> Description <span class="required-star">*</span></span>
                             </div>
                             <p class="form-field-hint" id="${p}-description-hint">

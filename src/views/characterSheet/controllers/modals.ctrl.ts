@@ -14,7 +14,7 @@ import { restoreUsePips } from "../components/usesTracker";
 import { renderWeapons } from "../components/weapons";
 import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
-import { applySpellEditToCopies, databaseId } from "../services/characterCopies";
+import { applySpellEditToCopies, chargesFromDb, databaseId } from "../services/characterCopies";
 import { canEditDbEntry, describePropagation, describeRequestError, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
 import { customItemKindFor, initCustomItemModals } from "./customItemModals.ctrl";
 import { customItemNoun } from "../components/customItemModal";
@@ -1083,6 +1083,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
         });
     }
 
+    /** A newly added item's charges, all unspent */
+    function newItemCharges(item: any) {
+        const charges = chargesFromDb(item.chargesJson);
+        return charges ? { ...charges, used: 0 } : undefined;
+    }
+
     function addItemToCharacter(item: any) {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter) return;
@@ -1140,6 +1146,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     rarity: item.rarity || "Common",
                     description: item.description,
                     imageUrl: item.imageUrl,
+                    charges: newItemCharges(item),
                     mastery: item.mastery ? { name: item.mastery, unlocked: true } : undefined
                 });
             }
@@ -1161,6 +1168,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 isMagic: !!item.isMagic,
                 description: item.description,
                 imageUrl: item.imageUrl,
+                charges: isWeapon ? undefined : newItemCharges(item),
                 notes: item.notes || (item.weight ? `${item.weight} lb.` : undefined)
             });
         }
