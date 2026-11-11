@@ -1,9 +1,10 @@
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { listSenses } from "../../../rules/dnd5e_2024/senses";
+import { getSpellDamageDisplay, getSpellEffectDisplay, getSpellcastingModifier } from "../../../services/spellDamage";
+import { CharacterData, SpellDefinition } from "../characterData";
 import { speciesSpellcastingSummary } from "../components/details";
 import { isCharacterSpeciesSpell } from "../components/spells";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-import { CharacterData } from "../characterData";
 
 export type PdfFormat = "letter" | "remarkable";
 
@@ -429,18 +430,80 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
     pages.push(p2);
 
     // ==========================================
-    // PAGE 3: SPELLCASTING & FILLABLE SLOTS
+    // PAGE 3 (and optional PAGE 4): SPELLCASTING & FILLABLE SLOTS
     // ==========================================
     const hasSpells = (data.spells && data.spells.length > 0) || (data.spellSlots && Object.keys(data.spellSlots).length > 0) || !!data.vitals.spellcastingAbility;
 
     if (hasSpells) {
+        const sections = buildSpellSections(data);
+        const maxPage1Height = isRemarkable ? 830 : 860;
+
+        const page1Sections: SpellSection[] = [];
+        const page2Sections: SpellSection[] = [];
+        let currentP1Height = 0;
+
+        for (let i = 0; i < sections.length; i++) {
+            const sec = sections[i];
+            const secHeight = estimateSpellSectionHeight(sec, isRemarkable);
+
+            if (page2Sections.length > 0) {
+                page2Sections.push(sec);
+                continue;
+            }
+
+            if (currentP1Height + secHeight <= maxPage1Height) {
+                page1Sections.push(sec);
+                currentP1Height += secHeight;
+            } else {
+                const remainingP1 = maxPage1Height - currentP1Height;
+                const baseHeight = isRemarkable ? 44 : 38;
+                const rowHeight = isRemarkable ? 28 : 18;
+                const availableRows = Math.floor((remainingP1 - baseHeight) / rowHeight);
+
+                if (availableRows >= 3 && sec.spells.length > availableRows * 2) {
+                    const splitIndex = availableRows * 2;
+                    page1Sections.push({
+                        title: sec.title,
+                        slotsCount: sec.slotsCount,
+                        spells: sec.spells.slice(0, splitIndex)
+                    });
+                    currentP1Height += baseHeight + availableRows * rowHeight;
+
+                    page2Sections.push({
+                        title: `${sec.title} (CONT.)`,
+                        slotsCount: 0,
+                        spells: sec.spells.slice(splitIndex)
+                    });
+                } else if (page1Sections.length === 0) {
+                    const maxRows = Math.max(1, Math.floor((maxPage1Height - baseHeight) / rowHeight));
+                    const splitIndex = maxRows * 2;
+                    page1Sections.push({
+                        title: sec.title,
+                        slotsCount: sec.slotsCount,
+                        spells: sec.spells.slice(0, splitIndex)
+                    });
+                    page2Sections.push({
+                        title: `${sec.title} (CONT.)`,
+                        slotsCount: 0,
+                        spells: sec.spells.slice(splitIndex)
+                    });
+                } else {
+                    page2Sections.push(sec);
+                }
+            }
+        }
+
+        const isMultiPageSpells = page2Sections.length > 0;
+        const page3HeaderTitle = isMultiPageSpells ? "Spellcasting &amp; Spell Slots (Page 1 of 2)" : "Spellcasting &amp; Spell Slots";
+        const page3FooterTitle = isMultiPageSpells ? "Page 3 — Spellcasting &amp; Spell Slots (Part 1)" : "Page 3 — Spellcasting &amp; Spell Slots";
+
         let p3 = `
         <div class="${pageClass}">
             <!-- MINI HEADER -->
             <div class="pdf-mini-header">
                 <span class="pdf-mini-name">${name}</span>
                 <span class="pdf-mini-class">${classSummary}</span>
-                <span class="pdf-mini-title">Spellcasting &amp; Spell Slots</span>
+                <span class="pdf-mini-title">${page3HeaderTitle}</span>
             </div>
 
             <!-- SPELLCASTING STATS BAR -->
@@ -461,108 +524,151 @@ export function generatePdfHtmlPages(data: CharacterData, format: PdfFormat = "l
 
             <!-- SPELL SECTIONS (CANTRIPS + LEVELS WITH FILLABLE SLOTS) -->
             <div class="pdf-spells-container">
-        `;
-
-        // Pact slots
-        const pactSlots = data.spellSlots?.pact?.total ?? 0;
-        const pactLevel = data.spellSlots?.pact?.level ?? 5;
-        if (pactSlots > 0) {
-            p3 += `
-                <div class="pdf-spell-level-box">
-                    <div class="pdf-spell-level-header">
-                        <span class="pdf-lvl-title">PACT MAGIC (Level ${pactLevel})</span>
-                        ${renderPips(pactSlots)}
-                    </div>
-                    <div class="pdf-spell-items-grid">
-            `;
-            const pactSpells = (data.spells || []).filter(s => s.level === pactLevel && s.source?.toLowerCase().includes("warlock"));
-            pactSpells.forEach(s => {
-                p3 += `
-                    <div class="pdf-spell-entry">
-                        <span class="pdf-spell-bullet">◯</span>
-                        <span class="pdf-spell-name">${escapeHtml(s.name)}</span>
-                        <span class="pdf-spell-meta">${escapeHtml(s.castingTime || "")} • ${escapeHtml(s.range || "")}</span>
-                    </div>
-                `;
-            });
-            p3 += `
-                    </div>
-                </div>
-            `;
-        }
-
-        // Cantrips
-        const cantrips = (data.spells || []).filter(s => s.level === 0);
-        if (cantrips.length > 0) {
-            p3 += `
-                <div class="pdf-spell-level-box">
-                    <div class="pdf-spell-level-header">
-                        <span class="pdf-lvl-title">CANTRIPS (0 LEVEL)</span>
-                    </div>
-                    <div class="pdf-spell-items-grid">
-            `;
-            cantrips.forEach(s => {
-                p3 += `
-                    <div class="pdf-spell-entry">
-                        <span class="pdf-spell-bullet">◯</span>
-                        <span class="pdf-spell-name">${escapeHtml(s.name)}</span>
-                        <span class="pdf-spell-meta">${escapeHtml(s.castingTime || "")} • ${escapeHtml(s.range || "")}</span>
-                    </div>
-                `;
-            });
-            p3 += `
-                    </div>
-                </div>
-            `;
-        }
-
-        // Spell Levels 1 through 9
-        for (let lvl = 1; lvl <= 9; lvl++) {
-            const slotKey = `level${lvl}` as keyof typeof data.spellSlots;
-            const slotInfo = data.spellSlots?.[slotKey];
-            const maxSlots = slotInfo?.total ?? 0;
-            const lvlSpells = (data.spells || []).filter(s => s.level === lvl);
-
-            if (maxSlots > 0 || lvlSpells.length > 0) {
-                p3 += `
-                    <div class="pdf-spell-level-box">
-                        <div class="pdf-spell-level-header">
-                            <span class="pdf-lvl-title">${lvl}${getOrdinalSuffix(lvl)} LEVEL</span>
-                            ${renderPips(maxSlots)}
-                        </div>
-                        <div class="pdf-spell-items-grid">
-                `;
-                lvlSpells.forEach(s => {
-                    p3 += `
-                        <div class="pdf-spell-entry">
-                            <span class="pdf-spell-bullet">◯</span>
-                            <span class="pdf-spell-name">${escapeHtml(s.name)}</span>
-                            <span class="pdf-spell-meta">${escapeHtml(s.castingTime || "")} • ${escapeHtml(s.range || "")}</span>
-                        </div>
-                    `;
-                });
-                p3 += `
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        p3 += `
+                ${page1Sections.map(sec => renderSpellSectionBox(sec, data)).join("")}
             </div>
-            <div class="pdf-page-footer">Page 3 — Spellcasting &amp; Spell Slots | ${formatLabel} | The Green Asterisk</div>
+            <div class="pdf-page-footer">${page3FooterTitle} | ${formatLabel} | The Green Asterisk</div>
         </div>
         `;
         pages.push(p3);
+
+        if (isMultiPageSpells) {
+            let p3b = `
+            <div class="${pageClass}">
+                <!-- MINI HEADER -->
+                <div class="pdf-mini-header">
+                    <span class="pdf-mini-name">${name}</span>
+                    <span class="pdf-mini-class">${classSummary}</span>
+                    <span class="pdf-mini-title">Spellcasting &amp; Spell Slots (Page 2 of 2)</span>
+                </div>
+
+                <!-- SPELLCASTING STATS BAR -->
+                <div class="pdf-spell-stats-bar">
+                    <div class="pdf-spell-stat-cell">
+                        <span class="pdf-spell-stat-val">${escapeHtml(data.vitals.spellcastingAbility || "None")}</span>
+                        <span class="pdf-spell-stat-lbl">SPELLCASTING ABILITY</span>
+                    </div>
+                    <div class="pdf-spell-stat-cell">
+                        <span class="pdf-spell-stat-val">${data.vitals.spellSaveDc || 10}</span>
+                        <span class="pdf-spell-stat-lbl">SPELL SAVE DC</span>
+                    </div>
+                    <div class="pdf-spell-stat-cell">
+                        <span class="pdf-spell-stat-val">${(data.vitals.spellAttackBonus ?? 0) >= 0 ? `+${data.vitals.spellAttackBonus}` : data.vitals.spellAttackBonus}</span>
+                        <span class="pdf-spell-stat-lbl">SPELL ATTACK BONUS</span>
+                    </div>
+                </div>
+
+                <!-- SPELL SECTIONS (CANTRIPS + LEVELS WITH FILLABLE SLOTS) -->
+                <div class="pdf-spells-container">
+                    ${page2Sections.map(sec => renderSpellSectionBox(sec, data)).join("")}
+                </div>
+                <div class="pdf-page-footer">Page 4 — Spellcasting &amp; Spell Slots (Part 2) | ${formatLabel} | The Green Asterisk</div>
+            </div>
+            `;
+            pages.push(p3b);
+        }
     }
 
     // ==========================================
-    // PAGE 4: LIMITED USES, DEFENSES, DETAILS & NOTES
+    // DETAILS & NOTES PAGE
     // ==========================================
-    const p4 = renderDetailsPage(data, pageClass, name, classSummary, formatLabel, isRemarkable);
+    const detailsPageNum = pages.length + 1;
+    const p4 = renderDetailsPage(data, pageClass, name, classSummary, formatLabel, isRemarkable, detailsPageNum);
     if (p4) pages.push(p4);
 
     return pages;
+}
+
+interface SpellSection {
+    title: string;
+    slotsCount: number;
+    spells: SpellDefinition[];
+}
+
+function renderPdfSpellEntry(s: SpellDefinition, data: CharacterData): string {
+    const currentLevel = s.castAtLevel ?? s.level;
+    const charLevel = data.level || 1;
+    const spellcastingMod = getSpellcastingModifier(data, s);
+    const damageText = getSpellDamageDisplay(s, currentLevel, charLevel, spellcastingMod);
+    const effectText = getSpellEffectDisplay(s, currentLevel, charLevel);
+
+    const metaParts: string[] = [];
+    if (s.castingTime) metaParts.push(escapeHtml(s.castingTime));
+    if (s.range) metaParts.push(escapeHtml(s.range));
+    if (damageText) metaParts.push(`<span class="pdf-spell-damage">${escapeHtml(damageText)}</span>`);
+    if (effectText && effectText !== damageText) metaParts.push(`<span class="pdf-spell-effect">${escapeHtml(effectText)}</span>`);
+
+    return `
+        <div class="pdf-spell-entry">
+            <span class="pdf-spell-bullet">◯</span>
+            <span class="pdf-spell-name">${escapeHtml(s.name)}</span>
+            <span class="pdf-spell-meta">${metaParts.join(" • ")}</span>
+        </div>
+    `;
+}
+
+function buildSpellSections(data: CharacterData): SpellSection[] {
+    const sections: SpellSection[] = [];
+
+    // Pact slots
+    const pactSlots = data.spellSlots?.pact?.total ?? 0;
+    const pactLevel = data.spellSlots?.pact?.level ?? 5;
+    if (pactSlots > 0) {
+        const pactSpells = (data.spells || []).filter(s => s.level === pactLevel && s.source?.toLowerCase().includes("warlock"));
+        sections.push({
+            title: `PACT MAGIC (Level ${pactLevel})`,
+            slotsCount: pactSlots,
+            spells: pactSpells
+        });
+    }
+
+    // Cantrips
+    const cantrips = (data.spells || []).filter(s => s.level === 0);
+    if (cantrips.length > 0) {
+        sections.push({
+            title: "CANTRIPS (0 LEVEL)",
+            slotsCount: 0,
+            spells: cantrips
+        });
+    }
+
+    // Spell Levels 1 through 9
+    for (let lvl = 1; lvl <= 9; lvl++) {
+        const slotKey = `level${lvl}` as keyof typeof data.spellSlots;
+        const slotInfo = data.spellSlots?.[slotKey];
+        const maxSlots = slotInfo?.total ?? 0;
+        const lvlSpells = (data.spells || []).filter(s => s.level === lvl);
+
+        if (maxSlots > 0 || lvlSpells.length > 0) {
+            sections.push({
+                title: `${lvl}${getOrdinalSuffix(lvl)} LEVEL`,
+                slotsCount: maxSlots,
+                spells: lvlSpells
+            });
+        }
+    }
+
+    return sections;
+}
+
+function estimateSpellSectionHeight(sec: SpellSection, isRemarkable: boolean): number {
+    const baseHeight = isRemarkable ? 44 : 38;
+    const rowHeight = isRemarkable ? 28 : 18;
+    const rows = Math.ceil(sec.spells.length / 2);
+    return baseHeight + rows * rowHeight;
+}
+
+function renderSpellSectionBox(sec: SpellSection, data: CharacterData): string {
+    return `
+        <div class="pdf-spell-level-box">
+            <div class="pdf-spell-level-header">
+                <span class="pdf-lvl-title">${escapeHtml(sec.title)}</span>
+                ${sec.slotsCount > 0 ? renderPips(sec.slotsCount) : ""}
+            </div>
+            <div class="pdf-spell-items-grid">
+                ${sec.spells.map(s => renderPdfSpellEntry(s, data)).join("")}
+            </div>
+        </div>
+    `;
 }
 
 /** Text the player wrote, cut to fit a printed box, line breaks kept. */
@@ -577,7 +683,7 @@ function printableText(value: string | undefined, limit: number): string {
  * The Details & Notes page: limited uses with fill-in bubbles (class and species resources, item charges), defenses,
  * character details, personality, backstory and notes, and companions. Left out when there's nothing to print.
  */
-function renderDetailsPage(data: CharacterData, pageClass: string, name: string, classSummary: string, formatLabel: string, isRemarkable: boolean): string | undefined {
+function renderDetailsPage(data: CharacterData, pageClass: string, name: string, classSummary: string, formatLabel: string, isRemarkable: boolean, pageNum: number = 4): string | undefined {
     const uses = [
         ...(data.classResources || []).filter(r => r.total > 0).map(r => ({ name: r.name, total: r.total, reset: r.resetOn === "short" ? "Short Rest" : "Long Rest" })),
         ...[...(data.equipment || []), ...(data.weapons || [])].filter(i => i.charges).map(i => ({
@@ -671,7 +777,7 @@ function renderDetailsPage(data: CharacterData, pageClass: string, name: string,
             </div>
         </div>
 
-        <div class="pdf-page-footer">Page 4 — Details, Notes &amp; Limited Uses | ${formatLabel} | The Green Asterisk</div>
+        <div class="pdf-page-footer">Page ${pageNum} — Details, Notes &amp; Limited Uses | ${formatLabel} | The Green Asterisk</div>
     </div>
     `;
 }
@@ -763,7 +869,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
     const spellBulletSize = isRemarkable ? "15px" : "10px";
     const spellMetaSize = isRemarkable ? "11.5px" : "7px";
     const spellEntryHeight = isRemarkable ? "26px" : "16px";
-    const spellGridCols = isRemarkable ? "repeat(2, 1fr)" : "repeat(3, 1fr)";
+    const spellGridCols = "repeat(2, 1fr)";
 
     return `
         /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES (${isRemarkable ? "reMarkable 3:4" : "Letter"}) --- */
@@ -1523,6 +1629,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             font-size: ${spellEntrySize};
             height: ${spellEntryHeight};
             line-height: 1;
+            min-width: 0;
         }
 
         .pdf-spell-bullet {
@@ -1536,6 +1643,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            min-width: 0;
         }
 
         .pdf-spell-meta {
@@ -1543,6 +1651,18 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             color: #444444;
             white-space: nowrap;
             margin-left: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pdf-spell-damage {
+            font-weight: 800;
+            color: #000000;
+        }
+
+        .pdf-spell-effect {
+            font-style: italic;
+            color: #222222;
         }
     `;
 }
