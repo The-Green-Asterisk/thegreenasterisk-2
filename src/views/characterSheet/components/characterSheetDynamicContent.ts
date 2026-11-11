@@ -65,10 +65,10 @@ export function renderSheetContent(data: CharacterData): string {
                     <i class="fa-solid fa-scroll"></i> Features & Traits
                 </button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-skills" id="btn-tab-skills">
-                    <i class="fa-solid fa-bullseye"></i> Skills & Saves
+                    <i class="fa-solid fa-bullseye"></i> Skills, Saves & Proficiencies
                 </button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-equipment" id="btn-tab-equipment">
-                    <i class="fa-solid fa-shield"></i> Equipment & Proficiencies
+                    <i class="fa-solid fa-shield"></i> Equipment
                 </button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-details" id="btn-tab-details">
                     <i class="fa-solid fa-book-open" aria-hidden="true"></i> Details & Notes
