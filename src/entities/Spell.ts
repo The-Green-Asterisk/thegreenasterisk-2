@@ -20,5 +20,9 @@ export default class Spell {
     imageUrl?: string;
     dndBeyondId?: number;
     isCustom!: boolean;
+    /** Who made it through the Add Custom Spell dialog; null for everything else */
+    createdById?: number | null;
+    /** Fields locked against D&D Beyond reloads, as JSON ({ "description": true, ... }) */
+    lockedFields?: string | null;
     createdAt?: Date;
 }
