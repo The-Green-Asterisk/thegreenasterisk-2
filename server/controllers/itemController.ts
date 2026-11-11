@@ -4,9 +4,20 @@ import AppDataSource from "../services/database";
 import { Item } from "../services/database/entity/Item";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { propagateItemEdit } from "../services/characterCopies";
+import { sanitizeItemModifiers, seedItemModifiers } from "../services/database/itemMechanics";
 import { differsFrom, ITEM_LOCK_COLUMNS, keepLockedFields, normalizeLockedFields } from "../services/definitionLocks";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
+
+function parseModifiers(raw: string | null | undefined): any[] | undefined {
+    if (!raw) return undefined;
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+        return undefined;
+    }
+}
 
 function slugify(text: string): string {
     return text
@@ -780,8 +791,10 @@ export default class ItemController extends BaseController {
                 };
             }
 
+            const modifiers = (body as any).modifiers;
             const customItem = itemRepo.create({
                 ...this.customItemFields(body),
+                ...(Array.isArray(modifiers) ? { modifiersJson: sanitizeItemModifiers(modifiers) ?? undefined } : {}),
                 slug: rawSlug,
                 source: body.source?.trim() || "Custom / Homebrew",
                 isCustom: true,
@@ -795,6 +808,8 @@ export default class ItemController extends BaseController {
             };
             this.clearItemCache(rawSlug);
             cache.set(`item_detail_${rawSlug}`, JSON.stringify(responseItem), 3600);
+            // /get-rules carries every item's effects
+            if (saved.modifiersJson) cache.del("dnd_rules_all");
 
             return {
                 response: JSON.stringify(responseItem),
@@ -868,6 +883,9 @@ export default class ItemController extends BaseController {
 
             const oldSlug = item.slug;
             const oldNameBeforeEdit = item.name;
+            // The effects the item had before this edit, to keep on characters' locked copies
+            const previousModifiers = parseModifiers(item.modifiersJson) ?? seedItemModifiers(oldNameBeforeEdit) ?? [];
+            const modifiersChanged = Array.isArray((body as any).modifiers);
             if (newSlug !== oldSlug) {
                 const clash = await itemRepo.findOne({ where: { slug: newSlug } });
                 if (clash && clash.id !== item.id) {
@@ -882,6 +900,7 @@ export default class ItemController extends BaseController {
             if ((body as any).lockedFields !== undefined) {
                 item.lockedFields = normalizeLockedFields((body as any).lockedFields, ITEM_LOCK_COLUMNS);
             }
+            if (modifiersChanged) item.modifiersJson = sanitizeItemModifiers((body as any).modifiers) as string;
             // TypeORM skips undefined on save, so a field the dialog cleared has to become null
             for (const key of ["category", "damage", "range", "properties", "mastery", "cost", "imageUrl"] as const) {
                 if (item[key] === undefined || item[key] === "") (item as any)[key] = null;
@@ -890,8 +909,9 @@ export default class ItemController extends BaseController {
 
             this.clearItemCache(oldSlug);
             this.clearItemCache(newSlug);
+            cache.del("dnd_rules_all");
 
-            const propagation = await propagateItemEdit(saved, oldNameBeforeEdit).catch((err) => {
+            const propagation = await propagateItemEdit(saved, oldNameBeforeEdit, modifiersChanged ? { previousModifiers } : undefined).catch((err) => {
                 console.error("Could not copy the item edit onto characters:", err);
                 return null;
             });

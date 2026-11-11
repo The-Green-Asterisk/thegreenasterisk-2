@@ -4,7 +4,10 @@ import { postData, putData } from "@services/request";
 import { CUSTOM_WEAPON_CATEGORIES, CUSTOM_WEAPON_DAMAGE_TYPES, CustomItemKind, customItemNoun, customItemPrefix } from "../components/customItemModal";
 import { CharacterSheetContext } from "./context";
 import { createLockPanel, LockField } from "./definitionLockPanel";
-import { applyItemEditToCopies } from "../services/characterCopies";
+import { findItemRule, upsertItemRule } from "../../../services/classRules";
+import { StatModifier } from "../../../rules/dnd5e_2024/types";
+import { applyItemEditToCopies, EffectsEdit } from "../services/characterCopies";
+import { createItemEffectsEditor } from "./itemEffectsEditor";
 import { describePropagation, describeRequestError, releaseBodyScrollIfNoDialogOpen, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
 
 type DbItem = Record<string, any>;
@@ -18,6 +21,17 @@ type CustomItemDeps = {
 };
 
 const KINDS: CustomItemKind[] = ["weapon", "magic-item"];
+
+/** A database item's own effects (modifiersJson), or undefined when it has none and follows the seed list */
+function parseModifiers(raw: unknown): StatModifier[] | undefined {
+    if (typeof raw !== "string" || !raw) return undefined;
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+        return undefined;
+    }
+}
 const DICE_PATTERN = /^\d*d\d+(\s*[+-]\s*\d+)?$/i;
 
 /** Which dialog edits a database item: weapons get the one with combat stats, everything else the magic item one */
@@ -80,6 +94,16 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
             ...tailLocks("magic-item")
         ])
     };
+
+    const effectsEditors: Record<CustomItemKind, ReturnType<typeof createItemEffectsEditor>> = Object.fromEntries(KINDS.map(kind => [kind,
+        createItemEffectsEditor({
+            list: q(kind, "effects-list"),
+            addButton: q<HTMLButtonElement>(kind, "effects-add-btn"),
+            hint: q(kind, "effects-hint"),
+            attunement: input(kind, "attunement")
+        })])) as any;
+    // True while the dialog shows effects the item follows by name (the seed list) rather than its own
+    const effectsFromRule: Record<CustomItemKind, boolean> = { "weapon": false, "magic-item": false };
 
     const isOpen = (kind: CustomItemKind) => {
         const modal = q(kind, "modal-container");
@@ -166,6 +190,9 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         } else {
             lockPanels[kind].stop();
         }
+        const own = parseModifiers(item?.modifiersJson);
+        effectsFromRule[kind] = !own;
+        effectsEditors[kind].load(own ?? (item ? findItemRule(item.name)?.modifiers : undefined) ?? []);
 
         modal.classList.remove("hidden");
         modal.classList.add("visible");
@@ -187,6 +214,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         updateImagePreview(kind, "");
         editing[kind] = null;
         lockPanels[kind].stop();
+        effectsEditors[kind].load([]);
         releaseBodyScrollIfNoDialogOpen(sheet);
         restoreFocusAfterClose(openers[kind], sheet);
         openers[kind] = null;
@@ -238,9 +266,9 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
     }
 
     /** Copies an edit onto the active sheet's unlocked copies of the item (the server does every other character) */
-    function applyEditToCharacter(oldName: string, item: DbItem) {
-        const result = applyItemEditToCopies(ctx.getCharacter(), oldName, item);
-        if (result.updated === 0) return;
+    function applyEditToCharacter(oldName: string, item: DbItem, effects?: EffectsEdit) {
+        const result = applyItemEditToCopies(ctx.getCharacter(), oldName, item, effects);
+        if (result.updated === 0 && !effects) return;
         deps.refreshSheetItemsView();
         ctx.syncSheetStats();
         ctx.persistTrackerSnapshot();
@@ -266,7 +294,21 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
             return;
         }
 
+        const effects = effectsEditors[kind].read();
+        if (effects.invalid) {
+            showStatus(kind, effects.problem || "Finish or remove the incomplete effect.", true);
+            effects.invalid.focus();
+            return;
+        }
+
         const original = editing[kind];
+        const renamed = !!original && original.name.trim().toLowerCase() !== payload.name.trim().toLowerCase();
+        // Send effects only when they changed, so items following the seed list keep following it; a renamed one
+        // takes its effects along, since the seed list matches by name
+        const sendEffects = original
+            ? effectsEditors[kind].isDirty() || (effectsFromRule[kind] && renamed && effects.modifiers.length > 0)
+            : effects.modifiers.length > 0;
+        if (sendEffects) payload.modifiers = effects.modifiers;
         const submitBtn = q<HTMLButtonElement>(kind, "submit-btn");
         if (submitBtn) {
             submitBtn.disabled = true;
@@ -276,13 +318,17 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
 
         try {
             if (original) {
+                const previousModifiers = parseModifiers(original.modifiersJson) ?? findItemRule(original.name)?.modifiers ?? [];
                 const result = await putData<any>("/edit-custom-item", { ...payload, id: original.id, lockedFields: lockPanels[kind].locks() });
                 const saved = result?.item || result;
-                applyEditToCharacter(original.name, saved);
+                if (sendEffects) upsertItemRule(original.name, saved.name, effects.modifiers);
+                else if (renamed && !effectsFromRule[kind]) upsertItemRule(original.name, saved.name, previousModifiers);
+                applyEditToCharacter(original.name, saved, sendEffects ? { modifiers: effects.modifiers, previousModifiers } : undefined);
                 showStatus(kind, `${noun} "${saved.name}" updated.${describePropagation(result?.propagation)}`);
             } else {
                 const result = await postData<any>("/create-custom-item", payload);
                 const saved = result?.item || result;
+                if (sendEffects) upsertItemRule(undefined, saved.name, effects.modifiers);
                 if (ctx.getCharacter()) deps.addItemToCharacter(saved);
                 showStatus(kind, `${noun} "${saved.name}" saved to the database${ctx.getCharacter() ? " and added to your sheet" : ""}.`);
             }

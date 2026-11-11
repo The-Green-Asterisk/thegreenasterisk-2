@@ -1,4 +1,5 @@
 import { renderLockPanel } from "../controllers/definitionLockPanel";
+import { renderItemEffectsSection } from "./itemEffects";
 
 export type CustomItemKind = "weapon" | "magic-item";
 
@@ -121,6 +122,7 @@ export function renderCustomItemModal(kind: CustomItemKind): string {
                             </div>
                         </div>
                         ${isWeapon ? weaponSection : ""}
+                        ${renderItemEffectsSection(p)}
 
                         <div class="form-section">
                             <div class="form-section-header">

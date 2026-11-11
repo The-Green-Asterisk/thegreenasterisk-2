@@ -177,6 +177,10 @@ They can sit on:
 - **Items:**
   - modifiers apply while the item is **equipped, and attuned when it needs attunement**
   - the item's own `modifiers` (custom items, or converted from D&D Beyond's `grantedModifiers`) win over `findItemRule(name)`
+  - the Edit Weapon / Magic Item dialogs edit `item.modifiersJson` ("Effects on the Character"); they offer only the targets and types `extractItemMagicBonuses` and `senses.ts` read (`components/itemEffects.ts#ITEM_EFFECT_TARGETS`), and keep any other modifier as an uneditable "Other effect". Add a target there when the sheet learns to read it
+  - `modifiersJson` null means "use the seed list"; `"[]"` means the item has no effects, even if the seed list has its name
+  - the dialogs only send effects that changed, so seeded items keep following the seed list (a rename takes the seed's effects along, since the seed matches by name)
+  - an edit to an item's effects writes them onto every unlocked character copy (`modifiers`), and freezes the old effects onto locked copies that had none of their own
   - magic armor and shields add their own +N to AC unless their data sets `vitals.ac`
   - weapons use `item.plus` / the "+N" in their name for attack and damage
   - advantage from items shows as `itemRollNotes`
@@ -216,7 +220,7 @@ They can sit on:
 
 **New stat or modifier target**
 1. Add it to `ModifierTarget` (client `types.ts`; the server has its own list in `rulesProgressionBuilder.ts`).
-2. Handle it in every consumer: the creator calculations, `characterAdapter.ts` (as a fallback to D&D Beyond, never double-counting), `statModifierEvaluator.ts` (applied with sign ±1, so it must be undoable), `magicItemBonuses.ts` if items can carry it.
+2. Handle it in every consumer: the creator calculations, `characterAdapter.ts` (as a fallback to D&D Beyond, never double-counting), `statModifierEvaluator.ts` (applied with sign ±1, so it must be undoable), `magicItemBonuses.ts` if items can carry it (then offer it in the item dialogs: `components/itemEffects.ts`).
 3. Render it on the sheet (and the PDF in `services/pdfExport.ts`).
 4. Make sure it survives save and load.
 5. If it isn't a plain sum, record per-source grants like senses and save effects do.
@@ -244,5 +248,4 @@ New UI for data-driven features follows the same rules.
 - Items that can be wielded as weapons ("can be wielded as a quarterstaff") are still detected from description text (`extractGrantedWeaponFromItem`).
 - Conditional item effects aren't expressible yet and were left out: Hammer of Thunderbolts, Defender, Boots of Speed.
 - Manuals and Tomes raise ability scores permanently when read. They aren't an equipped effect.
-- There's no UI for entering a custom item's `modifiersJson`.
 - Characters saved before senses were tracked (no `baseSenses`) don't get item senses until they're re-saved from the creator or refreshed from D&D Beyond. This avoids double-counting.
