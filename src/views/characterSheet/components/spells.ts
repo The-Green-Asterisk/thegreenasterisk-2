@@ -1,7 +1,7 @@
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
 import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
 import { findClassRule, getClassRules, getFeatRules, getSpeciesRules } from "../../../services/classRules";
-import { extractSpellDamageInfo, getSpellDamageDisplay, getSpellDamageType, getSpellcastingModifier, isHealingSpell, parseDamageScalingString } from "../../../services/spellDamage";
+import { extractSpellDamageInfo, getSpellDamageDisplay, getSpellDamageType, getSpellEffectDisplay, getSpellcastingModifier, isHealingSpell, parseDamageScalingString } from "../../../services/spellDamage";
 import { CharacterData, SpellDefinition } from "../characterData";
 
 export function spellLevelLabel(level: number): string {
@@ -335,6 +335,14 @@ export function renderSpellCard(
         ? `<div class="meta-item meta-damage${typeClass ? ' ' + typeClass : ''}"><span class="meta-label">${labelText}:</span> <span class="meta-value damage-dice-value${typeClass ? ' ' + typeClass : ''}"><i class="fa-solid ${iconClass}"></i> ${damageText}</span></div>`
         : '';
 
+    const effectText = getSpellEffectDisplay(spell, currentLevel, characterLevel);
+    const effectBadge = effectText
+        ? `<span class="badge badge-effect" title="Effect: ${effectText}"><i class="fa-solid fa-wand-magic-sparkles"></i> ${effectText}</span>`
+        : '';
+    const effectMeta = effectText
+        ? `<div class="meta-item meta-effect"><span class="meta-label">Effect:</span> <span class="meta-value effect-value"><i class="fa-solid fa-wand-magic-sparkles"></i> ${effectText}</span></div>`
+        : '';
+
     return `
         <div class="spell-card ${isUpcast ? 'spell-card-upcast' : ''}" data-spell-name="${encodeURIComponent(spell.name)}" data-spell-id="${spell.id ?? ''}" tabindex="0" role="button" aria-haspopup="dialog" title="Click to view full spell description">
             <div class="spell-card-top">
@@ -346,6 +354,7 @@ export function renderSpellCard(
                     <span class="badge badge-source">${spell.source}</span>
                     ${spell.viaFeature ? `<span class="badge badge-source" title="Not on the ${spell.source} spell list; available through ${spell.viaFeature}">${spell.viaFeature}</span>` : ''}
                     ${damageBadge}
+                    ${effectBadge}
                     ${concBadge}
                     ${ritBadge}
                     ${upcastBadge}
@@ -356,6 +365,7 @@ export function renderSpellCard(
                 <div class="meta-item"><span class="meta-label">Range:</span> <span class="meta-value">${spell.range}</span></div>
                 <div class="meta-item"><span class="meta-label">Duration:</span> <span class="meta-value">${spell.duration}</span></div>
                 ${damageMeta}
+                ${effectMeta}
             </div>
             <div class="spell-card-footer">
                 <span class="view-details-hint"><i class="fa-solid fa-book-open"></i> Full Description</span>
@@ -470,9 +480,11 @@ export function renderSpellsByLevel(
             targetLevels.forEach(targetLvl => {
                 const baseDamage = getSpellDamageDisplay(spell, baseLevel, characterLevel, characterData);
                 const upcastDamage = getSpellDamageDisplay(spell, targetLvl, characterLevel, characterData);
-                const hasScalingRow = scaling?.some(r => Number(r.level) === targetLvl);
+                const baseEffect = getSpellEffectDisplay(spell, baseLevel, characterLevel);
+                const upcastEffect = getSpellEffectDisplay(spell, targetLvl, characterLevel);
+                const hasScalingRow = scaling?.some(r => Number(r.level) === targetLvl && (r.dice || r.effect));
 
-                if (hasScalingRow || (upcastDamage && upcastDamage !== baseDamage)) {
+                if (hasScalingRow || (upcastDamage && upcastDamage !== baseDamage) || (upcastEffect && upcastEffect !== baseEffect)) {
                     const upcastSpell: SpellDefinition = {
                         ...spell,
                         castAtLevel: targetLvl

@@ -451,7 +451,7 @@ export const SEED_SPELLS = [
         duration: "1 hour",
         concentration: false,
         ritual: false,
-        description: "You attempt to charm a humanoid you can see within range. It must make a Wisdom saving throw (with Advantage if you are fighting it). If it fails, it is Charmed by you until the spell ends."
+        description: "You attempt to charm a humanoid you can see within range. It must make a Wisdom saving throw (with Advantage if you are fighting it). If it fails, it is Charmed by you until the spell ends.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 1. The creatures must be within 30 feet of each other when you target them."
     },
     {
         id: "hex",
@@ -815,7 +815,7 @@ export const SEED_SPELLS = [
         duration: "1 round",
         concentration: false,
         ritual: false,
-        description: "You speak a one-word command to a creature you can see within range. The target must succeed on a Wisdom saving throw or follow the command on its next turn."
+        description: "You speak a one-word command to a creature you can see within range. The target must succeed on a Wisdom saving throw or follow the command on its next turn.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 1. The creatures must be within 30 feet of each other when you target them."
     },
     {
         id: "tashas-hideous-laughter",
@@ -829,7 +829,7 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 1 minute",
         concentration: true,
         ritual: false,
-        description: "A creature of your choice within range perceives everything as humorously comical and must succeed on a Wisdom saving throw or fall Prone, becoming Incapacitated with laughter for the duration."
+        description: "A creature of your choice within range perceives everything as humorously comical and must succeed on a Wisdom saving throw or fall Prone, becoming Incapacitated with laughter for the duration.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 1. The creatures must be within 30 feet of each other when you target them."
     },
     {
         id: "witch-bolt",
@@ -873,7 +873,7 @@ export const SEED_SPELLS = [
         duration: "8 hours",
         concentration: false,
         ritual: false,
-        description: "Your spell bolsters your allies with toughness. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration."
+        description: "Your spell bolsters your allies with toughness. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration.\n\nUsing a Higher-Level Spell Slot. Each target's hit points and hit point maximum increase by an additional 5 for each spell slot level above 2."
     },
     {
         id: "barkskin",
@@ -957,7 +957,7 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 1 minute",
         concentration: true,
         ritual: false,
-        description: "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be Paralyzed for the duration. The target can repeat the save at the end of each of its turns."
+        description: "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be Paralyzed for the duration. The target can repeat the save at the end of each of its turns.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 2. The creatures must be within 30 feet of each other when you target them."
     },
     {
         id: "invisibility",
@@ -971,7 +971,7 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 1 hour",
         concentration: true,
         ritual: false,
-        description: "A creature you touch becomes Invisible until the spell ends. The spell ends early if the target attacks or casts a spell."
+        description: "A creature you touch becomes Invisible until the spell ends. The spell ends early if the target attacks or casts a spell.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 2."
     },
     {
         id: "lesser-restoration",
@@ -1323,7 +1323,7 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 10 minutes",
         concentration: true,
         ritual: false,
-        description: "You touch a willing creature. The target gains a flying speed of 60 feet for the duration. When the spell ends, the target falls if it is still aloft, unless it can stop the fall."
+        description: "You touch a willing creature. The target gains a flying speed of 60 feet for the duration. When the spell ends, the target falls if it is still aloft, unless it can stop the fall.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 3."
     },
     {
         id: "haste",
@@ -1421,7 +1421,7 @@ export const SEED_SPELLS = [
         duration: "1 hour",
         concentration: false,
         ritual: false,
-        description: "You create a 10-foot-radius, 20-foot-tall Cylinder of magical energy to protect against Celestials, Elementals, Fey, Fiends, or Undead, preventing them from willingly entering or charming/frightening targets within."
+        description: "You create a 10-foot-radius, 20-foot-tall Cylinder of magical energy to protect against Celestials, Elementals, Fey, Fiends, or Undead, preventing them from willingly entering or charming/frightening targets within.\n\nUsing a Higher-Level Spell Slot. When you cast this spell using a spell slot of 4th level or higher, the duration increases by 1 hour for each slot level above 3rd."
     },
     {
         id: "major-image",
@@ -1435,7 +1435,7 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 10 minutes",
         concentration: true,
         ritual: false,
-        description: "You create the image of an object, a creature, or some other visible phenomenon no larger than a 20-foot Cube, complete with sounds, smells, and temperature appropriate to the illusion."
+        description: "You create the image of an object, a creature, or some other visible phenomenon no larger than a 20-foot Cube, complete with sounds, smells, and temperature appropriate to the illusion.\n\nUsing a Higher-Level Spell Slot. When you cast this spell using a spell slot of 6th level or higher, the spell lasts until dispelled, without requiring your concentration."
     },
     {
         id: "speak-with-dead",
@@ -1465,7 +1465,21 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 1 minute",
         concentration: true,
         ritual: false,
-        description: "You attempt to send one creature that you can see within range to another plane of existence. The target must succeed on a Charisma saving throw or be banished for the duration."
+        description: "You attempt to send one creature that you can see within range to another plane of existence. The target must succeed on a Charisma saving throw or be banished for the duration.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 4."
+    },
+    {
+        id: "confusion",
+        name: "Confusion",
+        level: 4,
+        school: "Enchantment",
+        classes: ["Bard", "Druid", "Sorcerer", "Wizard"],
+        castingTime: "1 Action",
+        range: "90 feet",
+        components: "V, S, M",
+        duration: "Concentration, up to 1 minute",
+        concentration: true,
+        ritual: false,
+        description: "This spell assaults and warps creatures' minds, spawning delusions and uncontrolled actions. Each creature in a 10-foot-radius sphere centered on a point you choose within range must succeed on a Wisdom saving throw when you cast this spell or be affected by it. An affected target can't take reactions and must roll a d10 at the start of each of its turns to determine its behavior for that turn.\n\nUsing a Higher-Level Spell Slot. When you cast this spell using a spell slot of 5th level or higher, the radius of the sphere increases by 5 feet for each slot level above 4th."
     },
     {
         id: "dimension-door",
@@ -1621,7 +1635,7 @@ export const SEED_SPELLS = [
         duration: "Concentration, up to 1 minute",
         concentration: true,
         ritual: false,
-        description: "Choose a creature that you can see within range. The target must succeed on a Wisdom saving throw or be Paralyzed for the duration. This spell has no effect on undead."
+        description: "Choose a creature that you can see within range. The target must succeed on a Wisdom saving throw or be Paralyzed for the duration. This spell has no effect on undead.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 5. The creatures must be within 30 feet of each other when you target them."
     },
     {
         id: "mass-cure-wounds",

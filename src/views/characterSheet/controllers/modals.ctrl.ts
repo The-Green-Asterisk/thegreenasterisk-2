@@ -1,7 +1,7 @@
 import el from "@elements";
 import FileService from "@services/fileService";
 import { getData, postData } from "@services/request";
-import { getSpellcastingModifier, getSpellDamageDisplay, getSpellDamageType, isHealingSpell, replaceModInString, resolveActionSpellDamage } from "../../../services/spellDamage";
+import { getSpellcastingModifier, getSpellDamageDisplay, getSpellDamageType, getSpellEffectDisplay, isHealingSpell, replaceModInString, resolveActionSpellDamage } from "../../../services/spellDamage";
 import { ConditionDefinition, darvellData, DEFAULT_DND55_CONDITIONS, SpellDefinition } from "../characterData";
 import { renderEquipment } from "../components/equipment";
 import {
@@ -1373,6 +1373,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const icon = isHeal ? 'fa-heart' : 'fa-burst';
                 badgesHtml += `<span class="modal-badge damage-badge${typeCls ? ' ' + typeCls : ''}"><i class="fa-solid ${icon}"></i> ${localDamage}</span>`;
             }
+            const localEffect = localSpell ? getSpellEffectDisplay(localSpell, undefined, activeCharLevel) : "";
+            if (localEffect) {
+                badgesHtml += `<span class="modal-badge effect-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> ${localEffect}</span>`;
+            }
             if (localSpell?.concentration) {
                 badgesHtml += `<span class="modal-badge conc-badge"><i class="fa-solid fa-brain"></i> Concentration</span>`;
             }
@@ -1462,6 +1466,10 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         const typeCls = dmgType ? `damage-type-${dmgType.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : (isHeal ? 'damage-type-healing' : '');
                         const icon = isHeal ? 'fa-heart' : 'fa-burst';
                         badges += `<span class="modal-badge damage-badge${typeCls ? ' ' + typeCls : ''}"><i class="fa-solid ${icon}"></i> ${indDamage}</span>`;
+                    }
+                    const indEffect = getSpellEffectDisplay(independentSpell, undefined, activeCharLevel);
+                    if (indEffect) {
+                        badges += `<span class="modal-badge effect-badge"><i class="fa-solid fa-wand-magic-sparkles"></i> ${indEffect}</span>`;
                     }
                     if (independentSpell.concentration) {
                         badges += `<span class="modal-badge conc-badge"><i class="fa-solid fa-brain"></i> Concentration</span>`;
@@ -1610,13 +1618,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 : "Add +1 die for each higher spell slot level";
         }
 
-        const existingValues = new Map<number, { dice: string; mod: string }>();
+        const existingValues = new Map<number, { dice: string; mod: string; effect: string }>();
         if (!options?.resetToBase && !options?.autoScale) {
             customSpellScalingTbody.querySelectorAll<HTMLTableRowElement>("tr[data-level]").forEach(tr => {
                 const lvl = Number(tr.getAttribute("data-level"));
                 const d = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value ?? "";
                 const m = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value ?? "";
-                existingValues.set(lvl, { dice: d, mod: m });
+                const eff = tr.querySelector<HTMLInputElement>(".scaling-row-effect")?.value ?? "";
+                existingValues.set(lvl, { dice: d, mod: m, effect: eff });
             });
         }
 
@@ -1648,6 +1657,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
         customSpellScalingTbody.innerHTML = tiers.map(tier => {
             let rowDice = baseDice;
             let rowMod = baseMod;
+            let rowEffect = "";
 
             if (options?.autoScale) {
                 if (diceMatch && parsedSides) {
@@ -1664,6 +1674,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const prev = existingValues.get(tier.levelNumber)!;
                 rowDice = prev.dice;
                 rowMod = prev.mod;
+                rowEffect = prev.effect;
             }
 
             const preview = computeDamageRowPreview(rowDice, rowMod, damageType);
@@ -1692,6 +1703,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
                             data-level="${tier.levelNumber}"
                             placeholder="e.g. +3 or +MOD"
                             value="${escapeHtml(rowMod)}"
+                            autocomplete="off"
+                        />
+                    </td>
+                    <td>
+                        <input
+                            type="text"
+                            class="scaling-table-input scaling-row-effect"
+                            data-level="${tier.levelNumber}"
+                            placeholder="e.g. 2 targets or 15 ft. radius"
+                            value="${escapeHtml(rowEffect)}"
                             autocomplete="off"
                         />
                     </td>
@@ -2604,6 +2625,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             label: string;
             dice: string;
             modifier: string;
+            effect?: string;
         }
 
         const scalingRows: ScalingRowData[] = [];
@@ -2613,8 +2635,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const label = tr.querySelector(".scaling-level-label")?.textContent?.trim() || `Level ${lvl}`;
                 const dice = tr.querySelector<HTMLInputElement>(".scaling-row-dice")?.value.trim() || "";
                 const mod = tr.querySelector<HTMLInputElement>(".scaling-row-mod")?.value.trim() || "";
-                if (dice || mod) {
-                    scalingRows.push({ level: lvl, label, dice, modifier: mod });
+                const effect = tr.querySelector<HTMLInputElement>(".scaling-row-effect")?.value.trim() || "";
+                if (dice || mod || effect) {
+                    scalingRows.push({ level: lvl, label, dice, modifier: mod, effect: effect || undefined });
                 }
             });
         }
@@ -2625,18 +2648,20 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const isCharacterScaling = scalingMode === "character" || (scalingMode === "auto" && Number(levelSelect?.value || "0") === 0);
 
         if (hasDamage && (baseDamageDice || scalingRows.length > 0)) {
+            const hasAnyEffects = scalingRows.some(r => !!r.effect);
             const baseModStr = baseDamageMod ? (baseDamageMod.startsWith("+") || baseDamageMod.startsWith("-") ? ` ${baseDamageMod}` : ` +${baseDamageMod}`) : "";
-            const baseTotalStr = baseDamageDice ? `${baseDamageDice}${baseModStr} ${damageType}` : damageType;
+            const baseTotalStr = baseDamageDice ? `${baseDamageDice}${baseModStr} ${damageType}` : (hasAnyEffects ? 'Scaling Effect' : damageType);
             const colHeader = isCharacterScaling ? "Character Level" : "Casting Level";
             const isHeal = isHealingSpell({ damageType }, damageType);
             const typeCls = damageType ? `damage-type-${damageType.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : (isHeal ? 'damage-type-healing' : '');
-            const icon = isHeal ? 'fa-heart' : 'fa-burst';
-            const label = isHeal ? 'Healing' : 'Damage';
+            const icon = isHeal ? 'fa-heart' : (baseDamageDice ? 'fa-burst' : 'fa-wand-magic-sparkles');
+            const label = isHeal ? 'Healing' : (baseDamageDice ? 'Damage' : 'Scaling');
 
             const tableRowsHtml = scalingRows.map(r => {
                 const formattedMod = r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? r.modifier : `+${r.modifier}`) : "—";
-                const totalText = r.dice ? `${r.dice}${r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? ` ${r.modifier}` : ` +${r.modifier}`) : ""} ${damageType}`.trim() : "—";
-                return `<tr><td><strong>${escapeHtml(r.label)}</strong></td><td>${escapeHtml(r.dice || "—")}</td><td>${escapeHtml(formattedMod)}</td><td><span class="damage-total-badge${typeCls ? ' ' + typeCls : ''}">${escapeHtml(totalText)}</span></td></tr>`;
+                const totalText = r.dice ? `${r.dice}${r.modifier ? (r.modifier.startsWith("+") || r.modifier.startsWith("-") ? ` ${r.modifier}` : ` +${r.modifier}`) : ""} ${damageType}`.trim() : (r.effect ? r.effect : "—");
+                const effectCell = hasAnyEffects ? `<td>${escapeHtml(r.effect || "—")}</td>` : "";
+                return `<tr><td><strong>${escapeHtml(r.label)}</strong></td><td>${escapeHtml(r.dice || "—")}</td><td>${escapeHtml(formattedMod)}</td>${effectCell}<td><span class="damage-total-badge${typeCls ? ' ' + typeCls : ''}">${escapeHtml(totalText)}</span></td></tr>`;
             }).join("");
 
             const damageBlockHtml = `
@@ -2651,6 +2676,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     <th>${escapeHtml(colHeader)}</th>
                     <th>${isHeal ? 'Healing Dice' : 'Damage Dice'}</th>
                     <th>Modifier</th>
+                    ${hasAnyEffects ? '<th>Scaling Effect</th>' : ''}
                     <th>${isHeal ? 'Total Healing' : 'Total Damage'}</th>
                 </tr>
             </thead>

@@ -3,6 +3,7 @@ export interface SpellDamageScalingRow {
     label: string;
     dice: string;
     modifier: string;
+    effect?: string;
 }
 
 export interface SpellDamageInfo {
@@ -228,19 +229,324 @@ function isDamageType(val: string): boolean {
 export function parseDamageScalingString(raw: unknown): SpellDamageScalingRow[] | undefined {
     if (!raw) return undefined;
     if (Array.isArray(raw)) {
-        return raw.filter(r => r && typeof r === "object" && ("level" in r || "dice" in r));
+        return raw.filter(r => r && typeof r === "object" && ("level" in r || "dice" in r || "effect" in r));
     }
     if (typeof raw === "string") {
         try {
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-                return parsed.filter(r => r && typeof r === "object" && ("level" in r || "dice" in r));
+                return parsed.filter(r => r && typeof r === "object" && ("level" in r || "dice" in r || "effect" in r));
             }
         } catch {
             return undefined;
         }
     }
     return undefined;
+}
+
+function wordToNum(w?: string): number {
+    if (!w) return 1;
+    const map: Record<string, number> = {
+        one: 1, two: 2, three: 3, four: 4, five: 5,
+        six: 6, seven: 7, eight: 8, nine: 9, ten: 10
+    };
+    return map[w.toLowerCase()] || parseInt(w, 10) || 1;
+}
+
+export function parseScalingEffect(desc: string, baseLevel: number): {
+    type: string;
+    aboveLvl: number;
+    generate: (lvl: number) => string;
+} | null {
+    if (!desc) return null;
+    const upcastMatch = /(?:Using a Higher-Level Spell Slot|At Higher Levels)[.:]?\s*([^\n\r]+)/i.exec(desc);
+    if (!upcastMatch) return null;
+    const upcastText = upcastMatch[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&ndash;/g, "–").trim();
+
+    // 1. Target scaling (e.g. Tasha's Hideous Laughter, Charm Person, Command, Invisibility, Hold Person, Fly, Banishment, etc.)
+    const targetMatch = /(?:You can target|You can affect|target)\s+(?:up to\s+)?(one|two|three|\d+)?\s*(?:additional\s+)?(?:willing\s+)?([a-zA-Z]+)(?:\s+\([^)]+\))?\s+for each\s+(?:spell\s+)?slot\s+level above\s+(\d+)(?:st|nd|rd|th)?/i.exec(upcastText)
+        || /target\s+(one|two|three|\d+)\s+additional target for each slot level above\s+(\d+)(?:st|nd|rd|th)?/i.exec(upcastText);
+    if (targetMatch) {
+        const isTargetWord = targetMatch[0].includes("additional target for each slot");
+        const addCount = isTargetWord ? wordToNum(targetMatch[1]) : (targetMatch[1] ? wordToNum(targetMatch[1]) : 1);
+        const aboveLvl = isTargetWord ? Number(targetMatch[2]) : Number(targetMatch[3]);
+        const noun = isTargetWord ? "target" : (targetMatch[2] ? targetMatch[2].toLowerCase() : "target");
+
+        let baseCount = 1;
+        if (/up to three creatures/i.test(desc) || /three willing creatures/i.test(desc)) baseCount = 3;
+        else if (/up to two creatures/i.test(desc) || /two creatures/i.test(desc)) baseCount = 2;
+
+        return {
+            type: "target",
+            aboveLvl,
+            generate: (lvl: number) => {
+                const count = baseCount + Math.max(0, lvl - aboveLvl) * addCount;
+                const nounStr = (noun === "beast" || noun === "humanoid") ? (count === 1 ? noun : noun + "s") : (count === 1 ? "target" : "targets");
+                return `${count} ${nounStr}`;
+            }
+        };
+    }
+
+    // 2. Radius / Area scaling (e.g. Confusion, Fog Cloud)
+    const radiusMatch = /(?:radius(?:\s+of\s+the\s+[a-zA-Z]+)?)\s+increases by\s+(\d+)\s+feet\s+for each\s+(?:spell\s+)?slot\s+level above\s+(\d+)(?:st|nd|rd|th)?/i.exec(upcastText);
+    if (radiusMatch) {
+        const incFeet = Number(radiusMatch[1]);
+        const aboveLvl = Number(radiusMatch[2]);
+        const baseRadiusMatch = /(\d+)-foot-radius/i.exec(desc);
+        const baseRadius = baseRadiusMatch ? Number(baseRadiusMatch[1]) : incFeet;
+        return {
+            type: "radius",
+            aboveLvl,
+            generate: (lvl: number) => {
+                const rad = baseRadius + Math.max(0, lvl - aboveLvl) * incFeet;
+                return `${rad} ft. radius`;
+            }
+        };
+    }
+
+    // 3. Cube size scaling (e.g. Creation, Mordenkainen's Private Sanctum)
+    const cubeMatch = /(?:size of the Cube|Cube)\s+increases by\s+(\d+)\s+feet\s+for each\s+(?:spell\s+)?slot\s+level above\s+(\d+)(?:st|nd|rd|th)?/i.exec(upcastText)
+        || /increase the size of the Cube by\s+(\d+)\s+feet\s+for each\s+(?:spell\s+)?slot\s+level above\s+(\d+)(?:st|nd|rd|th)?/i.exec(upcastText);
+    if (cubeMatch) {
+        const incFeet = Number(cubeMatch[1]);
+        const aboveLvl = Number(cubeMatch[2]);
+        const baseCubeMatch = /(\d+)-foot\s+cube/i.exec(desc);
+        const baseCube = baseCubeMatch ? Number(baseCubeMatch[1]) : incFeet;
+        return {
+            type: "cube",
+            aboveLvl,
+            generate: (lvl: number) => {
+                const size = baseCube + Math.max(0, lvl - aboveLvl) * incFeet;
+                return `${size} ft. Cube`;
+            }
+        };
+    }
+
+    // 3b. Hillock (High Ground)
+    if (/increase the width of the hillock by 5 feet or the length by 10 feet for each slot above 3rd/i.test(upcastText)) {
+        return {
+            type: "hillock",
+            aboveLvl: 3,
+            generate: (lvl: number) => `+${(lvl - 3) * 5} ft. width or +${(lvl - 3) * 10} ft. length`
+        };
+    }
+
+    // 4. Duration per level (e.g. Magic Circle, Animal Messenger)
+    const durMatch = /duration increases by\s+(\d+)\s+(hour|hours|day|days)\s+for each\s+(?:spell\s+)?slot\s+level above\s+(\d+)(?:st|nd|rd|th)?/i.exec(upcastText);
+    if (durMatch) {
+        const incVal = Number(durMatch[1]);
+        const unit = durMatch[2];
+        const aboveLvl = Number(durMatch[3]);
+        let baseDur = unit.startsWith("hour") ? (incVal === 48 ? 24 : 1) : 1;
+        return {
+            type: "duration",
+            aboveLvl,
+            generate: (lvl: number) => {
+                const val = baseDur + Math.max(0, lvl - aboveLvl) * incVal;
+                return `${val} ${val === 1 ? unit.replace(/s$/, "") : (unit.endsWith("s") ? unit : unit + "s")}`;
+            }
+        };
+    }
+
+    // 5. Tiered duration / concentration (Hex, Dominate Person, Dominate Beast, Bestow Curse, Major Image, Planar Binding, Mass Suggestion)
+    if (/with a spell slot of level 2 \(up to 4 hours\), 3–4 \(up to 8 hours\), or 5\+ \(24 hours\)/i.test(upcastText)) {
+        return {
+            type: "tiered-duration",
+            aboveLvl: 1,
+            generate: (lvl: number) => {
+                if (lvl === 1) return "Up to 1 hour";
+                if (lvl === 2) return "Up to 4 hours";
+                if (lvl <= 4) return "Up to 8 hours";
+                return "Up to 24 hours";
+            }
+        };
+    }
+    if (/Concentration can last longer with a spell slot of level 6 \(up to 10 minutes\), 7 \(up to 1 hour\), or 8\+ \(up to 8 hours\)/i.test(upcastText)) {
+        return {
+            type: "tiered-duration",
+            aboveLvl: 5,
+            generate: (lvl: number) => {
+                if (lvl <= 5) return "Up to 1 minute";
+                if (lvl === 6) return "Up to 10 minutes";
+                if (lvl === 7) return "Up to 1 hour";
+                return "Up to 8 hours";
+            }
+        };
+    }
+    if (/Concentration can last longer with a spell slot of level 5 \(up to 10 minutes\), 6 \(up to 1 hour\), or 7\+ \(up to 8 hours\)/i.test(upcastText)) {
+        return {
+            type: "tiered-duration",
+            aboveLvl: 4,
+            generate: (lvl: number) => {
+                if (lvl <= 4) return "Up to 1 minute";
+                if (lvl === 5) return "Up to 10 minutes";
+                if (lvl === 6) return "Up to 1 hour";
+                return "Up to 8 hours";
+            }
+        };
+    }
+    if (/Major Image/i.test(desc) || /spell lasts until dispelled, without requiring Concentration, if cast with a level 4\+/i.test(upcastText)) {
+        return {
+            type: "tiered-duration",
+            aboveLvl: 3,
+            generate: (lvl: number) => {
+                if (lvl <= 3) return "10 min (Conc)";
+                return "Until dispelled (no Conc)";
+            }
+        };
+    }
+    if (/Bestow Curse/i.test(desc) || /level 4 spell slot, you can maintain Concentration on it for up to 10 minutes/i.test(upcastText)) {
+        return {
+            type: "tiered-duration",
+            aboveLvl: 3,
+            generate: (lvl: number) => {
+                if (lvl <= 3) return "1 min (Conc)";
+                if (lvl === 4) return "10 min (Conc)";
+                if (lvl <= 6) return "8 hours (no Conc)";
+                if (lvl <= 8) return "24 hours (no Conc)";
+                return "Until dispelled (no Conc)";
+            }
+        };
+    }
+    if (/Modify Memory/i.test(desc) || /alter the target’s memories of an event that took place up to 7 days ago/i.test(upcastText)) {
+        return {
+            type: "memory",
+            aboveLvl: 5,
+            generate: (lvl: number) => {
+                if (lvl <= 5) return "Up to 24 hours ago";
+                if (lvl === 6) return "Up to 7 days ago";
+                if (lvl === 7) return "Up to 30 days ago";
+                if (lvl === 8) return "Up to 365 days ago";
+                return "Any time in past";
+            }
+        };
+    }
+    if (/Planar Binding/i.test(desc) || /duration increases with a spell slot of level 6 \(10 days\)/i.test(upcastText)) {
+        return {
+            type: "binding",
+            aboveLvl: 5,
+            generate: (lvl: number) => {
+                if (lvl <= 5) return "24 hours";
+                if (lvl === 6) return "10 days";
+                if (lvl === 7) return "30 days";
+                if (lvl === 8) return "180 days";
+                return "366 days";
+            }
+        };
+    }
+    if (/Mass Suggestion/i.test(desc) || /duration is longer with a spell slot of level 7 \(10 days\)/i.test(upcastText)) {
+        return {
+            type: "suggestion",
+            aboveLvl: 6,
+            generate: (lvl: number) => {
+                if (lvl <= 6) return "24 hours";
+                if (lvl === 7) return "10 days";
+                if (lvl === 8) return "30 days";
+                return "366 days";
+            }
+        };
+    }
+    if (/Create Undead/i.test(desc) || /animate or reassert control over four Ghouls/i.test(upcastText)) {
+        return {
+            type: "undead",
+            aboveLvl: 6,
+            generate: (lvl: number) => {
+                if (lvl <= 6) return "3 Ghouls";
+                if (lvl === 7) return "4 Ghouls";
+                if (lvl === 8) return "5 Ghouls or 2 Ghasts/Wights";
+                return "6 Ghouls, 3 Ghasts/Wights, or 2 Mummies";
+            }
+        };
+    }
+    if (/Magic Weapon/i.test(desc) || /bonus increases to \+2 with a level 3–5 spell slot/i.test(upcastText)) {
+        return {
+            type: "bonus",
+            aboveLvl: 2,
+            generate: (lvl: number) => {
+                if (lvl <= 2) return "+1 bonus";
+                if (lvl <= 5) return "+2 bonus";
+                return "+3 bonus";
+            }
+        };
+    }
+    if (/Globe of Invulnerability/i.test(desc) || /barrier blocks spells of 1 level higher for each spell slot level above 6/i.test(upcastText)) {
+        return {
+            type: "barrier",
+            aboveLvl: 6,
+            generate: (lvl: number) => {
+                const blk = 5 + (lvl - 6);
+                return `Blocks spells ≤ lvl ${blk}`;
+            }
+        };
+    }
+    if (/Dispel Magic/i.test(desc) || /automatically end a spell on the target if the spell’s level is equal to or less than the level of the spell slot/i.test(upcastText)) {
+        return {
+            type: "dispel",
+            aboveLvl: 3,
+            generate: (lvl: number) => `Auto-ends ≤ lvl ${lvl}`
+        };
+    }
+
+    // 6. Stat block summons
+    if (/Use the spell slot’s level for the spell’s level in the stat block/i.test(upcastText)) {
+        return {
+            type: "stat-block",
+            aboveLvl: baseLevel,
+            generate: (lvl: number) => `Slot lvl ${lvl} in stat block`
+        };
+    }
+
+    // 7. Temporary HP / Healing / Max HP scaling
+    if (/gain (\d+) additional Temporary Hit Points for each spell slot level above (\d+)/i.test(upcastText)) {
+        const m = /gain (\d+) additional Temporary Hit Points for each spell slot level above (\d+)/i.exec(upcastText);
+        const incThp = Number(m?.[1] || "5");
+        const aboveLvl = Number(m?.[2] || "1");
+        return {
+            type: "thp",
+            aboveLvl,
+            generate: (lvl: number) => `+${(lvl - aboveLvl) * incThp} Temp HP`
+        };
+    }
+    if (/Each target(?:'s|’s) Hit Point maximum and current Hit Points increase by (\d+) for each spell slot level above (\d+)/i.test(upcastText)) {
+        const m = /Each target(?:'s|’s) Hit Point maximum and current Hit Points increase by (\d+) for each spell slot level above (\d+)/i.exec(upcastText);
+        const incHp = Number(m?.[1] || "5");
+        const aboveLvl = Number(m?.[2] || "2");
+        return {
+            type: "aid",
+            aboveLvl,
+            generate: (lvl: number) => `+${5 + (lvl - aboveLvl) * incHp} Max HP`
+        };
+    }
+
+    // 8. Ammunition / Meteors
+    if (/ammunition you can affect with this spell increases by two for each slot level above (\d+)/i.test(upcastText)) {
+        const aboveLvl = 3;
+        return {
+            type: "ammo",
+            aboveLvl,
+            generate: (lvl: number) => `${12 + (lvl - aboveLvl) * 2} arrows`
+        };
+    }
+    if (/number of meteors created increases by two for each slot level above (\d+)/i.test(upcastText)) {
+        const aboveLvl = 3;
+        return {
+            type: "meteors",
+            aboveLvl,
+            generate: (lvl: number) => `${6 + (lvl - aboveLvl) * 2} meteors`
+        };
+    }
+
+    // 9. Weight (Catapult)
+    if (/maximum weight of objects that you can target with this spell increases by (\d+) pounds/i.test(upcastText)) {
+        const aboveLvl = 1;
+        return {
+            type: "weight",
+            aboveLvl,
+            generate: (lvl: number) => `Up to ${5 + (lvl - aboveLvl) * 5} lbs`
+        };
+    }
+
+    return null;
 }
 
 export function extractSpellDamageInfo(spell: {
@@ -271,7 +577,7 @@ export function extractSpellDamageInfo(spell: {
 
     if (damageScaling && Array.isArray(damageScaling)) {
         const hasInvalidLevels = baseLevel > 0 && damageScaling.some(r => Number(r.level) < baseLevel);
-        const hasGarbageDice = damageScaling.some(r => !isDiceLike(String(r.dice || "")));
+        const hasGarbageDice = damageScaling.some(r => r.dice && !isDiceLike(String(r.dice || "")));
         if (hasInvalidLevels || hasGarbageDice) {
             damageScaling = undefined;
         }
@@ -357,18 +663,29 @@ export function extractSpellDamageInfo(spell: {
     // 1. Check embedded HTML or Markdown damage blocks in description if fields are missing
     if ((!damageDice || !damageScaling || damageScaling.length === 0) && desc) {
         // Look for HTML table inside .spell-damage-scaling-block or .custom-spell-damage-block or similar
-        const tableRowRegex = /<tr[^>]*>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/gi;
+        const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
         const htmlRows: SpellDamageScalingRow[] = [];
-        let match: RegExpExecArray | null;
-        while ((match = tableRowRegex.exec(desc)) !== null) {
-            const col1 = match[1]?.replace(/<[^>]*>/g, "").trim() || "";
-            const dice = match[2]?.replace(/<[^>]*>/g, "").trim() || "";
-            const mod = match[3]?.replace(/<[^>]*>/g, "").trim() || "";
-            const total = match[4]?.replace(/<[^>]*>/g, "").trim() || "";
+        let trMatch: RegExpExecArray | null;
+        while ((trMatch = trRegex.exec(desc)) !== null) {
+            const trContent = trMatch[1];
+            const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+            const cells: string[] = [];
+            let tdMatch: RegExpExecArray | null;
+            while ((tdMatch = tdRegex.exec(trContent)) !== null) {
+                cells.push(tdMatch[1].replace(/<[^>]*>/g, "").trim());
+            }
+
+            if (cells.length < 4) continue;
+
+            const col1 = cells[0] || "";
+            const dice = cells[1] || "";
+            const mod = cells[2] || "";
+            const effect = cells.length >= 5 ? cells[3] : undefined;
+            const total = cells.length >= 5 ? cells[4] : cells[3];
 
             // Ignore header row
-            if (dice.toLowerCase().includes("damage dice") || col1.toLowerCase().includes("level")) {
-                if (dice.toLowerCase().includes("damage dice")) continue;
+            if (dice.toLowerCase().includes("damage dice") || dice.toLowerCase().includes("healing dice") || col1.toLowerCase().includes("level") || col1.toLowerCase().includes("slot")) {
+                if (dice.toLowerCase().includes("damage dice") || dice.toLowerCase().includes("healing dice")) continue;
             }
 
             const lvlMatch = /(?:Level\s*(\d+)|Cantrip|(\d+)(?:st|nd|rd|th)?\s*Level)/i.exec(col1);
@@ -393,8 +710,16 @@ export function extractSpellDamageInfo(spell: {
                     }
                 }
             }
-            if (dice && isDiceLike(dice)) {
-                htmlRows.push({ level: lvl, label: col1, dice, modifier: cleanMod });
+            const cleanDice = dice === "—" || dice === "-" ? "" : dice;
+            const cleanEffect = effect && effect !== "—" && effect !== "-" ? effect : undefined;
+            if ((cleanDice && isDiceLike(cleanDice)) || cleanEffect) {
+                htmlRows.push({
+                    level: lvl,
+                    label: col1,
+                    dice: cleanDice,
+                    modifier: cleanMod,
+                    effect: cleanEffect
+                });
             }
         }
         if (htmlRows.length > 0) {
@@ -410,16 +735,25 @@ export function extractSpellDamageInfo(spell: {
 
     // Look for Markdown damage table if still missing
     if ((!damageDice || !damageScaling || damageScaling.length === 0) && desc) {
-        const mdRowRegex = /\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]*)\|/gi;
         const mdRows: SpellDamageScalingRow[] = [];
-        let match: RegExpExecArray | null;
-        while ((match = mdRowRegex.exec(desc)) !== null) {
-            const col1 = match[1]?.trim() || "";
-            const dice = match[2]?.trim() || "";
-            const col3 = match[3]?.trim() || "";
-            const col4 = match[4]?.trim() || "";
+        const lines = desc.split(/\r?\n/);
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) continue;
+            const cells = trimmed.slice(1, -1).split("|").map(c => c.trim());
+            if (cells.length < 3) continue;
 
-            if (dice.toLowerCase().includes("damage dice") || col1.includes("---")) continue;
+            const col1 = cells[0];
+            const dice = cells[1];
+            const col3 = cells[2] || "";
+            const col4 = cells[3] || "";
+            const col5 = cells[4];
+
+            if (dice.toLowerCase().includes("damage dice") || dice.toLowerCase().includes("healing dice") || col1.includes("---")) continue;
+
+            const mod = col3;
+            const effect = col5 !== undefined ? col4 : undefined;
+            const total = col5 !== undefined ? col5 : col4;
 
             const lvlMatch = /(?:Level\s*(\d+)|Cantrip|(\d+)(?:st|nd|rd|th)?\s*Level)/i.exec(col1);
             const numMatch = /(\d+)/.exec(col1);
@@ -430,18 +764,26 @@ export function extractSpellDamageInfo(spell: {
                 lvl = Number(numMatch[1]);
             }
 
-            let cleanMod = col3 === "—" || col3 === "-" ? "" : col3;
+            let cleanMod = mod === "—" || mod === "-" ? "" : mod;
             if (!damageType) {
-                if (col3 && isDamageType(col3)) {
-                    damageType = capitalize(col3);
-                    cleanMod = col4 === "—" || col4 === "-" ? "" : col4;
-                } else if (col4 && isDamageType(col4)) {
-                    damageType = capitalize(col4);
+                if (mod && isDamageType(mod)) {
+                    damageType = capitalize(mod);
+                    cleanMod = total === "—" || total === "-" ? "" : total;
+                } else if (total && isDamageType(total)) {
+                    damageType = capitalize(total);
                 }
             }
 
-            if (dice && dice.toLowerCase() !== "damage dice" && isDiceLike(dice)) {
-                mdRows.push({ level: lvl, label: col1, dice, modifier: cleanMod });
+            const cleanDice = dice === "—" || dice === "-" ? "" : dice;
+            const cleanEffect = effect && effect !== "—" && effect !== "-" ? effect : undefined;
+            if ((cleanDice && cleanDice.toLowerCase() !== "damage dice" && isDiceLike(cleanDice)) || cleanEffect) {
+                mdRows.push({
+                    level: lvl,
+                    label: col1,
+                    dice: cleanDice,
+                    modifier: cleanMod,
+                    effect: cleanEffect
+                });
             }
         }
         if (mdRows.length > 0) {
@@ -620,6 +962,39 @@ export function extractSpellDamageInfo(spell: {
         }
     }
 
+    // 4. Generate or enrich scaling rows for effect scaling if present in description
+    if (baseLevel >= 1 && desc) {
+        const scalingEffect = parseScalingEffect(desc, baseLevel);
+        if (scalingEffect) {
+            if (damageScaling && damageScaling.length > 1) {
+                // Enrich existing damage scaling rows with their effect
+                damageScaling = damageScaling.map(r => {
+                    const lvl = Number(r.level);
+                    if (!isNaN(lvl)) {
+                        return {
+                            ...r,
+                            effect: r.effect || scalingEffect.generate(lvl)
+                        };
+                    }
+                    return r;
+                });
+            } else {
+                // Build scaling rows for levels baseLevel..9
+                const rows: SpellDamageScalingRow[] = [];
+                for (let lvl = baseLevel; lvl <= 9; lvl++) {
+                    rows.push({
+                        level: lvl,
+                        label: `Level ${lvl}`,
+                        dice: damageDice || "",
+                        modifier: damageModifier || "",
+                        effect: scalingEffect.generate(lvl)
+                    });
+                }
+                damageScaling = rows;
+            }
+        }
+    }
+
     return {
         damageDice: damageDice || undefined,
         damageType: damageType || undefined,
@@ -654,8 +1029,10 @@ export function getSpellDamageDisplay(
         } else if (castAtLevelOrOptions.character) {
             spellcastingMod = getSpellcastingModifier(castAtLevelOrOptions.character, spell);
         }
-    } else {
+    } else if (typeof castAtLevelOrOptions === "number") {
         castAtLevel = castAtLevelOrOptions;
+        characterLevel = characterLevelArg;
+    } else {
         characterLevel = characterLevelArg;
     }
 
@@ -745,6 +1122,78 @@ export function getSpellDamageDisplay(
     const resolvedType = spell.damageType || extractedType;
     const typeStr = resolvedType ? ` ${resolvedType}` : "";
     return `${dice}${formattedMod}${typeStr}`.trim();
+}
+
+export function getSpellEffectDisplay(
+    spell: {
+        level?: number;
+        damageScaling?: SpellDamageScalingRow[] | unknown;
+        description?: string;
+    },
+    castAtLevelOrOptions?: number | { castAtLevel?: number; characterLevel?: number },
+    characterLevelArg?: number
+): string {
+    let castAtLevel: number | undefined;
+    let characterLevel: number | undefined;
+
+    if (typeof castAtLevelOrOptions === "object" && castAtLevelOrOptions !== null) {
+        castAtLevel = castAtLevelOrOptions.castAtLevel;
+        characterLevel = castAtLevelOrOptions.characterLevel;
+    } else if (typeof castAtLevelOrOptions === "number") {
+        castAtLevel = castAtLevelOrOptions;
+        characterLevel = characterLevelArg;
+    } else {
+        characterLevel = characterLevelArg;
+    }
+
+    let scaling = parseDamageScalingString(spell.damageScaling);
+    if (!scaling || scaling.length === 0 || !scaling.some(r => r.effect)) {
+        const extracted = extractSpellDamageInfo(spell);
+        if (extracted.damageScaling && extracted.damageScaling.some(r => r.effect)) {
+            scaling = extracted.damageScaling;
+        }
+    }
+
+    if (!scaling || scaling.length === 0) return "";
+
+    const hasExplicitLevel = spell.level !== undefined && spell.level !== null;
+    const baseLevel = hasExplicitLevel ? Number(spell.level) : (Number(scaling[0]?.level) || 1);
+
+    const isCharacterScaling = (hasExplicitLevel && baseLevel === 0) || scaling.some(r => {
+        const lbl = String(r.label || "").toLowerCase();
+        return lbl.includes("cantrip") || lbl.includes("character") || lbl.includes("1–4") || lbl.includes("1-4") || lbl.includes("5–10");
+    });
+
+    if (isCharacterScaling) {
+        const effectiveCharLevel = characterLevel !== undefined && characterLevel > 0 ? characterLevel : 1;
+        const sortedRows = [...scaling].sort((a, b) => Number(a.level) - Number(b.level));
+        let matchedRow = sortedRows[0];
+        for (const r of sortedRows) {
+            if (Number(r.level) <= effectiveCharLevel) {
+                matchedRow = r;
+            }
+        }
+        return matchedRow?.effect || "";
+    }
+
+    if (castAtLevel !== undefined) {
+        const row = scaling.find(r => Number(r.level) === Number(castAtLevel));
+        if (row?.effect) return row.effect;
+    }
+
+    const baseRow = scaling.find(r => Number(r.level) === baseLevel) || scaling[0];
+    return baseRow?.effect || "";
+}
+
+export function hasScalingEffect(spell: { level?: number; damageScaling?: unknown; description?: string }): boolean {
+    const baseLevel = Number(spell.level) || 0;
+    const baseEffect = getSpellEffectDisplay(spell, baseLevel);
+    if (!baseEffect) return false;
+    for (let lvl = baseLevel + 1; lvl <= 9; lvl++) {
+        const eff = getSpellEffectDisplay(spell, lvl);
+        if (eff && eff !== baseEffect) return true;
+    }
+    return false;
 }
 
 export function resolveActionSpellDamage(

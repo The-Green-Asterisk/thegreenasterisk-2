@@ -3,7 +3,9 @@ import {
     extractSpellDamageInfo,
     getSpellDamageDisplay,
     getSpellDamageType,
+    getSpellEffectDisplay,
     getSpellcastingModifier,
+    hasScalingEffect,
     isHealingSpell,
     replaceModInString,
     resolveActionSpellDamage
@@ -649,5 +651,134 @@ describe("renderSpellCard & renderSpellsByLevel", () => {
         expect(replaceModInString("MOD", 3)).toBe("+3");
         expect(replaceModInString("2d8 + MOD Healing", 4)).toBe("2d8 + 4 Healing");
         expect(replaceModInString("1d4+MOD", 5)).toBe("1d4+5");
+    });
+
+    it("extracts scaling effect for extra targets from Tasha's Hideous Laughter", () => {
+        const tashas = {
+            name: "Tasha's Hideous Laughter",
+            level: 1,
+            description: "A creature of your choice within range perceives everything as humorously comical and must succeed on a Wisdom saving throw or fall Prone, becoming Incapacitated with laughter for the duration.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 1. The creatures must be within 30 feet of each other when you target them."
+        };
+
+        const info = extractSpellDamageInfo(tashas);
+        expect(info.damageScaling).toBeDefined();
+        expect(info.damageScaling?.length).toBe(9); // Level 1 through 9
+        expect(info.damageScaling?.[0]).toEqual({
+            level: 1,
+            label: "Level 1",
+            dice: "",
+            modifier: "",
+            effect: "1 target"
+        });
+        expect(info.damageScaling?.[1]).toEqual({
+            level: 2,
+            label: "Level 2",
+            dice: "",
+            modifier: "",
+            effect: "2 targets"
+        });
+        expect(info.damageScaling?.[2]).toEqual({
+            level: 3,
+            label: "Level 3",
+            dice: "",
+            modifier: "",
+            effect: "3 targets"
+        });
+
+        expect(hasScalingEffect(tashas)).toBe(true);
+        expect(getSpellEffectDisplay(tashas, 1)).toBe("1 target");
+        expect(getSpellEffectDisplay(tashas, 2)).toBe("2 targets");
+        expect(getSpellEffectDisplay(tashas, 4)).toBe("4 targets");
+    });
+
+    it("extracts scaling effect for radius increase from Confusion", () => {
+        const confusion = {
+            name: "Confusion",
+            level: 4,
+            description: "This spell assaults and warps creatures' minds, spawning delusions and uncontrolled actions. Each creature in a 10-foot-radius sphere centered on a point you choose within range must succeed on a Wisdom saving throw when you cast this spell or be affected by it.\n\nUsing a Higher-Level Spell Slot. When you cast this spell using a spell slot of 5th level or higher, the radius of the sphere increases by 5 feet for each slot level above 4th."
+        };
+
+        const info = extractSpellDamageInfo(confusion);
+        expect(info.damageScaling).toBeDefined();
+        expect(info.damageScaling?.length).toBe(6); // Levels 4 through 9
+        expect(info.damageScaling?.[0].effect).toBe("10 ft. radius");
+        expect(info.damageScaling?.[1].effect).toBe("15 ft. radius");
+        expect(info.damageScaling?.[2].effect).toBe("20 ft. radius");
+
+        expect(hasScalingEffect(confusion)).toBe(true);
+        expect(getSpellEffectDisplay(confusion, 4)).toBe("10 ft. radius");
+        expect(getSpellEffectDisplay(confusion, 5)).toBe("15 ft. radius");
+        expect(getSpellEffectDisplay(confusion, 6)).toBe("20 ft. radius");
+    });
+
+    it("renders effect badges in renderSpellCard and duplicates upcast cards in renderSpellsByLevel", () => {
+        const tashas: SpellDefinition = {
+            name: "Tasha's Hideous Laughter",
+            level: 1,
+            school: "Enchantment",
+            castingTime: "1 action",
+            range: "30 feet",
+            duration: "Concentration, up to 1 minute",
+            components: "V, S, M",
+            concentration: true,
+            ritual: false,
+            description: "A creature of your choice within range perceives everything as humorously comical and must succeed on a Wisdom saving throw or fall Prone, becoming Incapacitated with laughter for the duration.\n\nUsing a Higher-Level Spell Slot. You can target one additional creature for each spell slot level above 1. The creatures must be within 30 feet of each other when you target them.",
+            damageScaling: [
+                { level: 1, label: "Level 1", dice: "", modifier: "", effect: "1 target" },
+                { level: 2, label: "Level 2", dice: "", modifier: "", effect: "2 targets" },
+                { level: 3, label: "Level 3", dice: "", modifier: "", effect: "3 targets" }
+            ]
+        };
+
+        const cardLevel1 = renderSpellCard({ ...tashas, castAtLevel: 1 }, 5);
+        expect(cardLevel1).toContain("badge-effect");
+        expect(cardLevel1).toContain("1 target");
+        expect(cardLevel1).toContain("meta-effect");
+
+        const cardLevel2 = renderSpellCard({ ...tashas, castAtLevel: 2 }, 5);
+        expect(cardLevel2).toContain("badge-effect");
+        expect(cardLevel2).toContain("2 targets");
+
+        const mockSlots = {
+            level1: { total: 4, label: "1st Level" },
+            level2: { total: 3, label: "2nd Level" }
+        };
+
+        const groupedHtml = renderSpellsByLevel([tashas], mockSlots);
+        // Should appear under 1st Level with 1 target and under 2nd Level with 2 targets
+        expect(groupedHtml).toContain("1st-Level Spells");
+        expect(groupedHtml).toContain("2nd-Level Spells");
+        expect(groupedHtml).toContain("1 target");
+        expect(groupedHtml).toContain("2 targets");
+    });
+
+    it("parses embedded custom spell scaling block with effects", () => {
+        const customSpell = {
+            name: "Binding Shackle",
+            level: 2,
+            description: `<p>A chain of psychic energy.</p>
+<div class="spell-damage-scaling-block">
+    <div class="spell-scaling-table-container">
+        <table class="spell-scaling-table">
+            <thead>
+                <tr><th>Casting Level</th><th>Damage Dice</th><th>Modifier</th><th>Scaling Effect</th><th>Total Damage</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Level 2</td><td>2d6</td><td>+0</td><td>1 creature</td><td>2d6 Force</td></tr>
+                <tr><td>Level 3</td><td>2d6</td><td>+0</td><td>2 creatures</td><td>2d6 Force</td></tr>
+                <tr><td>Level 4</td><td>2d6</td><td>+0</td><td>3 creatures</td><td>2d6 Force</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>`
+        };
+
+        const info = extractSpellDamageInfo(customSpell);
+        expect(info.damageDice).toBe("2d6");
+        expect(info.damageScaling?.length).toBe(3);
+        expect(info.damageScaling?.[0].effect).toBe("1 creature");
+        expect(info.damageScaling?.[1].effect).toBe("2 creatures");
+        expect(info.damageScaling?.[2].effect).toBe("3 creatures");
+        expect(getSpellEffectDisplay(customSpell, 3)).toBe("2 creatures");
     });
 });

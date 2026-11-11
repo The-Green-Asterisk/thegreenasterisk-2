@@ -143,14 +143,14 @@ export function renderModals(): string {
                         <!-- Damage & Level Scaling Section -->
                         <div class="form-section">
                             <div class="form-section-header">
-                                <span class="form-section-title"><i class="fa-solid fa-burst"></i> Damage &amp; Level Scaling (Optional)</span>
+                                <span class="form-section-title"><i class="fa-solid fa-burst"></i> Damage &amp; Effect Scaling (Optional)</span>
                             </div>
                             <div class="form-checkboxes full-width">
                                 <label class="form-toggle-pill" for="custom-spell-has-damage">
                                     <input type="checkbox" id="custom-spell-has-damage" />
                                     <span class="toggle-pill-ui">
                                         <i class="fa-solid fa-dice-d20"></i>
-                                        <span>Record Damage Dice, Damage Type &amp; Scaling Modifiers</span>
+                                        <span>Record Damage, Healing, and/or Scaling Effects</span>
                                     </span>
                                 </label>
                             </div>
@@ -177,6 +177,7 @@ export function renderModals(): string {
                                             <option value="Slashing">Slashing</option>
                                             <option value="Thunder">Thunder</option>
                                             <option value="Healing">Healing</option>
+                                            <option value="None">None / Effect Only</option>
                                             <option value="Typeless">Typeless / Other</option>
                                         </select>
                                     </label>
@@ -184,7 +185,7 @@ export function renderModals(): string {
                                         <span class="form-label">Base Modifier (Optional)</span>
                                         <input type="text" id="custom-spell-damage-mod" placeholder="e.g. +3 or {{modifier:cha}}" autocomplete="off" />
                                     </label>
-                                    <label class="form-field">
+                                    <label class="form-field full-width">
                                         <span class="form-label">Damage Scaling Mode</span>
                                         <select id="custom-spell-scaling-type">
                                             <option value="auto" selected>Auto (Character Level for Cantrips, Slot Level for Leveled)</option>
@@ -197,7 +198,7 @@ export function renderModals(): string {
                                 <div class="scaling-subhead">
                                     <div class="scaling-subhead-info">
                                         <span class="scaling-subhead-title" id="custom-spell-scaling-title"><i class="fa-solid fa-layer-group"></i> Modifiers &amp; Dice per Level</span>
-                                        <span class="form-field-hint" id="custom-spell-scaling-hint">Customize damage dice and modifiers for each level at which this spell scales.</span>
+                                        <span class="form-field-hint" id="custom-spell-scaling-hint">Customize damage dice, modifiers, and effects for each level at which this spell scales.</span>
                                     </div>
                                     <div class="scaling-subhead-actions">
                                         <button type="button" class="scaling-action-btn" id="custom-spell-autoscale-btn" title="Add +1 die for each higher level based on your base dice">
@@ -216,6 +217,7 @@ export function renderModals(): string {
                                                 <th class="col-level" id="custom-spell-scaling-col-header">Scaling Level</th>
                                                 <th class="col-dice">Damage Dice</th>
                                                 <th class="col-mod">Modifier</th>
+                                                <th class="col-effect">Scaling Effect</th>
                                                 <th class="col-preview">Total Damage</th>
                                             </tr>
                                         </thead>

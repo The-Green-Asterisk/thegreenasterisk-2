@@ -2135,15 +2135,18 @@ el-character-sheet .content-slate section {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    max-width: 100%;
 }
 
 .custom-spell-form-body {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1.25rem 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.15rem;
+    min-width: 0;
 }
 
 .custom-spell-form .form-section {
@@ -2185,20 +2188,28 @@ el-character-sheet .content-slate section {
 
 .custom-spell-form .form-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
+    min-width: 0;
 }
 
 @media screen and (min-width: 580px) {
     .custom-spell-form .form-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
+}
+
+.custom-spell-form .form-grid > * {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .custom-spell-form .form-field {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .custom-spell-form .form-field.full-width {
@@ -2218,6 +2229,10 @@ el-character-sheet .content-slate section {
 .custom-spell-form input[type="url"],
 .custom-spell-form select,
 .custom-spell-form textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 0.55rem 0.75rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
@@ -2227,6 +2242,22 @@ el-character-sheet .content-slate section {
     font-family: inherit;
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.custom-spell-form select {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#custom-spell-scaling-type {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .custom-spell-form input[type="text"]:focus,
@@ -2456,6 +2487,10 @@ el-character-sheet .content-slate section {
     background: var(--surface-alt);
     border: 1px solid var(--border-soft);
     border-radius: var(--radius);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .custom-spell-damage-panel.hidden {
@@ -3241,6 +3276,15 @@ el-character-sheet .content-slate section {
     gap: 0.25rem;
 }
 
+.badge-effect {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(192, 132, 252, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
 .badge-upcast {
     background: rgba(59, 130, 246, 0.15);
     color: #60a5fa;
@@ -3259,11 +3303,26 @@ el-character-sheet .content-slate section {
     gap: 0.25rem;
 }
 
+.meta-effect .effect-value {
+    color: #c084fc;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
 [data-theme="light"] .badge-damage,
 .light-mode .badge-damage {
     background: #fee2e2;
     color: #b91c1c;
     border-color: #f87171;
+}
+
+[data-theme="light"] .badge-effect,
+.light-mode .badge-effect {
+    background: #f3e8ff;
+    color: #7e22ce;
+    border-color: #c084fc;
 }
 
 [data-theme="light"] .badge-upcast,
@@ -3276,6 +3335,11 @@ el-character-sheet .content-slate section {
 [data-theme="light"] .meta-damage .damage-dice-value,
 .light-mode .meta-damage .damage-dice-value {
     color: #b91c1c;
+}
+
+[data-theme="light"] .meta-effect .effect-value,
+.light-mode .meta-effect .effect-value {
+    color: #7e22ce;
 }
 
 [data-theme="light"] .spell-card-upcast,
