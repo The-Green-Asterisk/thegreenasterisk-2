@@ -1,3 +1,4 @@
+import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { CharacterData, EquipmentItem, SpellDefinition, WeaponItem } from "../characterData";
 
 /**
@@ -83,8 +84,14 @@ function splitDamage(damage: unknown): { dice?: string; type?: string } {
     return match ? { dice: match[1].trim(), type: match[2] } : { dice: damage ? String(damage) : undefined };
 }
 
+/**
+ * Effects an edit changed: unlocked copies take `modifiers`; locked copies that follow the item's effects by name
+ * (no effects of their own) get `previousModifiers`, so they stay exactly as they were.
+ */
+export type EffectsEdit = { modifiers: StatModifier[]; previousModifiers: StatModifier[] };
+
 /** Copies an edited item onto the character's unlocked weapon and equipment copies of it */
-export function applyItemEditToCopies(character: CharacterData | null, oldName: string, item: any): CopyUpdateResult {
+export function applyItemEditToCopies(character: CharacterData | null, oldName: string, item: any, effects?: EffectsEdit): CopyUpdateResult {
     const result = { updated: 0, locked: 0 };
     const id = databaseId(item?.id);
     if (!character || !id) return result;
@@ -94,9 +101,11 @@ export function applyItemEditToCopies(character: CharacterData | null, oldName: 
     (character.weapons || []).forEach((w: WeaponItem) => {
         if (!isCopyOf(w, "itemId", id, oldName)) return;
         if (w.locked) {
+            if (effects && w.modifiers === undefined) w.modifiers = clone(effects.previousModifiers);
             result.locked++;
             return;
         }
+        if (effects) w.modifiers = clone(effects.modifiers);
         Object.assign(w, {
             itemId: id,
             name: item.name,
@@ -119,9 +128,11 @@ export function applyItemEditToCopies(character: CharacterData | null, oldName: 
     (character.equipment || []).forEach((e: EquipmentItem) => {
         if (!isCopyOf(e, "itemId", id, oldName)) return;
         if (e.locked) {
+            if (effects && e.modifiers === undefined) e.modifiers = clone(effects.previousModifiers);
             result.locked++;
             return;
         }
+        if (effects) e.modifiers = clone(effects.modifiers);
         Object.assign(e, {
             itemId: id,
             name: item.name,

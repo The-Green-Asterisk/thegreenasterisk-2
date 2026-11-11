@@ -50,7 +50,7 @@ function spellCopyFields(spell: Spell) {
     };
 }
 
-function parseScaling(raw: unknown): unknown {
+function parseJsonField(raw: unknown): unknown {
     if (typeof raw !== "string") return raw ?? undefined;
     try {
         return JSON.parse(raw);
@@ -103,7 +103,7 @@ export async function propagateSpellEdit(spell: Spell, oldName: string): Promise
     }
     if (changed.length > 0) await repo.save(changed);
 
-    const payloadFields = { ...fields, damageScaling: parseScaling(fields.damageScaling), imageUrl: spell.imageUrl || undefined };
+    const payloadFields = { ...fields, damageScaling: parseJsonField(fields.damageScaling), imageUrl: spell.imageUrl || undefined };
     await rewritePayloads([...characterIds], (payload) => {
         let touched = false;
         for (const entry of Array.isArray(payload.spells) ? payload.spells : []) {
@@ -129,8 +129,11 @@ function splitDamage(damage?: string | null): { die?: string; type?: string } {
 /**
  * Copies an edited item onto every character that has it, except copies locked on that character. Weapons get the
  * combat stats too; attack bonuses stay as the character's sheet worked them out.
+ *
+ * With `effects` (the edit changed the item's effects): unlocked copies take the new effects, and locked copies
+ * that follow the item's effects by name get the old ones written onto them, so they stay exactly as they were.
  */
-export async function propagateItemEdit(item: Item, oldName: string): Promise<PropagationResult> {
+export async function propagateItemEdit(item: Item, oldName: string, effects?: { previousModifiers: any[] }): Promise<PropagationResult> {
     const repo = AppDataSource.getRepository<CharacterInventoryItem>("CharacterInventoryItem");
     const rows = await repo.find({
         where: [{ itemId: item.id }, { itemId: IsNull(), name: oldName }],
@@ -154,6 +157,7 @@ export async function propagateItemEdit(item: Item, oldName: string): Promise<Pr
     for (const row of rows) {
         if (row.locked) {
             locked++;
+            if (effects && row.savedCharacter?.id) characterIds.add(row.savedCharacter.id);
             continue;
         }
         if (isWeaponRow(row)) {
@@ -176,10 +180,25 @@ export async function propagateItemEdit(item: Item, oldName: string): Promise<Pr
     if (changed.length > 0) await repo.save(changed);
 
     const payloadCommon = { ...common, imageUrl: item.imageUrl || undefined, itemId: item.id };
+    const newModifiers = parseJsonField(item.modifiersJson);
+    /** A locked copy keeps the effects it had; true when that changed the entry */
+    const freezeEffects = (entry: any) => {
+        if (!effects || entry.modifiers !== undefined) return false;
+        entry.modifiers = effects.previousModifiers;
+        return true;
+    };
+    const takeEffects = (entry: any) => {
+        if (effects) entry.modifiers = Array.isArray(newModifiers) ? newModifiers : [];
+    };
     await rewritePayloads([...characterIds], (payload) => {
         let touched = false;
         for (const entry of Array.isArray(payload.weapons) ? payload.weapons : []) {
-            if (!isCopyOf(entry, "itemId", item.id, oldName) || entry.locked) continue;
+            if (!isCopyOf(entry, "itemId", item.id, oldName)) continue;
+            if (entry.locked) {
+                touched = freezeEffects(entry) || touched;
+                continue;
+            }
+            takeEffects(entry);
             Object.assign(entry, payloadCommon, {
                 category: item.category || entry.category,
                 damage: item.damage || entry.damage,
@@ -192,7 +211,12 @@ export async function propagateItemEdit(item: Item, oldName: string): Promise<Pr
             touched = true;
         }
         for (const entry of Array.isArray(payload.equipment) ? payload.equipment : []) {
-            if (!isCopyOf(entry, "itemId", item.id, oldName) || entry.locked) continue;
+            if (!isCopyOf(entry, "itemId", item.id, oldName)) continue;
+            if (entry.locked) {
+                touched = freezeEffects(entry) || touched;
+                continue;
+            }
+            takeEffects(entry);
             Object.assign(entry, payloadCommon, {
                 type: item.category || item.filterType || entry.type,
                 filterType: item.filterType || entry.filterType

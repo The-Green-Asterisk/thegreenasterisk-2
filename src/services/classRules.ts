@@ -130,6 +130,16 @@ export function setItemRules(items: Array<{ name: string; modifiers: StatModifie
 }
 
 /**
+ * After an item's effects are saved: its entry under its new name holds them (an empty list means no effects, so the
+ * seed list's entry for the name doesn't apply), and any entry under its old name goes.
+ */
+export function upsertItemRule(oldName: string | undefined, name: string, modifiers: StatModifier[]): void {
+    const norm = (s: string) => String(s || "").trim().toLowerCase().replace(/[’‘`]/g, "'");
+    const drop = new Set([norm(name), norm(oldName || "")].filter(Boolean));
+    itemRules = [...itemRules.filter((i) => !drop.has(norm(i.name))), { name, modifiers }];
+}
+
+/**
  * An item's rules modifiers, by name ("Goggles of Night"); apostrophes match either way, and a "+1"/"+2"/"+3" variant
  * ("Rod of the Pact Keeper, +2", "+1 Amulet of the Devout") uses its base name's entry.
  */

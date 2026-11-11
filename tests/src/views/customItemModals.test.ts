@@ -158,3 +158,115 @@ describe("edit permission on the client", () => {
         expect(canEditDbEntry({ id: 5, createdById: 7 })).toBe(false);
     });
 });
+
+describe("item effects in the dialogs", () => {
+    const selectEl = (row: Element, cls: string) => row.querySelector<HTMLSelectElement>(`.${cls}`)!;
+    const change = (el: HTMLElement) => el.dispatchEvent(new Event("change", { bubbles: true }));
+
+    it("shows the effects an item follows from the seed list, and doesn't send them back unless they change", async () => {
+        const { setItemRules, findItemRule } = await import("../../../src/services/classRules");
+        setItemRules([{ name: "Cloak of Protection", modifiers: [{ target: "vitals.ac", type: "bonus", value: 1 }, { target: "saves.all", type: "bonus", value: 1 }] as any }]);
+        const { modals, $, submit } = await setup();
+        modals.open("magic-item", { id: 4, name: "Cloak of Protection", filterType: "Wondrous item", requiresAttunement: true, description: "Warm", isCustom: false, modifiersJson: null });
+
+        const rows = $("custom-magic-item-effects-list").querySelectorAll(".item-effect-row");
+        expect(rows).toHaveLength(2);
+        expect(selectEl(rows[0], "effect-target").value).toBe("vitals.ac");
+        expect(rows[0].querySelector<HTMLInputElement>(".effect-value")!.value).toBe("1");
+        expect($("custom-magic-item-effects-hint").textContent).toContain("equipped and attuned");
+
+        await submit("custom-magic-item");
+        expect(putData.mock.calls[0][1]).not.toHaveProperty("modifiers");
+
+        modals.open("magic-item", { id: 4, name: "Cloak of Protection", filterType: "Wondrous item", description: "Warm", isCustom: false, modifiersJson: null });
+        const value = $("custom-magic-item-effects-list").querySelector<HTMLInputElement>(".effect-value")!;
+        value.value = "2";
+        await submit("custom-magic-item");
+        expect(putData.mock.calls[1][1].modifiers).toEqual([{ target: "vitals.ac", type: "bonus", value: 2 }, { target: "saves.all", type: "bonus", value: 1 }]);
+        expect(findItemRule("Cloak of Protection")?.modifiers[0].value).toBe(2);
+    });
+
+    it("takes seed effects along when the item is renamed, since the seed matches by name", async () => {
+        const { setItemRules, findItemRule } = await import("../../../src/services/classRules");
+        setItemRules([{ name: "Ring of Protection", modifiers: [{ target: "vitals.ac", type: "bonus", value: 1 }] as any }]);
+        const { modals, $, submit } = await setup();
+        modals.open("magic-item", { id: 5, name: "Ring of Protection", filterType: "Ring", description: "Shiny", modifiersJson: null });
+        $("custom-magic-item-name").value = "Ring of Warding";
+        await submit("custom-magic-item");
+        expect(putData.mock.calls[0][1].modifiers).toEqual([{ target: "vitals.ac", type: "bonus", value: 1 }]);
+        expect(findItemRule("Ring of Warding")?.modifiers).toHaveLength(1);
+        expect(findItemRule("Ring of Protection")).toBeUndefined();
+    });
+
+    it("builds effects from the controls: ability set, AC by armor state, the item's +N, and advantage", async () => {
+        const { modals, $, submit } = await setup({ weapons: [], equipment: [] });
+        modals.open("magic-item");
+        const add = $<HTMLButtonElement>("custom-magic-item-effects-add-btn");
+        const list = $("custom-magic-item-effects-list");
+        const fill = (i: number, target: string, type?: string) => {
+            const row = list.querySelectorAll(".item-effect-row")[i];
+            selectEl(row, "effect-target").value = target;
+            change(selectEl(row, "effect-target"));
+            if (type) {
+                selectEl(row, "effect-type").value = type;
+                change(selectEl(row, "effect-type"));
+            }
+            return row;
+        };
+        for (let i = 0; i < 4; i++) add.click();
+        fill(0, "abilities.str", "set").querySelector<HTMLInputElement>(".effect-value")!.value = "19";
+        const ac = fill(1, "vitals.ac");
+        ac.querySelector<HTMLInputElement>(".effect-value")!.value = "2";
+        selectEl(ac, "effect-requires").value = "no-armor-or-shield";
+        const dc = fill(2, "spells.dc");
+        const plus = dc.querySelector<HTMLInputElement>(".effect-plus")!;
+        plus.checked = true;
+        change(plus);
+        const stealth = fill(3, "skills.stealth", "advantage");
+        expect(stealth.querySelector(".effect-value-field")!.classList.contains("hidden")).toBe(true);
+        expect(ac.querySelector(".effect-requires-field")!.classList.contains("hidden")).toBe(false);
+
+        $("custom-magic-item-name").value = "Bayou Charm";
+        $<HTMLTextAreaElement>("custom-magic-item-description").value = "Smells of swamp.";
+        await submit("custom-magic-item");
+        expect(postData.mock.calls[0][1].modifiers).toEqual([
+            { target: "abilities.str", type: "set", value: 19 },
+            { target: "vitals.ac", type: "bonus", value: 2, requires: "no-armor-or-shield" },
+            { target: "spells.dc", type: "bonus", value: "{{plus}}" },
+            { target: "skills.stealth", type: "advantage" }
+        ]);
+    });
+
+    it("won't save an incomplete effect, and keeps effects it can't edit", async () => {
+        const { modals, $, submit } = await setup();
+        modals.open("magic-item", {
+            id: 6, name: "Odd Idol", filterType: "Wondrous item", description: "Hmm",
+            modifiersJson: JSON.stringify([{ target: "defenses.resistance", type: "set", value: "fire", description: "Resistance to fire" }])
+        });
+        const list = $("custom-magic-item-effects-list");
+        expect(list.querySelector(".is-other")!.textContent).toContain("Resistance to fire");
+
+        $<HTMLButtonElement>("custom-magic-item-effects-add-btn").click();
+        await submit("custom-magic-item");
+        expect(putData).not.toHaveBeenCalled();
+        expect($("custom-magic-item-status").textContent).toContain("Choose a stat for effect 2");
+
+        list.querySelectorAll<HTMLButtonElement>(".effect-remove-btn")[1].click();
+        $<HTMLTextAreaElement>("custom-magic-item-description").value = "Hmm!";
+        await submit("custom-magic-item");
+        expect(putData.mock.calls[0][1]).not.toHaveProperty("modifiers");
+    });
+});
+
+describe("item effects on character copies", () => {
+    it("gives unlocked copies the new effects and freezes the old ones on locked copies", async () => {
+        const { applyItemEditToCopies } = await import("../../../src/views/characterSheet/services/characterCopies");
+        const char: any = { weapons: [], equipment: [{ name: "Belt", itemId: 9 }, { name: "Belt", itemId: 9, locked: true }] };
+        applyItemEditToCopies(char, "Belt", { id: 9, name: "Belt" }, {
+            modifiers: [{ target: "abilities.str", type: "set", value: 23 }],
+            previousModifiers: [{ target: "abilities.str", type: "set", value: 21 }]
+        });
+        expect(char.equipment[0].modifiers[0].value).toBe(23);
+        expect(char.equipment[1].modifiers[0].value).toBe(21);
+    });
+});
