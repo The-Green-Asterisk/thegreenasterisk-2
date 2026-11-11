@@ -1,7 +1,10 @@
+import { renderLockPanel } from "../controllers/definitionLockPanel";
+import { renderCustomItemModal } from "./customItemModal";
+
 export function renderModals(): string {
     return `
         <!-- SPELL DETAILS MODAL -->
-        <div id="spell-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true">
+        <div id="spell-modal-container" class="spell-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-spell-name">
             <div class="spell-modal-dialog" id="spell-modal-dialog">
                 <header class="spell-modal-header">
                     <div class="spell-modal-title-group">
@@ -43,7 +46,15 @@ export function renderModals(): string {
 
                 <footer class="spell-modal-footer">
                     <span id="modal-spell-source" class="modal-footer-source">Source: Bard</span>
-                    <button type="button" class="modal-action-btn" id="modal-close-action-btn">Close</button>
+                    <div class="modal-footer-actions">
+                        <button type="button" class="modal-action-btn secondary copy-lock-btn hidden" id="modal-spell-copy-lock-btn" aria-pressed="false" title="Keeps this character's copy exactly as it is when the spell is edited or the character is refreshed from D&amp;D Beyond">
+                            <i class="fa-solid fa-lock-open" aria-hidden="true"></i> Lock on This Character
+                        </button>
+                        <button type="button" class="modal-action-btn secondary hidden" id="modal-spell-edit-btn">
+                            <i class="fa-solid fa-pen" aria-hidden="true"></i> Edit Spell
+                        </button>
+                        <button type="button" class="modal-action-btn" id="modal-close-action-btn">Close</button>
+                    </div>
                 </footer>
             </div>
         </div>
@@ -58,7 +69,7 @@ export function renderModals(): string {
                             <span class="modal-badge source-badge">Local Database</span>
                         </div>
                         <h2 class="modal-spell-title" id="custom-spell-title">Add Custom Spell</h2>
-                        <div class="modal-spell-sub">Save a custom spell to your local database and attach it to your active sheet</div>
+                        <div class="modal-spell-sub" id="custom-spell-subtitle">Save a custom spell to your local database and attach it to your active sheet</div>
                     </div>
                     <button type="button" class="spell-modal-close" id="custom-spell-close-btn" aria-label="Close custom spell modal">
                         <i class="fa-solid fa-xmark"></i>
@@ -69,6 +80,7 @@ export function renderModals(): string {
 
                 <form id="custom-spell-form" class="custom-spell-form">
                     <div class="custom-spell-form-body">
+                        ${renderLockPanel("custom-spell-locks")}
                         <!-- Basic Info Section -->
                         <div class="form-section">
                             <div class="form-section-header">
@@ -547,7 +559,15 @@ If you take the [action]Disengage[/action] action before casting this spell, you
 
                 <footer class="spell-modal-footer">
                     <span id="modal-item-source" class="modal-footer-source">Source: Database</span>
-                    <button type="button" class="modal-action-btn" id="modal-item-close-action-btn">Close</button>
+                    <div class="modal-footer-actions">
+                        <button type="button" class="modal-action-btn secondary copy-lock-btn hidden" id="modal-item-copy-lock-btn" aria-pressed="false" title="Keeps this character's copy exactly as it is when the item is edited or the character is refreshed from D&amp;D Beyond">
+                            <i class="fa-solid fa-lock-open" aria-hidden="true"></i> Lock on This Character
+                        </button>
+                        <button type="button" class="modal-action-btn secondary hidden" id="modal-item-edit-btn">
+                            <i class="fa-solid fa-pen" aria-hidden="true"></i> <span id="modal-item-edit-label">Edit Item</span>
+                        </button>
+                        <button type="button" class="modal-action-btn" id="modal-item-close-action-btn">Close</button>
+                    </div>
                 </footer>
             </div>
         </div>
@@ -921,5 +941,8 @@ If you take the [action]Disengage[/action] action before casting this spell, you
                 </footer>
             </div>
         </div>
+
+        ${renderCustomItemModal("weapon")}
+        ${renderCustomItemModal("magic-item")}
     `;
 }

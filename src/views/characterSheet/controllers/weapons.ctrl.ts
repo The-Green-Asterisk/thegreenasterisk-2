@@ -159,6 +159,10 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
         void ctx.openManageItemsModal("weapon");
     });
 
+    ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-weapon-btn")?.addEventListener("click", () => {
+        ctx.openCustomItemModal("weapon");
+    });
+
     // Weapon quantity steppers & inputs
     const weaponQtySteppers = ctx.sheet.querySelectorAll<HTMLElement>('.weapon-card .item-qty-stepper');
     weaponQtySteppers.forEach(stepper => {

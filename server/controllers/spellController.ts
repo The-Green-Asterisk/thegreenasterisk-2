@@ -6,8 +6,11 @@ import { Spell } from "../services/database/entity/Spell";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { SEED_SPELLS } from "../services/database/spellsSeed";
 import { flattenDndBeyondSpellDefinition, mergeSpellClasses } from "../services/dndBeyondSpell";
+import { propagateSpellEdit } from "../services/characterCopies";
+import { keepLockedFields, normalizeLockedFields, parseLockedFields, SPELL_LOCK_COLUMNS } from "../services/definitionLocks";
 import { extractSpellDamageInfo } from "../services/spellDamage";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 
 function slugify(text: string): string {
     return text
@@ -144,6 +147,7 @@ export default class SpellController extends BaseController {
                         }
 
                         const beforeClasses = existing.classes;
+                        const before = { ...existing };
                         let addClasses: string[] = [];
                         try {
                             addClasses = classesVal ? JSON.parse(classesVal) : [];
@@ -157,7 +161,7 @@ export default class SpellController extends BaseController {
                         const hasBrokenFields = [existing.range, existing.duration, existing.castingTime, existing.components]
                             .some((v) => String(v || "").includes(BROKEN_FIELD));
 
-                        if (existingIsLegacy || hasBrokenFields || !existing.description || existing.description === "<p>No description provided.</p>") {
+                        if (!existing.isCustom && (existingIsLegacy || hasBrokenFields || !existing.description || existing.description === "<p>No description provided.</p>")) {
                             // Prefer the definition from the character pull over free online sources, or upgrade legacy to 2024
                             existing.name = name;
                             existing.level = Number(rawSpell.level) ?? existing.level;
@@ -176,6 +180,7 @@ export default class SpellController extends BaseController {
                             if (!existing.damageType && damageInfo.damageType) existing.damageType = damageInfo.damageType;
                             if (!existing.damageModifier && damageInfo.damageModifier) existing.damageModifier = damageInfo.damageModifier;
                             if (!existing.damageScaling && damageScalingVal) existing.damageScaling = damageScalingVal;
+                            keepLockedFields(existing, before, SPELL_LOCK_COLUMNS);
 
                             const saved = await spellRepo.save(existing);
                             cache.set(`spell_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "database", spell: saved }), 3600);
@@ -186,6 +191,7 @@ export default class SpellController extends BaseController {
                             if (!existing.damageType && damageInfo.damageType) existing.damageType = damageInfo.damageType;
                             if (!existing.damageModifier && damageInfo.damageModifier) existing.damageModifier = damageInfo.damageModifier;
                             if (!existing.damageScaling && damageScalingVal) existing.damageScaling = damageScalingVal;
+                            keepLockedFields(existing, before, SPELL_LOCK_COLUMNS);
                             await spellRepo.save(existing);
                         }
                     }
@@ -236,11 +242,13 @@ export default class SpellController extends BaseController {
                     });
                     await spellRepo.save(created);
                 } else if (!existing.classes || (!existing.damageDice && damageInfo.damageDice)) {
+                    const before = { ...existing };
                     if (!existing.classes) existing.classes = classesJson;
                     if (!existing.damageDice && damageInfo.damageDice) existing.damageDice = damageInfo.damageDice;
                     if (!existing.damageType && damageInfo.damageType) existing.damageType = damageInfo.damageType;
                     if (!existing.damageModifier && damageInfo.damageModifier) existing.damageModifier = damageInfo.damageModifier;
                     if (!existing.damageScaling && damageScalingVal) existing.damageScaling = damageScalingVal;
+                    keepLockedFields(existing, before, SPELL_LOCK_COLUMNS);
                     await spellRepo.save(existing);
                 }
             }
@@ -548,7 +556,8 @@ export default class SpellController extends BaseController {
                 }
 
                 if (dbSpell) {
-                    if (!dbSpell.damageDice) {
+                    // A locked damage field means the edit cleared it on purpose; don't guess it back from the text
+                    if (!dbSpell.damageDice && !parseLockedFields(dbSpell.lockedFields).damage) {
                         const info = extractSpellDamageInfo(dbSpell);
                         if (info.damageDice) dbSpell.damageDice = info.damageDice;
                         if (info.damageType) dbSpell.damageType = info.damageType;
@@ -644,7 +653,46 @@ export default class SpellController extends BaseController {
         };
     }
 
+    /** The fields the Add/Edit Custom Spell dialog controls, normalized the same way for both */
+    private static customSpellFields(body: Partial<Spell>) {
+        const damageInfo = extractSpellDamageInfo(body as any);
+        const damageScaling = body.damageScaling
+            ? (typeof body.damageScaling === "string" ? body.damageScaling : JSON.stringify(body.damageScaling))
+            : (damageInfo.damageScaling ? JSON.stringify(damageInfo.damageScaling) : undefined);
+        return {
+            name: String(body.name || "").trim(),
+            level: Number(body.level) || 0,
+            school: body.school?.trim() || "Universal",
+            castingTime: body.castingTime?.trim() || "1 Action",
+            range: body.range?.trim() || "Self",
+            duration: body.duration?.trim() || "Instantaneous",
+            components: body.components?.trim() || "V, S",
+            concentration: !!body.concentration,
+            ritual: !!body.ritual,
+            description: String(body.description || "").trim(),
+            imageUrl: body.imageUrl?.trim() || undefined,
+            damageDice: body.damageDice?.trim() || damageInfo.damageDice,
+            damageType: body.damageType?.trim() || damageInfo.damageType,
+            damageModifier: body.damageModifier !== undefined && body.damageModifier !== null
+                ? String(body.damageModifier).trim()
+                : damageInfo.damageModifier,
+            damageScaling
+        };
+    }
+
+    private static clearSpellCache(slug: string) {
+        cache.del([`spell_detail_${slug}`, `spell_detail_${slug}_pref2024`, `spell_detail_${slug}_mixed`]);
+    }
+
     public static async createCustomSpell(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify({ error: "Log in to add custom spells." }),
+                status: 401
+            };
+        }
+
         try {
             const body = await BaseController.readBody<Partial<Spell>>(req);
             if (!body || !body.name || !body.description) {
@@ -678,32 +726,12 @@ export default class SpellController extends BaseController {
                 };
             }
 
-            const damageInfo = extractSpellDamageInfo(body as any);
-            const damageScalingStr = body.damageScaling
-                ? (typeof body.damageScaling === "string" ? body.damageScaling : JSON.stringify(body.damageScaling))
-                : (damageInfo.damageScaling ? JSON.stringify(damageInfo.damageScaling) : undefined);
-
             const customSpell = spellRepo.create({
+                ...this.customSpellFields(body),
                 slug: rawSlug,
-                name: body.name.trim(),
-                level: Number(body.level) || 0,
-                school: body.school?.trim() || "Universal",
                 source: body.source?.trim() || "Custom / Homebrew",
-                castingTime: body.castingTime?.trim() || "1 Action",
-                range: body.range?.trim() || "Self",
-                duration: body.duration?.trim() || "Instantaneous",
-                components: body.components?.trim() || "V, S",
-                concentration: !!body.concentration,
-                ritual: !!body.ritual,
-                description: body.description.trim(),
-                imageUrl: body.imageUrl?.trim(),
-                damageDice: body.damageDice?.trim() || damageInfo.damageDice,
-                damageType: body.damageType?.trim() || damageInfo.damageType,
-                damageModifier: body.damageModifier !== undefined && body.damageModifier !== null
-                    ? String(body.damageModifier).trim()
-                    : damageInfo.damageModifier,
-                damageScaling: damageScalingStr,
-                isCustom: true
+                isCustom: true,
+                createdById: currentUser.id
             });
 
             const saved = await spellRepo.save(customSpell);
@@ -711,6 +739,7 @@ export default class SpellController extends BaseController {
                 ...saved,
                 sourceTier: "Custom Database"
             };
+            this.clearSpellCache(rawSlug);
             cache.set(`spell_detail_${rawSlug}`, JSON.stringify(responseSpell), 3600);
 
             return {
@@ -719,6 +748,106 @@ export default class SpellController extends BaseController {
             };
         } catch (error: any) {
             console.error("Error creating custom spell:", error);
+            return {
+                response: JSON.stringify({ error: error.message || "Internal server error" }),
+                status: 500
+            };
+        }
+    }
+
+    /** Creators can edit their own custom spells; admins can edit any spell. Source, classes, and IDs stay as they were. */
+    public static async editCustomSpell(req: http.IncomingMessage, res: http.ServerResponse) {
+        const currentUser = SessionController.getUser(req);
+        if (!currentUser) {
+            return {
+                response: JSON.stringify({ error: "Log in to edit spells." }),
+                status: 401
+            };
+        }
+
+        try {
+            const body = await BaseController.readBody<Partial<Spell>>(req);
+            const id = Number(body?.id);
+            if (!body || !Number.isInteger(id) || id <= 0) {
+                return {
+                    response: JSON.stringify({ error: "Spell ID is required." }),
+                    status: 400
+                };
+            }
+            if (!body.name || !body.description) {
+                return {
+                    response: JSON.stringify({ error: "Name and description are required." }),
+                    status: 400
+                };
+            }
+
+            const newSlug = slugify(body.name);
+            if (!newSlug) {
+                return {
+                    response: JSON.stringify({ error: "Invalid spell name." }),
+                    status: 400
+                };
+            }
+
+            if (!AppDataSource.isInitialized) {
+                return {
+                    response: JSON.stringify({ error: "Database not initialized." }),
+                    status: 503
+                };
+            }
+
+            const spellRepo = AppDataSource.getRepository(Spell);
+            const spell = await spellRepo.findOne({ where: { id } });
+            if (!spell) {
+                return {
+                    response: JSON.stringify({ error: "Spell not found." }),
+                    status: 404
+                };
+            }
+
+            if (!BaseController.canEditOwned(currentUser, spell.createdById)) {
+                return {
+                    response: JSON.stringify({ error: "You can only edit spells you created." }),
+                    status: 403
+                };
+            }
+
+            const oldSlug = spell.slug;
+            const oldNameBeforeEdit = spell.name;
+            if (newSlug !== oldSlug) {
+                const clash = await spellRepo.findOne({ where: { slug: newSlug } });
+                if (clash && clash.id !== spell.id) {
+                    return {
+                        response: JSON.stringify({ error: "A spell with this name already exists in the database." }),
+                        status: 409
+                    };
+                }
+            }
+
+            Object.assign(spell, this.customSpellFields(body), { slug: newSlug });
+            if ((body as any).lockedFields !== undefined) {
+                spell.lockedFields = normalizeLockedFields((body as any).lockedFields, SPELL_LOCK_COLUMNS);
+            }
+            // TypeORM skips undefined on save, so a field the dialog cleared has to become null
+            for (const key of ["imageUrl", "damageDice", "damageType", "damageModifier", "damageScaling"] as const) {
+                if (spell[key] === undefined || spell[key] === "") (spell as any)[key] = null;
+            }
+            const saved = await spellRepo.save(spell);
+
+            this.clearSpellCache(oldSlug);
+            this.clearSpellCache(newSlug);
+
+            const propagation = await propagateSpellEdit(saved, oldNameBeforeEdit).catch((err) => {
+                console.error("Could not copy the spell edit onto characters:", err);
+                return null;
+            });
+
+            return {
+                response: JSON.stringify({ ...saved, sourceTier: saved.isCustom ? "Custom Database" : "Database", propagation }),
+                status: 200
+            };
+        } catch (error: any) {
+            console.error("Error editing spell:", error);
             return {
                 response: JSON.stringify({ error: error.message || "Internal server error" }),
                 status: 500

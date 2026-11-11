@@ -1,5 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { SavedCharacter } from "./SavedCharacter";
+import type { Item } from "./Item";
 
 @Entity()
 @Index(["savedCharacter", "name"])
@@ -13,6 +14,18 @@ export class CharacterInventoryItem {
 
     @Column({ type: "varchar", length: 255 })
     name!: string;
+
+    /** The item this is a copy of, so edits to it reach this character */
+    @ManyToOne("Item", { nullable: true, onDelete: "SET NULL" })
+    @JoinColumn({ name: "itemId", foreignKeyConstraintName: "FK_character_item_item" })
+    item?: Item | null;
+
+    @Column({ type: "int", nullable: true })
+    itemId?: number | null;
+
+    /** Keeps this character's copy exactly as it is through item edits and D&D Beyond refreshes */
+    @Column({ type: "boolean", default: false })
+    locked!: boolean;
 
     @Column({ type: "int", default: 1 })
     quantity!: number;

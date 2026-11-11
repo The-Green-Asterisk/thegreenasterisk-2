@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import type { User } from "./User";
 
 @Entity()
 export class Item {
@@ -62,6 +63,18 @@ export class Item {
     /** Rules modifiers while equipped (and attuned), as JSON (e.g. senses); see itemMechanics.ts */
     @Column({ type: "text", nullable: true })
     modifiersJson?: string;
+
+    /** Who made it through the Add Custom dialog; null for pulled, seeded, and pre-existing rows */
+    @ManyToOne("User", { nullable: true, onDelete: "SET NULL" })
+    @JoinColumn({ name: "createdById", foreignKeyConstraintName: "FK_item_created_by_user" })
+    createdBy?: User | null;
+
+    @Column({ type: "int", nullable: true })
+    createdById?: number | null;
+
+    /** Fields an edit locked against D&D Beyond reloads and auto-fixes, as a JSON object of lock key → true; see definitionLocks.ts */
+    @Column({ type: "text", nullable: true })
+    lockedFields?: string | null;
 
     @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
     createdAt!: Date;

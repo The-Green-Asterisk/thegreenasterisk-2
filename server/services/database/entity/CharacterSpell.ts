@@ -1,5 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { SavedCharacter } from "./SavedCharacter";
+import type { Spell } from "./Spell";
 
 @Entity()
 @Index(["savedCharacter", "name"])
@@ -13,6 +14,18 @@ export class CharacterSpell {
 
     @Column({ type: "varchar", length: 255 })
     name!: string;
+
+    /** The spell this is a copy of, so edits to it reach this character */
+    @ManyToOne("Spell", { nullable: true, onDelete: "SET NULL" })
+    @JoinColumn({ name: "spellId", foreignKeyConstraintName: "FK_character_spell_spell" })
+    spell?: Spell | null;
+
+    @Column({ type: "int", nullable: true })
+    spellId?: number | null;
+
+    /** Keeps this character's copy exactly as it is through spell edits and D&D Beyond refreshes */
+    @Column({ type: "boolean", default: false })
+    locked!: boolean;
 
     @Column({ type: "int", default: 0 })
     level!: number;

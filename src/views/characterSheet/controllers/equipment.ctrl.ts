@@ -108,6 +108,10 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
         void ctx.openManageItemsModal("all");
     });
 
+    ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-magic-item-btn")?.addEventListener("click", () => {
+        ctx.openCustomItemModal("magic-item");
+    });
+
     // Equipment quantity steppers & inputs
     const equipQtySteppers = ctx.sheet.querySelectorAll<HTMLElement>('.equipment-row .item-qty-stepper');
     equipQtySteppers.forEach(stepper => {

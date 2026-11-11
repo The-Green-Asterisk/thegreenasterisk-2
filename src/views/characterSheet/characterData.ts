@@ -5,6 +5,10 @@ import type { StatModifier } from "../../rules/dnd5e_2024/types";
 export interface SpellDefinition {
     id: string | number;
     name: string;
+    /** The database spell this is a copy of, so edits to it reach this character */
+    spellId?: number;
+    /** Keeps this character's copy as it is through spell edits and D&D Beyond refreshes */
+    locked?: boolean;
     level: number;
     school: string;
     source: string;
@@ -90,6 +94,10 @@ export interface ItemCharges {
 
 export interface EquipmentItem {
     id?: number;
+    /** The database item this is a copy of, so edits to it reach this character */
+    itemId?: number;
+    /** Keeps this character's copy as it is through item edits and D&D Beyond refreshes */
+    locked?: boolean;
     charges?: ItemCharges;
     definitionId?: number;
     name: string;
@@ -112,6 +120,10 @@ export interface WeaponItem {
     /** Rules modifiers while equipped (and attuned): the item's own (custom, or from D&D Beyond); else the item rules' */
     modifiers?: StatModifier[];
     id?: number;
+    /** The database item this is a copy of, so edits to it reach this character */
+    itemId?: number;
+    /** Keeps this character's copy as it is through item edits and D&D Beyond refreshes */
+    locked?: boolean;
     charges?: ItemCharges;
     definitionId?: number;
     name: string;

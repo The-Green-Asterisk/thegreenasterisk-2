@@ -347,7 +347,7 @@ export function renderSpellCard(
         <div class="spell-card ${isUpcast ? 'spell-card-upcast' : ''}" data-spell-name="${encodeURIComponent(spell.name)}" data-spell-id="${spell.id ?? ''}" tabindex="0" role="button" aria-haspopup="dialog" title="Click to view full spell description">
             <div class="spell-card-top">
                 <div class="spell-title-wrap">
-                    <h4 class="spell-title">${spell.name}</h4>
+                    <h4 class="spell-title">${spell.name}${spell.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}</h4>
                     <span class="spell-school-level">${levelText} • ${spell.school}</span>
                 </div>
                 <div class="spell-badges">

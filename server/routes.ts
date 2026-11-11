@@ -335,6 +335,11 @@ export default class Routes {
         return SpellController.createCustomSpell(req, res);
     }
 
+    @Method('PUT')
+    private ['/edit-custom-spell'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return SpellController.editCustomSpell(req, res);
+    }
+
     @Method('GET')
     private ['/get-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ItemController.getItem(req, res);
@@ -358,6 +363,11 @@ export default class Routes {
     @Method('POST')
     private ['/create-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
         return ItemController.createCustomItem(req, res);
+    }
+
+    @Method('PUT')
+    private ['/edit-custom-item'](req: http.IncomingMessage, res: http.ServerResponse): ResponsePromise {
+        return ItemController.editCustomItem(req, res);
     }
 
     @Method('GET')

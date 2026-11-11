@@ -42,7 +42,7 @@ export function renderEquipment(data: CharacterData): string {
         const card = `
             <div class="equipment-row clickable-item-card" data-item-name="${encodeURIComponent(item.name)}" data-item-id="${item.definitionId || item.id || ''}" data-item-type="${item.type || ''}" title="Click to view details and tiered info">
                 <div class="item-info">
-                    <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${item.name}</button></span>
+                    <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${item.name}</button>${item.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}</span>
                     <span class="item-type">${item.type}</span>
                 </div>
                 <div class="item-badges">

@@ -12,6 +12,7 @@ import CharacterSpell from "services/database/entity/CharacterSpell";
 import CharacterVitals from "services/database/entity/CharacterVitals";
 import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
+import { resolveDefinitionLinks } from "../services/characterCopies";
 import { mergeRowItems } from "../services/characterItems";
 import { mergeVitals } from "../services/characterVitals";
 import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
@@ -794,6 +795,8 @@ export default class CharacterController extends BaseController {
             record.alignment = payloadToSave.alignment || null;
             record.avatarUrl = payloadToSave.avatarUrl || null;
             record.dndBeyondUrl = payloadToSave.dndBeyondUrl || null;
+            // Ties each spell and item to its database row, so edits to it reach this character
+            await resolveDefinitionLinks(payloadToSave);
             record.payload = JSON.stringify(payloadToSave);
 
             const saved = await repo.save(record);
@@ -1352,6 +1355,8 @@ export default class CharacterController extends BaseController {
                 .map(w => ({
                     id: w.id,
                     name: w.name,
+                    itemId: w.itemId ?? undefined,
+                    locked: w.locked || undefined,
                     quantity: w.quantity,
                     equipped: w.equipped,
                     attuned: w.attuned,
@@ -1384,6 +1389,8 @@ export default class CharacterController extends BaseController {
                 .map(e => ({
                     id: e.id,
                     name: e.name,
+                    itemId: e.itemId ?? undefined,
+                    locked: e.locked || undefined,
                     quantity: e.quantity,
                     equipped: e.equipped,
                     attuned: e.attuned,
@@ -1408,6 +1415,8 @@ export default class CharacterController extends BaseController {
                 return {
                     id: sp.id,
                     name: sp.name,
+                    spellId: sp.spellId ?? undefined,
+                    locked: sp.locked || undefined,
                     level: sp.level,
                     school: sp.school,
                     source: sp.source,
@@ -1681,6 +1690,8 @@ export default class CharacterController extends BaseController {
                     itemsToSave.push(itemRepo.create({
                         savedCharacter: charRef,
                         name: w.name,
+                        itemId: Number(w.itemId) > 0 ? Number(w.itemId) : null,
+                        locked: Boolean(w.locked),
                         quantity: Number(w.quantity) || 1,
                         equipped: Boolean(w.equipped),
                         attuned: Boolean(w.attuned),
@@ -1710,6 +1721,8 @@ export default class CharacterController extends BaseController {
                     itemsToSave.push(itemRepo.create({
                         savedCharacter: charRef,
                         name: e.name,
+                        itemId: Number(e.itemId) > 0 ? Number(e.itemId) : null,
+                        locked: Boolean(e.locked),
                         quantity: Number(e.quantity) || 1,
                         equipped: Boolean(e.equipped),
                         attuned: Boolean(e.attuned),
@@ -1738,6 +1751,8 @@ export default class CharacterController extends BaseController {
                     return spellRepo.create({
                         savedCharacter: charRef,
                         name: sp.name,
+                        spellId: Number(sp.spellId) > 0 ? Number(sp.spellId) : null,
+                        locked: Boolean(sp.locked),
                         level: Number(sp.level) || 0,
                         school: sp.school || "Evocation",
                         source: sp.source || "Class",

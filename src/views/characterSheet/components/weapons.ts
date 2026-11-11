@@ -67,7 +67,7 @@ export function renderWeapons(data: CharacterData): string {
                 <div class="weapon-card-header">
                     <div class="weapon-title-group">
                         <h4 class="weapon-name">
-                            <i class="fa-solid fa-khanda weapon-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${w.name}</button>
+                            <i class="fa-solid fa-khanda weapon-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${w.name}</button>${w.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}
                         </h4>
                         <span class="weapon-category">${w.category}</span>
                     </div>

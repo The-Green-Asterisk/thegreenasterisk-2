@@ -2471,6 +2471,54 @@ el-character-sheet .content-slate section {
     color: var(--text-on-accent);
 }
 
+.add-custom-item-btn {
+    align-self: center;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    background: var(--surface-muted);
+    border: 1px solid var(--ui-color);
+    color: var(--ui-text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: all 0.2s ease;
+}
+
+.add-custom-item-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.add-custom-item-btn:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}
+
+.weapons-header-actions,
+.equipment-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.modal-footer-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.modal-action-btn.hidden {
+    display: none;
+}
+
 .modal-badge.tier-badge {
     background: var(--surface-alt);
     border: 1px solid var(--border);
@@ -5096,6 +5144,8 @@ el-character-sheet .content-slate section {
 /* Modal Footer */
 .spell-modal-footer {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1.25rem;
@@ -5225,6 +5275,8 @@ el-character-sheet .content-slate section {
     align-items: center;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .weapons-header-info h3 {
@@ -8106,4 +8158,96 @@ button.inspiration-badge {
 button.inspiration-badge:focus-visible {
     outline: 2px solid var(--ui-color);
     outline-offset: 2px;
+}
+
+/* Field locks in the Edit Spell / Weapon / Magic Item dialogs, and per-character locks */
+.custom-spell-form .def-lock-section {
+    margin: 0 0 1rem;
+    min-width: 0;
+}
+
+.custom-spell-form .def-lock-section.hidden {
+    display: none;
+}
+
+.custom-spell-form .def-lock-section legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ui-color);
+}
+
+.def-lock-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.def-lock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--border-mid);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.def-lock-btn.is-locked,
+.copy-lock-btn.is-locked {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: var(--text-on-ui-accent);
+}
+
+.def-lock-btn:focus-visible,
+.copy-lock-btn:focus-visible,
+.manage-db-edit-btn:focus-visible {
+    outline: 2px solid var(--ui-text);
+    outline-offset: 2px;
+}
+
+.copy-locked-indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.35rem;
+    font-size: 0.8em;
+    color: var(--text-muted);
+}
+
+.manage-db-edit-btn {
+    border-radius: 8px;
+    padding: 0.36rem 0.7rem;
+    min-height: 24px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    background: var(--surface-muted);
+    border: 1px solid var(--ui-color);
+    color: var(--ui-text);
+}
+
+.manage-db-edit-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.manage-db-spell-card:has(.manage-db-edit-btn) {
+    flex-wrap: wrap;
 }
