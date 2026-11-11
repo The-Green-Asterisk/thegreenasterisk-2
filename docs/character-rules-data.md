@@ -181,6 +181,7 @@ They can sit on:
   - `modifiersJson` null means "use the seed list"; `"[]"` means the item has no effects, even if the seed list has its name
   - the dialogs only send effects that changed, so seeded items keep following the seed list (a rename takes the seed's effects along, since the seed matches by name)
   - an edit to an item's effects writes them onto every unlocked character copy (`modifiers`), and freezes the old effects onto locked copies that had none of their own
+  - charges: the item row holds `chargesJson` (`{ max, resetOn, resetLabel? }`, from the Edit dialogs or filled in from D&D Beyond pulls when empty); each character copy holds `charges` with its own `used`. Adding an item gives the copy its charges unspent; an edit to them updates unlocked copies, keeping spent charges up to the new count. A weapon's charges sit on the weapon copy only, not its equipment twin
   - magic armor and shields add their own +N to AC unless their data sets `vitals.ac`
   - weapons use `item.plus` / the "+N" in their name for attack and damage
   - advantage from items shows as `itemRollNotes`

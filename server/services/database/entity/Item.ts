@@ -64,6 +64,10 @@ export class Item {
     @Column({ type: "text", nullable: true })
     modifiersJson?: string;
 
+    /** Charges, as JSON { max, resetOn: "short" | "long" | "dawn" | "manual", resetLabel? }; see sanitizeItemCharges */
+    @Column({ type: "text", nullable: true })
+    chargesJson?: string | null;
+
     /** Who made it through the Add Custom dialog; null for pulled, seeded, and pre-existing rows */
     @ManyToOne("User", { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "createdById", foreignKeyConstraintName: "FK_item_created_by_user" })

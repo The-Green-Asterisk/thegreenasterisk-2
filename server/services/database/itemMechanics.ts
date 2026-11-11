@@ -151,3 +151,26 @@ export function sanitizeItemModifiers(input: unknown): string | null {
     }
     return JSON.stringify(out);
 }
+
+const CHARGE_RESETS = new Set(["short", "long", "dawn", "manual"]);
+
+/**
+ * What to store as an item's chargesJson: how many charges it has and when they come back ({ max, resetOn,
+ * resetLabel? }). Characters track the charges they've spent; the item only holds the definition. None (null) for
+ * anything without a whole number of charges from 1 to 99.
+ */
+export function sanitizeItemCharges(input: unknown): string | null {
+    let raw: any = input;
+    if (typeof input === "string") {
+        try {
+            raw = JSON.parse(input);
+        } catch {
+            return null;
+        }
+    }
+    const max = Number(raw?.max);
+    if (!raw || typeof raw !== "object" || !Number.isInteger(max) || max < 1 || max > 99) return null;
+    const out: any = { max, resetOn: CHARGE_RESETS.has(raw.resetOn) ? raw.resetOn : "long" };
+    if (typeof raw.resetLabel === "string" && raw.resetLabel.trim()) out.resetLabel = raw.resetLabel.trim().slice(0, 100);
+    return JSON.stringify(out);
+}
