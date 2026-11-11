@@ -1363,6 +1363,37 @@ describe('Frontend View Templates', () => {
             { character: druidMonkCharacter, entityName: 'Deflect Attacks' }
         );
         expect(monkActionEffect).toBe('Hit +4 or +8, Dmg 1, Reduce +14, Slow Fall 50, Min CHA 1');
+
+        // 6. Warlock Magical Cunning scalevalue and pactslots placeholders
+        const exactDdbMagicalCunning = linkifyConditionAndSpellTags(
+            'Once per Long Rest, you can perform an esoteric rite for 1 minute, regaining up to {{(scalevalue/2)@roundup}} expended Pact Magic spell slots.',
+            { character: darvellData, entityName: 'Magical Cunning' }
+        );
+        expect(exactDdbMagicalCunning).toBe(
+            'Once per Long Rest, you can perform an esoteric rite for 1 minute, regaining up to 1 expended Pact Magic spell slots.'
+        );
+
+        const magicalCunningDarvell = linkifyConditionAndSpellTags(
+            'Perform a 1-minute ritual to regain {{(pactslots/2)@roundup}} expended Pact Magic spell slot (level {{pactslotlevel}}). Maximum slots: {{scalevalue}}.',
+            { character: darvellData, entityName: 'Magical Cunning' }
+        );
+        expect(magicalCunningDarvell).toBe(
+            'Perform a 1-minute ritual to regain 1 expended Pact Magic spell slot (level 3). Maximum slots: 2.'
+        );
+
+        // Odd number of pact slots (3 pact slots -> ceil(3 / 2) = 2)
+        const oddPactWarlock: any = {
+            ...darvellData,
+            spellSlots: {
+                ...darvellData.spellSlots,
+                pact: { total: 3, level: 5, label: 'Pact Magic Level 5' }
+            }
+        };
+        const magicalCunningOdd = linkifyConditionAndSpellTags(
+            'Regain {{(scalevalue/2)@roundup}} slots (or down: {{(scalevalue/2)@rounddown}}), max {{maxpactslots}} slots of level {{pactslotlevel}}.',
+            { character: oddPactWarlock, entityName: 'Magical Cunning' }
+        );
+        expect(magicalCunningOdd).toBe('Regain 2 slots (or down: 1), max 3 slots of level 5.');
     });
 
     it('renders non-intrusive full-screen toggle buttons and handles fullscreen events', async () => {

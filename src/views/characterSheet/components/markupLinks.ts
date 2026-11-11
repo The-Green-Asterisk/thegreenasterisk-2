@@ -1,9 +1,9 @@
-import { CharacterData, DEFAULT_DND55_CONDITIONS } from "../characterData";
 import { resolveClassResources, resolveClassScaleValues } from "../../../rules/dnd5e_2024/classResources";
-import { AbilityName, ClassDefinition, ProgressionLevel } from "../../../rules/dnd5e_2024/types";
-import { resolveRuleClass } from "../classChoiceDecisions";
-import { findFeatRule, findSpeciesRule } from "../../../services/classRules";
 import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, speciesScaleValue, traitBaseName } from "../../../rules/dnd5e_2024/speciesRules";
+import { AbilityName, ClassDefinition, ProgressionLevel } from "../../../rules/dnd5e_2024/types";
+import { findFeatRule, findSpeciesRule } from "../../../services/classRules";
+import { CharacterData, DEFAULT_DND55_CONDITIONS } from "../characterData";
+import { resolveRuleClass } from "../classChoiceDecisions";
 
 const EXACT_CONDITION_NAMES: string[] = DEFAULT_DND55_CONDITIONS.map(c => c.name);
 const CONDITION_WORD_REGEX = new RegExp(`\\b(${EXACT_CONDITION_NAMES.join("|")})\\b`, "g");
@@ -534,13 +534,26 @@ function getClassLevel(character: CharacterData | null | undefined, className?: 
     return Number(character.classes[0]?.level) || Number(character.level) || 1;
 }
 
-function inferScaleValueFromContext(ctx?: TemplatePlaceholderContext): string | undefined {
+function inferScaleValueFromContext(ctx?: TemplatePlaceholderContext, rawText?: string): string | undefined {
     if (ctx?.scaleValue) return ctx.scaleValue;
     const char = ctx?.character;
     const nameLower = String(ctx?.entityName || "").toLowerCase();
     const cLvl = getClassLevel(char, ctx?.sourceName, ctx?.entityName);
     const totalLvl = Number(char?.level) || cLvl || 1;
     const profBonus = Number(char?.vitals?.proficiencyBonus) || Math.floor((totalLvl - 1) / 4) + 2;
+
+    // Magical Cunning or Pact Magic scale value: maximum Pact Magic spell slots
+    if (
+        nameLower.includes("magical cunning") ||
+        (rawText && (rawText.toLowerCase().includes("pact magic spell slot") || rawText.toLowerCase().includes("pact spell slot")))
+    ) {
+        const warlockClass = char?.classes?.find(c => c.name.toLowerCase() === "warlock");
+        const wLvl = warlockClass ? Number(warlockClass.level) || 0 : cLvl;
+        const pactSlots = Number(char?.spellSlots?.pact?.total) > 0
+            ? Number(char?.spellSlots?.pact?.total)
+            : (wLvl >= 17 ? 4 : wLvl >= 11 ? 3 : wLvl >= 2 ? 2 : 2);
+        return String(pactSlots);
+    }
 
     // Class data: resource dice, level badges, feature scale values and modifiers (class rules)
     const abilityMod = (ab: AbilityName) => getAbilityMod(char, ABILITY_ABBR[ab]);
@@ -702,6 +715,23 @@ export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePl
     const profBonus = Number(char?.vitals?.proficiencyBonus) || Math.floor((totalLvl - 1) / 4) + 2;
     const cLvl = getClassLevel(char, ctx?.sourceName, ctx?.entityName);
 
+    const warlockClass = char?.classes?.find(c => c.name.toLowerCase() === "warlock");
+    const isWarlockContext =
+        ctx?.sourceName?.toLowerCase() === "warlock" ||
+        String(ctx?.entityName || "").toLowerCase().includes("magical cunning") ||
+        String(ctx?.entityName || "").toLowerCase().includes("pact");
+    const warlockLevel = warlockClass
+        ? Number(warlockClass.level) || 0
+        : (isWarlockContext ? getClassLevel(char, "Warlock", ctx?.entityName) : 0);
+
+    const pactSlots = Number(char?.spellSlots?.pact?.total) > 0
+        ? Number(char?.spellSlots?.pact?.total)
+        : (warlockLevel >= 17 ? 4 : warlockLevel >= 11 ? 3 : warlockLevel >= 2 ? 2 : warlockLevel >= 1 ? 1 : 0);
+
+    const pactSlotLvl = Number(char?.spellSlots?.pact?.level) > 0
+        ? Number(char?.spellSlots?.pact?.level)
+        : (warlockLevel >= 9 ? 5 : warlockLevel >= 7 ? 4 : warlockLevel >= 5 ? 3 : warlockLevel >= 3 ? 2 : warlockLevel >= 1 ? 1 : 0);
+
     const ABILITY_KEY_PATTERN =
         "(?:strength|dexterity|constitution|intelligence|wisdom|charisma|str|dex|con|int|wis|cha)";
 
@@ -753,8 +783,8 @@ export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePl
         };
 
         // 2. Standalone {{scalevalue}} and {{limiteduse}}
-        if (cleanExpr === "scalevalue" || cleanExpr.startsWith("scalevalue")) {
-            const sv = inferScaleValueFromContext(ctx) || `+${profBonus}`;
+        if (/^scalevalue(?::[a-z0-9_-]+)?$/i.test(cleanExpr)) {
+            const sv = inferScaleValueFromContext(ctx, rawText) || `+${profBonus}`;
             const numericSv = Number(sv);
             if (Number.isFinite(numericSv) && (wantsUnsigned || wantsSigned || minVal !== undefined || maxVal !== undefined)) {
                 return formatNumber(numericSv, sv.startsWith("+"));
@@ -762,7 +792,7 @@ export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePl
             return sv;
         }
 
-        if (cleanExpr === "limiteduse" || cleanExpr.startsWith("limiteduse")) {
+        if (/^limiteduse(?::[a-z0-9_-]+)?$/i.test(cleanExpr)) {
             const lu = inferLimitedUseFromContext(ctx);
             const numericLu = Number(lu);
             if (Number.isFinite(numericLu) && (wantsUnsigned || wantsSigned || minVal !== undefined || maxVal !== undefined)) {
@@ -786,7 +816,20 @@ export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePl
 
         let mathExpr = cleanExpr;
 
-        // 3a. savedc:stat1,stat2 or standalone savedc
+        // 3a. Substitute scalevalue and limiteduse in math expressions
+        mathExpr = mathExpr
+            .replace(/\bscalevalue\b/gi, () => {
+                const sv = inferScaleValueFromContext(ctx, rawText) || `${profBonus}`;
+                const num = parseFloat(String(sv));
+                return Number.isFinite(num) ? `(${num})` : `(${profBonus})`;
+            })
+            .replace(/\blimiteduse\b/gi, () => {
+                const lu = inferLimitedUseFromContext(ctx) || `${profBonus}`;
+                const num = parseFloat(String(lu));
+                return Number.isFinite(num) ? `(${num})` : `(${profBonus})`;
+            });
+
+        // 3b. savedc:stat1,stat2 or standalone savedc
         mathExpr = mathExpr.replace(
             new RegExp(`savedc:${ABILITY_KEY_PATTERN}(?:,${ABILITY_KEY_PATTERN})*`, "gi"),
             match => {
@@ -836,11 +879,20 @@ export function resolveDescriptionPlaceholders(rawText: string, ctx?: TemplatePl
             }
         );
 
-        // 3e. Scalar character tokens: classlevel, characterlevel, proficiency, maxhp, speed, passiveperception
+        // 3e. Scalar character tokens: classlevel, characterlevel, proficiency, maxhp, speed, passiveperception, pactslots, etc.
         mathExpr = mathExpr
+            .replace(/\b(?:pact(?:_?magic)?_?(?:slot)?_?levels?|pactlevel)\b/gi, `(${pactSlotLvl})`)
+            .replace(/\b(?:max_?)?pact(?:_?magic)?(?:_?slots?)?\b/gi, `(${pactSlots})`)
+            .replace(/\bspellslotlevels?:pact\b/gi, `(${pactSlotLvl})`)
+            .replace(/\bspellslots?:pact\b/gi, `(${pactSlots})`)
+            .replace(/\bspellslots?:(?:level)?([1-9])\b/gi, (_, lvl) => {
+                const slotCount = Number(char?.spellSlots?.[`level${lvl}`]?.total) || 0;
+                return `(${slotCount})`;
+            })
             .replace(/\bclasslevel\b/gi, `(${cLvl})`)
             .replace(/\bcharacterlevel\b/gi, `(${totalLvl})`)
-            .replace(/\bproficiency\b/gi, `(${profBonus})`)
+            .replace(/\b(?:proficiency|pb)\b/gi, `(${profBonus})`)
+            .replace(/\blevel\b/gi, `(${totalLvl})`)
             .replace(/\bmaxhp\b/gi, `(${Number(char?.vitals?.maxHp) || 1})`)
             .replace(/\b(?:walk)?speed\b/gi, `(${parseInt(String(char?.vitals?.speed || "30"), 10) || 30})`)
             .replace(/\bpassiveperception\b/gi, `(${Number(char?.vitals?.passivePerception) || 10 + getAbilityMod(char, "WIS")})`);
