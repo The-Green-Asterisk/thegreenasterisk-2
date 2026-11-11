@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SEED_ITEM_MECHANICS } from '../../../server/services/database/itemMechanics';
-import { setClassRules, setItemRules } from '../../../src/services/classRules';
+import { setClassRules, setFeatRules, setItemRules, setSpeciesRules } from '../../../src/services/classRules';
 import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
 import characterSheet from '../../../src/views/characterSheet/characterSheet.ctrl';
 import characterSheetTemplate from '../../../src/views/characterSheet/characterSheet.template';
@@ -15,6 +15,8 @@ describe('Frontend View Templates', () => {
     // The sheet reads class rules served from rule_classes; use the same seeded data here
     beforeEach(() => {
         setClassRules(serverRulesClasses());
+        setFeatRules(null);
+        setSpeciesRules(null);
         // Item effects come from the item rules served with /get-rules (the seed list here)
         setItemRules(SEED_ITEM_MECHANICS as any);
     });

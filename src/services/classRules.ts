@@ -1,8 +1,8 @@
+import { BACKGROUNDS_2024 } from "../rules/dnd5e_2024/backgrounds";
 import { CLASSES_2024 } from "../rules/dnd5e_2024/classes";
 import { GENERAL_FEATS_2024 } from "../rules/dnd5e_2024/generalFeats";
 import { ORIGIN_FEATS_2024 } from "../rules/dnd5e_2024/originFeats";
 import { SPECIES_2024 } from "../rules/dnd5e_2024/species";
-import { BACKGROUNDS_2024 } from "../rules/dnd5e_2024/backgrounds";
 import { findSpecies } from "../rules/dnd5e_2024/speciesRules";
 import { BackgroundDefinition, ClassDefinition, GeneralFeatDefinition, OriginFeatDefinition, SpeciesDefinition, StatModifier } from "../rules/dnd5e_2024/types";
 import { getData } from "./request";
@@ -57,7 +57,14 @@ export function findFeatRule(nameOrId: string): OriginFeatDefinition | GeneralFe
     const norm = (s: string) => (s || "").trim().toLowerCase().replace(/[’‘`]/g, "'");
     const key = norm(nameOrId);
     const slug = key.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    return getFeatRules().find((f) => f.id === key || f.id === slug || norm(f.name) === key);
+    const found = getFeatRules().find((f) => f.id === key || f.id === slug || norm(f.name) === key);
+    if (found && (found as any).allowedStats) return found;
+    const offline = [...ORIGIN_FEATS_2024, ...GENERAL_FEATS_2024].find((f) => f.id === key || f.id === slug || norm(f.name) === key);
+    if (!found) return offline;
+    if (offline && (offline as any).allowedStats && !(found as any).allowedStats) {
+        return { ...offline, ...found, allowedStats: (offline as any).allowedStats };
+    }
+    return found;
 }
 
 /** The species rules (rule_species, as served by /get-rules) once loaded; until then the offline copy. */
