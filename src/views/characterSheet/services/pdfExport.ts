@@ -726,7 +726,7 @@ function renderDetailsPage(data: CharacterData, pageClass: string, name: string,
     };
 
     return `
-    <div class="${pageClass}">
+    <div class="${pageClass} pdf-details-page">
         <div class="pdf-mini-header">
             <span class="pdf-mini-name">${name}</span>
             <span class="pdf-mini-class">${classSummary}</span>
@@ -870,6 +870,16 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
     const spellMetaSize = isRemarkable ? "11.5px" : "7px";
     const spellEntryHeight = isRemarkable ? "26px" : "16px";
     const spellGridCols = "repeat(2, 1fr)";
+
+    const noteTextSize = isRemarkable ? "14px" : "9.5px";
+    const noteLabelSize = isRemarkable ? "12px" : "8.5px";
+    const noteLineHeight = isRemarkable ? "1.55" : "1.35";
+    const noteEntrySpacing = isRemarkable ? "8px" : "4px";
+    const noteFontFamily = isRemarkable ? 'Georgia, "Palatino Linotype", "Book Antiqua", Palatino, serif' : 'inherit';
+    const useRowSize = isRemarkable ? "13.5px" : "9px";
+    const useResetSize = isRemarkable ? "11.5px" : "8px";
+    const useBubbleSize = isRemarkable ? "15px" : "10px";
+    const detailsGridSize = isRemarkable ? "13px" : "9px";
 
     return `
         /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES (${isRemarkable ? "reMarkable 3:4" : "Letter"}) --- */
@@ -1400,26 +1410,89 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
             padding: 2px 6px;
         }
 
-        /* PAGE 2 LAYOUT */
+        /* DETAILS, NOTES & LIMITED USES PAGE */
+        .pdf-details-page .pdf-outline-box {
+            padding: ${isRemarkable ? "6px 9px" : "5px 7px"};
+        }
+
+        .pdf-details-page .pdf-page2-grid {
+            gap: ${isRemarkable ? "12px" : "10px"};
+        }
+
+        .pdf-details-page .pdf-page2-col {
+            gap: ${isRemarkable ? "8px" : "6px"};
+        }
+
         .pdf-use-row {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            gap: 6px;
-            padding: 2px 0;
+            gap: ${isRemarkable ? "8px" : "6px"};
+            padding: ${isRemarkable ? "3.5px 0" : "2px 0"};
             border-bottom: 0.5px dotted #64748b;
-            font-size: 9px;
+            font-size: ${useRowSize};
         }
 
-        .pdf-use-name { font-weight: 700; }
-        .pdf-use-reset { font-weight: 400; }
-        .pdf-use-bubbles { letter-spacing: 2px; white-space: nowrap; }
+        .pdf-use-name {
+            font-weight: 700;
+        }
 
-        .pdf-note-entry + .pdf-note-entry { margin-top: 4px; }
-        .pdf-note-label { font-weight: 800; font-size: 8.5px; text-transform: uppercase; }
-        .pdf-note-text { font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; }
-        .pdf-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; font-size: 9px; }
-        .pdf-equip-charges { font-weight: 400; font-size: 0.9em; }
+        .pdf-use-reset {
+            font-weight: 400;
+            font-size: ${useResetSize};
+            color: #444444;
+        }
+
+        .pdf-use-bubbles {
+            letter-spacing: ${isRemarkable ? "3px" : "2px"};
+            white-space: nowrap;
+            font-size: ${useBubbleSize};
+        }
+
+        .pdf-note-entry + .pdf-note-entry {
+            margin-top: ${noteEntrySpacing};
+        }
+
+        .pdf-note-label {
+            font-weight: 800;
+            font-size: ${noteLabelSize};
+            text-transform: uppercase;
+            letter-spacing: ${isRemarkable ? "0.4px" : "0.2px"};
+            margin-bottom: ${isRemarkable ? "2px" : "1px"};
+            color: #222222;
+        }
+
+        .pdf-note-text {
+            font-family: ${noteFontFamily};
+            font-size: ${noteTextSize};
+            line-height: ${noteLineHeight};
+            color: #111111;
+            overflow-wrap: break-word;
+            ${isRemarkable ? "letter-spacing: 0.1px;" : ""}
+        }
+
+        .pdf-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: ${isRemarkable ? "4px 10px" : "2px 8px"};
+            font-size: ${detailsGridSize};
+            line-height: ${isRemarkable ? "1.4" : "1.25"};
+        }
+
+        .pdf-detail-pair {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pdf-detail-pair .pdf-note-label {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: ${isRemarkable ? "11px" : "8px"};
+        }
+
+        .pdf-equip-charges {
+            font-weight: 400;
+            font-size: 0.9em;
+        }
 
         .pdf-page2-grid {
             display: grid;

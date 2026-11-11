@@ -1832,6 +1832,9 @@ describe('Frontend View Templates', () => {
         const remarkableStyles = getPdfStyles('remarkable');
         expect(remarkableStyles).toContain('width: 792px');
         expect(remarkableStyles).toContain('height: 1056px');
+        expect(remarkableStyles).toContain('Georgia');
+        expect(remarkableStyles).toContain('font-size: 14px');
+        expect(remarkableStyles).toContain('line-height: 1.55');
 
         const letterStyles = getPdfStyles('letter');
         expect(letterStyles).toContain('width: 816px');
@@ -3192,6 +3195,7 @@ describe('Frontend View Templates', () => {
 
         const pages = generatePdfHtmlPages(char);
         const last = pages[pages.length - 1];
+        expect(last).toContain('pdf-details-page');
         expect(last).toContain('LIMITED USES');
         expect(last).toContain('Wand of Web');
         expect(last).toContain('Too &lt;curious&gt;<br>and nosy');
