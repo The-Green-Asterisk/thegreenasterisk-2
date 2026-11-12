@@ -1,3 +1,4 @@
+import el from "@elements";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
 
@@ -167,12 +168,12 @@ export function bindLockEvents(ctx: CharacterCreatorContext): void {
         const key = btn.dataset.lockKey || "";
         ctx.state.lockChoices = { ...(ctx.state.lockChoices || {}), [key]: !isLockOn(ctx, key) };
         refreshLockToggles(ctx);
-    });
+    }, { signal: el.signal });
     const onEdit = (e: Event) => {
         if ((e.target as HTMLElement | null)?.closest?.("el-character-creator")) setTimeout(() => refreshLockToggles(ctx), 0);
     };
-    document.addEventListener("input", onEdit);
-    document.addEventListener("change", onEdit);
+    document.addEventListener("input", onEdit, { signal: el.signal });
+    document.addEventListener("change", onEdit, { signal: el.signal });
 }
 
 const clone = <T>(v: T): T => (v === undefined ? v : JSON.parse(JSON.stringify(v)));

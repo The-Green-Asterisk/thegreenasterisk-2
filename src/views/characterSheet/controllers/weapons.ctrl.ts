@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initWeaponsController(ctx: CharacterSheetContext) {
@@ -14,7 +15,7 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
 
         card.addEventListener("click", () => {
             void ctx.openItemModal(weaponName, weaponId || undefined, weaponType);
-        });
+        }, { signal: el.signal });
     });
 
     // Weapon equip toggle buttons
@@ -53,11 +54,11 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
 
             void ctx.persistEquipState("weapon", encodedWeaponName, rawWeaponId, nextState);
             ctx.syncSheetStats();
-        });
+        }, { signal: el.signal });
 
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
     });
 
     // Weapon attune toggle buttons
@@ -96,11 +97,11 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
 
             void ctx.persistEquipState("attunement", encodedWeaponName, rawWeaponId, nextState);
             ctx.syncSheetStats();
-        });
+        }, { signal: el.signal });
 
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
     });
 
     // Weapon mastery toggle buttons
@@ -146,22 +147,22 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
                 `${decodeURIComponent(encodedWeaponName)}::${decodeURIComponent(encodedMasteryName)}`
             );
             void ctx.persistEquipState("weapon-mastery", encodedPersistenceName, rawWeaponId, nextState);
-        });
+        }, { signal: el.signal });
 
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
     });
 
     // Open Manage Weapons/Items modal
     const openManageWeaponsBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-weapons-btn");
     openManageWeaponsBtn?.addEventListener("click", () => {
         void ctx.openManageItemsModal("weapon");
-    });
+    }, { signal: el.signal });
 
     ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-weapon-btn")?.addEventListener("click", () => {
         ctx.openCustomItemModal("weapon");
-    });
+    }, { signal: el.signal });
 
     // Weapon quantity steppers & inputs
     const weaponQtySteppers = ctx.sheet.querySelectorAll<HTMLElement>('.weapon-card .item-qty-stepper');
@@ -176,7 +177,7 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
 
         stepper.addEventListener("click", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
 
         decBtn?.addEventListener("click", (e) => {
             e.preventDefault();
@@ -184,7 +185,7 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
             const current = Number(input?.value || "1");
             const next = Math.max(0, current - 1);
             if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, next, "weapon");
-        });
+        }, { signal: el.signal });
 
         incBtn?.addEventListener("click", (e) => {
             e.preventDefault();
@@ -192,11 +193,11 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
             const current = Number(input?.value || "1");
             const next = current + 1;
             if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, next, "weapon");
-        });
+        }, { signal: el.signal });
 
         input?.addEventListener("click", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
 
         input?.addEventListener("input", (e) => {
             e.stopPropagation();
@@ -204,13 +205,13 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
             if (!Number.isNaN(val) && val >= 0) {
                 if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, val, "weapon");
             }
-        });
+        }, { signal: el.signal });
 
         input?.addEventListener("blur", () => {
             if (input.value === "" || isNaN(Number(input.value)) || Number(input.value) < 0) {
                 input.value = "0";
                 if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, 0, "weapon");
             }
-        });
+        }, { signal: el.signal });
     });
 }

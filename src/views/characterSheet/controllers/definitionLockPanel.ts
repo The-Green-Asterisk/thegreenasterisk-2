@@ -1,3 +1,4 @@
+import el from "@elements";
 /**
  * The "Keep through D&D Beyond reloads" panel in the Edit Spell / Weapon / Magic Item dialogs: one toggle per
  * field, like the character creator's locks. A field locks itself once it's changed from what was loaded, stays
@@ -60,14 +61,14 @@ export function createLockPanel(container: HTMLElement | null, form: HTMLFormEle
         const key = button.dataset.defLockKey || "";
         choices[key] = !isOn(key);
         paint(button);
-    });
+    }, { signal: el.signal });
     // Editing a field can lock it, so repaint after every change (the toggles' own clicks aren't edits)
     const onEdit = (event: Event) => {
         if (!(event.target as HTMLElement | null)?.closest?.(".def-lock-section")) setTimeout(refresh, 0);
     };
-    form?.addEventListener("input", onEdit);
-    form?.addEventListener("change", onEdit);
-    form?.addEventListener("click", onEdit);
+    form?.addEventListener("input", onEdit, { signal: el.signal });
+    form?.addEventListener("change", onEdit, { signal: el.signal });
+    form?.addEventListener("click", onEdit, { signal: el.signal });
 
     return {
         /** Call once the form holds the row's values; `enabled` is false for homebrew, which D&D Beyond never reloads */

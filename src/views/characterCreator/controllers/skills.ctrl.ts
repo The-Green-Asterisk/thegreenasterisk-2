@@ -19,13 +19,13 @@ function bindToggle(selector: string, ctx: CharacterCreatorContext, onToggle: (n
                 .find((c) => c.getAttribute("data-skill-name") === name && (c.getAttribute("data-feat-section") || "") === section)
                 ?.focus();
         };
-        card.addEventListener("click", toggle);
+        card.addEventListener("click", toggle, { signal: el.signal });
         card.addEventListener("keydown", (e) => {
             if (e.key === " " || e.key === "Enter") {
                 e.preventDefault();
                 toggle();
             }
-        });
+        }, { signal: el.signal });
     });
 }
 

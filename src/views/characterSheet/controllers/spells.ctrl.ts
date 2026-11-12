@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initSpellsController(ctx: CharacterSheetContext) {
@@ -22,26 +23,26 @@ export function initSpellsController(ctx: CharacterSheetContext) {
 
         card.addEventListener("click", () => {
             void ctx.openSpellModal(spellName, spellId || undefined);
-        });
+        }, { signal: el.signal });
         card.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 void ctx.openSpellModal(spellName, spellId || undefined);
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Manage Spells modal open button
     const openManageSpellsBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-spells-btn");
     openManageSpellsBtn?.addEventListener("click", () => {
         void ctx.openManageSpellsModal();
-    });
+    }, { signal: el.signal });
 
     // Custom spell modal open button
     const openCustomSpellBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-spell-btn");
     openCustomSpellBtn?.addEventListener("click", () => {
         ctx.openCustomSpellModal();
-    });
+    }, { signal: el.signal });
 
     function filterSpells() {
         let visibleCount = 0;
@@ -108,7 +109,7 @@ export function initSpellsController(ctx: CharacterSheetContext) {
             searchClearBtn.style.display = searchQuery ? "block" : "none";
         }
         filterSpells();
-    });
+    }, { signal: el.signal });
 
     searchClearBtn?.addEventListener("click", () => {
         if (searchInput) {
@@ -118,7 +119,7 @@ export function initSpellsController(ctx: CharacterSheetContext) {
         }
         if (searchClearBtn) searchClearBtn.style.display = "none";
         filterSpells();
-    });
+    }, { signal: el.signal });
 
     filterChips.forEach(chip => {
         chip.addEventListener("click", () => {
@@ -126,6 +127,6 @@ export function initSpellsController(ctx: CharacterSheetContext) {
             chip.classList.add("active");
             currentFilter = chip.getAttribute("data-filter") || "all";
             filterSpells();
-        });
+        }, { signal: el.signal });
     });
 }

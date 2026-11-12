@@ -292,15 +292,15 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
     const exitBtn = el.creatorExitLink;
     exitBtn?.addEventListener("click", () => {
         updateExitLink(ctx);
-    });
+    }, { signal: el.signal });
 
     const prevBtn = el.creatorPrevButton;
     const nextBtn = el.creatorNextButton;
     const submitBtn = el.creatorSubmitButton;
 
-    prevBtn?.addEventListener("click", () => goToStep(ctx, ctx.state.currentStep - 1));
-    nextBtn?.addEventListener("click", () => validateAndAdvance(ctx));
-    submitBtn?.addEventListener("click", () => ctx.submitCharacter());
+    prevBtn?.addEventListener("click", () => goToStep(ctx, ctx.state.currentStep - 1), { signal: el.signal });
+    nextBtn?.addEventListener("click", () => validateAndAdvance(ctx), { signal: el.signal });
+    submitBtn?.addEventListener("click", () => ctx.submitCharacter(), { signal: el.signal });
 
     // Stepper pills click
     const stepperItems = el.creatorStepperItems;
@@ -314,7 +314,7 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
                     goToStep(ctx, step);
                 }
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Multiclass scroll and resize observer
@@ -323,14 +323,14 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
             ctx.updateMulticlassBarPositions();
             ctx.updateMulticlassNavBars();
         }
-    }, { passive: true });
+    }, { passive: true, signal: el.signal });
 
     window.addEventListener("resize", () => {
         if (ctx.state.currentStep === 3) {
             ctx.updateMulticlassBarPositions();
             ctx.updateMulticlassNavBars();
         }
-    }, { passive: true });
+    }, { passive: true, signal: el.signal });
 
     // Observe navigation bar visibility changes (e.g. toggled display or body padding)
     if (typeof MutationObserver !== "undefined") {
@@ -351,7 +351,7 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
 
     if (!keyboardActivationBound) {
         keyboardActivationBound = true;
-        document.addEventListener("keydown", activateOptionFromKeyboard);
+        document.addEventListener("keydown", activateOptionFromKeyboard, { signal: el.signal });
     }
 
     window.addEventListener("keydown", (e) => {
@@ -361,5 +361,5 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
                 ctx.updateMulticlassNavBars();
             }, 10);
         }
-    });
+    }, { signal: el.signal });
 }

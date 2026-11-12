@@ -10,7 +10,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
             const value = Math.max(0, Math.floor(Number(input.value) || 0));
             input.value = String(value);
             ctx.state.currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(ctx.state.currency || {}), [coin]: value };
-        });
+        }, { signal: el.signal });
     });
 
     // Equip starting equipment package buttons
@@ -42,7 +42,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(7);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorStartingPackageCards.forEach((card) => {
@@ -51,7 +51,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
             if (btn && e.target !== btn && !(btn as HTMLElement).contains(e.target as Node)) {
                 (btn as HTMLButtonElement).click();
             }
-        });
+        }, { signal: el.signal });
     });
 
     const armorSelect = el.creatorArmorSelect as HTMLSelectElement;
@@ -60,7 +60,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
         ctx.state.equippedKitIndex = undefined;
         ctx.renderStep(7);
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     const shieldCheck = el.creatorShieldCheckbox as HTMLInputElement;
     shieldCheck?.addEventListener("change", (e) => {
@@ -68,7 +68,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
         ctx.state.equippedKitIndex = undefined;
         ctx.renderStep(7);
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     el.creatorWeaponRows.forEach((row) => {
         row.addEventListener("click", () => {
@@ -81,6 +81,6 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
             ctx.state.equippedKitIndex = undefined;
             ctx.renderStep(7);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 }

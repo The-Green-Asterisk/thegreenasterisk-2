@@ -7,32 +7,32 @@ export function initIdentityController(ctx: CharacterCreatorContext): void {
     nameInput?.addEventListener("input", (e) => {
         ctx.state.name = (e.target as HTMLInputElement).value;
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     const alignSelect = el.creatorAlignmentSelect as HTMLSelectElement;
     alignSelect?.addEventListener("change", (e) => {
         ctx.state.alignment = (e.target as HTMLSelectElement).value;
-    });
+    }, { signal: el.signal });
 
     el.creatorDetailInputs.forEach((input) => {
         const update = () => {
             const key = input.getAttribute("data-detail");
             if (key) ctx.state.details = { ...(ctx.state.details || {}), [key]: input.value };
         };
-        input.addEventListener("input", update);
-        input.addEventListener("change", update);
+        input.addEventListener("input", update, { signal: el.signal });
+        input.addEventListener("change", update, { signal: el.signal });
     });
     el.creatorNoteInputs.forEach((input) => {
         input.addEventListener("input", () => {
             const key = input.getAttribute("data-note");
             if (key) ctx.state.notes = { ...(ctx.state.notes || {}), [key]: input.value };
-        });
+        }, { signal: el.signal });
     });
 
     const genderInput = el.creatorGenderInput as HTMLInputElement;
     genderInput?.addEventListener("input", (e) => {
         ctx.state.gender = (e.target as HTMLInputElement).value;
-    });
+    }, { signal: el.signal });
 
     const avatarInput = el.creatorAvatarInput as HTMLInputElement;
     const previewImg = el.creatorAvatarPreview as HTMLImageElement;
@@ -45,11 +45,11 @@ export function initIdentityController(ctx: CharacterCreatorContext): void {
         ctx.state.avatarUrl = url || "/storage/images/default-avatar.png";
         if (previewImg) previewImg.src = ctx.state.avatarUrl;
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     uploadBtn?.addEventListener("click", () => {
         fileInput?.click();
-    });
+    }, { signal: el.signal });
 
     fileInput?.addEventListener("change", async () => {
         const file = fileInput.files?.[0];
@@ -98,5 +98,5 @@ export function initIdentityController(ctx: CharacterCreatorContext): void {
             if (uploadBtn) uploadBtn.disabled = false;
             fileInput.value = "";
         }
-    });
+    }, { signal: el.signal });
 }

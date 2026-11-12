@@ -9,7 +9,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
         ctx.state.featSpellAbility = featAbility.value as AbilityName;
         ctx.renderStep(ctx.state.currentStep);
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     ctx.sanitizeSpellSelections();
 
@@ -20,7 +20,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
             ctx.activeSpellClassFilter = c;
             ctx.activeSpellLevelFilter = "all";
             ctx.renderStep(8);
-        });
+        }, { signal: el.signal });
     });
 
     // Spell level filter tabs
@@ -29,7 +29,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
             const lvl = btn.getAttribute("data-level") || "all";
             ctx.activeSpellLevelFilter = lvl === "all" ? "all" : Number(lvl);
             ctx.renderStep(8);
-        });
+        }, { signal: el.signal });
     });
 
     // Search filter input
@@ -44,7 +44,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
             const matches = !q || name.includes(q) || school.includes(q) || desc.includes(q);
             (row as HTMLElement).style.display = matches ? "" : "none";
         });
-    });
+    }, { signal: el.signal });
 
     // Auto-Fill spells button
     const autoBtn = el.creatorAutoSpellsButton;
@@ -64,7 +64,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
         ctx.spellsWarningDismissed = false;
         ctx.hideAlert();
         ctx.renderStep(8);
-    });
+    }, { signal: el.signal });
 
     // Reset spells button
     const clearBtn = el.creatorClearSpellsButton;
@@ -76,7 +76,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
         ctx.spellsWarningDismissed = false;
         ctx.hideAlert();
         ctx.renderStep(8);
-    });
+    }, { signal: el.signal });
 
     // Feature / Progression spell toggles
     el.creatorFeatureSpellRows.forEach((row) => {
@@ -99,7 +99,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
             ctx.spellsWarningDismissed = false;
             ctx.hideAlert();
             ctx.renderStep(8);
-        });
+        }, { signal: el.signal });
     });
 
     // Cantrip and prepared spell toggles apply to the class whose tab is active
@@ -126,14 +126,14 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
                 const rows = Array.from(el.list<HTMLElement>(selector));
                 rows.find((r) => r.getAttribute("data-spell-name") === spName)?.focus();
             };
-            row.addEventListener("click", toggle);
+            row.addEventListener("click", toggle, { signal: el.signal });
             row.addEventListener("keydown", (e) => {
                 const key = (e as KeyboardEvent).key;
                 if (key === " " || key === "Enter") {
                     e.preventDefault();
                     toggle();
                 }
-            });
+            }, { signal: el.signal });
         });
     };
     bindToggle(".cantrip-row", "cantrips");

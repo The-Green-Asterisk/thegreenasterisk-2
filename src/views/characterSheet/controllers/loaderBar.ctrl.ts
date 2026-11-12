@@ -49,7 +49,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         if (typeof window !== "undefined" && window.localStorage) {
             window.localStorage.setItem(loaderStorageKey, String(next));
         }
-    });
+    }, { signal: el.signal });
 
     prefer2024RulesToggle?.addEventListener("change", () => {
         ctx.prefer2024Rules.value = !!prefer2024RulesToggle.checked;
@@ -61,7 +61,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 ? "Now preferring 2024-aligned sources for spell/item detail lookups."
                 : "Using mixed source lookups (including SRD fallbacks) for spell/item details."
         );
-    });
+    }, { signal: el.signal });
 
     const handleLoadSubmit = (e?: Event) => {
         if (e) e.preventDefault();
@@ -69,16 +69,16 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         void ctx.loadCharacter(val);
     };
 
-    loadForm?.addEventListener("submit", handleLoadSubmit);
-    loadBtn?.addEventListener("click", handleLoadSubmit);
+    loadForm?.addEventListener("submit", handleLoadSubmit, { signal: el.signal });
+    loadBtn?.addEventListener("click", handleLoadSubmit, { signal: el.signal });
 
     saveBtn?.addEventListener("click", () => {
         void ctx.saveActiveCharacter();
-    });
+    }, { signal: el.signal });
 
     refreshDndBeyondBtn?.addEventListener("click", () => {
         void ctx.refreshFromDndBeyondAndOverride();
-    });
+    }, { signal: el.signal });
 
     const exportPdfModal = sheet.querySelector<HTMLElement>("#export-pdf-modal-container");
     const exportPdfCloseBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-close-btn");
@@ -130,10 +130,10 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 closePdfExportModal();
             }
         }
-    });
+    }, { signal: el.signal });
 
     formatRadios.forEach(radio => {
-        radio.addEventListener("change", updateSelectedFormatCard);
+        radio.addEventListener("change", updateSelectedFormatCard, { signal: el.signal });
     });
 
     formatCards.forEach(card => {
@@ -143,7 +143,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 radio.checked = true;
                 updateSelectedFormatCard();
             }
-        });
+        }, { signal: el.signal });
     });
 
     const handleConfirmExport = async () => {
@@ -193,24 +193,24 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         }
     };
 
-    exportPdfCloseBtn?.addEventListener("click", closePdfExportModal);
-    exportPdfCancelBtn?.addEventListener("click", closePdfExportModal);
+    exportPdfCloseBtn?.addEventListener("click", closePdfExportModal, { signal: el.signal });
+    exportPdfCancelBtn?.addEventListener("click", closePdfExportModal, { signal: el.signal });
     const modalEl = getExportPdfModal();
-    modalEl?.querySelector("#export-pdf-close-btn")?.addEventListener("click", closePdfExportModal);
-    modalEl?.querySelector("#export-pdf-cancel-btn")?.addEventListener("click", closePdfExportModal);
-    modalEl?.querySelector("#export-pdf-confirm-btn")?.addEventListener("click", handleConfirmExport);
+    modalEl?.querySelector("#export-pdf-close-btn")?.addEventListener("click", closePdfExportModal, { signal: el.signal });
+    modalEl?.querySelector("#export-pdf-cancel-btn")?.addEventListener("click", closePdfExportModal, { signal: el.signal });
+    modalEl?.querySelector("#export-pdf-confirm-btn")?.addEventListener("click", handleConfirmExport, { signal: el.signal });
 
     exportPdfModal?.addEventListener("click", (e) => {
         if (e.target === exportPdfModal) {
             closePdfExportModal();
         }
-    });
+    }, { signal: el.signal });
     if (modalEl && modalEl !== exportPdfModal) {
         modalEl.addEventListener("click", (e) => {
             if (e.target === modalEl) {
                 closePdfExportModal();
             }
-        });
+        }, { signal: el.signal });
     }
 
     exportPdfBtn?.addEventListener("click", () => {
@@ -220,9 +220,9 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
             return;
         }
         openPdfExportModal();
-    });
+    }, { signal: el.signal });
 
-    exportPdfConfirmBtn?.addEventListener("click", handleConfirmExport);
+    exportPdfConfirmBtn?.addEventListener("click", handleConfirmExport, { signal: el.signal });
 
     function setCharacterActionsVisibility() {
         const activeCharacter = ctx.getCharacter();
@@ -321,7 +321,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                 if (!Number.isNaN(id)) {
                     void ctx.loadSavedCharacter(id);
                 }
-            });
+            }, { signal: el.signal });
         });
 
         dynamicContainer.querySelectorAll<HTMLButtonElement>(".saved-character-delete-btn").forEach(delBtn => {
@@ -338,7 +338,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                         await ctx.deleteSavedCharacter(id);
                     }
                 }
-            });
+            }, { signal: el.signal });
         });
     }
 

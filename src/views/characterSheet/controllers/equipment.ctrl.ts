@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initEquipmentController(ctx: CharacterSheetContext) {
@@ -14,7 +15,7 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
 
         row.addEventListener("click", () => {
             void ctx.openItemModal(itemName, itemId || undefined, itemType || undefined);
-        });
+        }, { signal: el.signal });
     });
 
     // Item equip toggle buttons
@@ -52,11 +53,11 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
 
             void ctx.persistEquipState("item", encodedItemName, rawItemId, nextState);
             ctx.syncSheetStats();
-        });
+        }, { signal: el.signal });
 
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
     });
 
     // Item attune toggle buttons
@@ -95,22 +96,22 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
 
             void ctx.persistEquipState("attunement", encodedItemName, rawItemId, nextState);
             ctx.syncSheetStats();
-        });
+        }, { signal: el.signal });
 
         btn.addEventListener("keydown", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
     });
 
     // Open Manage Weapons/Items modal
     const openManageEquipmentBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-equipment-btn");
     openManageEquipmentBtn?.addEventListener("click", () => {
         void ctx.openManageItemsModal("all");
-    });
+    }, { signal: el.signal });
 
     ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-magic-item-btn")?.addEventListener("click", () => {
         ctx.openCustomItemModal("magic-item");
-    });
+    }, { signal: el.signal });
 
     // Equipment quantity steppers & inputs
     const equipQtySteppers = ctx.sheet.querySelectorAll<HTMLElement>('.equipment-row .item-qty-stepper');
@@ -125,7 +126,7 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
 
         stepper.addEventListener("click", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
 
         decBtn?.addEventListener("click", (e) => {
             e.preventDefault();
@@ -133,7 +134,7 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
             const current = Number(input?.value || "1");
             const next = Math.max(0, current - 1);
             if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, next, "equipment");
-        });
+        }, { signal: el.signal });
 
         incBtn?.addEventListener("click", (e) => {
             e.preventDefault();
@@ -141,11 +142,11 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
             const current = Number(input?.value || "1");
             const next = current + 1;
             if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, next, "equipment");
-        });
+        }, { signal: el.signal });
 
         input?.addEventListener("click", (e) => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
 
         input?.addEventListener("input", (e) => {
             e.stopPropagation();
@@ -153,13 +154,13 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
             if (!Number.isNaN(val) && val >= 0) {
                 if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, val, "equipment");
             }
-        });
+        }, { signal: el.signal });
 
         input?.addEventListener("blur", () => {
             if (input.value === "" || isNaN(Number(input.value)) || Number(input.value) < 0) {
                 input.value = "0";
                 if (ctx.setItemQuantity) ctx.setItemQuantity(decodedName, 0, "equipment");
             }
-        });
+        }, { signal: el.signal });
     });
 }

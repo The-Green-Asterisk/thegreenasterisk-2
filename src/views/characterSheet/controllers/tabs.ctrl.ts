@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initTabsController(ctx: CharacterSheetContext) {
@@ -23,6 +24,6 @@ export function initTabsController(ctx: CharacterSheetContext) {
             if (targetPane) {
                 targetPane.classList.add("active");
             }
-        });
+        }, { signal: el.signal });
     });
 }

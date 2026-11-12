@@ -52,13 +52,13 @@ async function renderLinks() {
                     await delData('/delete-link', link);
                     await renderLinks(); // Re-render after deletion
                 }
-            });
+            }, { signal: el.signal });
 
             buttons.getElementsByClassName('edit').item(0)?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 createEditModal(link)(e);
-            });
+            }, { signal: el.signal });
             return buttons;
         };
 
@@ -209,6 +209,6 @@ const createEditModal = (editLink?: Link) => (e: Event) => {
             // Re-render links and close out the modal on submit
             await renderLinks();
             if (el.modal) document.body.removeChild(el.modal);
-        });
+        }, { signal: el.signal });
     });
 }

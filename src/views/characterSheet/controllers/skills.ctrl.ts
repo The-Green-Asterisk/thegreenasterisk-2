@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initSkillsController(ctx: CharacterSheetContext) {
@@ -32,7 +33,7 @@ export function initSkillsController(ctx: CharacterSheetContext) {
     ctx.sheet.querySelectorAll<HTMLSelectElement>(".skill-training-select[data-skill-index]").forEach(select => {
         select.addEventListener("click", (event) => {
             event.stopPropagation();
-        });
+        }, { signal: el.signal });
 
         select.addEventListener("change", () => {
             const skillIndex = Number(select.getAttribute("data-skill-index"));
@@ -62,6 +63,6 @@ export function initSkillsController(ctx: CharacterSheetContext) {
             }
 
             ctx.scheduleDebouncedAutoSave();
-        });
+        }, { signal: el.signal });
     });
 }

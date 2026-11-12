@@ -31,7 +31,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(3);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorSubclassCards.forEach((card) => {
@@ -48,7 +48,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 ctx.sanitizeSpellSelections();
                 ctx.renderStep(3);
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Collapsible Level Progression
@@ -83,7 +83,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
             if (target.closest(".progression-lvl-badge")) return;
             const box = header.closest(".level-progression-box") as HTMLElement | null;
             if (box) toggleBoxCollapse(box);
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorProgressionToggleAllButtons.forEach((btn) => {
@@ -112,7 +112,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                     if (collapseBtn) collapseBtn.setAttribute("aria-expanded", "true");
                 });
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorProgressionLevelBadges.forEach((badge) => {
@@ -137,7 +137,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 ctx.updateLiveSummary();
                 ctx.renderStep(3);
             }
-        });
+        }, { signal: el.signal });
     });
 
     const addClassBtn = el.creatorAddClassButton as HTMLButtonElement | null;
@@ -157,7 +157,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         ctx.renderStep(3);
         ctx.updateMulticlassBarPositions();
         ctx.updateMulticlassNavBars();
-    });
+    }, { signal: el.signal });
 
     el.creatorRemoveClassButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -171,7 +171,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 ctx.updateMulticlassBarPositions();
                 ctx.updateMulticlassNavBars();
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorMasteryCards.forEach((card) => {
@@ -185,7 +185,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 ctx.state.weaponMasteries.push(wName);
             }
             ctx.renderStep(3);
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorProgressionFilterButtons.forEach((btn) => {
@@ -193,7 +193,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
             const filter = (btn.getAttribute("data-prog-filter") || "all") as "all" | "unlocked";
             ctx.progressionFilter = filter;
             ctx.renderStep(3);
-        });
+        }, { signal: el.signal });
     });
 
     // Pick lists (Eldritch Invocations, Metamagic, Maneuvers…): state[pool], up to the class's scalingTraits limit
@@ -217,13 +217,13 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 .find((c) => c.getAttribute("data-pool") === poolName && c.getAttribute("data-option-id") === optionId)
                 ?.focus();
         };
-        card.addEventListener("click", toggle);
+        card.addEventListener("click", toggle, { signal: el.signal });
         card.addEventListener("keydown", (e) => {
             if (e.key === " " || e.key === "Enter") {
                 e.preventDefault();
                 toggle();
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Progression choices (class and subclass): stored by the engine under their storage key
@@ -251,13 +251,13 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                 .find((c) => c.getAttribute("data-feature-key") === key && c.getAttribute("data-feature-choice") === optionId)
                 ?.focus();
         };
-        card.addEventListener("click", toggle);
+        card.addEventListener("click", toggle, { signal: el.signal });
         card.addEventListener("keydown", (e) => {
             if (e.key === " " || e.key === "Enter") {
                 e.preventDefault();
                 toggle();
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorScrollToBottomButtons.forEach((btn) => {
@@ -268,7 +268,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
                     behavior: "smooth"
                 });
             }
-        });
+        }, { signal: el.signal });
     });
 
     ctx.updateMulticlassBarPositions();

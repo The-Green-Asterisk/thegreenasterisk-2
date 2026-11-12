@@ -1,3 +1,4 @@
+import el from "@elements";
 import { renderActiveConditionsListHtml } from "../components/hero";
 import { CharacterSheetContext } from "./context";
 
@@ -20,7 +21,7 @@ export function initHeroController(ctx: CharacterSheetContext) {
 
             ctx.persistTrackerSnapshot();
             ctx.scheduleDebouncedAutoSave();
-        });
+        }, { signal: el.signal });
     }
 
     const activeConditionsBox = ctx.sheet.querySelector<HTMLElement>("#active-conditions-box");
@@ -42,13 +43,13 @@ export function initHeroController(ctx: CharacterSheetContext) {
     if (activeConditionsBox) {
         activeConditionsBox.addEventListener("click", () => {
             void ctx.openConditionsModal();
-        });
+        }, { signal: el.signal });
         activeConditionsBox.addEventListener("keydown", (e) => {
             if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 void ctx.openConditionsModal();
             }
-        });
+        }, { signal: el.signal });
     }
 
     if (heroConditionsList) {

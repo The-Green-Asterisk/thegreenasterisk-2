@@ -1,3 +1,4 @@
+import el from "@elements";
 export function isFullscreenActive(): boolean {
     if (typeof document === "undefined") return false;
     const doc = document as any;
@@ -76,7 +77,7 @@ export function initFullscreenController(sheet: HTMLElement) {
 
     const btns = sheet.querySelectorAll<HTMLButtonElement>(".sheet-fullscreen-btn");
     btns.forEach(btn => {
-        btn.addEventListener("click", handleBtnClick);
+        btn.addEventListener("click", handleBtnClick, { signal: el.signal });
     });
 
     const onFullscreenChange = () => {
@@ -84,10 +85,10 @@ export function initFullscreenController(sheet: HTMLElement) {
     };
 
     if (typeof document !== "undefined") {
-        document.addEventListener("fullscreenchange", onFullscreenChange);
-        document.addEventListener("webkitfullscreenchange", onFullscreenChange);
-        document.addEventListener("mozfullscreenchange", onFullscreenChange);
-        document.addEventListener("MSFullscreenChange", onFullscreenChange);
+        document.addEventListener("fullscreenchange", onFullscreenChange, { signal: el.signal });
+        document.addEventListener("webkitfullscreenchange", onFullscreenChange, { signal: el.signal });
+        document.addEventListener("mozfullscreenchange", onFullscreenChange, { signal: el.signal });
+        document.addEventListener("MSFullscreenChange", onFullscreenChange, { signal: el.signal });
     }
 
     // Initial sync

@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initFeaturesController(ctx: CharacterSheetContext) {
@@ -6,7 +7,7 @@ export function initFeaturesController(ctx: CharacterSheetContext) {
 
     // "Click for more details" on long features opens the full text
     ctx.sheet.querySelectorAll<HTMLButtonElement>(".feature-more-btn[data-feature-index]").forEach(btn => {
-        btn.addEventListener("click", () => ctx.openFeatureModal(Number(btn.getAttribute("data-feature-index"))));
+        btn.addEventListener("click", () => ctx.openFeatureModal(Number(btn.getAttribute("data-feature-index"))), { signal: el.signal });
     });
 
     // Wire feature decision dropdowns
@@ -16,13 +17,13 @@ export function initFeaturesController(ctx: CharacterSheetContext) {
     decisionSelects.forEach(selectEl => {
         selectEl.addEventListener("click", e => {
             e.stopPropagation();
-        });
+        }, { signal: el.signal });
 
         selectEl.addEventListener("change", e => {
             e.stopPropagation();
             const decisionId = selectEl.getAttribute("data-feature-decision-id");
             if (!decisionId) return;
             ctx.applyFeatureDecisionChange(decisionId, selectEl.value);
-        });
+        }, { signal: el.signal });
     });
 }
