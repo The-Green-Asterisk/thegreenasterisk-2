@@ -1,8 +1,8 @@
 import sanitizeHtml from "sanitize-html";
 
 /**
- * Cleans text that users write (comments, profiles, custom spells and items, and the character copies of spells,
- * items, and features) so it can't run script when the browser renders it. Rich fields keep a formatting allowlist; plain
+ * Cleans text that users write (comments, profiles, custom spells and items, the character copies of spells, items,
+ * and features, and the shared rules that character syncs add to) so it can't run script when the browser renders it. Rich fields keep a formatting allowlist; plain
  * fields lose all tags; URL fields must be http(s) or root-relative. Placeholders like {{savedc:cha}} and markup
  * tags like [spell]Fireball[/spell] are plain text to the sanitizer and pass through unchanged.
  */
@@ -53,14 +53,14 @@ export function sanitizeUrl<T extends string | null | undefined>(value: T): T | 
     return SAFE_URL.test(value) ? value : "";
 }
 
-const PAYLOAD_RICH_KEYS = new Set(["description", "notes", "masteryDescription"]);
+const PAYLOAD_RICH_KEYS = new Set(["description", "htmlDescription", "notes", "masteryDescription", "effect"]);
 const PAYLOAD_PLAIN_KEYS = new Set(["name", "source", "school", "castingTime", "range", "duration", "components",
     "category", "damage", "damageType", "rarity", "properties", "mastery", "masteryName", "grantedBy"]);
 
-function sanitizePayloadValue(value: unknown, depth: number): unknown {
+function sanitizeJsonValue(value: unknown, depth: number): unknown {
     if (depth > 20 || !value || typeof value !== "object") return value;
     if (Array.isArray(value)) {
-        for (let i = 0; i < value.length; i++) value[i] = sanitizePayloadValue(value[i], depth + 1);
+        for (let i = 0; i < value.length; i++) value[i] = sanitizeJsonValue(value[i], depth + 1);
         return value;
     }
     const obj = value as Record<string, unknown>;
@@ -69,36 +69,36 @@ function sanitizePayloadValue(value: unknown, depth: number): unknown {
             if (PAYLOAD_RICH_KEYS.has(key)) obj[key] = sanitizeRichText(v);
             else if (PAYLOAD_PLAIN_KEYS.has(key)) obj[key] = sanitizePlainText(v);
         } else {
-            obj[key] = sanitizePayloadValue(v, depth + 1);
+            obj[key] = sanitizeJsonValue(v, depth + 1);
         }
     }
     return obj;
 }
 
 /**
- * A saved character's JSON payload holds its own copies of spells, items, and features, and the sheet renders it
- * when the rows are missing. Cleans the fields those copies share with the spell and item rows, at any depth.
- * Anything that isn't JSON is returned as is.
+ * For JSON columns: a saved character's payload (its own copies of spells, items, and features, which the sheet
+ * renders when the rows are missing) and the rules' features, traits, subclasses, and benefits. Cleans description
+ * and name-like keys at any depth. Anything that isn't JSON is returned as is.
  */
-export function sanitizeCharacterPayload<T extends string | null | undefined>(payload: T): T {
-    if (typeof payload !== "string" || !payload.includes("<")) return payload;
+export function sanitizeJsonContent<T extends string | null | undefined>(json: T): T {
+    if (typeof json !== "string" || !json.includes("<")) return json;
     let parsed: unknown;
     try {
-        parsed = JSON.parse(payload);
+        parsed = JSON.parse(json);
     } catch {
-        return payload;
+        return json;
     }
-    return JSON.stringify(sanitizePayloadValue(parsed, 0)) as T;
+    return JSON.stringify(sanitizeJsonValue(parsed, 0)) as T;
 }
 
 interface FieldRules {
     rich?: string[];
     plain?: string[];
     url?: string[];
-    characterPayload?: string[];
+    json?: string[];
 }
 
-/** Keyed by entity class name. JSON payload columns and lock lists are left alone. */
+/** Keyed by entity class name. JSON columns not listed under json, and lock lists, are left alone. */
 export const USER_CONTENT_FIELDS: Record<string, FieldRules> = {
     Comment: { rich: ["content"] },
     Spell: {
@@ -127,8 +127,34 @@ export const USER_CONTENT_FIELDS: Record<string, FieldRules> = {
         rich: ["description"],
         plain: ["name", "source", "scaleValue", "limitedUse"]
     },
-    SavedCharacter: { characterPayload: ["payload"] },
-    User: { plain: ["firstName", "lastName", "username"], url: ["profilePicture"] }
+    SavedCharacter: { json: ["payload"] },
+    User: { plain: ["firstName", "lastName", "username"], url: ["profilePicture"] },
+    RuleClass: {
+        rich: ["description"],
+        plain: ["name", "source"],
+        json: ["featuresJson", "subclassesJson", "progressionJson", "scalingTraitsJson", "startingEquipmentJson",
+            "spellcastingJson", "multiclassingJson", "skillChoicesJson"]
+    },
+    RuleSubclass: {
+        rich: ["description"],
+        plain: ["name", "source"],
+        json: ["progressionJson", "spellcastingOverrideJson"]
+    },
+    RuleSpecies: {
+        rich: ["description"],
+        plain: ["name", "source", "size", "darkvision"],
+        json: ["traitsJson", "lineagesJson"]
+    },
+    RuleBackground: {
+        rich: ["description"],
+        plain: ["name", "source", "tool", "equipmentSummary"],
+        json: ["skillsJson", "allowedAbilitiesJson"]
+    },
+    RuleFeat: {
+        rich: ["description"],
+        plain: ["name", "source", "category", "prerequisite"],
+        json: ["benefitsJson", "statOptionsJson", "skillPicksJson", "mechanicsJson"]
+    }
 };
 
 /** Cleans the listed fields of one row in place. Returns whether anything changed. */
@@ -150,6 +176,6 @@ export function sanitizeUserContent(entityName: string, row: Record<string, unkn
     apply(rules.rich, sanitizeRichText);
     apply(rules.plain, sanitizePlainText);
     apply(rules.url, sanitizeUrl);
-    apply(rules.characterPayload, sanitizeCharacterPayload);
+    apply(rules.json, sanitizeJsonContent);
     return changed;
 }

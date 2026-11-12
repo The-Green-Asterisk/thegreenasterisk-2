@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UserContentSubscriber } from '../../server/services/database/userContentSubscriber';
 import {
-    sanitizeCharacterPayload,
+    sanitizeJsonContent,
     sanitizePlainText,
     sanitizeRichText,
     sanitizeUrl,
@@ -83,7 +83,7 @@ describe('sanitizeUrl', () => {
     });
 });
 
-describe('sanitizeCharacterPayload', () => {
+describe('sanitizeJsonContent', () => {
     it('cleans copied spell, item, and feature fields at any depth and keeps the rest', () => {
         const payload = JSON.stringify({
             name: 'Hero<script>x</script>',
@@ -92,7 +92,7 @@ describe('sanitizeCharacterPayload', () => {
             features: [{ description: '<p>[condition]Prone[/condition]</p>' }],
             vitals: { currentHp: 12 }
         });
-        const out = JSON.parse(sanitizeCharacterPayload(payload));
+        const out = JSON.parse(sanitizeJsonContent(payload));
         expect(out.name).toBe('Herox');
         expect(out.spells[0].name).toBe('Fireball');
         expect(out.spells[0].source).toBe('Wizard');
@@ -106,8 +106,8 @@ describe('sanitizeCharacterPayload', () => {
 
     it('returns payloads without < and payloads that are not JSON unchanged', () => {
         const clean = '{"name": "Hero",  "spells": []}';
-        expect(sanitizeCharacterPayload(clean)).toBe(clean);
-        expect(sanitizeCharacterPayload('not json <b>')).toBe('not json <b>');
+        expect(sanitizeJsonContent(clean)).toBe(clean);
+        expect(sanitizeJsonContent('not json <b>')).toBe('not json <b>');
     });
 });
 
@@ -143,6 +143,26 @@ describe('sanitizeUserContent', () => {
         expect(item.imageUrl).toBe('https://x.test/r.png');
         expect(copy.masteryDescription).not.toMatch(/onerror/);
         expect(copy.attackBonus).toBe('+5');
+    });
+
+    it('covers the shared rules, including descriptions inside their JSON columns', () => {
+        const ruleClass: Record<string, unknown> = {
+            name: 'Bard<script>', description: `<p>Inspire</p>${ATTACK}`, primaryAbilitiesJson: '["<cha>"]',
+            featuresJson: JSON.stringify([{ level: 3, name: 'Lore<b>!</b>', description: '<p onclick=1>DC {{savedc:cha}}</p>',
+                htmlDescription: `<p>[spell]Fireball[/spell]</p>${ATTACK}`, fromDndBeyond: true }])
+        };
+        const feat: Record<string, unknown> = { prerequisite: 'Level 4<img src=x onerror=1>', benefitsJson: '[{"effect":"<b onmouseover=1>+1</b>"}]' };
+        sanitizeUserContent('RuleClass', ruleClass);
+        sanitizeUserContent('RuleFeat', feat);
+        expect(ruleClass.name).toBe('Bard');
+        expect(ruleClass.description).not.toMatch(/onerror|<script/);
+        expect(ruleClass.primaryAbilitiesJson).toBe('["<cha>"]');
+        const [feature] = JSON.parse(ruleClass.featuresJson as string);
+        expect(feature).toEqual({ level: 3, name: 'Lore!', description: '<p>DC {{savedc:cha}}</p>',
+            htmlDescription: expect.stringMatching(/^<p>\[spell\]Fireball\[\/spell\]<\/p>/), fromDndBeyond: true });
+        expect(feature.htmlDescription).not.toMatch(/onerror|<script/);
+        expect(feat.prerequisite).toBe('Level 4');
+        expect(JSON.parse(feat.benefitsJson as string)).toEqual([{ effect: '<b>+1</b>' }]);
     });
 
     it('ignores entities it has no rules for and empty rows', () => {

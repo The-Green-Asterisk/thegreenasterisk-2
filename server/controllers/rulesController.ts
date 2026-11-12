@@ -27,6 +27,7 @@ import { featMechanicsJson } from "../services/database/featMechanics";
 import Item from "../services/database/entity/Item";
 import { itemMechanicsRules } from "../services/database/itemMechanics";
 import { findServerClassRule, loadClassRulesData } from "../services/classRulesData";
+import { sanitizeUserContent } from "../services/userContent";
 import BaseController from "./baseController";
 import SpellController from "./spellController";
 
@@ -598,6 +599,8 @@ export default class RulesController extends BaseController {
                 if (err?.code === "ER_BAD_FIELD_ERROR" || String(err?.message || "").includes("ER_BAD_FIELD_ERROR")) {
                     console.warn("ER_BAD_FIELD_ERROR when fetching rule_classes, falling back to raw table query:", err?.message);
                     dbClasses = await classRepo.query("SELECT * FROM `rule_classes` ORDER BY `name` ASC");
+                    // Raw rows skip the load-time sanitizer, so run it here
+                    dbClasses.forEach(row => sanitizeUserContent("RuleClass", row));
                 } else {
                     throw err;
                 }
