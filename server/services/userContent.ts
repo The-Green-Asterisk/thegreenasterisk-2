@@ -91,6 +91,30 @@ export function sanitizeJsonContent<T extends string | null | undefined>(json: T
     return JSON.stringify(sanitizeJsonValue(parsed, 0)) as T;
 }
 
+const URL_KEY = /url$/i;
+
+/**
+ * For data fetched from another site (a D&D Beyond character) that goes to the browser without passing through the
+ * database. Its shape isn't ours to list, so every string is cleaned: keys ending in "url" must be safe URLs, and
+ * anything else with markup goes through the rich-text allowlist. Changes the value in place and returns it.
+ */
+export function sanitizeExternalData<T>(value: T, depth = 0): T {
+    if (depth > 40 || !value || typeof value !== "object") return value;
+    if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            value[i] = typeof item === "string" ? sanitizeRichText(item) : sanitizeExternalData(item, depth + 1);
+        }
+        return value;
+    }
+    const obj = value as Record<string, unknown>;
+    for (const [key, v] of Object.entries(obj)) {
+        if (typeof v === "string") obj[key] = URL_KEY.test(key) ? sanitizeUrl(v) : sanitizeRichText(v);
+        else obj[key] = sanitizeExternalData(v, depth + 1);
+    }
+    return value;
+}
+
 interface FieldRules {
     rich?: string[];
     plain?: string[];

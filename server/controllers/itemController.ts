@@ -6,6 +6,7 @@ import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { propagateItemEdit } from "../services/characterCopies";
 import { sanitizeItemCharges, sanitizeItemModifiers, seedItemModifiers } from "../services/database/itemMechanics";
 import { differsFrom, ITEM_LOCK_COLUMNS, keepLockedFields, normalizeLockedFields } from "../services/definitionLocks";
+import { sanitizeUserContent } from "../services/userContent";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
 
@@ -696,6 +697,9 @@ export default class ItemController extends BaseController {
                 status: 404
             };
         }
+
+        // Fetched from another site; cleaned here too in case the save below fails and the raw copy is returned
+        sanitizeUserContent("Item", foundItem as Record<string, unknown>);
 
         // Save into local database for subsequent requests
         let savedItem: Item | Partial<Item> = foundItem;

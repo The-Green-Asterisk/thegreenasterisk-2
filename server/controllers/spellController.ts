@@ -9,6 +9,7 @@ import { flattenDndBeyondSpellDefinition, mergeSpellClasses } from "../services/
 import { propagateSpellEdit } from "../services/characterCopies";
 import { keepLockedFields, normalizeLockedFields, parseLockedFields, SPELL_LOCK_COLUMNS } from "../services/definitionLocks";
 import { extractSpellDamageInfo } from "../services/spellDamage";
+import { sanitizeUserContent } from "../services/userContent";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
 
@@ -615,6 +616,9 @@ export default class SpellController extends BaseController {
                 status: 404
             };
         }
+
+        // Fetched from another site; cleaned here too in case the save below fails and the raw copy is returned
+        sanitizeUserContent("Spell", foundSpell as Record<string, unknown>);
 
         // Save into local database for subsequent requests
         let savedSpell: Spell | Partial<Spell> = foundSpell;
