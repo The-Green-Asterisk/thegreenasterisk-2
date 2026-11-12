@@ -2322,11 +2322,10 @@ el-character-sheet .content-slate section {
 
 .tab-nav {
     display: flex;
-    overflow-x: auto;
+    flex-wrap: wrap;
     gap: 0.4rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--border-soft);
-    scrollbar-width: thin;
 }
 
 .tab-btn {
