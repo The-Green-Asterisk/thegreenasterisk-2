@@ -1,9 +1,10 @@
+import el from "@elements";
 import { getBucketSelection, syncFlatSpellSelections } from "../services/spellReconciliation";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "./context";
 
 export function initSpellsController(ctx: CharacterCreatorContext): void {
-    const featAbility = document.getElementById("feat-spell-ability-select") as HTMLSelectElement | null;
+    const featAbility = el.creatorFeatSpellAbilitySelect as HTMLSelectElement | null;
     featAbility?.addEventListener("change", () => {
         ctx.state.featSpellAbility = featAbility.value as AbilityName;
         ctx.renderStep(ctx.state.currentStep);
@@ -13,7 +14,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     ctx.sanitizeSpellSelections();
 
     // Spell class filter tabs
-    document.querySelectorAll(".spell-class-tab-btn").forEach((btn) => {
+    el.creatorSpellClassTabButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const c = btn.getAttribute("data-class") || "all";
             ctx.activeSpellClassFilter = c;
@@ -23,7 +24,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     });
 
     // Spell level filter tabs
-    document.querySelectorAll(".spell-tab-btn").forEach((btn) => {
+    el.creatorSpellTabButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const lvl = btn.getAttribute("data-level") || "all";
             ctx.activeSpellLevelFilter = lvl === "all" ? "all" : Number(lvl);
@@ -32,11 +33,11 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     });
 
     // Search filter input
-    const searchInput = document.getElementById("spell-search-input") as HTMLInputElement;
+    const searchInput = el.creatorSpellSearchInput as HTMLInputElement;
     searchInput?.addEventListener("input", (e) => {
         const q = (e.target as HTMLInputElement).value.toLowerCase().trim();
         ctx.spellSearchQuery = q;
-        document.querySelectorAll(".spell1-row, .feature-spell-row").forEach((row) => {
+        el.creatorSpellRows.forEach((row) => {
             const name = (row.getAttribute("data-spell-name") || "").toLowerCase();
             const school = (row.getAttribute("data-spell-school") || "").toLowerCase();
             const desc = (row.querySelector(".item-row-desc")?.textContent || "").toLowerCase();
@@ -46,7 +47,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     });
 
     // Auto-Fill spells button
-    const autoBtn = document.querySelector(".auto-spells-btn");
+    const autoBtn = el.creatorAutoSpellsButton;
     autoBtn?.addEventListener("click", () => {
         const smart = ctx.getSmartAutoFillSpells();
         ctx.state.classSpellSelections = smart.byBucket;
@@ -66,7 +67,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     });
 
     // Reset spells button
-    const clearBtn = document.querySelector(".clear-spells-btn");
+    const clearBtn = el.creatorClearSpellsButton;
     clearBtn?.addEventListener("click", () => {
         ctx.state.selectedCantrips = [];
         ctx.state.selectedSpellsLevel1 = [];
@@ -78,7 +79,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
     });
 
     // Feature / Progression spell toggles
-    document.querySelectorAll(".feature-spell-row").forEach((row) => {
+    el.creatorFeatureSpellRows.forEach((row) => {
         row.addEventListener("click", () => {
             const secId = row.getAttribute("data-feature-section-id") || "";
             const spName = row.getAttribute("data-spell-name") || "";
@@ -107,7 +108,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
         return (buckets.find((b) => b.key === ctx.activeSpellClassFilter) || buckets[0])?.key;
     };
     const bindToggle = (selector: string, field: "cantrips" | "prepared") => {
-        document.querySelectorAll(selector).forEach((row) => {
+        el.list(selector).forEach((row) => {
             const toggle = () => {
                 // Progression-granted spells are bonus spells and cannot be added to the base allotment
                 if (row.getAttribute("data-granted") === "true") return;
@@ -122,7 +123,7 @@ export function initSpellsController(ctx: CharacterCreatorContext): void {
                 ctx.spellsWarningDismissed = false;
                 ctx.hideAlert();
                 ctx.renderStep(8);
-                const rows = Array.from(document.querySelectorAll<HTMLElement>(selector));
+                const rows = Array.from(el.list<HTMLElement>(selector));
                 rows.find((r) => r.getAttribute("data-spell-name") === spName)?.focus();
             };
             row.addEventListener("click", toggle);

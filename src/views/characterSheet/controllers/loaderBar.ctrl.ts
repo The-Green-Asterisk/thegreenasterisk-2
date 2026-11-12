@@ -95,7 +95,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
     }
 
     function getExportPdfModal(): HTMLElement | null {
-        return exportPdfModal || sheet.querySelector<HTMLElement>("#export-pdf-modal-container") || document.getElementById("export-pdf-modal-container");
+        return exportPdfModal || sheet.querySelector<HTMLElement>("#export-pdf-modal-container") || el.exportPdfModal;
     }
 
     function openPdfExportModal() {

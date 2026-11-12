@@ -15,7 +15,7 @@ function isTouchPrimaryInput(): boolean {
 }
 
 function hasOpenOverlayModal(): boolean {
-    return !!document.querySelector('.spell-modal-backdrop.visible:not(.hidden)');
+    return !!el.openSheetModalBackdrop;
 }
 
 function getNavBarHeight(nav: HTMLElement): number {
@@ -29,7 +29,7 @@ function getNavBarHeight(nav: HTMLElement): number {
 function ensureNavRevealAsteriskButton(): HTMLButtonElement | null {
     if (typeof document === 'undefined') return null;
 
-    let revealBtn = document.getElementById('nav-reveal-asterisk') as HTMLButtonElement | null;
+    let revealBtn = el.navRevealButton as HTMLButtonElement | null;
     if (!revealBtn) {
         revealBtn = document.createElement('button');
         revealBtn.id = 'nav-reveal-asterisk';

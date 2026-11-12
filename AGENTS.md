@@ -93,7 +93,7 @@ A view is a folder in `src/views/` named after the view: `{name}.template.ts`, `
 
 **Controllers**
 - The controller runs **after** the route appends the template.
-- Get elements through `el`, never by caching `document.querySelector` results in module scope.
+- Get elements through `el`: a getter in `src/services/elements.ts`, or `el.list(selector)` / `el.getElement(selector)` for a one-off. Never `document.querySelector` / `getElementById` in app code. Searching inside an element you already hold (`sheet.querySelector(...)`) is fine.
 - `el.<list>.id('x')` and the single-element getters can be `undefined` or `null`; check before use.
 - Pass `{ signal: el.signal }` to every `addEventListener`.
 

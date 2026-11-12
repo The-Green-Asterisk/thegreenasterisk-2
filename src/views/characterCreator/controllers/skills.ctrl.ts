@@ -1,8 +1,9 @@
+import el from "@elements";
 import { canAddPick, getClassSkillSources, getExpertiseSources, getFeatSkillSections } from "../services/skillRules";
 import { CharacterCreatorContext } from "./context";
 
 function bindToggle(selector: string, ctx: CharacterCreatorContext, onToggle: (name: string, section: string) => void): void {
-    document.querySelectorAll<HTMLElement>(selector).forEach((card) => {
+    el.list<HTMLElement>(selector).forEach((card) => {
         if (card.classList.contains("locked")) return;
         const toggle = () => {
             // Disabled cards can still be unticked if they're already chosen
@@ -14,7 +15,7 @@ function bindToggle(selector: string, ctx: CharacterCreatorContext, onToggle: (n
             ctx.hideAlert();
             ctx.renderStep(6);
             // Keep keyboard focus on the same card after re-rendering
-            Array.from(document.querySelectorAll<HTMLElement>(selector))
+            Array.from(el.list<HTMLElement>(selector))
                 .find((c) => c.getAttribute("data-skill-name") === name && (c.getAttribute("data-feat-section") || "") === section)
                 ?.focus();
         };

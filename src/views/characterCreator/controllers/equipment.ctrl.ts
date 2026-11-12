@@ -1,8 +1,9 @@
+import el from "@elements";
 import { BASE_ARMOR_2024, BASE_WEAPONS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "./context";
 
 export function initEquipmentController(ctx: CharacterCreatorContext): void {
-    document.querySelectorAll<HTMLInputElement>(".char-coin-input").forEach((input) => {
+    el.creatorCoinInputs.forEach((input) => {
         input.addEventListener("change", () => {
             const coin = input.getAttribute("data-coin") as "cp" | "sp" | "ep" | "gp" | "pp" | null;
             if (!coin) return;
@@ -13,7 +14,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
     });
 
     // Equip starting equipment package buttons
-    document.querySelectorAll(".equip-package-btn").forEach((btn) => {
+    el.creatorEquipPackageButtons.forEach((btn) => {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
             const idx = Number(btn.getAttribute("data-package-index"));
@@ -44,7 +45,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".starting-package-card").forEach((card) => {
+    el.creatorStartingPackageCards.forEach((card) => {
         card.addEventListener("click", (e) => {
             const btn = card.querySelector(".equip-package-btn");
             if (btn && e.target !== btn && !(btn as HTMLElement).contains(e.target as Node)) {
@@ -53,7 +54,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    const armorSelect = document.getElementById("char-armor-select") as HTMLSelectElement;
+    const armorSelect = el.creatorArmorSelect as HTMLSelectElement;
     armorSelect?.addEventListener("change", (e) => {
         ctx.state.selectedArmor = (e.target as HTMLSelectElement).value;
         ctx.state.equippedKitIndex = undefined;
@@ -61,7 +62,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
         ctx.updateLiveSummary();
     });
 
-    const shieldCheck = document.getElementById("char-shield-checkbox") as HTMLInputElement;
+    const shieldCheck = el.creatorShieldCheckbox as HTMLInputElement;
     shieldCheck?.addEventListener("change", (e) => {
         ctx.state.hasShield = (e.target as HTMLInputElement).checked;
         ctx.state.equippedKitIndex = undefined;
@@ -69,7 +70,7 @@ export function initEquipmentController(ctx: CharacterCreatorContext): void {
         ctx.updateLiveSummary();
     });
 
-    document.querySelectorAll(".weapon-row").forEach((row) => {
+    el.creatorWeaponRows.forEach((row) => {
         row.addEventListener("click", () => {
             const wName = row.getAttribute("data-weapon-name") || "";
             if (ctx.state.selectedWeapons.includes(wName)) {

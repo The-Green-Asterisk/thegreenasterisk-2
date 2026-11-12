@@ -1,7 +1,8 @@
+import el from "@elements";
 import { CharacterCreatorContext } from "../controllers/context";
 
 export function getNavBottom(): number {
-    const siteNav = document.querySelector("#site-nav") as HTMLElement;
+    const siteNav = el.nav as HTMLElement;
     if (!siteNav) return 0;
     const isHidden = siteNav.style.display === "none"
         || (typeof window !== "undefined" && window.getComputedStyle(siteNav).display === "none");
@@ -11,9 +12,9 @@ export function getNavBottom(): number {
 }
 
 export function updateMulticlassBarPositions(ctx: CharacterCreatorContext): void {
-    const bottomBar = document.getElementById("multiclass-bottom-bar");
-    const topBar = document.getElementById("multiclass-top-bar");
-    const panel = document.querySelector(".multiclass-step-panel") as HTMLElement;
+    const bottomBar = el.creatorMulticlassBottomBar;
+    const topBar = el.creatorMulticlassTopBar;
+    const panel = el.creatorMulticlassStepPanel as HTMLElement;
     if (!panel) return;
 
     const panelRect = panel.getBoundingClientRect();
@@ -34,7 +35,7 @@ export function updateMulticlassBarPositions(ctx: CharacterCreatorContext): void
         topBar.style.top = `${navBottom}px`;
     }
 
-    const floatingBtn = document.getElementById("floating-scroll-bottom-btn");
+    const floatingBtn = el.creatorScrollBottomButton;
     if (floatingBtn && typeof window !== "undefined") {
         const scrollY = window.scrollY || window.pageYOffset || 0;
         const scrollHeight = document.documentElement.scrollHeight || 1000;
@@ -48,9 +49,9 @@ export function updateMulticlassBarPositions(ctx: CharacterCreatorContext): void
 }
 
 export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
-    const topNavContainer = document.getElementById("multiclass-top-nav-buttons");
-    const topBar = document.getElementById("multiclass-top-bar");
-    const bottomNavContainer = document.getElementById("multiclass-bottom-nav");
+    const topNavContainer = el.creatorMulticlassTopNavButtons;
+    const topBar = el.creatorMulticlassTopBar;
+    const bottomNavContainer = el.creatorMulticlassBottomNav;
     if (!bottomNavContainer || !Array.isArray(ctx.state.classes)) return;
 
     const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
@@ -62,15 +63,15 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
     const belowButtons: Array<{ idx: number; name: string }> = [];
 
     const allZero = ctx.state.classes.every((_, i) => {
-        const el = document.getElementById(`class-section-${i}`);
-        if (!el) return true;
-        const r = el.getBoundingClientRect();
+        const section = el.creatorClassSection(i);
+        if (!section) return true;
+        const r = section.getBoundingClientRect();
         return r.top === 0 && r.bottom === 0;
     });
 
     ctx.state.classes.forEach((c, idx) => {
-        const el = document.getElementById(`class-section-${idx}`);
-        if (!el) return;
+        const section = el.creatorClassSection(idx);
+        if (!section) return;
         const clsDef = ctx.classes.find((x) => x.id === c.classId);
         const name = clsDef?.name || c.classId;
 
@@ -81,7 +82,7 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
             return;
         }
 
-        const rect = el.getBoundingClientRect();
+        const rect = section.getBoundingClientRect();
         if (rect.bottom < topThreshold) {
             aboveButtons.push({ idx, name });
         } else if (rect.top > viewportHeight - 100) {
@@ -109,11 +110,11 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
         </button>
     `).join("");
 
-    const navButtons = document.querySelectorAll(".nav-to-class-btn[data-target-class]");
+    const navButtons = el.creatorNavToClassButtons;
     navButtons.forEach((btn) => {
         btn.addEventListener("click", (e) => {
             const targetIdx = Number((e.currentTarget as HTMLElement).getAttribute("data-target-class"));
-            const targetEl = document.getElementById(`class-section-${targetIdx}`);
+            const targetEl = el.creatorClassSection(targetIdx);
             if (targetEl) {
                 targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
             }
@@ -122,13 +123,13 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
 }
 
 export function updateLiveSummary(ctx: CharacterCreatorContext): void {
-    const nameEl = document.getElementById("summary-name");
-    const metaEl = document.getElementById("summary-meta");
-    const hpEl = document.getElementById("summary-hp");
-    const acEl = document.getElementById("summary-ac");
-    const initEl = document.getElementById("summary-init");
-    const speedEl = document.getElementById("summary-speed");
-    const avatarEl = document.getElementById("summary-avatar-img") as HTMLImageElement;
+    const nameEl = el.creatorSummaryName;
+    const metaEl = el.creatorSummaryMeta;
+    const hpEl = el.creatorSummaryHp;
+    const acEl = el.creatorSummaryAc;
+    const initEl = el.creatorSummaryInit;
+    const speedEl = el.creatorSummarySpeed;
+    const avatarEl = el.creatorSummaryAvatar as HTMLImageElement;
 
     const species = ctx.species.find((s) => s.id === ctx.state.speciesId)?.name || "Species";
     const cls = ctx.classes.find((c) => c.id === ctx.state.classId)?.name || "Class";

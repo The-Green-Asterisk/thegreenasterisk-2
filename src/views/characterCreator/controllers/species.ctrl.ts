@@ -1,3 +1,4 @@
+import el from "@elements";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { currentSpeciesTraits, setSpeciesPick, traitSlug } from "../services/speciesChoices";
 import { CharacterCreatorContext } from "./context";
@@ -14,7 +15,7 @@ function activateOnKey(card: Element): void {
 }
 
 export function initSpeciesController(ctx: CharacterCreatorContext): void {
-    document.querySelectorAll(".species-card").forEach((card) => {
+    el.creatorSpeciesCards.forEach((card) => {
         activateOnKey(card);
         card.addEventListener("click", () => {
             const spId = card.getAttribute("data-species-id") || "";
@@ -26,7 +27,7 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".lineage-card").forEach((card) => {
+    el.creatorLineageCards.forEach((card) => {
         activateOnKey(card);
         card.addEventListener("click", () => {
             ctx.state.lineageId = card.getAttribute("data-lineage-id") || "";
@@ -35,13 +36,13 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    const abilitySelect = document.getElementById("species-spell-ability-select") as HTMLSelectElement | null;
+    const abilitySelect = el.creatorSpeciesSpellAbilitySelect as HTMLSelectElement | null;
     abilitySelect?.addEventListener("change", () => {
         ctx.state.speciesSpellAbility = abilitySelect.value as AbilityName;
         ctx.updateLiveSummary();
     });
 
-    document.querySelectorAll<HTMLSelectElement>(".species-pick-select").forEach((select) => {
+    el.creatorSpeciesPickSelects.forEach((select) => {
         select.addEventListener("change", () => {
             const trait = currentSpeciesTraits(ctx).find((t) => traitSlug(t.name) === select.getAttribute("data-trait"));
             if (!trait) return;

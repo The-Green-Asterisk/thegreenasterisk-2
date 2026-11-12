@@ -41,7 +41,7 @@ export function getSkillStepProblems(ctx: CharacterCreatorContext): string[] {
 }
 
 export function showAlert(msg: string, type: "error" | "warning" = "error"): void {
-    const alertBox = document.getElementById("creator-validation-alert");
+    const alertBox = el.creatorValidationAlert;
     if (alertBox) {
         alertBox.innerHTML = `${type === "warning" ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : '<i class="fa-solid fa-circle-exclamation"></i> '}${msg}`;
         alertBox.classList.remove("hidden");
@@ -50,7 +50,7 @@ export function showAlert(msg: string, type: "error" | "warning" = "error"): voi
 }
 
 export function hideAlert(): void {
-    const alertBox = document.getElementById("creator-validation-alert");
+    const alertBox = el.creatorValidationAlert;
     if (alertBox) {
         alertBox.textContent = "";
         alertBox.classList.add("hidden");
@@ -201,22 +201,22 @@ export function goToStep(ctx: CharacterCreatorContext, step: number): void {
     ctx.state.currentStep = step;
 
     // Update stepper UI
-    document.querySelectorAll(".stepper-item").forEach((el) => {
-        const stepNum = Number(el.getAttribute("data-step"));
-        el.classList.toggle("active", stepNum === step);
-        el.classList.toggle("completed", stepNum < step);
-        if (stepNum === step) el.setAttribute("aria-current", "step");
-        else el.removeAttribute("aria-current");
+    el.creatorStepperItems.forEach((item) => {
+        const stepNum = Number(item.getAttribute("data-step"));
+        item.classList.toggle("active", stepNum === step);
+        item.classList.toggle("completed", stepNum < step);
+        if (stepNum === step) item.setAttribute("aria-current", "step");
+        else item.removeAttribute("aria-current");
     });
 
     // Update step counter text
-    const counter = document.getElementById("creator-step-indicator");
+    const counter = el.creatorStepIndicator;
     if (counter) counter.textContent = `Step ${step} of 9`;
 
     // Update button states
-    const prevBtn = document.getElementById("creator-prev-btn") as HTMLButtonElement;
-    const nextBtn = document.getElementById("creator-next-btn") as HTMLButtonElement;
-    const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
+    const prevBtn = el.creatorPrevButton as HTMLButtonElement;
+    const nextBtn = el.creatorNextButton as HTMLButtonElement;
+    const submitBtn = el.creatorSubmitButton as HTMLButtonElement;
 
     if (prevBtn) prevBtn.disabled = step === 1;
     if (nextBtn) {
@@ -241,15 +241,15 @@ let keyboardActivationBound = false;
  */
 function activateOptionFromKeyboard(e: KeyboardEvent): void {
     if ((e.key !== "Enter" && e.key !== " ") || e.defaultPrevented) return;
-    const el = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-kbd-activate]");
-    if (!el || el !== e.target || el.getAttribute("aria-disabled") === "true") return;
+    const option = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-kbd-activate]");
+    if (!option || option !== e.target || option.getAttribute("aria-disabled") === "true") return;
     e.preventDefault();
-    const kind = Array.from(el.classList).find((c) => c.endsWith("-card") || c.endsWith("-row")) || "";
-    const ids = Array.from(el.attributes).filter((a) => a.name.startsWith("data-") && a.name !== "data-kbd-activate");
-    el.click();
-    if (!document.contains(el)) {
+    const kind = Array.from(option.classList).find((c) => c.endsWith("-card") || c.endsWith("-row")) || "";
+    const ids = Array.from(option.attributes).filter((a) => a.name.startsWith("data-") && a.name !== "data-kbd-activate");
+    option.click();
+    if (!document.contains(option)) {
         const selector = `.${kind}${ids.map((a) => `[${a.name}="${CSS.escape(a.value)}"]`).join("")}`;
-        document.querySelector<HTMLElement>(selector)?.focus();
+        el.getElement<HTMLElement>(selector)?.focus();
     }
 }
 
@@ -272,7 +272,7 @@ export function getLoadedCharacterId(ctx: CharacterCreatorContext): string | num
  * or the default blank sheet if creating a new character.
  */
 export function updateExitLink(ctx: CharacterCreatorContext): void {
-    const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn, .creator-cancel-btn");
+    const exitBtn = el.creatorExitLink;
     if (!exitBtn) return;
     const charId = getLoadedCharacterId(ctx);
     if (charId) {
@@ -289,21 +289,21 @@ export function updateExitLink(ctx: CharacterCreatorContext): void {
 
 export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
     updateExitLink(ctx);
-    const exitBtn = document.querySelector<HTMLAnchorElement>("#creator-exit-btn, .creator-cancel-btn");
+    const exitBtn = el.creatorExitLink;
     exitBtn?.addEventListener("click", () => {
         updateExitLink(ctx);
     });
 
-    const prevBtn = document.getElementById("creator-prev-btn");
-    const nextBtn = document.getElementById("creator-next-btn");
-    const submitBtn = document.getElementById("creator-submit-btn");
+    const prevBtn = el.creatorPrevButton;
+    const nextBtn = el.creatorNextButton;
+    const submitBtn = el.creatorSubmitButton;
 
     prevBtn?.addEventListener("click", () => goToStep(ctx, ctx.state.currentStep - 1));
     nextBtn?.addEventListener("click", () => validateAndAdvance(ctx));
     submitBtn?.addEventListener("click", () => ctx.submitCharacter());
 
     // Stepper pills click
-    const stepperItems = document.querySelectorAll(".stepper-item");
+    const stepperItems = el.creatorStepperItems;
     stepperItems.forEach((item) => {
         item.addEventListener("click", () => {
             const step = Number(item.getAttribute("data-step"));
@@ -340,7 +340,7 @@ export function bindNavigationEvents(ctx: CharacterCreatorContext): void {
                 ctx.updateMulticlassNavBars();
             }
         });
-        const siteNav = document.querySelector("#site-nav");
+        const siteNav = el.nav;
         if (siteNav) {
             navObserver.observe(siteNav, { attributes: true, attributeFilter: ["style", "class"] });
         }

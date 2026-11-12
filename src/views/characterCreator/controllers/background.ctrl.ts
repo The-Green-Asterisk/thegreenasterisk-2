@@ -1,8 +1,9 @@
+import el from "@elements";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "./context";
 
 export function initBackgroundController(ctx: CharacterCreatorContext): void {
-    document.querySelectorAll(".background-card").forEach((card) => {
+    el.creatorBackgroundCards.forEach((card) => {
         card.addEventListener("click", () => {
             const bgId = card.getAttribute("data-background-id") || "";
             ctx.state.backgroundId = bgId;
@@ -19,7 +20,7 @@ export function initBackgroundController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll("input[name='bg-option']").forEach((radio) => {
+    el.creatorBackgroundOptionInputs.forEach((radio) => {
         radio.addEventListener("change", (e) => {
             ctx.state.backgroundOption = (e.target as HTMLInputElement).value as any;
             ctx.renderStep(4);
@@ -27,14 +28,14 @@ export function initBackgroundController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    const statA = document.getElementById("bg-stat-a") as HTMLSelectElement;
+    const statA = el.creatorBackgroundStatA as HTMLSelectElement;
     statA?.addEventListener("change", (e) => {
         ctx.state.bgStatA = (e.target as HTMLSelectElement).value as AbilityName;
         ctx.renderStep(4);
         ctx.updateLiveSummary();
     });
 
-    const statB = document.getElementById("bg-stat-b") as HTMLSelectElement;
+    const statB = el.creatorBackgroundStatB as HTMLSelectElement;
     statB?.addEventListener("change", (e) => {
         ctx.state.bgStatB = (e.target as HTMLSelectElement).value as AbilityName;
         ctx.renderStep(4);

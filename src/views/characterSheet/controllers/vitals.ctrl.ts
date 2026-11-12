@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initVitalsController(ctx: CharacterSheetContext) {
@@ -79,7 +80,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
 
     // Sticky bar scroll detection: morph into sticky bar when scrolling past the vitals section
     function getNavBottom(): number {
-        const nav = document.getElementById("site-nav");
+        const nav = el.nav;
         if (!nav) return 0;
         const isHidden = nav.style.display === "none" || window.getComputedStyle(nav).display === "none";
         if (isHidden) return 0;

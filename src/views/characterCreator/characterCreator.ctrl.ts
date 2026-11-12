@@ -1,3 +1,4 @@
+import el from "@elements";
 import { getData } from "@services/request";
 import {
     AbilityName,
@@ -832,7 +833,7 @@ export class CharacterCreatorController implements CharacterCreatorContext {
     // Step Rendering methods
     public renderStep(step: number, preserveScroll: boolean = true): void {
         updateCreatorTitle(this, step);
-        const panelsContainer = document.getElementById("creator-step-panels");
+        const panelsContainer = el.creatorStepPanels;
         if (!panelsContainer) return;
         const prevScrollY = typeof window !== "undefined" ? window.scrollY : 0;
 
