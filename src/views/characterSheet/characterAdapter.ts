@@ -1189,12 +1189,23 @@ export function parseDndBeyondCharacter(
                 m.subType === "ability-checks" ||
                 m.subType === "round-up")
     );
+    // A blanket "ability-checks" half proficiency is Jack of All Trades. The 2014 version covers every ability check,
+    // Initiative included; the 2024 version only covers checks using a skill you lack, so it skips Initiative
+    const legacyClassFeatureIds = new Set<number>();
+    (raw.classes || []).forEach((c: any) => {
+        const def = c.definition || {};
+        const sources: any[] = Array.isArray(def.sources) ? def.sources : [];
+        const isLegacyClass = def.isLegacy === true || (sources.length > 0 && !sources.some((s: any) => s?.sourceId === 145));
+        if (!isLegacyClass) return;
+        [...(def.classFeatures || []), ...(c.subclassDefinition?.classFeatures || [])]
+            .forEach((f: any) => legacyClassFeatureIds.add(Number(f?.id)));
+    });
     const isInitHalfProf = allMods.some(
         m =>
             m.type === "half-proficiency" &&
             (m.subType === "initiative" ||
                 m.subType === "dexterity-ability-checks" ||
-                m.subType === "ability-checks" ||
+                (m.subType === "ability-checks" && legacyClassFeatureIds.has(Number(m.componentId))) ||
                 m.subType === "round-down")
     );
 
