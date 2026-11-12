@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { getMulticlassCasterInfo } from "../../../rules/dnd5e_2024/multiclass";
 import { uncountedClassSpellSources } from "../../../rules/dnd5e_2024/spellSources";
 import { findClassRule, getClassRules, getFeatRules, getSpeciesRules } from "../../../services/classRules";
@@ -329,10 +330,10 @@ export function renderSpellCard(
     const labelText = isHealing ? 'Healing' : 'Damage';
 
     const damageBadge = damageText
-        ? `<span class="badge badge-damage${typeClass ? ' ' + typeClass : ''}" title="${labelText}: ${damageText}"><i class="fa-solid ${iconClass}"></i> ${damageText}</span>`
+        ? `<span class="badge badge-damage${typeClass ? ' ' + typeClass : ''}" title="${labelText}: ${escapeHtml(damageText)}"><i class="fa-solid ${iconClass}"></i> ${escapeHtml(damageText)}</span>`
         : '';
     const damageMeta = damageText
-        ? `<div class="meta-item meta-damage${typeClass ? ' ' + typeClass : ''}"><span class="meta-label">${labelText}:</span> <span class="meta-value damage-dice-value${typeClass ? ' ' + typeClass : ''}"><i class="fa-solid ${iconClass}"></i> ${damageText}</span></div>`
+        ? `<div class="meta-item meta-damage${typeClass ? ' ' + typeClass : ''}"><span class="meta-label">${labelText}:</span> <span class="meta-value damage-dice-value${typeClass ? ' ' + typeClass : ''}"><i class="fa-solid ${iconClass}"></i> ${escapeHtml(damageText)}</span></div>`
         : '';
 
     const effectText = getSpellEffectDisplay(spell, currentLevel, characterLevel);
@@ -347,12 +348,12 @@ export function renderSpellCard(
         <div class="spell-card ${isUpcast ? 'spell-card-upcast' : ''}" data-spell-name="${encodeURIComponent(spell.name)}" data-spell-id="${spell.id ?? ''}" tabindex="0" role="button" aria-haspopup="dialog" title="Click to view full spell description">
             <div class="spell-card-top">
                 <div class="spell-title-wrap">
-                    <h4 class="spell-title">${spell.name}${spell.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}</h4>
-                    <span class="spell-school-level">${levelText} • ${spell.school}</span>
+                    <h4 class="spell-title">${escapeHtml(spell.name)}${spell.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}</h4>
+                    <span class="spell-school-level">${levelText} • ${escapeHtml(spell.school)}</span>
                 </div>
                 <div class="spell-badges">
-                    <span class="badge badge-source">${spell.source}</span>
-                    ${spell.viaFeature ? `<span class="badge badge-source" title="Not on the ${spell.source} spell list; available through ${spell.viaFeature}">${spell.viaFeature}</span>` : ''}
+                    <span class="badge badge-source">${escapeHtml(spell.source)}</span>
+                    ${spell.viaFeature ? `<span class="badge badge-source" title="Not on the ${escapeHtml(spell.source)} spell list; available through ${spell.viaFeature}">${spell.viaFeature}</span>` : ''}
                     ${damageBadge}
                     ${effectBadge}
                     ${concBadge}
@@ -361,9 +362,9 @@ export function renderSpellCard(
                 </div>
             </div>
             <div class="spell-card-meta">
-                <div class="meta-item"><span class="meta-label">Time:</span> <span class="meta-value">${spell.castingTime}</span></div>
-                <div class="meta-item"><span class="meta-label">Range:</span> <span class="meta-value">${spell.range}</span></div>
-                <div class="meta-item"><span class="meta-label">Duration:</span> <span class="meta-value">${spell.duration}</span></div>
+                <div class="meta-item"><span class="meta-label">Time:</span> <span class="meta-value">${escapeHtml(spell.castingTime)}</span></div>
+                <div class="meta-item"><span class="meta-label">Range:</span> <span class="meta-value">${escapeHtml(spell.range)}</span></div>
+                <div class="meta-item"><span class="meta-label">Duration:</span> <span class="meta-value">${escapeHtml(spell.duration)}</span></div>
                 ${damageMeta}
                 ${effectMeta}
             </div>
@@ -383,7 +384,7 @@ function renderLevelSlotMarkers(level: number, spellSlots: CharacterData["spellS
     if (!standard && !pact) return "";
 
     const standardPips = standard
-        ? `<span class="header-slot-marker-group" title="${standard.label}">${Array.from({ length: standard.total }).map((_, i) => `
+        ? `<span class="header-slot-marker-group" title="${escapeHtml(standard.label)}">${Array.from({ length: standard.total }).map((_, i) => `
             <button
                 type="button"
                 class="header-slot-marker-btn active"
@@ -397,7 +398,7 @@ function renderLevelSlotMarkers(level: number, spellSlots: CharacterData["spellS
         : "";
 
     const pactPips = pact
-        ? `<span class="header-slot-marker-group pact" title="${pact.label}">${Array.from({ length: pact.total }).map((_, i) => `
+        ? `<span class="header-slot-marker-group pact" title="${escapeHtml(pact.label)}">${Array.from({ length: pact.total }).map((_, i) => `
             <button
                 type="button"
                 class="header-slot-marker-btn pact active"

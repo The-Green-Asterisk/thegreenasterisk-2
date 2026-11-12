@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { Category, World, WorldEntity } from "@entities";
 import Helpers from "@services/helpers";
@@ -33,8 +34,8 @@ export default async function categoryCtrl(category: Category, world: World) {
                 letter.forEach((entity: WorldEntity) => {
                     const entityItem = html`
                         <li class="entity-list-item">
-                            <a href="/many-worlds/world/${world.id}/category/${category.id}/entity/${entity.id}">
-                                <span class="name">${entity.name}</span>
+                            <a href="/many-worlds/world/${world.id}/category/${escapeHtml(category.id)}/entity/${entity.id}">
+                                <span class="name">${escapeHtml(entity.name)}</span>
                             </a>
                             <p class="description">${entity.shortDescription}</p>
                         </li>
@@ -47,7 +48,7 @@ export default async function categoryCtrl(category: Category, world: World) {
 
     const setupAdminCreateEntity = () => {
         el.checkAdmin(() => {
-            const newEntityBtn = html`<button id="new-entity-btn">Add New ${Helpers.singularize(category.name)}</button>`;
+            const newEntityBtn = html`<button id="new-entity-btn">Add New ${escapeHtml(Helpers.singularize(category.name))}</button>`;
             newEntityBtn.addEventListener('click', () => {
                 const entityName = prompt(`Enter new ${Helpers.singularize(category.name)} name:`)?.trim().stripScripts();
                 if (entityName) {

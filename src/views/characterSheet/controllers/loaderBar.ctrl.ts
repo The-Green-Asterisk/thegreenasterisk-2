@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { CharacterSheetContext } from "./context";
 import { exportPdfCharacterSheet, PdfFormat } from "../services/pdfExport";
@@ -288,11 +289,11 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                                     class="saved-character-card"
                                     data-saved-character-id="${character.id}"
                                     data-site-character-id="${character.siteCharacterId || ""}"
-                                    title="Load ${character.name}"
+                                    title="Load ${escapeHtml(character.name)}"
                                 >
-                                    ${character.avatarUrl ? `<img src="${character.avatarUrl}" alt="${character.name}" class="saved-character-avatar" />` : '<div class="saved-character-avatar placeholder"><i class="fa-solid fa-user"></i></div>'}
+                                    ${character.avatarUrl ? `<img src="${character.avatarUrl}" alt="${escapeHtml(character.name)}" class="saved-character-avatar" />` : '<div class="saved-character-avatar placeholder"><i class="fa-solid fa-user"></i></div>'}
                                     <div class="saved-character-card-body">
-                                        <strong>${character.name}</strong>
+                                        <strong>${escapeHtml(character.name)}</strong>
                                         <span>${subtitle}</span>
                                         ${character.siteCharacterId ? `<small>ID: ${character.siteCharacterId}</small>` : ''}
                                         <small>Updated: ${updatedText}</small>
@@ -302,9 +303,9 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
                                     type="button"
                                     class="saved-character-delete-btn"
                                     data-delete-character-id="${character.id}"
-                                    data-character-name="${character.name.replace(/"/g, '&quot;')}"
-                                    title="Delete ${character.name}"
-                                    aria-label="Delete ${character.name}"
+                                    data-character-name="${escapeHtml(character.name)}"
+                                    title="Delete ${escapeHtml(character.name)}"
+                                    aria-label="Delete ${escapeHtml(character.name)}"
                                 >
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>

@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { resolveClassResources, resolveClassScaleValues } from "../../../rules/dnd5e_2024/classResources";
 import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, speciesScaleValue, traitBaseName } from "../../../rules/dnd5e_2024/speciesRules";
 import { AbilityName, ClassDefinition, ProgressionLevel } from "../../../rules/dnd5e_2024/types";
@@ -401,14 +402,6 @@ export function resolveDndBeyondFeatUrl(featTextRaw: string): string {
     return `${DND_BEYOND_BR_2024_BASE}/feats#${pascalAnchor || "Feats"}`;
 }
 
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
 
 const ABILITY_TOKEN_TO_ABBR: Record<string, string> = {
     str: "STR",

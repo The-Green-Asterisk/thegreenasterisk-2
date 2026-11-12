@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from '@elements';
 import Helpers from '@services/helpers';
 import { delData, getData, postData, putData } from '@services/request';
@@ -105,7 +106,7 @@ async function renderLinks() {
 
 const iconOrImg = (linkModel: Link) =>
     linkModel.imageUrl
-        ? `<img src="${linkModel.imageUrl}" alt="${linkModel.text}">`
+        ? `<img src="${linkModel.imageUrl}" alt="${escapeHtml(linkModel.text)}">`
         : `<span class="${linkModel.iconClass}"></span>`;
 
 const buildLink = (linkModel: Link, draggable: boolean = true, stay: boolean = false) => html`
@@ -120,7 +121,7 @@ const buildLink = (linkModel: Link, draggable: boolean = true, stay: boolean = f
             ${iconOrImg(linkModel)}
         </div>
         <div class="link-text">
-            ${linkModel.text}
+            ${escapeHtml(linkModel.text)}
         </div>
     </a>
 `;

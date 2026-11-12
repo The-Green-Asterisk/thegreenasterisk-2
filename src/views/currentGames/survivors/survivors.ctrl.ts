@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from '@elements';
 import { Tag, YouTubeVideo } from '@entities';
 import Helpers from '@services/helpers';
@@ -79,13 +80,13 @@ export default async function survivors() {
             `
             const vid = html`
                 <div class="video-item">
-                    <div class="video-title" title="${video.title}"><b>${video.episodeNum}:</b> ${video.title}</div>
+                    <div class="video-title" title="${escapeHtml(video.title)}"><b>${video.episodeNum}:</b> ${escapeHtml(video.title)}</div>
                     <iframe src="${video.embedUrl}" 
-                        title="${video.description}" 
+                        title="${escapeHtml(video.description)}" 
                         frameborder="2"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                         referrerpolicy="strict-origin-when-cross-origin"
-                        srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.videoId}?autoplay=1><img src=https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg title='${video.description}'><span>▶</span></a>" 
+                        srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.videoId}?autoplay=1><img src=https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg title='${escapeHtml(video.description)}'><span>▶</span></a>" 
                         allowfullscreen>
                     </iframe>
                     <div class="video-controls">
@@ -255,8 +256,12 @@ async function setUpNotificationButton(button: HTMLButtonElement | null) {
             button.disabled = true;
             try {
                 if (subscription && Notification.permission === 'granted') {
-                    await PushService.unsubscribe(subscription, 'videos').catch(() => { });
-                    subscription = null;
+                    try {
+                        await PushService.unsubscribe(subscription, 'videos');
+                        subscription = null;
+                    } catch (err: any) {
+                        alert(`Couldn't turn notifications off: ${err?.error || err?.message || err}`);
+                    }
                 } else {
                     const permission = await PushService.requestPermission();
                     if (permission === 'granted') {
@@ -265,9 +270,9 @@ async function setUpNotificationButton(button: HTMLButtonElement | null) {
                         alert('Notifications are blocked in your browser settings. Please enable them to subscribe.');
                     }
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error updating notification subscription:', error);
-                alert('Could not update notification subscription. Please try again.');
+                alert(`Could not update notification subscription: ${error?.error || error?.message || 'please try again.'}`);
             } finally {
                 button.disabled = false;
                 updateButtonState();

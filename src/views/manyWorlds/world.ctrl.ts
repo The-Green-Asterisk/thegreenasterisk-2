@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { Category, World } from "@entities";
 import Helpers from "@services/helpers";
@@ -42,7 +43,7 @@ export default async function world(world: World) {
             categories.forEach(category => {
                 const categoryDiv = html`
                     <div class="category-container">
-                        <a href="/many-worlds/world/${world.id}/category/${category.id}"><h2>${category.name}</h2></a>
+                        <a href="/many-worlds/world/${world.id}/category/${escapeHtml(category.id)}"><h2>${escapeHtml(category.name)}</h2></a>
                         <small style="text-align: center;display: block;width: 100%;">
                             <i>random selection of ${category.worldEntities.length} entries in this category</i>
                         </small>
@@ -55,7 +56,7 @@ export default async function world(world: World) {
                     categoryDiv.replaceChild(noEntitiesMsg, entityList);
                 } else {
                     category.worldEntities.forEach(entity => {
-                        const entityItem = html`<li><a href="/many-worlds/world/${world.id}/category/${category.id}/entity/${entity.id}">${entity.name}</a>: ${entity.shortDescription}</li>`;
+                        const entityItem = html`<li><a href="/many-worlds/world/${world.id}/category/${escapeHtml(category.id)}/entity/${entity.id}">${escapeHtml(entity.name)}</a>: ${entity.shortDescription}</li>`;
                         entityList.appendChild(entityItem);
                     });
                 }
@@ -76,7 +77,7 @@ export default async function world(world: World) {
                         if (noCatsMsg) noCatsMsg.remove();
                         const categoryDiv = html`
                             <div class="category-container">
-                                <a href="/many-worlds/world/${world.id}/category/${response.id}"><h2>${response.name}</h2></a>
+                                <a href="/many-worlds/world/${world.id}/category/${response.id}"><h2>${escapeHtml(response.name)}</h2></a>
                                 <p>No entities available in this category.</p>
                             </div>
                         `;

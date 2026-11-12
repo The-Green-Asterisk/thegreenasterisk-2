@@ -73,7 +73,11 @@ async function renderPush(box: HTMLElement, registration: ServiceWorkerRegistrat
         PushService.saveSubscription(subscription, 'pr-digest').catch(() => { });
         const button = make('button', 'Turn off');
         button.addEventListener('click', async () => {
-            await PushService.unsubscribe(subscription, 'pr-digest').catch(() => { });
+            try {
+                await PushService.unsubscribe(subscription, 'pr-digest');
+            } catch (err: any) {
+                alert(`Couldn't turn notifications off: ${err?.error || err?.message || err}`);
+            }
             await renderPush(box, registration);
         }, { signal: el.signal });
         box.replaceChildren(make('span', 'Notifications are on for Red and Yellow Alerts.'), button);

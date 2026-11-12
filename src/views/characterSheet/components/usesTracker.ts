@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { ActionItem, CharacterData, ClassResource } from "../characterData";
 
 /**
@@ -9,7 +10,7 @@ export function renderUsesTracker(label: string, key: string, total: number, res
     if (total <= 0) return "";
     const resetText = resetLabel || (resetOn === "short" ? "Short or long rest" : resetOn === "long" ? "Long rest" : resetOn === "dawn" ? "Dawn" : "Manually");
     const pips = Array.from({ length: total })
-        .map((_, i) => `<button type="button" class="pip active" data-resource-key="${key}" data-reset-on="${resetOn}" data-pip-idx="${i}" aria-label="${label} use ${i + 1}"></button>`)
+        .map((_, i) => `<button type="button" class="pip active" data-resource-key="${key}" data-reset-on="${resetOn}" data-pip-idx="${i}" aria-label="${escapeHtml(label)} use ${i + 1}"></button>`)
         .join("");
     return `
         <div class="slot-tracker class-resource-tracker inline-uses" data-resource-key="${key}" data-reset-on="${resetOn}">
@@ -17,7 +18,7 @@ export function renderUsesTracker(label: string, key: string, total: number, res
                 <span class="slot-name">Uses <span class="inline-uses-reset">(${resetText})</span></span>
                 <span class="slot-count" aria-live="polite">${total} / ${total}</span>
             </div>
-            <div class="slot-pips" role="group" aria-label="${label} uses">${pips}</div>
+            <div class="slot-pips" role="group" aria-label="${escapeHtml(label)} uses">${pips}</div>
         </div>`;
 }
 

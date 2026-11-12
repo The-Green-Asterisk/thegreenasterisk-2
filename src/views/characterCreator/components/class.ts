@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import {
     SpellPick,
     ProgressionLevel,
@@ -60,7 +61,7 @@ export function renderStep3Class(ctx: CharacterCreatorContext): string {
                     } else {
                         const prereq = c.multiclassing?.prerequisites;
                         if (prereq) {
-                            badgeHtml = `<div class="class-prereq-badge info"><i class="fa-solid fa-circle-info"></i> Multiclass: ${prereq.label}</div>`;
+                            badgeHtml = `<div class="class-prereq-badge info"><i class="fa-solid fa-circle-info"></i> Multiclass: ${escapeHtml(prereq.label)}</div>`;
                         }
                     }
 
@@ -71,7 +72,7 @@ export function renderStep3Class(ctx: CharacterCreatorContext): string {
                                      role="radio" aria-checked="${isSelected}" tabindex="${isDisabled ? "-1" : "0"}" data-kbd-activate
                                      ${isDisabled ? `aria-disabled="true" title="${reasonTitle}"` : ""}>
                                     <div class="card-title-row">
-                                        <h4 class="card-title">${c.name}</h4>
+                                        <h4 class="card-title">${escapeHtml(c.name)}</h4>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                     </div>
                                     <span class="card-tag">Hit Die: d${c.hitDie} • Saves: ${c.savingThrows.map((s) => s.toUpperCase()).join(", ")}</span>
@@ -214,11 +215,11 @@ function renderPoolBox(ctx: CharacterCreatorContext, pool: ProgressionPool, desc
     const pickOptions = pool.options.filter((o) => (o.spellPicks || []).length > 0);
     return `
         <div class="level-choice-box" role="group" aria-labelledby="${titleId}">
-            <h5 class="level-choice-title" id="${titleId}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${pool.name}${pool.isSubclass ? ` (${pool.sourceName})` : ""} (Chosen: ${selected.length} of ${pool.max})</h5>
+            <h5 class="level-choice-title" id="${titleId}"><i class="fa-solid fa-list-check" aria-hidden="true"></i> ${escapeHtml(pool.name)}${pool.isSubclass ? ` (${pool.sourceName})` : ""} (Chosen: ${selected.length} of ${pool.max})</h5>
             ${description ? `<p class="card-body">${description}</p>` : ""}
             ${pickOptions.length > 0 ? `
                 <div class="level-info-note choice-spells-referral-note">
-                    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Options that grant spell choices (such as <strong>${pickOptions.map((o) => o.name).join(", ")}</strong>) have a dedicated selection section in <strong>Class &amp; Subclass Progression Spells</strong> on <strong>Step 8: Spells</strong>.
+                    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Options that grant spell choices (such as <strong>${pickOptions.map((o) => escapeHtml(o.name)).join(", ")}</strong>) have a dedicated selection section in <strong>Class &amp; Subclass Progression Spells</strong> on <strong>Step 8: Spells</strong>.
                 </div>
             ` : ""}
             <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
@@ -229,7 +230,7 @@ function renderPoolBox(ctx: CharacterCreatorContext, pool: ProgressionPool, desc
                     <div class="select-card pool-card ${isSelected ? "selected" : ""}" role="checkbox" aria-checked="${isSelected}" tabindex="0"
                          data-pool="${pool.pool}" data-option-id="${opt.id}" data-class-index="${pool.classIndex}">
                         <div class="card-title-row">
-                            <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
+                            <h5 class="card-title" style="font-size: 0.95rem;">${escapeHtml(opt.name)}</h5>
                             <span class="card-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
                         </div>
                         ${minLevel ? `<span class="card-tag">Min Level: ${minLevel}</span>` : ""}
@@ -247,7 +248,7 @@ function spellPickNote(grantedBy: string, picks: SpellPick[]): string {
     if (picks.length === 0) return "";
     return `
         <div class="level-info-note choice-spells-referral-note">
-            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Select your <strong>${grantedBy}</strong> spells in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
+            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Select your <strong>${escapeHtml(grantedBy)}</strong> spells in the <strong>Class &amp; Subclass Progression Spells</strong> section on <strong>Step 8: Spells</strong>.
         </div>
     `;
 }
@@ -259,7 +260,7 @@ function renderProgressionChoiceBox(entry: ProgressionChoiceEntry, description: 
     const titleId = `choice-title-${entry.classIndex}-${entry.key}`;
     return `
         <div class="level-choice-box" role="${multi ? "group" : "radiogroup"}" aria-labelledby="${titleId}">
-            <h5 class="level-choice-title" id="${titleId}"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> ${entry.choice.name}${entry.isSubclass ? ` (${entry.sourceName})` : ""}${multi ? ` (Choose ${count})` : ""}</h5>
+            <h5 class="level-choice-title" id="${titleId}"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> ${escapeHtml(entry.choice.name)}${entry.isSubclass ? ` (${entry.sourceName})` : ""}${multi ? ` (Choose ${count})` : ""}</h5>
             ${description ? `<p class="card-body">${description}</p>` : ""}
             ${entry.selectedOptions.map((o) => spellPickNote(o.name, o.spellPicks || [])).join("")}
             <div class="card-select-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
@@ -270,7 +271,7 @@ function renderProgressionChoiceBox(entry: ProgressionChoiceEntry, description: 
                          role="${multi ? "checkbox" : "radio"}" aria-checked="${selected}" tabindex="0"
                          data-class-index="${entry.classIndex}" data-feature-key="${entry.key}" data-feature-choice="${opt.id}">
                         <div class="card-title-row">
-                            <h5 class="card-title" style="font-size: 0.95rem;">${opt.name}</h5>
+                            <h5 class="card-title" style="font-size: 0.95rem;">${escapeHtml(opt.name)}</h5>
                             <span class="card-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
                         </div>
                         <p class="card-body">${opt.description}</p>
@@ -330,12 +331,12 @@ export function renderLevelChoices(ctx: CharacterCreatorContext, cls: ClassDefin
                             ${BASE_WEAPONS_2024.filter((w) => cls.weaponProficiencies.some((p) => p.includes("Martial") || w.category.includes("Simple"))).map((w) => {
                 const isSelected = ctx.state.weaponMasteries.includes(w.name);
                 return `
-                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}" data-class-index="${classIdx}" role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate>
+                                    <div class="skill-checkbox-card mastery-card ${isSelected ? "selected" : ""}" data-weapon-name="${escapeHtml(w.name)}" data-class-index="${classIdx}" role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate>
                                         <div class="skill-info">
                                             <span class="card-check"><i class="fa-solid fa-check"></i></span>
-                                            <span class="skill-name">${w.name}</span>
+                                            <span class="skill-name">${escapeHtml(w.name)}</span>
                                         </div>
-                                        <span class="skill-stat-badge" style="color: var(--ui-text);">${w.mastery}</span>
+                                        <span class="skill-stat-badge" style="color: var(--ui-text);">${escapeHtml(w.mastery)}</span>
                                     </div>
                                 `;
             }).join("")}
@@ -358,11 +359,11 @@ export function renderLevelChoices(ctx: CharacterCreatorContext, cls: ClassDefin
                     <div class="level-choice-box">
                         <h5 class="level-choice-title"><i class="fa-solid fa-shield-halved"></i> Subclass Selection (Level 3)</h5>
                         <p class="card-body">${getClsFeatureDesc(`${cls.name} Subclass`, `Choose a ${cls.name} specialization that grants you features at certain ${cls.name} levels.`, 3)}</p>
-                        <div class="card-select-grid" role="radiogroup" aria-label="${cls.name} subclass" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                        <div class="card-select-grid" role="radiogroup" aria-label="${escapeHtml(cls.name)} subclass" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                             ${deduplicatedSubclasses.map((sub) => `
                                 <div class="select-card subclass-card ${currentSubId === sub.id ? "selected" : ""}" data-class-index="${classIdx}" data-subclass-id="${sub.id}" role="radio" aria-checked="${currentSubId === sub.id}" tabindex="0" data-kbd-activate>
                                     <div class="card-title-row">
-                                        <h5 class="card-title" style="font-size: 0.95rem;">${sub.name}</h5>
+                                        <h5 class="card-title" style="font-size: 0.95rem;">${escapeHtml(sub.name)}</h5>
                                         <span class="card-check"><i class="fa-solid fa-check"></i></span>
                                     </div>
                                     <p class="card-body">${sub.description}</p>
@@ -427,7 +428,7 @@ export function renderLevelChoices(ctx: CharacterCreatorContext, cls: ClassDefin
     for (const { f, suffix } of pickFeatures) {
         choices.push(`
                 <div class="level-choice-box">
-                    <h5 class="level-choice-title"><i class="fa-solid fa-scroll" aria-hidden="true"></i> ${f.name}${suffix}</h5>
+                    <h5 class="level-choice-title"><i class="fa-solid fa-scroll" aria-hidden="true"></i> ${escapeHtml(f.name)}${suffix}</h5>
                     <p class="card-body">${f.description}</p>
                     ${spellPickNote(`${f.name}${suffix}`, f.spellPicks || [])}
                 </div>
@@ -528,7 +529,7 @@ export function renderClassProgression(ctx: CharacterCreatorContext, cls: ClassD
 
         let subAnnotation = "";
         if (sub && featuresAtLvl.some((f) => f.name.toLowerCase().includes("subclass"))) {
-            subAnnotation = ` (${sub.name})`;
+            subAnnotation = ` (${escapeHtml(sub.name)})`;
         }
 
         const subFeaturesAtLvl = resolvedSubFeatures.filter((f: any) => f.level === lvl);
@@ -583,7 +584,7 @@ export function renderClassProgression(ctx: CharacterCreatorContext, cls: ClassD
                             <button type="button" class="progression-lvl-badge ${isUnlocked ? "badge-unlocked" : "badge-locked"}" title="${isUnlocked ? (lvl === charLevel ? `Click to lock ${cls.name} Level ${lvl}` : `Click to set ${cls.name} to Level ${lvl}`) : `Click to unlock ${cls.name} Level ${lvl}`}" data-class-index="${classIdx}" data-level="${lvl}">
                                 ${isUnlocked ? `<i class="fa-solid fa-check" aria-hidden="true"></i>` : `<i class="fa-solid fa-lock" aria-hidden="true"></i>`} Level ${lvl}<span class="visually-hidden">: ${isUnlocked ? (lvl === charLevel ? `lock ${cls.name} Level ${lvl}` : `set ${cls.name} to Level ${lvl}`) : `unlock ${cls.name} Level ${lvl}`}</span>
                             </button>
-                            <h4 class="level-title-text">${cls.name} Level ${lvl} Abilities</h4>
+                            <h4 class="level-title-text">${escapeHtml(cls.name)} Level ${lvl} Abilities</h4>
                         </div>
                         <div class="level-header-meta">
                             <span class="progression-pb-tag">PB +${pb}</span>
@@ -603,7 +604,7 @@ export function renderClassProgression(ctx: CharacterCreatorContext, cls: ClassD
                                 ${featuresAtLvl.map((f) => `
                                     <div class="select-card ability-feature-card ${isUnlocked ? "active" : "locked"}">
                                         <div class="card-title-row">
-                                            <h5 class="card-title" style="font-size: 0.95rem;">${f.name}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
+                                            <h5 class="card-title" style="font-size: 0.95rem;">${escapeHtml(f.name)}${!f.isSubclassFeature && f.name.toLowerCase().includes("subclass") ? subAnnotation : ""}</h5>
                                             ${getFeatureTagHtml(f.name, lvl, Boolean(f.isSubclassFeature), Boolean((f as any).isGrantedSpell))}
                                         </div>
                                         <p class="card-body">${f.description}</p>
@@ -625,10 +626,10 @@ export function renderClassProgression(ctx: CharacterCreatorContext, cls: ClassD
                 <div class="progression-box-header" style="margin: 0;">
                     <div class="progression-header-text">
                         <h4 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text);">
-                            <i class="fa-solid fa-layer-group"></i> ${cls.name} Level Progression (Levels 1–20)
+                            <i class="fa-solid fa-layer-group"></i> ${escapeHtml(cls.name)} Level Progression (Levels 1–20)
                         </h4>
                         <p class="card-body" style="margin: 0.25rem 0 0;">
-                            New abilities, features, and choices gained at each level for the ${cls.name} class. Click a level badge to unlock or set your level in this class. Currently Level ${charLevel}. Click any level header to collapse or expand it.
+                            New abilities, features, and choices gained at each level for the ${escapeHtml(cls.name)} class. Click a level badge to unlock or set your level in this class. Currently Level ${charLevel}. Click any level header to collapse or expand it.
                         </p>
                     </div>
                     <div class="progression-header-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">

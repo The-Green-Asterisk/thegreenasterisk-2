@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 /**
  * The "Keep through D&D Beyond reloads" panel in the Edit Spell / Weapon / Magic Item dialogs: one toggle per
@@ -80,7 +81,7 @@ export function createLockPanel(container: HTMLElement | null, form: HTMLFormEle
             container?.classList.toggle("hidden", !enabled);
             if (!enabled || !list) return;
             list.innerHTML = fields.map(f => `
-                <li><button type="button" class="def-lock-btn" data-def-lock-key="${f.key}" aria-pressed="false" aria-label="Lock ${f.label}"><i class="fa-solid fa-lock-open" aria-hidden="true"></i> ${f.label}</button></li>`).join("");
+                <li><button type="button" class="def-lock-btn" data-def-lock-key="${f.key}" aria-pressed="false" aria-label="Lock ${escapeHtml(f.label)}"><i class="fa-solid fa-lock-open" aria-hidden="true"></i> ${escapeHtml(f.label)}</button></li>`).join("");
             refresh();
         },
         stop() {

@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { CharacterCreatorContext } from "../controllers/context";
 
@@ -95,7 +96,7 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
             topBar.classList.remove("hidden");
             topNavContainer.innerHTML = aboveButtons.map((b) => `
                 <button type="button" class="creator-btn nav-to-class-btn top-nav-btn" data-target-class="${b.idx}">
-                    <i class="fa-solid fa-arrow-up"></i> ${b.name}
+                    <i class="fa-solid fa-arrow-up"></i> ${escapeHtml(b.name)}
                 </button>
             `).join("");
         } else {
@@ -106,7 +107,7 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
 
     bottomNavContainer.innerHTML = belowButtons.map((b) => `
         <button type="button" class="creator-btn nav-to-class-btn bottom-nav-btn" data-target-class="${b.idx}">
-            <i class="fa-solid fa-arrow-down"></i> ${b.name}
+            <i class="fa-solid fa-arrow-down"></i> ${escapeHtml(b.name)}
         </button>
     `).join("");
 

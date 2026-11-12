@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { listSenses } from "../../../rules/dnd5e_2024/senses";
 import { getSpellDamageDisplay, getSpellEffectDisplay, getSpellcastingModifier } from "../../../services/spellDamage";
@@ -12,15 +13,6 @@ export interface PdfExportOptions {
     statusCallback?: (msg: string) => void;
 }
 
-function escapeHtml(str: string | number | undefined | null): string {
-    if (str === null || str === undefined) return "";
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
 
 function stripHtml(html: string | undefined | null): string {
     if (!html) return "";

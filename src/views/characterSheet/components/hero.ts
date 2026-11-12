@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterData, DEFAULT_DND55_CONDITIONS } from "../characterData";
 
 export function renderActiveConditionsListHtml(data: CharacterData): string {
@@ -54,7 +55,7 @@ export function renderActiveConditionsListHtml(data: CharacterData): string {
             );
             const icon = def?.icon || "fa-solid fa-circle-exclamation";
             const displayName = def?.name || condName;
-            const summary = def?.summary ? def.summary.replace(/"/g, "&quot;") : displayName;
+            const summary = escapeHtml(def?.summary || displayName);
             pills.push(`
                 <span class="condition-pill" title="${summary}">
                     <i class="${icon}"></i>
@@ -68,7 +69,7 @@ export function renderActiveConditionsListHtml(data: CharacterData): string {
 
 export function renderHeroSection(data: CharacterData): string {
     const classText = data.classes
-        .map(c => `<strong>${c.name} ${c.level}</strong>${c.subclass ? ` (${c.subclass})` : ''}`)
+        .map(c => `<strong>${escapeHtml(c.name)} ${c.level}</strong>${c.subclass ? ` (${c.subclass})` : ''}`)
         .join(' / ');
 
     const isDndBeyond = data.source === "dndbeyond";
@@ -95,12 +96,12 @@ export function renderHeroSection(data: CharacterData): string {
         <section class="sheet-hero">
             <div class="sheet-identity">
                 <div class="avatar-wrap">
-                    <img src="${data.avatarUrl}" alt="${data.name}" class="character-avatar" />
+                    <img src="${data.avatarUrl}" alt="${escapeHtml(data.name)}" class="character-avatar" />
                     <span class="level-pill">LVL ${data.level}</span>
                 </div>
                 <div class="identity-info">
                     <div class="title-row">
-                        <h1 class="character-name">${data.name}${nameLockBadge}</h1>
+                        <h1 class="character-name">${escapeHtml(data.name)}${nameLockBadge}</h1>
                         <button type="button" class="inspiration-badge ${data.vitals.heroicInspiration ? 'active' : ''}" id="inspiration-toggle" aria-pressed="${data.vitals.heroicInspiration ? 'true' : 'false'}" title="Heroic Inspiration (Click to toggle)">
                             <i class="fa-solid fa-star" aria-hidden="true"></i>
                             <span>Heroic Inspiration</span>
@@ -110,9 +111,9 @@ export function renderHeroSection(data: CharacterData): string {
                         ${classText}${classLockBadge}
                     </p>
                     <div class="character-tags">
-                        <span class="tag"><i class="fa-solid fa-dna"></i> ${data.race}${raceLockBadge}</span>
-                        <span class="tag"><i class="fa-solid fa-masks-theater"></i> ${data.background}${bgLockBadge}</span>
-                        <span class="tag"><i class="fa-solid fa-scale-balanced"></i> ${data.alignment}${alignLockBadge}</span>
+                        <span class="tag"><i class="fa-solid fa-dna"></i> ${escapeHtml(data.race)}${raceLockBadge}</span>
+                        <span class="tag"><i class="fa-solid fa-masks-theater"></i> ${escapeHtml(data.background)}${bgLockBadge}</span>
+                        <span class="tag"><i class="fa-solid fa-scale-balanced"></i> ${escapeHtml(data.alignment)}${alignLockBadge}</span>
                         ${isDndBeyond && data.dndBeyondUrl ? `
                             <a href="${data.dndBeyondUrl}" target="_blank" rel="noopener noreferrer" class="tag tag-link">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> D&D Beyond

@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 import {
@@ -31,13 +32,13 @@ function renderCard(o: CardOptions): string {
     return `
         <div class="skill-checkbox-card ${o.cardClass} ${o.checked ? "selected" : ""} ${o.locked ? "locked" : ""} ${o.disabled ? "disabled" : ""}"
              role="checkbox" tabindex="${inert ? "-1" : "0"}" aria-checked="${o.checked}"${inert ? ' aria-disabled="true"' : ""}
-             data-skill-name="${o.name}"${o.attrs ? ` ${o.attrs}` : ""}${o.title ? ` title="${o.title}"` : ""}>
+             data-skill-name="${escapeHtml(o.name)}"${o.attrs ? ` ${o.attrs}` : ""}${o.title ? ` title="${o.title}"` : ""}>
             <div class="skill-info">
                 <span class="card-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
-                <span class="skill-name">${o.name}</span>
-                <span class="sr-only"> (${o.stat})${o.badge && o.badge !== o.stat ? `, ${o.badge}` : ""}</span>
+                <span class="skill-name">${escapeHtml(o.name)}</span>
+                <span class="sr-only"> (${o.stat})${o.badge && o.badge !== o.stat ? `, ${escapeHtml(o.badge)}` : ""}</span>
             </div>
-            <span class="skill-stat-badge" aria-hidden="true">${o.badge}</span>
+            <span class="skill-stat-badge" aria-hidden="true">${escapeHtml(o.badge)}</span>
         </div>
     `;
 }
@@ -45,7 +46,7 @@ function renderCard(o: CardOptions): string {
 function sourceCounts(sources: SkillSource[], assigned: Map<string, string>): string {
     return sources.map((s) => {
         const used = Array.from(assigned.values()).filter((k) => k === s.key).length;
-        return `<span class="spell-count-badge ${used === s.count ? "maxed" : "info"}">${s.label} ${used}/${s.count}</span>`;
+        return `<span class="spell-count-badge ${used === s.count ? "maxed" : "info"}">${escapeHtml(s.label)} ${used}/${s.count}</span>`;
     }).join(" ");
 }
 
@@ -110,13 +111,13 @@ export function renderStep6Skills(ctx: CharacterCreatorContext): string {
                 return `
                     <div class="creator-detail-box" style="margin-top: 1.5rem;">
                         <div class="box-header-with-badge">
-                            <h4>${sec.label}</h4>
+                            <h4>${escapeHtml(sec.label)}</h4>
                             <span class="spell-count-badge ${chosen.length === sec.count ? "maxed" : "info"}">${chosen.length} / ${sec.count} Chosen</span>
                         </div>
                         <p class="card-body">${sec.mode === "proficiency-or-expertise"
                             ? "Gain proficiency in one of these skills, or Expertise if you're already proficient."
                             : sec.count > 1 ? `Gain proficiency in ${sec.count} skills of your choice. (The feat also allows tools; choose fewer skills here for each tool.)` : "Gain proficiency in one skill of your choice."}</p>
-                        <div class="skills-select-grid" role="group" aria-label="${sec.label} skills">
+                        <div class="skills-select-grid" role="group" aria-label="${escapeHtml(sec.label)} skills">
                             ${options.map((name) => {
                                 const sk = ALL_SKILLS.find((s) => s.name === name)!;
                                 const isChosen = chosen.includes(name);
@@ -145,7 +146,7 @@ export function renderStep6Skills(ctx: CharacterCreatorContext): string {
                         <h4><i class="fa-solid fa-star" aria-hidden="true"></i> Expertise</h4>
                         <span>${sourceCounts(expertiseSources, expertiseMatch.assigned)}</span>
                     </div>
-                    <p class="card-body">Your Proficiency Bonus is doubled for ability checks with the chosen skills.${unmetExpertise.map((u) => ` ${u.source} gives Expertise in ${u.skill} only once you're proficient in it.`).join("")}</p>
+                    <p class="card-body">Your Proficiency Bonus is doubled for ability checks with the chosen skills.${unmetExpertise.map((u) => ` ${escapeHtml(u.source)} gives Expertise in ${escapeHtml(u.skill)} only once you're proficient in it.`).join("")}</p>
                     <div class="skills-select-grid" role="group" aria-label="Expertise">
                         ${ALL_SKILLS.filter((sk) => proficient.has(sk.name)).map((sk) => {
                             const fromFeat = featExpertise.get(sk.name);
