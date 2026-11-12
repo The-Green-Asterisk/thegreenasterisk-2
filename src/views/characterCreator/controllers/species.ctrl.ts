@@ -11,7 +11,7 @@ function activateOnKey(card: Element): void {
             e.preventDefault();
             (card as HTMLElement).click();
         }
-    });
+    }, { signal: el.signal });
 }
 
 export function initSpeciesController(ctx: CharacterCreatorContext): void {
@@ -24,7 +24,7 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
             ctx.state.lineageId = sp?.lineages?.[0]?.id || "";
             ctx.renderStep(2);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorLineageCards.forEach((card) => {
@@ -33,14 +33,14 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
             ctx.state.lineageId = card.getAttribute("data-lineage-id") || "";
             ctx.renderStep(2);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     const abilitySelect = el.creatorSpeciesSpellAbilitySelect as HTMLSelectElement | null;
     abilitySelect?.addEventListener("change", () => {
         ctx.state.speciesSpellAbility = abilitySelect.value as AbilityName;
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     el.creatorSpeciesPickSelects.forEach((select) => {
         select.addEventListener("change", () => {
@@ -48,6 +48,6 @@ export function initSpeciesController(ctx: CharacterCreatorContext): void {
             if (!trait) return;
             setSpeciesPick(ctx, trait, Number(select.getAttribute("data-index")) || 0, select.value);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 }

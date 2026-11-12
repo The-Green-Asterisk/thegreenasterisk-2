@@ -75,7 +75,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const statusMsg = sheet.querySelector<HTMLElement>("#character-status-message");
     const importWarning = sheet.querySelector<HTMLElement>("#character-import-warning");
     const importWarningText = sheet.querySelector<HTMLElement>("#character-import-warning-text");
-    sheet.querySelector<HTMLButtonElement>("#character-import-warning-dismiss")?.addEventListener("click", () => clearImportWarning());
+    sheet.querySelector<HTMLButtonElement>("#character-import-warning-dismiss")?.addEventListener("click", () => clearImportWarning(), { signal: el.signal });
     const dndBeyondNote = sheet.querySelector<HTMLElement>("#dnd-beyond-note");
     const idInput = sheet.querySelector<HTMLInputElement>("#dndbeyond-id-input");
     const loadBtn = sheet.querySelector<HTMLButtonElement>("#load-character-btn");

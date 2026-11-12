@@ -375,13 +375,13 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         const modal = q(kind, "modal-container");
         if (!modal) continue;
 
-        q(kind, "close-btn")?.addEventListener("click", () => close(kind));
-        q<HTMLButtonElement>(kind, "guide-btn")?.addEventListener("click", () => ctx.openMarkupGuideModal());
-        q(kind, "cancel-btn")?.addEventListener("click", () => close(kind));
+        q(kind, "close-btn")?.addEventListener("click", () => close(kind), { signal: el.signal });
+        q<HTMLButtonElement>(kind, "guide-btn")?.addEventListener("click", () => ctx.openMarkupGuideModal(), { signal: el.signal });
+        q(kind, "cancel-btn")?.addEventListener("click", () => close(kind), { signal: el.signal });
         modal.addEventListener("click", (event) => {
             if (event.target === modal) close(kind);
-        });
-        q<HTMLFormElement>(kind, "form")?.addEventListener("submit", (event) => void submit(kind, event as SubmitEvent));
+        }, { signal: el.signal });
+        q<HTMLFormElement>(kind, "form")?.addEventListener("submit", (event) => void submit(kind, event as SubmitEvent), { signal: el.signal });
 
         const imageInput = input(kind, "image");
         const fileInput = input(kind, "file-input");
@@ -391,14 +391,14 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         imageInput?.addEventListener("input", () => {
             updateImagePreview(kind, imageInput.value);
             hideUploadStatus(kind);
-        });
+        }, { signal: el.signal });
         q(kind, "image-clear-btn")?.addEventListener("click", () => {
             if (imageInput) imageInput.value = "";
             updateImagePreview(kind, "");
             hideUploadStatus(kind);
             imageInput?.focus();
-        });
-        uploadBtn?.addEventListener("click", () => fileInput?.click());
+        }, { signal: el.signal });
+        uploadBtn?.addEventListener("click", () => fileInput?.click(), { signal: el.signal });
         fileInput?.addEventListener("change", async () => {
             const file = fileInput.files?.[0];
             if (!file || !uploadStatus) return;
@@ -424,7 +424,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
                 if (uploadBtn) uploadBtn.disabled = false;
                 fileInput.value = "";
             }
-        });
+        }, { signal: el.signal });
     }
 
     document.addEventListener("keydown", (event) => {
@@ -432,7 +432,7 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         if (event.key !== "Escape" || markupGuideOpen()) return;
         const openKind = KINDS.find(isOpen);
         if (openKind) close(openKind);
-    });
+    }, { signal: el.signal });
 
     return { open, close };
 }

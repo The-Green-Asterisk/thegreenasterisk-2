@@ -1,3 +1,4 @@
+import el from "@elements";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { effectTargetOption, renderEffectRow } from "../components/itemEffects";
 
@@ -131,7 +132,7 @@ export function createItemEffectsEditor(els: EffectsEditorElements) {
         if (target.classList.contains("effect-target") || target.classList.contains("effect-type") || target.classList.contains("effect-plus")) {
             syncRow(row);
         }
-    });
+    }, { signal: el.signal });
     els.list?.addEventListener("click", (event) => {
         const remove = (event.target as HTMLElement).closest<HTMLButtonElement>(".effect-remove-btn");
         if (!remove) return;
@@ -143,7 +144,7 @@ export function createItemEffectsEditor(els: EffectsEditorElements) {
         row.remove();
         renumber();
         (next?.querySelector<HTMLElement>("select, button") || els.addButton)?.focus();
-    });
+    }, { signal: el.signal });
     els.addButton?.addEventListener("click", () => {
         if (!els.list) return;
         const index = rows().length;
@@ -152,8 +153,8 @@ export function createItemEffectsEditor(els: EffectsEditorElements) {
         const row = rows()[index];
         syncRow(row);
         row.querySelector<HTMLSelectElement>(".effect-target")?.focus();
-    });
-    els.attunement?.addEventListener("change", updateHint);
+    }, { signal: el.signal });
+    els.attunement?.addEventListener("change", updateHint, { signal: el.signal });
 
     return {
         /** Shows these effects; what's shown now counts as unchanged */

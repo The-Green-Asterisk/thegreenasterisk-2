@@ -1,3 +1,4 @@
+import el from "@elements";
 /**
  * Keyboard focus for the sheet's dialogs (WCAG 2.1.2, 2.4.3): while one is open, Tab and Shift+Tab cycle within it;
  * when it closes, focus goes back to what had it before the dialog opened. A dialog is open when it's shown (no
@@ -19,7 +20,7 @@ export function initDialogFocus(root: HTMLElement): void {
     document.addEventListener("focusin", (e) => {
         const t = e.target as HTMLElement;
         if (t && !t.closest('[role="dialog"]')) lastFocusOutside = t;
-    });
+    }, { signal: el.signal });
 
     const observer = new MutationObserver(() => {
         for (const d of dialogs()) {
@@ -58,5 +59,5 @@ export function initDialogFocus(root: HTMLElement): void {
             e.preventDefault();
             first.focus();
         }
-    });
+    }, { signal: el.signal });
 }

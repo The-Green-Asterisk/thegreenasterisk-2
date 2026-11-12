@@ -16,7 +16,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     tempHpDisplay?.addEventListener("input", () => {
         const next = Number(tempHpDisplay.value);
@@ -25,7 +25,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     // Sticky vitals bar HP input listeners
     const stickyHpDisplay = ctx.sheet.querySelector<HTMLInputElement>("#sticky-hp-display");
@@ -40,7 +40,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     stickyTempHpDisplay?.addEventListener("input", (e) => {
         e.stopPropagation();
@@ -50,7 +50,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     ctx.sheet.querySelectorAll<HTMLButtonElement>("[data-hp-delta]").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -61,13 +61,13 @@ export function initVitalsController(ctx: CharacterSheetContext) {
             ctx.updateHpDisplay();
             ctx.persistTrackerSnapshot();
             ctx.scheduleDebouncedAutoSave();
-        });
+        }, { signal: el.signal });
     });
 
     // Sticky vitals bar scroll-to-top on click, preserving input/button interaction
     const stickyBar = ctx.sheet.querySelector<HTMLElement>("#sticky-vitals-bar");
-    stickyBar?.querySelectorAll<HTMLElement>("input, label, button").forEach(el => {
-        el.addEventListener("click", (e) => e.stopPropagation());
+    stickyBar?.querySelectorAll<HTMLElement>("input, label, button").forEach(control => {
+        control.addEventListener("click", (e) => e.stopPropagation(), { signal: el.signal });
     });
 
     stickyBar?.addEventListener("click", (e) => {
@@ -76,7 +76,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
             return;
         }
         window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+    }, { signal: el.signal });
 
     // Sticky bar scroll detection: morph into sticky bar when scrolling past the vitals section
     function getNavBottom(): number {
@@ -109,9 +109,9 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         document.removeEventListener("fullscreenchange", sheetWithScroll._stickyVitalsScrollHandler);
     }
     sheetWithScroll._stickyVitalsScrollHandler = checkStickyVitals;
-    window.addEventListener("scroll", checkStickyVitals, { passive: true });
-    window.addEventListener("resize", checkStickyVitals, { passive: true });
-    document.addEventListener("fullscreenchange", checkStickyVitals, { passive: true });
+    window.addEventListener("scroll", checkStickyVitals, { passive: true, signal: el.signal });
+    window.addEventListener("resize", checkStickyVitals, { passive: true, signal: el.signal });
+    document.addEventListener("fullscreenchange", checkStickyVitals, { passive: true, signal: el.signal });
 
     checkStickyVitals();
 
@@ -186,7 +186,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
 
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     // Manual pip toggle
     ctx.sheet.querySelectorAll<HTMLButtonElement>(".death-pip").forEach(pip => {
@@ -220,7 +220,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
             ctx.updateHpDisplay();
             ctx.persistTrackerSnapshot();
             ctx.scheduleDebouncedAutoSave();
-        });
+        }, { signal: el.signal });
     });
 
     // Stabilize button
@@ -236,7 +236,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     // Reset button
     ctx.sheet.querySelector<HTMLButtonElement>("#death-save-reset-btn")?.addEventListener("click", () => {
@@ -252,7 +252,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 
     // Healing buttons while at 0 HP
     ctx.sheet.querySelectorAll<HTMLButtonElement>("[data-death-heal]").forEach(btn => {
@@ -270,7 +270,7 @@ export function initVitalsController(ctx: CharacterSheetContext) {
             ctx.updateHpDisplay();
             ctx.persistTrackerSnapshot();
             ctx.scheduleDebouncedAutoSave();
-        });
+        }, { signal: el.signal });
     });
 
     const reviveInput = ctx.sheet.querySelector<HTMLInputElement>("#death-revive-hp-input");
@@ -290,5 +290,5 @@ export function initVitalsController(ctx: CharacterSheetContext) {
         ctx.updateHpDisplay();
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 }

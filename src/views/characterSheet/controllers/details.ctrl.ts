@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 /** Currency on the Details & Notes tab: edits save to the character (coins change in play, like hit points). */
@@ -11,6 +12,6 @@ export function initDetailsController(ctx: CharacterSheetContext) {
             input.value = String(value);
             character.currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...(character.currency || {}), [coin]: value };
             ctx.scheduleDebouncedAutoSave();
-        });
+        }, { signal: el.signal });
     });
 }

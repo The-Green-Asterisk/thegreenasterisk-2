@@ -28,7 +28,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
             }
             ctx.renderStep(5);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     // Standard array selection: swapping values without editing
@@ -41,7 +41,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(5);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Point buy decrement
@@ -52,7 +52,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(5);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Point buy increment
@@ -63,7 +63,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(5);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     // Manual / Roll score controls
@@ -75,7 +75,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(5);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorScoreIncButtons.forEach((btn) => {
@@ -86,7 +86,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
                 ctx.renderStep(5);
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorScoreInputs.forEach((input) => {
@@ -97,7 +97,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
                 ctx.state.baseAbilities[stat] = val;
                 ctx.updateLiveSummary();
             }
-        });
+        }, { signal: el.signal });
     });
 
     const rollBtn = el.creatorRollAllButton;
@@ -116,7 +116,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         }
         ctx.renderStep(5);
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     // Re-read ability scores, background bonuses and feats from D&D Beyond (asks first: it replaces creator choices)
     const rereadBtn = el.creatorDdbRereadButton;
@@ -131,12 +131,12 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         rereadConfirm.hidden = false;
         rereadBtn.setAttribute("aria-expanded", "true");
         el.creatorDdbRereadConfirmButton?.focus();
-    });
+    }, { signal: el.signal });
     el.creatorDdbRereadCancelButton?.addEventListener("click", () => {
         if (rereadConfirm) rereadConfirm.hidden = true;
         rereadBtn?.setAttribute("aria-expanded", "false");
         rereadBtn?.focus();
-    });
+    }, { signal: el.signal });
     el.creatorDdbRereadConfirmButton?.addEventListener("click", async (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
         btn.disabled = true;
@@ -150,7 +150,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         ctx.renderStep(5);
         ctx.updateLiveSummary();
         el.creatorDdbRereadButton?.focus();
-    });
+    }, { signal: el.signal });
 
     // ASI / Feats controls
     el.creatorAsiTypeRadios.forEach((radio) => {
@@ -171,7 +171,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
             }
             ctx.renderStep(5);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorAsiStatSelects.forEach((select) => {
@@ -185,7 +185,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
             }
             ctx.renderStep(5);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorAsiFeatSelects.forEach((select) => {
@@ -203,6 +203,6 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
             }
             ctx.renderStep(5);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 }

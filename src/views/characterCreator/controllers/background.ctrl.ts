@@ -17,7 +17,7 @@ export function initBackgroundController(ctx: CharacterCreatorContext): void {
             ctx.sanitizeSpellSelections();
             ctx.renderStep(4);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     el.creatorBackgroundOptionInputs.forEach((radio) => {
@@ -25,7 +25,7 @@ export function initBackgroundController(ctx: CharacterCreatorContext): void {
             ctx.state.backgroundOption = (e.target as HTMLInputElement).value as any;
             ctx.renderStep(4);
             ctx.updateLiveSummary();
-        });
+        }, { signal: el.signal });
     });
 
     const statA = el.creatorBackgroundStatA as HTMLSelectElement;
@@ -33,12 +33,12 @@ export function initBackgroundController(ctx: CharacterCreatorContext): void {
         ctx.state.bgStatA = (e.target as HTMLSelectElement).value as AbilityName;
         ctx.renderStep(4);
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 
     const statB = el.creatorBackgroundStatB as HTMLSelectElement;
     statB?.addEventListener("change", (e) => {
         ctx.state.bgStatB = (e.target as HTMLSelectElement).value as AbilityName;
         ctx.renderStep(4);
         ctx.updateLiveSummary();
-    });
+    }, { signal: el.signal });
 }

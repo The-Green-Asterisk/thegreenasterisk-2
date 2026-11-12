@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initActionsController(ctx: CharacterSheetContext) {
@@ -12,7 +13,7 @@ export function initActionsController(ctx: CharacterSheetContext) {
 
         card.addEventListener("click", () => {
             ctx.openActionModal(actionIndex);
-        });
+        }, { signal: el.signal });
     });
 
     // Action spell links
@@ -22,7 +23,7 @@ export function initActionsController(ctx: CharacterSheetContext) {
             elBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 void ctx.openSpellModal(spellName);
-            });
+            }, { signal: el.signal });
         }
     });
 }

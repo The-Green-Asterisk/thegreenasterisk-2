@@ -1,3 +1,4 @@
+import el from "@elements";
 import { CharacterSheetContext } from "./context";
 
 export function initResourcesController(ctx: CharacterSheetContext) {
@@ -19,7 +20,7 @@ export function initResourcesController(ctx: CharacterSheetContext) {
             targetPip.classList.toggle("active");
             ctx.updateSlotCounters();
             ctx.persistTrackerSnapshot();
-        });
+        }, { signal: el.signal });
     });
 
     // One delegated handler for every pip (re-rendered tabs bring new pips). A resource's pip and the same pip shown
@@ -38,7 +39,7 @@ export function initResourcesController(ctx: CharacterSheetContext) {
             twins.forEach(p => p.classList.toggle("active", active));
             ctx.updateSlotCounters();
             ctx.persistTrackerSnapshot();
-        });
+        }, { signal: el.signal });
     }
 
     // Short Rest - resets Pact Magic and all features marked resetOn = 'short'
@@ -47,7 +48,7 @@ export function initResourcesController(ctx: CharacterSheetContext) {
         ctx.sheet.querySelectorAll<HTMLButtonElement>('.class-resource-tracker[data-reset-on="short"] .pip').forEach(p => p.classList.add("active"));
         ctx.updateSlotCounters();
         ctx.persistTrackerSnapshot();
-    });
+    }, { signal: el.signal });
 
     // Long Rest - resets all spell slots, all class resources, hit points, and heroic inspiration
     ctx.sheet.querySelector<HTMLButtonElement>("#long-rest-btn")?.addEventListener("click", () => {
@@ -68,5 +69,5 @@ export function initResourcesController(ctx: CharacterSheetContext) {
         }
         ctx.persistTrackerSnapshot();
         ctx.scheduleDebouncedAutoSave();
-    });
+    }, { signal: el.signal });
 }

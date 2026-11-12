@@ -118,7 +118,7 @@ export function updateMulticlassNavBars(ctx: CharacterCreatorContext): void {
             if (targetEl) {
                 targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
             }
-        });
+        }, { signal: el.signal });
     });
 }
 

@@ -369,7 +369,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     const condName = btn.getAttribute("data-toggle-condition");
                     if (!condName) return;
                     toggleConditionByName(condName);
-                });
+                }, { signal: el.signal });
             });
 
             conditionsModalList.querySelectorAll<HTMLElement>(".condition-modal-card[data-condition-name]").forEach(card => {
@@ -377,7 +377,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     const condName = card.getAttribute("data-condition-name");
                     if (!condName) return;
                     toggleConditionByName(condName);
-                });
+                }, { signal: el.signal });
             });
         }
     }
@@ -649,7 +649,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const encoded = btn.getAttribute("data-remove-spell-name");
                 if (!encoded) return;
                 removeSpellFromCharacter(decodeURIComponent(encoded));
-            });
+            }, { signal: el.signal });
         });
 
         // Wire preview click on spell name
@@ -658,7 +658,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const encoded = row.getAttribute("data-preview-spell-name");
                 if (!encoded) return;
                 void openSpellModal(encoded);
-            });
+            }, { signal: el.signal });
         });
 
         // Wire allowed spell limit step buttons (- / +)
@@ -668,7 +668,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const lvl = Number(btn.getAttribute("data-adjust-level") || "0");
                 const delta = Number(btn.getAttribute("data-adjust-delta") || "0");
                 adjustAllowedSpellsForLevel(lvl, delta);
-            });
+            }, { signal: el.signal });
         });
     }
 
@@ -825,7 +825,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 } else {
                     addSpellToCharacter(spell);
                 }
-            });
+            }, { signal: el.signal });
         });
 
         manageSpellsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-edit-btn[data-db-edit-idx]").forEach(btn => {
@@ -833,7 +833,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 e.stopPropagation();
                 const row = cachedDbSpellRows[Number(btn.getAttribute("data-db-edit-idx") || "-1")];
                 if (row) openCustomSpellModal(row);
-            });
+            }, { signal: el.signal });
         });
 
         manageSpellsDbResults.querySelectorAll<HTMLElement>(".manage-db-spell-info[data-preview-db-idx]").forEach(info => {
@@ -843,7 +843,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 if (!spell) return;
                 ctx.spellMap.set(spell.name.toLowerCase(), spell);
                 void openSpellModal(encodeURIComponent(spell.name), spell.id);
-            });
+            }, { signal: el.signal });
         });
     }
 
@@ -1052,7 +1052,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const encoded = btn.getAttribute("data-remove-weapon-name");
                 if (!encoded) return;
                 removeItemFromCharacter(decodeURIComponent(encoded), "weapon");
-            });
+            }, { signal: el.signal });
         });
 
         manageItemsCurrentList.querySelectorAll<HTMLButtonElement>(".manage-remove-spell-btn[data-remove-equipment-name]").forEach(btn => {
@@ -1061,7 +1061,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const encoded = btn.getAttribute("data-remove-equipment-name");
                 if (!encoded) return;
                 removeItemFromCharacter(decodeURIComponent(encoded), "equipment");
-            });
+            }, { signal: el.signal });
         });
 
         // Wire preview clicks
@@ -1070,7 +1070,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const encoded = row.getAttribute("data-preview-weapon-name");
                 if (!encoded) return;
                 void openItemModal(encoded, undefined, "Weapon");
-            });
+            }, { signal: el.signal });
         });
 
         manageItemsCurrentList.querySelectorAll<HTMLElement>(".manage-abbrev-spell-main[data-preview-equipment-name]").forEach(row => {
@@ -1079,7 +1079,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const encodedType = row.getAttribute("data-preview-equipment-type");
                 if (!encodedName) return;
                 void openItemModal(encodedName, undefined, encodedType ? decodeURIComponent(encodedType) : undefined);
-            });
+            }, { signal: el.signal });
         });
     }
 
@@ -1283,7 +1283,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 } else {
                     addItemToCharacter(item);
                 }
-            });
+            }, { signal: el.signal });
         });
 
         manageItemsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-edit-btn[data-db-item-edit-idx]").forEach(btn => {
@@ -1291,7 +1291,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 e.stopPropagation();
                 const item = cachedDbItems[Number(btn.getAttribute("data-db-item-edit-idx") || "-1")];
                 if (item) customItemModals.open(customItemKindFor(item), item);
-            });
+            }, { signal: el.signal });
         });
 
         manageItemsDbResults.querySelectorAll<HTMLElement>(".manage-db-spell-info[data-preview-db-item-idx]").forEach(info => {
@@ -1300,7 +1300,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const item = cachedDbItems[idx];
                 if (!item) return;
                 void openItemModal(encodeURIComponent(item.name), item.id, item.category || item.filterType);
-            });
+            }, { signal: el.signal });
         });
     }
 
@@ -2467,22 +2467,22 @@ export function initModalsController(ctx: CharacterSheetContext) {
     });
     ctx.openCustomItemModal = customItemModals.open;
 
-    modalSpellCopyLockBtn?.addEventListener("click", () => toggleCopyLock("spell", spellModalName, modalSpellCopyLockBtn));
-    modalItemCopyLockBtn?.addEventListener("click", () => toggleCopyLock("item", currentItemModalName, modalItemCopyLockBtn));
+    modalSpellCopyLockBtn?.addEventListener("click", () => toggleCopyLock("spell", spellModalName, modalSpellCopyLockBtn), { signal: el.signal });
+    modalItemCopyLockBtn?.addEventListener("click", () => toggleCopyLock("item", currentItemModalName, modalItemCopyLockBtn), { signal: el.signal });
 
     modalSpellEditBtn?.addEventListener("click", () => {
         const spell = spellModalDbSpell;
         if (!spell) return;
         closeSpellModal();
         openCustomSpellModal(spell);
-    });
+    }, { signal: el.signal });
 
     modalItemEditBtn?.addEventListener("click", () => {
         const item = itemModalDbItem;
         if (!item) return;
         closeItemModal();
         customItemModals.open(customItemKindFor(item), item);
-    });
+    }, { signal: el.signal });
 
     // Delegated click listener across sheet for [condition], [action], [rules], and [spell] links
     sheet.addEventListener("click", (event) => {
@@ -2574,37 +2574,37 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 return;
             }
         }
-    });
+    }, { signal: el.signal });
 
-    conditionDetailCloseBtn?.addEventListener("click", closeConditionDetailModal);
-    conditionDetailDoneBtn?.addEventListener("click", closeConditionDetailModal);
+    conditionDetailCloseBtn?.addEventListener("click", closeConditionDetailModal, { signal: el.signal });
+    conditionDetailDoneBtn?.addEventListener("click", closeConditionDetailModal, { signal: el.signal });
     conditionDetailBackdrop?.addEventListener("click", (event) => {
         if (event.target === conditionDetailBackdrop) {
             closeConditionDetailModal();
         }
-    });
+    }, { signal: el.signal });
     conditionDetailToggleActiveBtn?.addEventListener("click", () => {
         if (!activeConditionDetailName) return;
         toggleConditionByName(activeConditionDetailName);
         renderConditionDetailModalContent(activeConditionDetailName);
-    });
+    }, { signal: el.signal });
 
     // Listeners
-    modalCloseBtn?.addEventListener("click", closeSpellModal);
-    modalActionCloseBtn?.addEventListener("click", closeSpellModal);
+    modalCloseBtn?.addEventListener("click", closeSpellModal, { signal: el.signal });
+    modalActionCloseBtn?.addEventListener("click", closeSpellModal, { signal: el.signal });
     modalBackdrop?.addEventListener("click", (event) => {
         if (event.target === modalBackdrop) {
             closeSpellModal();
         }
-    });
+    }, { signal: el.signal });
 
-    itemModalCloseBtn?.addEventListener("click", closeItemModal);
-    itemModalCloseActionBtn?.addEventListener("click", closeItemModal);
+    itemModalCloseBtn?.addEventListener("click", closeItemModal, { signal: el.signal });
+    itemModalCloseActionBtn?.addEventListener("click", closeItemModal, { signal: el.signal });
     itemModalBackdrop?.addEventListener("click", (event) => {
         if (event.target === itemModalBackdrop) {
             closeItemModal();
         }
-    });
+    }, { signal: el.signal });
 
     modalItemQtyDec?.addEventListener("click", (e) => {
         e.preventDefault();
@@ -2614,7 +2614,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalItemQuantityInput) modalItemQuantityInput.value = String(next);
         if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, next);
         renderManageCurrentItemsPanel();
-    });
+    }, { signal: el.signal });
 
     modalItemQtyInc?.addEventListener("click", (e) => {
         e.preventDefault();
@@ -2624,7 +2624,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (modalItemQuantityInput) modalItemQuantityInput.value = String(next);
         if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, next);
         renderManageCurrentItemsPanel();
-    });
+    }, { signal: el.signal });
 
     modalItemQuantityInput?.addEventListener("input", () => {
         if (!currentItemModalName) return;
@@ -2633,7 +2633,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, val);
             renderManageCurrentItemsPanel();
         }
-    });
+    }, { signal: el.signal });
 
     modalItemQuantityInput?.addEventListener("blur", () => {
         if (!currentItemModalName) return;
@@ -2642,32 +2642,32 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (ctx.setItemQuantity) ctx.setItemQuantity(currentItemModalName, 0);
             renderManageCurrentItemsPanel();
         }
-    });
+    }, { signal: el.signal });
 
-    actionModalCloseBtn?.addEventListener("click", closeActionModal);
-    actionModalCloseActionBtn?.addEventListener("click", closeActionModal);
+    actionModalCloseBtn?.addEventListener("click", closeActionModal, { signal: el.signal });
+    actionModalCloseActionBtn?.addEventListener("click", closeActionModal, { signal: el.signal });
     actionModalBackdrop?.addEventListener("click", (event) => {
         if (event.target === actionModalBackdrop) {
             closeActionModal();
         }
-    });
+    }, { signal: el.signal });
 
-    customSpellCloseBtn?.addEventListener("click", closeCustomSpellModal);
-    customSpellCancelBtn?.addEventListener("click", closeCustomSpellModal);
+    customSpellCloseBtn?.addEventListener("click", closeCustomSpellModal, { signal: el.signal });
+    customSpellCancelBtn?.addEventListener("click", closeCustomSpellModal, { signal: el.signal });
     customSpellModal?.addEventListener("click", (event) => {
         if (event.target === customSpellModal) {
             closeCustomSpellModal();
         }
-    });
+    }, { signal: el.signal });
 
-    customSpellGuideBtn?.addEventListener("click", openMarkupGuideModal);
-    markupGuideCloseBtn?.addEventListener("click", closeMarkupGuideModal);
-    markupGuideDoneBtn?.addEventListener("click", closeMarkupGuideModal);
+    customSpellGuideBtn?.addEventListener("click", openMarkupGuideModal, { signal: el.signal });
+    markupGuideCloseBtn?.addEventListener("click", closeMarkupGuideModal, { signal: el.signal });
+    markupGuideDoneBtn?.addEventListener("click", closeMarkupGuideModal, { signal: el.signal });
     markupGuideModal?.addEventListener("click", (event) => {
         if (event.target === markupGuideModal) {
             closeMarkupGuideModal();
         }
-    });
+    }, { signal: el.signal });
 
     markupGuideCopyBtn?.addEventListener("click", async () => {
         const textToCopy = markupGuideExampleText?.textContent || "";
@@ -2687,11 +2687,11 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 descInput.value = textToCopy;
             }
         }
-    });
+    }, { signal: el.signal });
 
     customSpellUploadTriggerBtn?.addEventListener("click", () => {
         customSpellFileInput?.click();
-    });
+    }, { signal: el.signal });
 
     customSpellFileInput?.addEventListener("change", async () => {
         const file = customSpellFileInput.files?.[0];
@@ -2732,7 +2732,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (customSpellUploadTriggerBtn) customSpellUploadTriggerBtn.disabled = false;
             customSpellFileInput.value = "";
         }
-    });
+    }, { signal: el.signal });
 
     customSpellImgInput?.addEventListener("input", () => {
         updateCustomSpellImagePreview(customSpellImgInput.value);
@@ -2740,7 +2740,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             customSpellUploadStatus.classList.add("hidden");
             customSpellUploadStatus.textContent = "";
         }
-    });
+    }, { signal: el.signal });
 
     customSpellClearImgBtn?.addEventListener("click", () => {
         if (customSpellImgInput) customSpellImgInput.value = "";
@@ -2749,7 +2749,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             customSpellUploadStatus.classList.add("hidden");
             customSpellUploadStatus.textContent = "";
         }
-    });
+    }, { signal: el.signal });
 
     customSpellHasDamage?.addEventListener("change", () => {
         if (customSpellHasDamage.checked) {
@@ -2758,23 +2758,23 @@ export function initModalsController(ctx: CharacterSheetContext) {
         } else {
             customSpellDamagePanel?.classList.add("hidden");
         }
-    });
+    }, { signal: el.signal });
 
     customSpellLevelInput?.addEventListener("change", () => {
         if (customSpellHasDamage?.checked) {
             renderCustomSpellScalingRows();
         }
-    });
+    }, { signal: el.signal });
 
     customSpellScalingType?.addEventListener("change", () => {
         if (customSpellHasDamage?.checked) {
             renderCustomSpellScalingRows();
         }
-    });
+    }, { signal: el.signal });
 
     customSpellDamageType?.addEventListener("change", () => {
         updateCustomSpellScalingPreviews();
-    });
+    }, { signal: el.signal });
 
     customSpellDamageDice?.addEventListener("input", () => {
         const rows = customSpellScalingTbody?.querySelectorAll<HTMLTableRowElement>("tr[data-level]");
@@ -2793,7 +2793,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             }
             updateCustomSpellScalingPreviews();
         }
-    });
+    }, { signal: el.signal });
 
     customSpellDamageMod?.addEventListener("input", () => {
         const rows = customSpellScalingTbody?.querySelectorAll<HTMLTableRowElement>("tr[data-level]");
@@ -2807,15 +2807,15 @@ export function initModalsController(ctx: CharacterSheetContext) {
         } else {
             updateCustomSpellScalingPreviews();
         }
-    });
+    }, { signal: el.signal });
 
     customSpellAutoscaleBtn?.addEventListener("click", () => {
         renderCustomSpellScalingRows({ autoScale: true });
-    });
+    }, { signal: el.signal });
 
     customSpellResetScalingBtn?.addEventListener("click", () => {
         renderCustomSpellScalingRows({ resetToBase: true });
-    });
+    }, { signal: el.signal });
 
     customSpellScalingTbody?.addEventListener("input", (e) => {
         const target = e.target as HTMLElement | null;
@@ -2832,57 +2832,57 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 }
             }
         }
-    });
+    }, { signal: el.signal });
 
-    conditionsModalCloseBtn?.addEventListener("click", closeConditionsModal);
-    conditionsModalDoneBtn?.addEventListener("click", closeConditionsModal);
+    conditionsModalCloseBtn?.addEventListener("click", closeConditionsModal, { signal: el.signal });
+    conditionsModalDoneBtn?.addEventListener("click", closeConditionsModal, { signal: el.signal });
     conditionsModalBackdrop?.addEventListener("click", (event) => {
         if (event.target === conditionsModalBackdrop) {
             closeConditionsModal();
         }
-    });
+    }, { signal: el.signal });
 
     conditionsSearchInput?.addEventListener("input", () => {
         renderConditionsModalContent();
-    });
+    }, { signal: el.signal });
 
-    manageSpellsCloseBtn?.addEventListener("click", closeManageSpellsModal);
-    manageSpellsDoneBtn?.addEventListener("click", closeManageSpellsModal);
+    manageSpellsCloseBtn?.addEventListener("click", closeManageSpellsModal, { signal: el.signal });
+    manageSpellsDoneBtn?.addEventListener("click", closeManageSpellsModal, { signal: el.signal });
     manageSpellsBackdrop?.addEventListener("click", (event) => {
         if (event.target === manageSpellsBackdrop) {
             closeManageSpellsModal();
         }
-    });
+    }, { signal: el.signal });
 
     manageSpellsSearchInput?.addEventListener("input", () => {
         if (manageSearchTimer) clearTimeout(manageSearchTimer);
         manageSearchTimer = setTimeout(() => {
             void fetchDatabaseSpellsForManageModal();
         }, 180);
-    });
+    }, { signal: el.signal });
 
     manageSpellsLevelSelect?.addEventListener("change", () => {
         void fetchDatabaseSpellsForManageModal();
-    });
+    }, { signal: el.signal });
 
-    manageItemsCloseBtn?.addEventListener("click", closeManageItemsModal);
-    manageItemsDoneBtn?.addEventListener("click", closeManageItemsModal);
+    manageItemsCloseBtn?.addEventListener("click", closeManageItemsModal, { signal: el.signal });
+    manageItemsDoneBtn?.addEventListener("click", closeManageItemsModal, { signal: el.signal });
     manageItemsBackdrop?.addEventListener("click", (event) => {
         if (event.target === manageItemsBackdrop) {
             closeManageItemsModal();
         }
-    });
+    }, { signal: el.signal });
 
     manageItemsSearchInput?.addEventListener("input", () => {
         if (manageItemsSearchTimer) clearTimeout(manageItemsSearchTimer);
         manageItemsSearchTimer = setTimeout(() => {
             void fetchDatabaseItemsForManageModal();
         }, 180);
-    });
+    }, { signal: el.signal });
 
     manageItemsTypeSelect?.addEventListener("change", () => {
         void fetchDatabaseItemsForManageModal();
-    });
+    }, { signal: el.signal });
 
     exhaustionLevelsRow?.querySelectorAll<HTMLButtonElement>(".exhaustion-lvl-btn[data-exhaustion-level]").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -2890,13 +2890,13 @@ export function initModalsController(ctx: CharacterSheetContext) {
             const { activeSet } = getActiveConditionsState();
             commitConditionsState(activeSet, lvl);
             renderConditionsModalContent();
-        });
+        }, { signal: el.signal });
     });
 
     clearAllConditionsBtn?.addEventListener("click", () => {
         commitConditionsState(new Set<string>(), 0);
         renderConditionsModalContent();
-    });
+    }, { signal: el.signal });
 
     // Custom spell form submission
     customSpellForm?.addEventListener("submit", async (e) => {
@@ -3086,7 +3086,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (submitBtn) submitBtn.disabled = false;
             setCustomSpellMode(editingSpell);
         }
-    });
+    }, { signal: el.signal });
 
     // Global escape key handler
     document.addEventListener("keydown", (e) => {
@@ -3128,7 +3128,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 return;
             }
         }
-    });
+    }, { signal: el.signal });
 
     return {
         openSpellModal,
