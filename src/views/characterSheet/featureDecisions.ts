@@ -1659,7 +1659,9 @@ export function applyFeatureDecisionOnCharacterData(
         character.vitals.currentHp = Math.max(0, Math.min(character.vitals.maxHp, character.vitals.currentHp + hpDelta));
     }
 
-    // Recompute skill bonuses when ability modifiers change
+    // Recompute skill bonuses when ability modifiers change; passive scores move with their skill, keeping their own
+    // bonuses (advantage's +5)
+    const skillChanges: Record<string, number> = {};
     for (const ability of character.abilities) {
         const oldMod = oldAbilityMods[ability.abbr] ?? ability.modifier;
         const delta = ability.modifier - oldMod;
@@ -1667,17 +1669,15 @@ export function applyFeatureDecisionOnCharacterData(
             character.skills.forEach(skill => {
                 if (skill.stat.toUpperCase() === ability.abbr.toUpperCase()) {
                     skill.bonus += delta;
+                    skillChanges[skill.name.toLowerCase()] = (skillChanges[skill.name.toLowerCase()] || 0) + delta;
                 }
             });
         }
     }
 
-    const getSkillBonus = (name: string) =>
-        character.skills.find(s => s.name.toLowerCase() === name.toLowerCase())?.bonus ?? 0;
-
-    character.vitals.passivePerception = 10 + getSkillBonus("Perception");
-    character.vitals.passiveInvestigation = 10 + getSkillBonus("Investigation");
-    character.vitals.passiveInsight = 10 + getSkillBonus("Insight");
+    character.vitals.passivePerception = (Number(character.vitals.passivePerception) || 10) + (skillChanges.perception || 0);
+    character.vitals.passiveInvestigation = (Number(character.vitals.passiveInvestigation) || 10) + (skillChanges.investigation || 0);
+    character.vitals.passiveInsight = (Number(character.vitals.passiveInsight) || 10) + (skillChanges.insight || 0);
 
     // Recompute spellcasting DC & attack if spellcasting ability changed
     const spellAbilityStr = String(character.vitals.spellcastingAbility || "");

@@ -911,12 +911,14 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     const profBonus = character.vitals?.proficiencyBonus || Math.floor(((character.level || 1) - 1) / 4) + 2;
 
     // --- 1. RECALCULATE ABILITY SCORES ---
+    const naturalMods: Record<string, number> = {};
     if (itemStatsFromData) character.abilities.forEach(ability => {
         const abbr = ability.abbr;
         // Natural score is baseScore + natural bonus (from racial, leveling, feats)
         const naturalBase = typeof ability.baseScore === "number" ? ability.baseScore : (ability.score - (ability.bonus || 0));
         const naturalBonus = typeof ability.bonus === "number" ? ability.bonus : 0;
         const naturalTotal = naturalBase + naturalBonus;
+        naturalMods[abbr] = Math.floor((naturalTotal - 10) / 2);
 
         const magicFlat = aggregated.statBonuses[abbr] || 0;
         let score = naturalTotal + magicFlat;
@@ -950,17 +952,22 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     const chaMod = abilityMods.CHA ?? 0;
 
     // --- 2. RECALCULATE SKILLS ---
-    if (itemStatsFromData && Array.isArray(character.skills)) {
+    // Like Initiative below: skills keep what the creator and sheet choices put there (Jack of All Trades, bonuses to
+    // one skill) and swap the items' part (ability check bonuses and ability score changes) for the current one
+    const skillItemChanges: Record<string, number> = {};
+    if (itemStatsFromData && Array.isArray(character.skills) && character.vitals) {
+        const vitals = character.vitals as any;
+        const lastApplied: Record<string, number> = vitals._itemSkillBonuses || {};
+        const applied: Record<string, number> = {};
         character.skills.forEach(skill => {
             const statMod = abilityMods[skill.stat] ?? 0;
-            let b = statMod;
-            if (skill.proficiency === "expertise") {
-                b += profBonus * 2;
-            } else if (skill.proficiency === "proficient") {
-                b += profBonus;
-            }
-            skill.bonus = b + aggregated.globalCheckBonus;
+            const itemPart = (statMod - (naturalMods[skill.stat] ?? statMod)) + aggregated.globalCheckBonus;
+            const change = itemPart - (Number(lastApplied[skill.name]) || 0);
+            skill.bonus = (Number(skill.bonus) || 0) + change;
+            skillItemChanges[skill.name.toLowerCase()] = change;
+            applied[skill.name] = itemPart;
         });
+        vitals._itemSkillBonuses = applied;
     }
 
     // --- 3. RECALCULATE VITALS ---
@@ -974,8 +981,13 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         const naturalAc = (character.vitals as any)._naturalArmorClass || 10;
         character.vitals.armorClass = naturalAc + aggregated.acBonus;
 
-        // Initiative: DEX modifier + initiative bonuses
-        character.vitals.initiative = dexMod + aggregated.initiativeBonus;
+        // Initiative keeps what the creator and sheet choices put there (Alert, Dread Ambusher) and swaps the items'
+        // part (their initiative and ability check bonuses, and any DEX change) for the current one. The last part
+        // applied is saved with the character, so reloading doesn't count it twice
+        const vitals = character.vitals as any;
+        const itemInitiative = (dexMod - (naturalMods.DEX ?? dexMod)) + aggregated.initiativeBonus + aggregated.globalCheckBonus;
+        character.vitals.initiative = (Number(character.vitals.initiative) || 0) - (Number(vitals._itemInitiative) || 0) + itemInitiative;
+        vitals._itemInitiative = itemInitiative;
 
         // Spell Save DC & Attack Bonus
         const spellAbilityAbbr = character.vitals.spellcastingAbility
@@ -987,14 +999,10 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         character.vitals.spellAttackBonus = profBonus + spellMod + aggregated.spellAtkBonus;
         character.vitals.spellcastingAbility = `${STAT_ABBRS[spellAbilityAbbr.toLowerCase()] || spellAbilityAbbr} (${spellMod >= 0 ? `+${spellMod}` : spellMod})`;
 
-        // Passive Senses
-        const getSkillBonus = (skillName: string): number => {
-            const s = character.skills?.find(sk => sk.name.toLowerCase() === skillName.toLowerCase());
-            return s ? s.bonus : 0;
-        };
-        character.vitals.passivePerception = 10 + getSkillBonus("Perception");
-        character.vitals.passiveInvestigation = 10 + getSkillBonus("Investigation");
-        character.vitals.passiveInsight = 10 + getSkillBonus("Insight");
+        // Passive scores move with their skill, keeping their own bonuses (advantage's +5)
+        character.vitals.passivePerception = (Number(character.vitals.passivePerception) || 10) + (skillItemChanges.perception || 0);
+        character.vitals.passiveInvestigation = (Number(character.vitals.passiveInvestigation) || 10) + (skillItemChanges.investigation || 0);
+        character.vitals.passiveInsight = (Number(character.vitals.passiveInsight) || 10) + (skillItemChanges.insight || 0);
 
         // Speed
         const baseSpeedNum = parseInt(character.vitals.speed, 10) || 30;
