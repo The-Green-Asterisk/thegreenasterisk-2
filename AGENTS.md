@@ -93,7 +93,7 @@ A view is a folder in `src/views/` named after the view: `{name}.template.ts`, `
 
 **Controllers**
 - The controller runs **after** the route appends the template.
-- Get elements through `el`.
+- Get elements through `el`, never by caching `document.querySelector` results in module scope.
 - `el.<list>.id('x')` and the single-element getters can be `undefined` or `null`; check before use.
 - Pass `{ signal: el.signal }` to every `addEventListener`.
 
