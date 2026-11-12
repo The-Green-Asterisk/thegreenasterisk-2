@@ -9,6 +9,7 @@ import { renderSpellSlotsAndResources } from "./resources";
 import { renderSkills } from "./skills";
 import { describePreparedByClass, getCharacterSpellLevelLimits, renderSpellsByLevel } from "./spells";
 import { renderSavingThrowNotes, renderStickyVitalsBar, renderVitalsSection } from "./vitals";
+import { SheetTab, sheetTabOrder } from "./tabOrder";
 import { renderWeapons } from "./weapons";
 
 export function renderSheetContent(data: CharacterData): string {
@@ -19,6 +20,25 @@ export function renderSheetContent(data: CharacterData): string {
     const lvl2Count = spellsList.filter(s => s.level === 2).length;
     const lvl3Count = spellsList.filter(s => s.level === 3).length;
     const highLevelCount = spellsList.filter(s => s.level >= 4).length;
+
+    const tabOrder = sheetTabOrder(data);
+    const tabButton = (tab: SheetTab, icon: string, label: string) => {
+        const active = tab === tabOrder[0];
+        return `
+                <button class="tab-btn${active ? " active" : ""}" role="tab" aria-selected="${active}" data-tab-target="tab-${tab}" id="btn-tab-${tab}">
+                    <i class="fa-solid ${icon}" aria-hidden="true"></i> ${label}
+                </button>`;
+    };
+    const tabButtons: Record<SheetTab, string> = {
+        weapons: tabButton("weapons", "fa-khanda", `Weapons <span class="tab-count" id="tab-weapons-count">(${data.weapons?.length || 0})</span>`),
+        spells: tabButton("spells", "fa-wand-sparkles", `Spells <span class="tab-count" id="tab-spells-count">(${data.spells.length})</span>`),
+        actions: tabButton("actions", "fa-bolt", "Actions & Attacks"),
+        skills: tabButton("skills", "fa-bullseye", "Skills, Saves & Proficiencies"),
+        equipment: tabButton("equipment", "fa-shield", "Equipment"),
+        features: tabButton("features", "fa-scroll", "Features & Traits"),
+        details: tabButton("details", "fa-book-open", "Details & Notes")
+    };
+    const paneClass = (tab: SheetTab) => `tab-pane${tab === tabOrder[0] ? " active" : ""}`;
 
     return `
         ${renderStickyVitalsBar(data)}
@@ -52,30 +72,10 @@ export function renderSheetContent(data: CharacterData): string {
 
         <section class="tabs-section">
             <div class="tab-nav" role="tablist" aria-label="Character Sheet Views">
-                <button class="tab-btn active" role="tab" aria-selected="true" data-tab-target="tab-weapons" id="btn-tab-weapons">
-                    <i class="fa-solid fa-khanda"></i> Weapons <span class="tab-count" id="tab-weapons-count">(${data.weapons?.length || 0})</span>
-                </button>
-                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-spells" id="btn-tab-spells">
-                    <i class="fa-solid fa-wand-sparkles"></i> Spells <span class="tab-count" id="tab-spells-count">(${data.spells.length})</span>
-                </button>
-                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-actions" id="btn-tab-actions">
-                    <i class="fa-solid fa-bolt"></i> Actions & Attacks
-                </button>
-                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-features" id="btn-tab-features">
-                    <i class="fa-solid fa-scroll"></i> Features & Traits
-                </button>
-                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-skills" id="btn-tab-skills">
-                    <i class="fa-solid fa-bullseye"></i> Skills, Saves & Proficiencies
-                </button>
-                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-equipment" id="btn-tab-equipment">
-                    <i class="fa-solid fa-shield"></i> Equipment
-                </button>
-                <button class="tab-btn" role="tab" aria-selected="false" data-tab-target="tab-details" id="btn-tab-details">
-                    <i class="fa-solid fa-book-open" aria-hidden="true"></i> Details & Notes
-                </button>
+                ${tabOrder.map((tab) => tabButtons[tab]).join("")}
             </div>
 
-            <div class="tab-pane active" id="tab-weapons" role="tabpanel" aria-labelledby="btn-tab-weapons">
+            <div class="${paneClass("weapons")}" id="tab-weapons" role="tabpanel" aria-labelledby="btn-tab-weapons">
                 <div class="weapons-container">
                     <div class="weapons-header-banner">
                         <div class="weapons-header-info">
@@ -97,7 +97,7 @@ export function renderSheetContent(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="tab-pane" id="tab-spells" role="tabpanel" aria-labelledby="btn-tab-spells">
+            <div class="${paneClass("spells")}" id="tab-spells" role="tabpanel" aria-labelledby="btn-tab-spells">
                 <div class="spell-filters-bar">
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -144,7 +144,7 @@ export function renderSheetContent(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="tab-pane" id="tab-actions" role="tabpanel" aria-labelledby="btn-tab-actions">
+            <div class="${paneClass("actions")}" id="tab-actions" role="tabpanel" aria-labelledby="btn-tab-actions">
                 <div class="actions-container">
                     ${(data.weapons && data.weapons.length > 0) ? `
                         <div class="actions-weapons-highlight">
@@ -162,7 +162,7 @@ export function renderSheetContent(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="tab-pane" id="tab-features" role="tabpanel" aria-labelledby="btn-tab-features">
+            <div class="${paneClass("features")}" id="tab-features" role="tabpanel" aria-labelledby="btn-tab-features">
                 <div class="features-container">
                     <div class="features-grid">
                         ${renderFeatures(data)}
@@ -170,7 +170,7 @@ export function renderSheetContent(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="tab-pane" id="tab-skills" role="tabpanel" aria-labelledby="btn-tab-skills">
+            <div class="${paneClass("skills")}" id="tab-skills" role="tabpanel" aria-labelledby="btn-tab-skills">
                 <div class="skills-container">
                     <div class="skills-grid">
                         <div class="skills-list">
@@ -204,7 +204,7 @@ export function renderSheetContent(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="tab-pane" id="tab-equipment" role="tabpanel" aria-labelledby="btn-tab-equipment">
+            <div class="${paneClass("equipment")}" id="tab-equipment" role="tabpanel" aria-labelledby="btn-tab-equipment">
                 <div class="equipment-container">
                     <div class="equipment-header-banner">
                         <div class="equipment-header-info">
@@ -225,7 +225,7 @@ export function renderSheetContent(data: CharacterData): string {
                 </div>
             </div>
 
-            <div class="tab-pane" id="tab-details" role="tabpanel" aria-labelledby="btn-tab-details">
+            <div class="${paneClass("details")}" id="tab-details" role="tabpanel" aria-labelledby="btn-tab-details">
                 ${renderDetailsAndNotes(data)}
             </div>
         </section>
