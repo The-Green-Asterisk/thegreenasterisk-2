@@ -1295,6 +1295,21 @@ export function parseDndBeyondCharacter(
         };
     });
 
+    // What an ability check with each ability gets besides the modifier and proficiency (Jack of All Trades, bonuses to
+    // all checks or to one ability's checks), for skills the rules don't list: the ones a player adds
+    const checkExtras: NonNullable<CharacterData["checkExtras"]> = {};
+    abilities.forEach(ability => {
+        const abilityKey = ability.name.toLowerCase();
+        const abilityCheckBonus = allMods
+            .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === `${abilityKey}-ability-checks` && isUnrestrictedMod(m))
+            .reduce((sum, m) => sum + resolveModValue(m), 0);
+        const halfProficiency = globalHalfProfRoundUpChecks || halfProfRoundUpSkills.has(`${abilityKey}-ability-checks`)
+            ? Math.ceil(profBonus / 2)
+            : globalHalfProfChecks || halfProfSkills.has(`${abilityKey}-ability-checks`) ? Math.floor(profBonus / 2) : 0;
+        const general = globalAbilityCheckBonus + abilityCheckBonus;
+        checkExtras[ability.abbr] = { trained: general, untrained: general + halfProficiency };
+    });
+
     // Passive score helper (includes passive-<skill> modifiers like Observant feat +5, and +5/-5 from unrestricted skill advantage/disadvantage)
     const computePassiveScore = (skillName: string, skillKey: string, abilityKey: string, fallbackMod: number): number => {
         const skillObj = skills.find(s => s.name === skillName);
@@ -2347,6 +2362,7 @@ export function parseDndBeyondCharacter(
         conditionImmunities,
         abilities,
         skills,
+        checkExtras,
         spellSlots,
         classResources,
         bardicCount,

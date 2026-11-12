@@ -1,27 +1,11 @@
 import el from "@elements";
 import { renderSkills } from "../components/skills";
-import { addCustomSkill, removeCustomSkill } from "../services/customSkills";
+import { addCustomSkill, checkExtra, removeCustomSkill, trainingMultiplier } from "../services/customSkills";
 import { CharacterSheetContext } from "./context";
 
 export function initSkillsController(ctx: CharacterSheetContext) {
     const character = ctx.getCharacter();
     if (!character) return;
-
-    const proficiencyToMultiplier = (value: string): number => {
-        if (value === "expertise") return 2;
-        if (value === "proficient") return 1;
-        return 0;
-    };
-
-    const getAbilityModForSkill = (stat: string): number => {
-        const normalized = (stat || "").trim().toUpperCase();
-        const ability = character.abilities.find(a => {
-            const abbr = (a.abbr || "").trim().toUpperCase();
-            const namePrefix = (a.name || "").trim().slice(0, 3).toUpperCase();
-            return normalized === abbr || normalized === namePrefix;
-        });
-        return ability?.modifier ?? 0;
-    };
 
     const formatBonus = (bonus: number): string => (bonus >= 0 ? `+${bonus}` : `${bonus}`);
 
@@ -46,11 +30,12 @@ export function initSkillsController(ctx: CharacterSheetContext) {
             const previous = skill.proficiency || "none";
             const next = (select.value as "none" | "proficient" | "expertise") || "none";
 
+            // Only proficiency and what checks get at each training level (Jack of All Trades applies untrained) move;
+            // every other bonus the skill has stays
             const profBonus = Number(character.vitals?.proficiencyBonus) || 0;
-            const abilityMod = getAbilityModForSkill(skill.stat);
-            const oldBaseline = abilityMod + (profBonus * proficiencyToMultiplier(previous));
-            const customOffset = (Number(skill.bonus) || 0) - oldBaseline;
-            const recomputedBonus = abilityMod + (profBonus * proficiencyToMultiplier(next)) + customOffset;
+            const recomputedBonus = (Number(skill.bonus) || 0)
+                + profBonus * (trainingMultiplier(next) - trainingMultiplier(previous))
+                + checkExtra(character, skill.stat, next) - checkExtra(character, skill.stat, previous);
 
             skill.proficiency = next;
             skill.bonus = recomputedBonus;
@@ -72,8 +57,13 @@ export function initSkillsController(ctx: CharacterSheetContext) {
     const rerender = (message: string, focusSelector: string) => {
         const container = ctx.sheet.querySelector<HTMLElement>("#tab-skills .skills-container");
         if (!container) return;
-        container.innerHTML = renderSkills(character);
-        initSkillsController(ctx);
+        if (ctx.syncSheetStats) {
+            // Layers items over the new skill like every other, re-renders the table, and binds it again
+            ctx.syncSheetStats();
+        } else {
+            container.innerHTML = renderSkills(character);
+            initSkillsController(ctx);
+        }
         const status = container.querySelector<HTMLElement>("#custom-skill-status");
         if (status) status.textContent = message;
         container.querySelector<HTMLElement>(focusSelector)?.focus();

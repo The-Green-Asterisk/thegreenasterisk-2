@@ -211,6 +211,12 @@ export interface CharacterData {
     level: number;
     classes: Array<{ name: string; level: number; subclass?: string }>;
     /**
+     * What an ability check with each ability (keyed STR…CHA) gets besides the modifier and proficiency: Jack of All
+     * Trades on untrained checks, bonuses to all checks or to one ability's checks. Skills the rules don't list (a
+     * player's own) take their bonus from it; the rules' skills already have these in their numbers.
+     */
+    checkExtras?: Partial<Record<string, { trained: number; untrained: number }>>;
+    /**
      * Import-only: spells D&D Beyond lists more than once where at least one copy is the player's pick, with where each copy comes from. wastedPicks counts regular
      * picks of a spell a feature already keeps always prepared.
      */

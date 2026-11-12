@@ -949,6 +949,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.abilities = recomputed.abilities;
                 const skillsBeforeRecalc = activeCharacter.skills;
                 activeCharacter.skills = recomputed.skills;
+                activeCharacter.checkExtras = recomputed.checkExtras;
                 carryCustomSkills(activeCharacter, { skills: skillsBeforeRecalc });
                 // Weapons locked on this character stay as they are, and the rest keep their database links
                 carryLockedCopiesAndLinks(recomputed, activeCharacter);

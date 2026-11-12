@@ -4696,6 +4696,17 @@ el-character-sheet .content-slate section {
     font-weight: 700;
 }
 
+@media screen and (max-width: 480px) {
+    .skills-table th,
+    .skills-table td {
+        padding: 0.4rem 0.3rem;
+    }
+
+    .skill-training-select {
+        min-width: 8.5rem;
+    }
+}
+
 .skill-training-select:focus {
     outline: none;
     border-color: var(--ui-color);
