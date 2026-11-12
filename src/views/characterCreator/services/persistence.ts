@@ -1,3 +1,4 @@
+import el from "@elements";
 import { getData, postData, putData } from "@services/request";
 import {
     AbilityName,
@@ -516,7 +517,7 @@ export async function loadCharacter(ctx: CharacterCreatorContext, targetId: stri
         if (char.currency && typeof char.currency === "object") ctx.state.currency = { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0, ...char.currency };
         if (typeof char.speciesSpellAbility === "string" && !ctx.state.speciesSpellAbility) ctx.state.speciesSpellAbility = char.speciesSpellAbility;
 
-        const submitBtn = document.getElementById("creator-submit-btn");
+        const submitBtn = el.creatorSubmitButton;
         if (submitBtn) {
             submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
         }
@@ -1377,7 +1378,7 @@ export async function submitCharacter(ctx: CharacterCreatorContext): Promise<voi
     }
 
     submitInFlight = true;
-    const submitBtn = document.getElementById("creator-submit-btn") as HTMLButtonElement;
+    const submitBtn = el.creatorSubmitButton as HTMLButtonElement;
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = ctx.state.savedId

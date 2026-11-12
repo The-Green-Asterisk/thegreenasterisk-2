@@ -1,3 +1,4 @@
+import el from "@elements";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { rereadDndBeyondAbilityChoices } from "../services/dndBeyondAbilityChoices";
 import { CharacterCreatorContext } from "./context";
@@ -8,7 +9,7 @@ let lastRereadMessage = "";
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
 export function initAbilitiesController(ctx: CharacterCreatorContext): void {
-    document.querySelectorAll(".tab-btn").forEach((btn) => {
+    el.creatorAbilityTabButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const newMode = btn.getAttribute("data-mode") as any;
             ctx.state.abilityMode = newMode;
@@ -31,7 +32,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     });
 
     // Standard array selection: swapping values without editing
-    document.querySelectorAll(".standard-array-select").forEach((select) => {
+    el.creatorStandardArraySelects.forEach((select) => {
         select.addEventListener("change", (e) => {
             const stat = (e.target as HTMLSelectElement).getAttribute("data-stat") as AbilityName;
             const val = Number((e.target as HTMLSelectElement).value);
@@ -44,7 +45,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     });
 
     // Point buy decrement
-    document.querySelectorAll(".point-buy-dec-btn").forEach((btn) => {
+    el.creatorPointBuyDecButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const stat = btn.getAttribute("data-stat") as AbilityName;
             if (stat && ctx.decrementPointBuy(stat)) {
@@ -55,7 +56,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     });
 
     // Point buy increment
-    document.querySelectorAll(".point-buy-inc-btn").forEach((btn) => {
+    el.creatorPointBuyIncButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const stat = btn.getAttribute("data-stat") as AbilityName;
             if (stat && ctx.incrementPointBuy(stat)) {
@@ -66,7 +67,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     });
 
     // Manual / Roll score controls
-    document.querySelectorAll(".score-dec-btn").forEach((btn) => {
+    el.creatorScoreDecButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const stat = btn.getAttribute("data-stat") as AbilityName;
             if (stat && ctx.state.baseAbilities[stat] > 3) {
@@ -77,7 +78,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".score-inc-btn").forEach((btn) => {
+    el.creatorScoreIncButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const stat = btn.getAttribute("data-stat") as AbilityName;
             if (stat && ctx.state.baseAbilities[stat] < 20) {
@@ -88,7 +89,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".score-num-input").forEach((input) => {
+    el.creatorScoreInputs.forEach((input) => {
         input.addEventListener("input", (e) => {
             const stat = (e.target as HTMLElement).getAttribute("data-stat") as AbilityName;
             const val = Math.max(3, Math.min(20, Number((e.target as HTMLInputElement).value) || 10));
@@ -99,7 +100,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    const rollBtn = document.getElementById("roll-all-stats-btn");
+    const rollBtn = el.creatorRollAllButton;
     rollBtn?.addEventListener("click", () => {
         const stats: AbilityName[] = ["str", "dex", "con", "int", "wis", "cha"];
         for (const st of stats) {
@@ -118,9 +119,9 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
     });
 
     // Re-read ability scores, background bonuses and feats from D&D Beyond (asks first: it replaces creator choices)
-    const rereadBtn = document.querySelector<HTMLButtonElement>(".ddb-reread-btn");
-    const rereadConfirm = document.getElementById("ddb-reread-confirm");
-    const rereadStatus = document.querySelector<HTMLElement>(".ddb-reread-status");
+    const rereadBtn = el.creatorDdbRereadButton;
+    const rereadConfirm = el.creatorDdbRereadConfirm;
+    const rereadStatus = el.creatorDdbRereadStatus;
     if (rereadStatus && lastRereadMessage) {
         rereadStatus.textContent = lastRereadMessage;
         lastRereadMessage = "";
@@ -129,14 +130,14 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         if (!rereadConfirm) return;
         rereadConfirm.hidden = false;
         rereadBtn.setAttribute("aria-expanded", "true");
-        document.querySelector<HTMLButtonElement>(".ddb-reread-confirm-btn")?.focus();
+        el.creatorDdbRereadConfirmButton?.focus();
     });
-    document.querySelector(".ddb-reread-cancel-btn")?.addEventListener("click", () => {
+    el.creatorDdbRereadCancelButton?.addEventListener("click", () => {
         if (rereadConfirm) rereadConfirm.hidden = true;
         rereadBtn?.setAttribute("aria-expanded", "false");
         rereadBtn?.focus();
     });
-    document.querySelector<HTMLButtonElement>(".ddb-reread-confirm-btn")?.addEventListener("click", async (e) => {
+    el.creatorDdbRereadConfirmButton?.addEventListener("click", async (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
         btn.disabled = true;
         btn.textContent = "Reading from D&D Beyond…";
@@ -148,11 +149,11 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         }
         ctx.renderStep(5);
         ctx.updateLiveSummary();
-        document.querySelector<HTMLButtonElement>(".ddb-reread-btn")?.focus();
+        el.creatorDdbRereadButton?.focus();
     });
 
     // ASI / Feats controls
-    document.querySelectorAll(".asi-type-radio").forEach((radio) => {
+    el.creatorAsiTypeRadios.forEach((radio) => {
         radio.addEventListener("change", (e) => {
             const target = e.target as HTMLInputElement;
             const lvl = target.getAttribute("data-asi-key") || "";
@@ -173,7 +174,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".asi-stat-select").forEach((select) => {
+    el.creatorAsiStatSelects.forEach((select) => {
         select.addEventListener("change", (e) => {
             const target = e.target as HTMLSelectElement;
             const lvl = target.getAttribute("data-asi-key") || "";
@@ -187,7 +188,7 @@ export function initAbilitiesController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".asi-feat-select").forEach((select) => {
+    el.creatorAsiFeatSelects.forEach((select) => {
         select.addEventListener("change", (e) => {
             const target = e.target as HTMLSelectElement;
             const lvl = target.getAttribute("data-asi-key") || "";

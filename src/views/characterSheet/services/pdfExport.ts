@@ -1806,7 +1806,7 @@ export async function exportPdfCharacterSheet(
     statusCallback?.(`Laying out the black & white ${isRemarkable ? "reMarkable" : "Letter"} sheet...`);
 
     // A dialog closed without afterprint firing (some mobile browsers) leaves the last mount behind
-    document.getElementById(PRINT_MOUNT_ID)?.remove();
+    el.getElement(`#${PRINT_MOUNT_ID}`)?.remove();
     const mount = buildPrintMount(data, format);
     document.body.appendChild(mount);
 

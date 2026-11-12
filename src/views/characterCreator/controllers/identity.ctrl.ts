@@ -3,18 +3,18 @@ import FileService from "@services/fileService";
 import { CharacterCreatorContext } from "./context";
 
 export function initIdentityController(ctx: CharacterCreatorContext): void {
-    const nameInput = document.getElementById("char-name-input") as HTMLInputElement;
+    const nameInput = el.creatorNameInput as HTMLInputElement;
     nameInput?.addEventListener("input", (e) => {
         ctx.state.name = (e.target as HTMLInputElement).value;
         ctx.updateLiveSummary();
     });
 
-    const alignSelect = document.getElementById("char-alignment-select") as HTMLSelectElement;
+    const alignSelect = el.creatorAlignmentSelect as HTMLSelectElement;
     alignSelect?.addEventListener("change", (e) => {
         ctx.state.alignment = (e.target as HTMLSelectElement).value;
     });
 
-    document.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".char-detail-input").forEach((input) => {
+    el.creatorDetailInputs.forEach((input) => {
         const update = () => {
             const key = input.getAttribute("data-detail");
             if (key) ctx.state.details = { ...(ctx.state.details || {}), [key]: input.value };
@@ -22,23 +22,23 @@ export function initIdentityController(ctx: CharacterCreatorContext): void {
         input.addEventListener("input", update);
         input.addEventListener("change", update);
     });
-    document.querySelectorAll<HTMLTextAreaElement>(".char-note-input").forEach((input) => {
+    el.creatorNoteInputs.forEach((input) => {
         input.addEventListener("input", () => {
             const key = input.getAttribute("data-note");
             if (key) ctx.state.notes = { ...(ctx.state.notes || {}), [key]: input.value };
         });
     });
 
-    const genderInput = document.getElementById("char-gender-input") as HTMLInputElement;
+    const genderInput = el.creatorGenderInput as HTMLInputElement;
     genderInput?.addEventListener("input", (e) => {
         ctx.state.gender = (e.target as HTMLInputElement).value;
     });
 
-    const avatarInput = document.getElementById("char-avatar-input") as HTMLInputElement;
-    const previewImg = document.getElementById("char-avatar-preview-img") as HTMLImageElement;
-    const uploadBtn = document.getElementById("char-avatar-upload-btn") as HTMLButtonElement;
-    const fileInput = document.getElementById("char-avatar-file-input") as HTMLInputElement;
-    const uploadStatus = document.getElementById("char-avatar-upload-status");
+    const avatarInput = el.creatorAvatarInput as HTMLInputElement;
+    const previewImg = el.creatorAvatarPreview as HTMLImageElement;
+    const uploadBtn = el.creatorAvatarUploadButton as HTMLButtonElement;
+    const fileInput = el.creatorAvatarFileInput as HTMLInputElement;
+    const uploadStatus = el.creatorAvatarUploadStatus;
 
     avatarInput?.addEventListener("input", (e) => {
         const url = (e.target as HTMLInputElement).value.trim();

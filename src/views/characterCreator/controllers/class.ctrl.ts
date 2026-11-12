@@ -1,9 +1,10 @@
+import el from "@elements";
 import { CharacterClassChoice } from "../characterCreator.types";
 import { getProgressionChoices, getProgressionPools, setProgressionChoice } from "../services/progressionModifiers";
 import { CharacterCreatorContext } from "./context";
 
 export function initClassController(ctx: CharacterCreatorContext): void {
-    document.querySelectorAll(".class-card").forEach((card) => {
+    el.creatorClassCards.forEach((card) => {
         card.addEventListener("click", () => {
             if (card.classList.contains("disabled") || card.getAttribute("aria-disabled") === "true") return;
             const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
@@ -33,7 +34,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".subclass-card").forEach((card) => {
+    el.creatorSubclassCards.forEach((card) => {
         card.addEventListener("click", () => {
             if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
             const cIdx = parseInt(card.getAttribute("data-class-index") || "0", 10);
@@ -75,7 +76,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         }
     };
 
-    document.querySelectorAll(".level-card-header").forEach((header) => {
+    el.creatorLevelCardHeaders.forEach((header) => {
         header.addEventListener("click", (e) => {
             const target = e.target as HTMLElement;
             // The level badge handles itself; the collapse button (keyboard path) and the rest of the header toggle
@@ -85,11 +86,11 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".progression-toggle-all-btn").forEach((btn) => {
+    el.creatorProgressionToggleAllButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const action = btn.getAttribute("data-action");
             const cIdx = btn.getAttribute("data-class-index") || "0";
-            const boxes = Array.from(document.querySelectorAll(`.level-progression-box[data-class-index="${cIdx}"]`)) as HTMLElement[];
+            const boxes = Array.from(el.creatorLevelProgressionBoxes(cIdx)) as HTMLElement[];
             if (action === "collapse-all") {
                 boxes.forEach((box) => {
                     const lvl = box.getAttribute("data-level") || "1";
@@ -114,7 +115,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".progression-lvl-badge").forEach((badge) => {
+    el.creatorProgressionLevelBadges.forEach((badge) => {
         badge.addEventListener("click", (e) => {
             e.stopPropagation();
             const cIdx = parseInt(badge.getAttribute("data-class-index") || "0", 10);
@@ -139,7 +140,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    const addClassBtn = document.getElementById("add-class-btn") as HTMLButtonElement | null;
+    const addClassBtn = el.creatorAddClassButton as HTMLButtonElement | null;
     addClassBtn?.addEventListener("click", () => {
         if (addClassBtn.disabled || addClassBtn.classList.contains("disabled")) return;
         const nextIdx = ctx.state.classes.length;
@@ -158,7 +159,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         ctx.updateMulticlassNavBars();
     });
 
-    document.querySelectorAll(".remove-class-btn").forEach((btn) => {
+    el.creatorRemoveClassButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const cIdx = parseInt(btn.getAttribute("data-class-index") || "0", 10);
             if (cIdx > 0 && ctx.state.classes.length > 1) {
@@ -173,7 +174,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".mastery-card").forEach((card) => {
+    el.creatorMasteryCards.forEach((card) => {
         card.addEventListener("click", () => {
             if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
             const wName = card.getAttribute("data-weapon-name") || "";
@@ -187,7 +188,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".prog-filter-btn").forEach((btn) => {
+    el.creatorProgressionFilterButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             const filter = (btn.getAttribute("data-prog-filter") || "all") as "all" | "unlocked";
             ctx.progressionFilter = filter;
@@ -196,7 +197,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
     });
 
     // Pick lists (Eldritch Invocations, Metamagic, Maneuvers…): state[pool], up to the class's scalingTraits limit
-    document.querySelectorAll<HTMLElement>(".pool-card").forEach((card) => {
+    el.creatorPoolCards.forEach((card) => {
         const toggle = () => {
             if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
             const poolName = card.getAttribute("data-pool") || "";
@@ -212,7 +213,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
             }
             ctx.renderStep(3, true);
             ctx.updateLiveSummary();
-            Array.from(document.querySelectorAll<HTMLElement>(".pool-card"))
+            Array.from(el.creatorPoolCards)
                 .find((c) => c.getAttribute("data-pool") === poolName && c.getAttribute("data-option-id") === optionId)
                 ?.focus();
         };
@@ -226,7 +227,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
     });
 
     // Progression choices (class and subclass): stored by the engine under their storage key
-    document.querySelectorAll<HTMLElement>(".subclass-feature-card").forEach((card) => {
+    el.creatorSubclassFeatureCards.forEach((card) => {
         const toggle = () => {
             if (card.closest(".level-progression-box.locked") || card.closest(".locked-choice") || card.classList.contains("disabled")) return;
             const key = card.getAttribute("data-feature-key");
@@ -246,7 +247,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
             setProgressionChoice(ctx, entry, next);
             ctx.renderStep(3, true);
             ctx.updateLiveSummary();
-            Array.from(document.querySelectorAll<HTMLElement>(".subclass-feature-card"))
+            Array.from(el.creatorSubclassFeatureCards)
                 .find((c) => c.getAttribute("data-feature-key") === key && c.getAttribute("data-feature-choice") === optionId)
                 ?.focus();
         };
@@ -259,7 +260,7 @@ export function initClassController(ctx: CharacterCreatorContext): void {
         });
     });
 
-    document.querySelectorAll(".scroll-to-bottom-btn").forEach((btn) => {
+    el.creatorScrollToBottomButtons.forEach((btn) => {
         btn.addEventListener("click", () => {
             if (typeof window !== "undefined") {
                 window.scrollTo({

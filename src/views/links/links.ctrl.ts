@@ -89,7 +89,7 @@ async function renderLinks() {
             dragHandleSelector: '.fa-grip-lines',
             pinnedElement: newLinkButton,
             onReorder: async () => {
-                const linkElements = document.getElementsByClassName('link');
+                const linkElements = el.list('.link');
                 Array.from(linkElements).forEach((el, i) => {
                     const linkIdAttr = el.id.slice(4);
                     const linkToSave = linksToSave.find(l => l.id === Number(linkIdAttr));
