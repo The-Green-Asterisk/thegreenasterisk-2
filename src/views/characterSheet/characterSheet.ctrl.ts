@@ -1103,6 +1103,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             currentEquipOverrides.push({ scope, itemName, equipped });
         }
         recalculateFromRawPayload();
+        if (!el.isAuth) return;
 
         try {
             await putData("/set-character-equip-state", {

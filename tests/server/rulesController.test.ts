@@ -1,7 +1,9 @@
 import http from "http";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import cache from "../../server/cache";
+import BaseController from "../../server/controllers/baseController";
 import RulesController from "../../server/controllers/rulesController";
+import SessionController from "../../server/controllers/sessionController";
 import AppDataSource from "../../server/services/database";
 import RuleBackground from "../../server/services/database/entity/RuleBackground";
 import RuleClass from "../../server/services/database/entity/RuleClass";
@@ -1117,6 +1119,34 @@ describe("RulesController", () => {
             expect(allGrantedSpellNames).toContain("Summon Aberration");
             expect(allGrantedSpellNames).toContain("Modify Memory");
             expect(allGrantedSpellNames).toContain("Hex");
+        });
+    });
+
+    describe("syncCharacterRules", () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it("returns 401 and writes nothing when logged out", async () => {
+            vi.spyOn(SessionController, "getUser").mockReturnValue(undefined);
+            const readBody = vi.spyOn(BaseController, "readBody");
+            const fromDdb = vi.spyOn(RulesController, "upsertRulesFromDndBeyond");
+            const fromCharacter = vi.spyOn(RulesController, "upsertRulesFromCharacter");
+            const result = await RulesController.syncCharacterRules({} as http.IncomingMessage, {} as http.ServerResponse);
+            expect(result.status).toBe(401);
+            expect(JSON.parse(result.response).error).toBe("Log in to sync character rules.");
+            expect(readBody).not.toHaveBeenCalled();
+            expect(fromDdb).not.toHaveBeenCalled();
+            expect(fromCharacter).not.toHaveBeenCalled();
+        });
+
+        it("syncs the posted character when logged in", async () => {
+            vi.spyOn(SessionController, "getUser").mockReturnValue({ id: 7, isAdmin: false } as any);
+            vi.spyOn(BaseController, "readBody").mockResolvedValue({ character: { name: "Hero" } } as any);
+            const fromCharacter = vi.spyOn(RulesController, "upsertRulesFromCharacter").mockResolvedValue(0);
+            const result = await RulesController.syncCharacterRules({} as http.IncomingMessage, {} as http.ServerResponse);
+            expect(result.status).toBe(200);
+            expect(fromCharacter).toHaveBeenCalledWith({ name: "Hero" }, { name: "Hero" });
         });
     });
 });

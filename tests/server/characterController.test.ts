@@ -1,5 +1,5 @@
 import http from 'http';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import CharacterController from '../../server/controllers/characterController';
 import SessionController from '../../server/controllers/sessionController';
@@ -305,6 +305,30 @@ describe('CharacterController', () => {
             expect(mockUpdate).toHaveBeenCalledWith(5, expect.objectContaining({
                 payload: expect.stringContaining('"level3":{"level":3,"total":3,"label":"3rd Level"}')
             }));
+        });
+    });
+
+    describe('setCharacterEquipState', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('returns 401 and writes nothing when logged out', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue(undefined as any);
+            const readBody = vi.spyOn(CharacterController, 'readBody');
+            const getRepository = vi.spyOn(AppDataSource, 'getRepository');
+            const result = await CharacterController.setCharacterEquipState(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(401);
+            expect(JSON.parse(result.response).error).toBe('Log in to save equipped items.');
+            expect(readBody).not.toHaveBeenCalled();
+            expect(getRepository).not.toHaveBeenCalled();
+        });
+
+        it('still validates the body when logged in', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 1 } as any);
+            vi.spyOn(CharacterController, 'readBody').mockResolvedValue({ characterId: '138310322' } as any);
+            const result = await CharacterController.setCharacterEquipState(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(400);
         });
     });
 });

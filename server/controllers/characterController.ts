@@ -165,6 +165,13 @@ export default class CharacterController extends BaseController {
     }
 
     public static async setCharacterEquipState(req: http.IncomingMessage, res: http.ServerResponse) {
+        if (!SessionController.getUser(req as ReqAndUser)) {
+            return {
+                response: JSON.stringify({ error: "Log in to save equipped items." }),
+                status: 401
+            };
+        }
+
         let body: any;
         try {
             body = await this.readBody(req);
