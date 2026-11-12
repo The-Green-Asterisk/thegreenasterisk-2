@@ -10,6 +10,7 @@ import { allRuleClassChoices, classChoiceDecisionIds, classChoiceModifiers, clas
 import { GeneralFeatDefinition, SpeciesDefinition, SpeciesTrait, StatModifier } from "../../rules/dnd5e_2024/types";
 import { detectLineage, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { findFeatRule, getSpeciesRules, getCanonicalClassesForFeature, getCanonicalSubclassesForFeature } from "../../services/classRules";
+import { DND_BEYOND_ABILITY_ID, SKILLS } from "../../rules/dnd5e_2024/skills";
 
 export const ABILITY_META: Record<number, { id: number; name: string; abbr: string; key: string }> = {
     1: { id: 1, name: "Strength", abbr: "STR", key: "strength" },
@@ -35,26 +36,9 @@ export const ABILITY_KEY_TO_ID: Record<string, number> = {
     cha: 6
 };
 
-export const SKILL_META: Array<{ name: string; stat: string; statId: number; key: string }> = [
-    { name: "Acrobatics", stat: "DEX", statId: 2, key: "acrobatics" },
-    { name: "Animal Handling", stat: "WIS", statId: 5, key: "animal-handling" },
-    { name: "Arcana", stat: "INT", statId: 4, key: "arcana" },
-    { name: "Athletics", stat: "STR", statId: 1, key: "athletics" },
-    { name: "Deception", stat: "CHA", statId: 6, key: "deception" },
-    { name: "History", stat: "INT", statId: 4, key: "history" },
-    { name: "Insight", stat: "WIS", statId: 5, key: "insight" },
-    { name: "Intimidation", stat: "CHA", statId: 6, key: "intimidation" },
-    { name: "Investigation", stat: "INT", statId: 4, key: "investigation" },
-    { name: "Medicine", stat: "WIS", statId: 5, key: "medicine" },
-    { name: "Nature", stat: "INT", statId: 4, key: "nature" },
-    { name: "Perception", stat: "WIS", statId: 5, key: "perception" },
-    { name: "Performance", stat: "CHA", statId: 6, key: "performance" },
-    { name: "Persuasion", stat: "CHA", statId: 6, key: "persuasion" },
-    { name: "Religion", stat: "INT", statId: 4, key: "religion" },
-    { name: "Sleight of Hand", stat: "DEX", statId: 2, key: "sleight-of-hand" },
-    { name: "Stealth", stat: "DEX", statId: 2, key: "stealth" },
-    { name: "Survival", stat: "WIS", statId: 5, key: "survival" }
-];
+export const SKILL_META: Array<{ name: string; stat: string; statId: number; key: string }> = SKILLS.map((s) => ({
+    name: s.name, stat: s.ability.toUpperCase(), statId: DND_BEYOND_ABILITY_ID[s.ability], key: s.key
+}));
 
 const SKILL_KEY_SET = new Set(SKILL_META.map(s => s.key));
 

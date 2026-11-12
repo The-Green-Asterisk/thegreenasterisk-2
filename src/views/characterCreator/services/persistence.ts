@@ -578,6 +578,26 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             proficiency: isExpert ? "expertise" : isProf ? "proficient" : "none"
         };
     });
+    // What a check with each ability gets besides the modifier and proficiency (Jack of All Trades on untrained checks);
+    // skills the rules don't list take their bonus from it. No rules skill has this name, so only general effects count
+    const NO_RULES_SKILL = "";
+    const checkExtras: Record<string, { trained: number; untrained: number }> = Object.fromEntries(
+        ["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((abbr) => [abbr, {
+            trained: getSkillBonusExtras(ctx, NO_RULES_SKILL, true, pb),
+            untrained: getSkillBonusExtras(ctx, NO_RULES_SKILL, false, pb)
+        }])
+    );
+    // Skills the player added on the sheet aren't creator choices; keep them, with bonuses from the new abilities
+    const trainingMultiplier: Record<string, number> = { proficient: 1, expertise: 2 };
+    const ownSkills = ((ctx.loadedCharacter?.skills || []) as any[])
+        .filter((s) => s?.custom && !skillsPayload.some((sk) => sk.name.toLowerCase() === String(s.name).toLowerCase()))
+        .map((s) => {
+            const stat = String(s.stat || "").toUpperCase();
+            const proficiency = s.proficiency === "proficient" || s.proficiency === "expertise" ? s.proficiency : "none";
+            const extras = checkExtras[stat]?.[proficiency === "none" ? "untrained" : "trained"] ?? 0;
+            const bonus = ctx.getAbilityModifier(stat.toLowerCase() as AbilityName) + pb * (trainingMultiplier[proficiency] || 0) + extras;
+            return { name: String(s.name), stat, bonus, proficiency, custom: true };
+        });
 
     // Weapons
     const weaponsPayload = ctx.state.selectedWeapons.map((wName) => {
@@ -1289,7 +1309,8 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             damageResistances
         },
         abilities: abilitiesPayload,
-        skills: skillsPayload,
+        skills: [...skillsPayload, ...ownSkills],
+        checkExtras,
         weapons: weaponsPayload,
         equipment: equipmentPayload,
         spells: spellsPayload,

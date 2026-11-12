@@ -80,6 +80,24 @@ describe('CharacterController', () => {
         });
     });
 
+    describe('custom skills', () => {
+        it('keeps the custom mark from the payload when skills come from the rows', () => {
+            const record: any = {
+                id: 3, name: 'Hero', source: 'site', payload: '{}',
+                skills: [
+                    { name: 'Stealth', stat: 'DEX', bonus: 4, proficiency: 'proficient' },
+                    { name: 'Cooking', stat: 'WIS', bonus: 2, proficiency: 'none' }
+                ]
+            };
+            const payload = { skills: [{ name: 'Stealth', stat: 'DEX', bonus: 4, proficiency: 'proficient' }, { name: 'cooking', stat: 'WIS', bonus: 2, proficiency: 'none', custom: true }] };
+            const character = (CharacterController as any).hydrateFromRelationalEntities(record, payload);
+            expect(character.skills).toEqual([
+                { name: 'Stealth', stat: 'DEX', bonus: 4, proficiency: 'proficient' },
+                { name: 'Cooking', stat: 'WIS', bonus: 2, proficiency: 'none', custom: true }
+            ]);
+        });
+    });
+
     describe('deleteSavedCharacter', () => {
         it('returns 401 when user is not authenticated', async () => {
             vi.spyOn(SessionController, 'getUser').mockReturnValue(undefined as any);

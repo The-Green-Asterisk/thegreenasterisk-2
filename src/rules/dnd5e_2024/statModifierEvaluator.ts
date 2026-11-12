@@ -138,17 +138,16 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
         const abilityKey = target.split(".")[1]?.toLowerCase();
         const ability = character.abilities.find(a => a.abbr.toLowerCase() === abilityKey || a.name.toLowerCase() === abilityKey);
         if (ability) {
+            const oldModifier = ability.modifier;
             ability.score += sign * (delta || 1);
             ability.modifier = Math.floor((ability.score - 10) / 2);
             ability.save = ability.modifier + (ability.proficientSave ? (character.vitals.proficiencyBonus || 2) : 0);
 
-            // Synchronize all skills that depend on this ability
-            const pb = character.vitals.proficiencyBonus || 2;
+            // Skills with this ability move by the change in modifier and keep their other bonuses (Jack of All
+            // Trades, items, features)
+            const change = ability.modifier - oldModifier;
             character.skills.forEach(sk => {
-                if (sk.stat.toLowerCase() === ability.abbr.toLowerCase()) {
-                    const mult = sk.proficiency === "expertise" ? 2 : sk.proficiency === "proficient" ? 1 : 0;
-                    sk.bonus = ability.modifier + mult * pb;
-                }
+                if (sk.stat.toLowerCase() === ability.abbr.toLowerCase()) sk.bonus += change;
             });
         }
     }
@@ -187,10 +186,26 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
             }
         }
     }
-    // Skills
+    // Half proficiency on every check the character isn't proficient in (Jack of All Trades): untrained skills,
+    // and the record skills a player adds take their bonus from
+    else if (target === "skills.unproficient") {
+        if (type === "half_proficiency") {
+            const half = sign * Math.floor((character.vitals.proficiencyBonus || 2) / 2);
+            character.skills.forEach(sk => {
+                if (!sk.proficiency || sk.proficiency === "none") sk.bonus += half;
+            });
+            if (character.checkExtras) {
+                for (const extras of Object.values(character.checkExtras)) {
+                    if (extras) extras.untrained += half;
+                }
+            }
+        }
+    }
+    // Skills (the rules' skills by key, and a player's own by the same kind of slug)
     else if (target.startsWith("skills.")) {
-        const skillKey = target.split(".")[1]?.toLowerCase().replace(/-/g, " ");
-        const skill = character.skills.find(s => s.name.toLowerCase() === skillKey || s.name.toLowerCase().replace(/-/g, " ") === skillKey);
+        const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+        const skillKey = slug(target.slice("skills.".length));
+        const skill = character.skills.find(s => slug(s.name) === skillKey);
         if (skill) {
             const pb = character.vitals.proficiencyBonus || 2;
             if (type === "proficiency_tier") {

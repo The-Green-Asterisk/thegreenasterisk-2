@@ -2,6 +2,7 @@ import el from "@elements";
 import { delData, getData, postData, putData } from "@services/request";
 import { loadClassRules } from "../../services/classRules";
 import { carryLockedCopiesAndLinks } from "./services/characterCopies";
+import { carryCustomSkills } from "./services/customSkills";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
@@ -946,7 +947,10 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.vitals.spellAttackBonus = recomputed.vitals.spellAttackBonus;
                 activeCharacter.vitals.spellcastingAbility = recomputed.vitals.spellcastingAbility;
                 activeCharacter.abilities = recomputed.abilities;
+                const skillsBeforeRecalc = activeCharacter.skills;
                 activeCharacter.skills = recomputed.skills;
+                activeCharacter.checkExtras = recomputed.checkExtras;
+                carryCustomSkills(activeCharacter, { skills: skillsBeforeRecalc });
                 // Weapons locked on this character stay as they are, and the rest keep their database links
                 carryLockedCopiesAndLinks(recomputed, activeCharacter);
                 activeCharacter.weapons = recomputed.weapons;
@@ -1267,6 +1271,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             // Spells and items locked on this character stay as they are, and every copy keeps its database link
             if (isSameCharacter && activeCharacter) {
                 carryLockedCopiesAndLinks(parsed, activeCharacter);
+                carryCustomSkills(parsed, activeCharacter);
             }
             if (parsed.spells?.length) {
                 void postData("/sync-character-spells", { spells: parsed.spells }).catch(() => { });
