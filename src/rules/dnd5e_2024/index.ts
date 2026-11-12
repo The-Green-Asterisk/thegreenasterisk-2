@@ -14,3 +14,4 @@ export * from "./speciesRules";
 export * from "./featureUsage";
 export * from "./featRules";
 export * from "./spellSources";
+export * from "./skills";

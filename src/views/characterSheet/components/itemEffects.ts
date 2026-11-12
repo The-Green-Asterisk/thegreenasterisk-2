@@ -1,4 +1,5 @@
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
+import { SKILLS } from "../../../rules/dnd5e_2024/skills";
 
 /**
  * The item effects the Edit Weapon / Magic Item dialogs offer: exactly the StatModifier targets and types the sheet
@@ -13,8 +14,7 @@ const ADVANTAGE: EffectTypeOption = { type: "advantage", label: "Advantage" };
 const DISADVANTAGE: EffectTypeOption = { type: "disadvantage", label: "Disadvantage" };
 
 const ABILITIES: Array<[string, string]> = [["str", "Strength"], ["dex", "Dexterity"], ["con", "Constitution"], ["int", "Intelligence"], ["wis", "Wisdom"], ["cha", "Charisma"]];
-const SKILLS = ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation",
-    "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"];
+const SKILL_NAMES = SKILLS.map((s) => s.name);
 const SENSES: Array<[string, string]> = [["darkvision", "Darkvision"], ["blindsight", "Blindsight"], ["tremorsense", "Tremorsense"], ["truesight", "Truesight"]];
 const SENSE_TYPES: EffectTypeOption[] = [
     { type: "set", label: "Reaches at least (ft.)", value: "feet" },
@@ -32,7 +32,7 @@ export const ITEM_EFFECT_TARGETS: EffectTargetOption[] = [
     { target: "saves.all", label: "All saving throws", group: "Defense", types: [BONUS, ADVANTAGE, DISADVANTAGE] },
     ...ABILITIES.map(([ab, name]): EffectTargetOption => ({ target: `saves.${ab}`, label: `${name} saving throws`, group: "Defense", types: [ADVANTAGE, DISADVANTAGE] })),
     { target: "checks.all", label: "All ability checks", group: "Checks and Skills", types: [BONUS] },
-    ...SKILLS.map((skill): EffectTargetOption => ({ target: `skills.${skillSlug(skill)}`, label: `${skill} checks`, group: "Checks and Skills", types: [ADVANTAGE, DISADVANTAGE] })),
+    ...SKILL_NAMES.map((skill): EffectTargetOption => ({ target: `skills.${skillSlug(skill)}`, label: `${skill} checks`, group: "Checks and Skills", types: [ADVANTAGE, DISADVANTAGE] })),
     { target: "spells.attack", label: "Spell attack bonus", group: "Spellcasting", types: [BONUS] },
     { target: "spells.dc", label: "Spell save DC", group: "Spellcasting", types: [BONUS] },
     { target: "vitals.initiative", label: "Initiative", group: "Combat and Movement", types: [BONUS, ADVANTAGE] },

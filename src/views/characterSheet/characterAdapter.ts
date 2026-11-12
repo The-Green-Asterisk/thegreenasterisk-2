@@ -23,6 +23,7 @@ import {
 import { readCampaign, readCompanions, readCurrency, readCustomActions, readCustomDefenses, readCustomItems, readCustomProficiencies, readDetails, readItemChargePips, readItemCharges, readNotes, readSpeciesSpellAbility, readTrackingState } from "./dndBeyondExtras";
 import { extractFeaturesAndApplyDecisions } from "./featureDecisions";
 import { applyGrantedWeapons, applyItemSensesToCharacter, applyMagicalItemBonuses, checkItemRequiresAttunement, isMundaneEquipment } from "./services/magicItemBonuses";
+import { SKILLS } from "../../rules/dnd5e_2024/skills";
 
 const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }> = {
     1: { name: "Strength", abbr: "STR", key: "strength" },
@@ -33,26 +34,7 @@ const ABILITY_NAMES: Record<number, { name: string; abbr: string; key: string }>
     6: { name: "Charisma", abbr: "CHA", key: "charisma" }
 };
 
-const SKILL_DEFINITIONS: Array<{ name: string; stat: string; key: string }> = [
-    { name: "Acrobatics", stat: "DEX", key: "acrobatics" },
-    { name: "Animal Handling", stat: "WIS", key: "animal-handling" },
-    { name: "Arcana", stat: "INT", key: "arcana" },
-    { name: "Athletics", stat: "STR", key: "athletics" },
-    { name: "Deception", stat: "CHA", key: "deception" },
-    { name: "History", stat: "INT", key: "history" },
-    { name: "Insight", stat: "WIS", key: "insight" },
-    { name: "Intimidation", stat: "CHA", key: "intimidation" },
-    { name: "Investigation", stat: "INT", key: "investigation" },
-    { name: "Medicine", stat: "WIS", key: "medicine" },
-    { name: "Nature", stat: "INT", key: "nature" },
-    { name: "Perception", stat: "WIS", key: "perception" },
-    { name: "Performance", stat: "CHA", key: "performance" },
-    { name: "Persuasion", stat: "CHA", key: "persuasion" },
-    { name: "Religion", stat: "INT", key: "religion" },
-    { name: "Sleight of Hand", stat: "DEX", key: "sleight-of-hand" },
-    { name: "Stealth", stat: "DEX", key: "stealth" },
-    { name: "Survival", stat: "WIS", key: "survival" }
-];
+const SKILL_DEFINITIONS: Array<{ name: string; stat: string; key: string }> = SKILLS.map((s) => ({ name: s.name, stat: s.ability.toUpperCase(), key: s.key }));
 
 const SCHOOL_MAP: Record<string, string> = {
     1: "Abjuration",

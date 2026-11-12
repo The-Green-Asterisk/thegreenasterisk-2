@@ -1,4 +1,5 @@
 import { ClassDefinition } from "./types";
+import { SKILLS } from "./skills";
 
 // Standard Full Caster spell slots by level (1 to 20), columns = spell levels 1 to 9
 export const FULL_CASTER_SLOTS: number[][] = [
@@ -155,7 +156,7 @@ export const CLASSES_2024: ClassDefinition[] = [
         weaponMasteryCount: 0,
         skillChoices: {
             count: 3,
-            from: ["Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"]
+            from: SKILLS.map((s) => s.name)
         },
         spellcasting: {
             ability: "cha",
