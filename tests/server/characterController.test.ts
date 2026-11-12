@@ -330,5 +330,51 @@ describe('CharacterController', () => {
             const result = await CharacterController.setCharacterEquipState(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
             expect(result.status).toBe(400);
         });
+
+        const equipBody = { characterId: '138310322', scope: 'weapon', itemName: 'Longsword', equipped: true };
+
+        function mockEquipRepos(ownedRow: unknown) {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const ownerLookup = vi.fn().mockResolvedValue(ownedRow);
+            const save = vi.fn(async (row: any) => row);
+            vi.spyOn(AppDataSource, 'getRepository').mockImplementation((entity: any) => {
+                if (entity?.name === 'SavedCharacter') return { findOne: ownerLookup } as any;
+                return { findOne: vi.fn().mockResolvedValue(null), create: (row: any) => row, save } as any;
+            });
+            vi.spyOn(CharacterController, 'readBody').mockResolvedValue(equipBody as any);
+            return { ownerLookup, save };
+        }
+
+        it('returns 403 and saves nothing for a user who does not own the character', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 2, isAdmin: false } as any);
+            const { ownerLookup, save } = mockEquipRepos(null);
+            const result = await CharacterController.setCharacterEquipState(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(403);
+            expect(JSON.parse(result.response).error).toBe("Only the character's owner or an admin can change its equipped items.");
+            expect(ownerLookup).toHaveBeenCalledWith(expect.objectContaining({
+                where: [
+                    { siteCharacterId: '138310322', user: { id: 2 } },
+                    { externalCharacterId: '138310322', user: { id: 2 } }
+                ]
+            }));
+            expect(save).not.toHaveBeenCalled();
+        });
+
+        it('saves for the owner', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 1, isAdmin: false } as any);
+            const { save } = mockEquipRepos({ id: 5 });
+            const result = await CharacterController.setCharacterEquipState(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(200);
+            expect(save).toHaveBeenCalledWith(expect.objectContaining({ characterId: '138310322', itemName: 'Longsword', equipped: true }));
+        });
+
+        it('saves for an admin without checking ownership', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue({ id: 9, isAdmin: true } as any);
+            const { ownerLookup, save } = mockEquipRepos(null);
+            const result = await CharacterController.setCharacterEquipState(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(200);
+            expect(ownerLookup).not.toHaveBeenCalled();
+            expect(save).toHaveBeenCalled();
+        });
     });
 });

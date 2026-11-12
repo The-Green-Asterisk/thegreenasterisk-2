@@ -165,7 +165,8 @@ export default class CharacterController extends BaseController {
     }
 
     public static async setCharacterEquipState(req: http.IncomingMessage, res: http.ServerResponse) {
-        if (!SessionController.getUser(req as ReqAndUser)) {
+        const currentUser = SessionController.getUser(req as ReqAndUser);
+        if (!currentUser) {
             return {
                 response: JSON.stringify({ error: "Log in to save equipped items." }),
                 status: 401
@@ -198,6 +199,13 @@ export default class CharacterController extends BaseController {
             return {
                 response: JSON.stringify({ error: "Database not initialized." }),
                 status: 503
+            };
+        }
+
+        if (!currentUser.isAdmin && !(await this.ownsCharacter(currentUser.id, characterId))) {
+            return {
+                response: JSON.stringify({ error: "Only the character's owner or an admin can change its equipped items." }),
+                status: 403
             };
         }
 
@@ -920,6 +928,21 @@ export default class CharacterController extends BaseController {
         if (typeof rawId !== "string") return undefined;
         const matched = rawId.match(/(\d{3,})/);
         return matched ? matched[1] : undefined;
+    }
+
+    /**
+     * Whether the user has this character saved: by its site ID (tga-…) or, for a D&D Beyond character, by its
+     * D&D Beyond ID. Several users can have the same D&D Beyond character saved, and each of them owns it.
+     */
+    private static async ownsCharacter(userId: number, characterId: string): Promise<boolean> {
+        const owned = await AppDataSource.getRepository(SavedCharacter).findOne({
+            where: [
+                { siteCharacterId: characterId, user: { id: userId } },
+                { externalCharacterId: characterId, user: { id: userId } }
+            ],
+            select: { id: true }
+        });
+        return !!owned;
     }
 
     private static normalizeCharacterId(rawId: unknown): string | undefined {
