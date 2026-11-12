@@ -18,6 +18,7 @@ import { mergeVitals } from "../services/characterVitals";
 import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
 import { extractSpellDamageInfo, getSpellDamageDisplay, parseDamageScalingString } from "../services/spellDamage";
 import { computeSpellSlotsFromRules, loadClassSpellcastingRules } from "../services/spellSlotRules";
+import { sanitizeExternalData } from "../services/userContent";
 import BaseController from "./baseController";
 import ItemController from "./itemController";
 import RulesController from "./rulesController";
@@ -92,7 +93,8 @@ export default class CharacterController extends BaseController {
             }
 
             const data = await response.json();
-            const payload = JSON.stringify(data);
+            // The browser renders this as HTML and it never passes through the database, so clean it here
+            const payload = JSON.stringify(sanitizeExternalData(structuredClone(data)));
 
             // Dynamically capture rules (classes, subclasses, species, backgrounds, feats, spells) from D&D Beyond loads
             try {

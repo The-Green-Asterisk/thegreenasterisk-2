@@ -2,7 +2,9 @@ import http from 'http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import CharacterController from '../../server/controllers/characterController';
+import RulesController from '../../server/controllers/rulesController';
 import SessionController from '../../server/controllers/sessionController';
+import SpellController from '../../server/controllers/spellController';
 import AppDataSource from '../../server/services/database';
 
 describe('CharacterController', () => {
@@ -39,6 +41,43 @@ describe('CharacterController', () => {
 
         expect(result.status).toBe(200);
         expect(result.response).toBe(dummyData);
+    });
+
+    describe('D&D Beyond character data', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+            vi.unstubAllGlobals();
+            cache.del('dndbeyond_char_138310322');
+        });
+
+        it('cleans the character before returning and caching it, and imports rules from the raw copy', async () => {
+            const raw = {
+                data: {
+                    name: 'Darvell<img src=x onerror=alert(1)>',
+                    decorations: { avatarUrl: 'javascript:alert(1)', frameAvatarUrl: 'https://www.dndbeyond.com/avatars/1.png' },
+                    notes: { backstory: '<p onclick="alert(2)">Born in {{savedc:cha}}</p><script>alert(3)</script>' },
+                    spells: { race: [{ definition: { name: 'Fireball', description: '<p>[condition]Prone[/condition] & <strong>8d6</strong></p>', level: 3 } }] },
+                    classes: [{ level: 5, definition: { name: 'Wizard' } }],
+                    tags: ['<b onmouseover=1>tag</b>']
+                }
+            };
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => structuredClone(raw) }));
+            const upsertRules = vi.spyOn(RulesController, 'upsertRulesFromDndBeyond').mockResolvedValue(0 as any);
+            vi.spyOn(SpellController, 'upsertSpellsFromDndBeyond').mockResolvedValue(0 as any);
+
+            const result = await CharacterController.getDndBeyondCharacter(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+
+            expect(result.status).toBe(200);
+            const body = JSON.parse(result.response).data;
+            expect(body.name).toBe('Darvell<img src="x" />');
+            expect(body.decorations).toEqual({ avatarUrl: '', frameAvatarUrl: 'https://www.dndbeyond.com/avatars/1.png' });
+            expect(body.notes.backstory).toBe('<p>Born in {{savedc:cha}}</p>');
+            expect(body.spells.race[0].definition.description).toBe('<p>[condition]Prone[/condition] & <strong>8d6</strong></p>');
+            expect(body.classes).toEqual([{ level: 5, definition: { name: 'Wizard' } }]);
+            expect(body.tags).toEqual(['<b>tag</b>']);
+            expect(cache.get('dndbeyond_char_138310322')).toBe(result.response);
+            expect(upsertRules).toHaveBeenCalledWith(raw.data);
+        });
     });
 
     describe('deleteSavedCharacter', () => {

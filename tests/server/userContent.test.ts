@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UserContentSubscriber } from '../../server/services/database/userContentSubscriber';
 import {
+    sanitizeExternalData,
     sanitizeJsonContent,
     sanitizePlainText,
     sanitizeRichText,
@@ -108,6 +109,32 @@ describe('sanitizeJsonContent', () => {
         const clean = '{"name": "Hero",  "spells": []}';
         expect(sanitizeJsonContent(clean)).toBe(clean);
         expect(sanitizeJsonContent('not json <b>')).toBe('not json <b>');
+    });
+});
+
+describe('sanitizeExternalData', () => {
+    it('cleans every string at any depth, checks url keys as URLs, and keeps other values', () => {
+        const data = {
+            id: 7, active: true, missing: null,
+            avatarUrl: 'javascript:alert(1)', readonlyUrl: '/characters/7', themeUrl: 'https://x.test/a.png',
+            nested: [{ snippet: `<p>{{modifier:wis}} [spell]Shield[/spell]</p>${ATTACK}`, list: ['a & b', '<i onclick=1>x</i>'] }]
+        };
+        const out = sanitizeExternalData(data);
+        expect(out).toBe(data);
+        expect(out.id).toBe(7);
+        expect(out.active).toBe(true);
+        expect(out.missing).toBeNull();
+        expect(out.avatarUrl).toBe('');
+        expect(out.readonlyUrl).toBe('/characters/7');
+        expect(out.themeUrl).toBe('https://x.test/a.png');
+        expect(out.nested[0].snippet).toMatch(/^<p>\{\{modifier:wis\}\} \[spell\]Shield\[\/spell\]<\/p>/);
+        expect(out.nested[0].snippet).not.toMatch(/onerror|<script/);
+        expect(out.nested[0].list).toEqual(['a & b', '<i>x</i>']);
+    });
+
+    it('passes through non-objects', () => {
+        expect(sanitizeExternalData('<b>x</b>')).toBe('<b>x</b>');
+        expect(sanitizeExternalData(null)).toBeNull();
     });
 });
 
