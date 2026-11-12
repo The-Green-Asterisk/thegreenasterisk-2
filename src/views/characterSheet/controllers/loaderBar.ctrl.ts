@@ -174,7 +174,7 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         }
         const origHtml = exportPdfBtn ? exportPdfBtn.innerHTML : "";
         if (exportPdfBtn) {
-            exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+            exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Opening print dialog...';
         }
 
         try {

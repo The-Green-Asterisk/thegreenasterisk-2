@@ -891,6 +891,9 @@ If you take the [action]Disengage[/action] action before casting this spell, you
                     <p class="export-pdf-intro">
                         Exports an ink-friendly, high-contrast black &amp; white character sheet with outline borders and fillable tabletop boxes for HP and spell slots.
                     </p>
+                    <p class="export-pdf-intro">
+                        Your browser's print dialog opens with the sheet laid out page by page. Choose <strong>Save as PDF</strong> as the destination to get the file, or send it straight to a printer.
+                    </p>
 
                     <fieldset class="pdf-format-fieldset">
                         <legend class="pdf-format-legend">Page Format</legend>
@@ -935,7 +938,7 @@ If you take the [action]Disengage[/action] action before casting this spell, you
                     <div class="export-pdf-footer-actions">
                         <button type="button" class="modal-action-btn secondary" id="export-pdf-cancel-btn">Cancel</button>
                         <button type="button" class="modal-action-btn" id="export-pdf-confirm-btn">
-                            <i class="fa-solid fa-download"></i> Download PDF
+                            <i class="fa-solid fa-print" aria-hidden="true"></i> Open print dialog
                         </button>
                     </div>
                 </footer>
