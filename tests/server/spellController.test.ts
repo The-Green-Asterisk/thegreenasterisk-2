@@ -1,5 +1,5 @@
 import http from 'http';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import BaseController from '../../server/controllers/baseController';
 import SessionController from '../../server/controllers/sessionController';
@@ -379,6 +379,32 @@ describe('SpellController', () => {
             const count = await SpellController.upsertSpellsFromDndBeyond(rawCharacter);
             expect(count).toBe(1);
             expect(mockSave).toHaveBeenCalled();
+        });
+    });
+
+    describe('syncCharacterSpells', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('returns 401 and writes nothing when logged out', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue(undefined);
+            const readBody = vi.spyOn(BaseController, 'readBody');
+            const upsert = vi.spyOn(SpellController, 'upsertSpellsFromCharacter');
+            const result = await SpellController.syncCharacterSpells(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(401);
+            expect(JSON.parse(result.response).error).toBe('Log in to sync character spells.');
+            expect(readBody).not.toHaveBeenCalled();
+            expect(upsert).not.toHaveBeenCalled();
+        });
+
+        it('syncs the posted spells when logged in', async () => {
+            vi.spyOn(BaseController, 'readBody').mockResolvedValue({ spells: [{ name: 'Fireball' }] } as any);
+            const upsert = vi.spyOn(SpellController, 'upsertSpellsFromCharacter').mockResolvedValue(1);
+            const result = await SpellController.syncCharacterSpells(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(200);
+            expect(JSON.parse(result.response)).toEqual({ success: true, syncedCount: 1 });
+            expect(upsert).toHaveBeenCalledWith([{ name: 'Fireball' }]);
         });
     });
 });

@@ -1,5 +1,5 @@
 import http from 'http';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import cache from '../../server/cache';
 import BaseController from '../../server/controllers/baseController';
 import SessionController from '../../server/controllers/sessionController';
@@ -318,5 +318,31 @@ describe('ItemController', () => {
         expect(savedItems.some((i) => i.name.includes('(Legacy)'))).toBe(false);
         expect(savedItems.some((i) => i.name === 'Greatsword')).toBe(true);
         expect(savedItems.some((i) => i.name === 'Plate Armor')).toBe(true);
+    });
+
+    describe('syncCharacterItems', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('returns 401 and writes nothing when logged out', async () => {
+            vi.spyOn(SessionController, 'getUser').mockReturnValue(undefined);
+            const readBody = vi.spyOn(BaseController, 'readBody');
+            const upsert = vi.spyOn(ItemController, 'upsertItemsFromCharacter');
+            const result = await ItemController.syncCharacterItems(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(401);
+            expect(JSON.parse(result.response).error).toBe('Log in to sync character items.');
+            expect(readBody).not.toHaveBeenCalled();
+            expect(upsert).not.toHaveBeenCalled();
+        });
+
+        it('syncs the posted weapons and equipment when logged in', async () => {
+            vi.spyOn(BaseController, 'readBody').mockResolvedValue({ weapons: [{ name: 'Dagger' }], equipment: [{ name: 'Rope' }] } as any);
+            const upsert = vi.spyOn(ItemController, 'upsertItemsFromCharacter').mockResolvedValue(2);
+            const result = await ItemController.syncCharacterItems(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+            expect(result.status).toBe(200);
+            expect(JSON.parse(result.response)).toEqual({ success: true, syncedCount: 2 });
+            expect(upsert).toHaveBeenCalledWith([{ name: 'Dagger' }], [{ name: 'Rope' }]);
+        });
     });
 });
