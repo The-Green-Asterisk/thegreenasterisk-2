@@ -1,5 +1,4 @@
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
+import el from "@elements";
 import { listSenses } from "../../../rules/dnd5e_2024/senses";
 import { getSpellDamageDisplay, getSpellEffectDisplay, getSpellcastingModifier } from "../../../services/spellDamage";
 import { CharacterData, SpellDefinition } from "../characterData";
@@ -883,7 +882,7 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
 
     return `
         /* --- PDF PRINTABLE STYLES: TABLETOP BLACK & WHITE OUTLINES (${isRemarkable ? "reMarkable 3:4" : "Letter"}) --- */
-        * {
+        :where(.pdf-page, .pdf-page *) {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
@@ -1740,6 +1739,56 @@ export function getPdfStyles(format: PdfFormat = "letter"): string {
     `;
 }
 
+const PRINT_MOUNT_ID = "pdf-print-mount";
+
+/**
+ * Print-only rules: the page size, and hiding everything but the sheet pages while printing. On screen the mount
+ * stays hidden. CSS pixels print at 96 per inch, so the 816 × 1056 px Letter page is exactly 8.5 × 11 in, and the
+ * 792 px reMarkable page is 8.25 in wide (3:4).
+ */
+export function getPrintStyles(format: PdfFormat = "letter"): string {
+    const pageSize = format === "remarkable" ? "8.25in 11in" : "8.5in 11in";
+    return `
+        #${PRINT_MOUNT_ID} { display: none; }
+        @page { size: ${pageSize}; margin: 0; }
+        @media print {
+            html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
+            body > *:not(#${PRINT_MOUNT_ID}) { display: none !important; }
+            #${PRINT_MOUNT_ID} { display: block; }
+            #${PRINT_MOUNT_ID} .pdf-page {
+                border: none;
+                margin: 0;
+                break-after: page;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            #${PRINT_MOUNT_ID} .pdf-page:last-child { break-after: auto; }
+        }
+    `;
+}
+
+/** Builds the hidden print mount: the sheet's styles, the print rules, and one element per page. */
+export function buildPrintMount(data: CharacterData, format: PdfFormat = "letter"): HTMLElement {
+    const mount = document.createElement("div");
+    mount.id = PRINT_MOUNT_ID;
+
+    const styleEl = document.createElement("style");
+    styleEl.textContent = getPdfStyles(format) + getPrintStyles(format);
+    mount.appendChild(styleEl);
+
+    for (const html of generatePdfHtmlPages(data, format)) {
+        const wrap = document.createElement("div");
+        wrap.innerHTML = html;
+        const pageEl = wrap.firstElementChild;
+        if (pageEl) mount.appendChild(pageEl);
+    }
+    return mount;
+}
+
+/**
+ * Lays the sheet out as print pages and opens the browser's print dialog, where "Save as PDF" makes the file.
+ * The suggested file name comes from the page title, so the title is swapped until printing ends.
+ */
 export async function exportPdfCharacterSheet(
     data: CharacterData,
     optionsOrCb?: PdfExportOptions | ((msg: string) => void)
@@ -1754,85 +1803,30 @@ export async function exportPdfCharacterSheet(
     const statusCallback = options.statusCallback;
     const isRemarkable = format === "remarkable";
 
-    statusCallback?.(`Generating black & white ${isRemarkable ? "reMarkable" : "Letter"} PDF...`);
+    statusCallback?.(`Laying out the black & white ${isRemarkable ? "reMarkable" : "Letter"} sheet...`);
 
-    const pagesHtml = generatePdfHtmlPages(data, format);
-    const styles = getPdfStyles(format);
-
-    const pageWidth = isRemarkable ? 792 : 816;
-    const pageHeight = 1056;
-
-    // Create off-screen rendering mount
-    const mount = document.createElement("div");
-    mount.id = "pdf-export-mount";
-    mount.style.position = "fixed";
-    mount.style.left = "-9999px";
-    mount.style.top = "0";
-    mount.style.width = `${pageWidth}px`;
-    mount.style.zIndex = "-9999";
-    mount.style.background = "#ffffff";
-    mount.style.color = "#000000";
-
-    const styleEl = document.createElement("style");
-    styleEl.textContent = styles;
-    mount.appendChild(styleEl);
-
-    const pageElements: HTMLElement[] = [];
-    pagesHtml.forEach(html => {
-        const wrap = document.createElement("div");
-        wrap.innerHTML = html;
-        const pageEl = wrap.firstElementChild as HTMLElement;
-        if (pageEl) {
-            mount.appendChild(pageEl);
-            pageElements.push(pageEl);
-        }
-    });
-
+    // A dialog closed without afterprint firing (some mobile browsers) leaves the last mount behind
+    document.getElementById(PRINT_MOUNT_ID)?.remove();
+    const mount = buildPrintMount(data, format);
     document.body.appendChild(mount);
 
-    try {
-        // Dimensions in points:
-        // Letter: 612 x 792 pt
-        // reMarkable (3:4 aspect ratio, native 1404 x 1872 px): 594 x 792 pt (594/792 = 0.75 = 3/4)
-        const pdfPageWidthPt = isRemarkable ? 594 : 612;
-        const pdfPageHeightPt = 792;
+    await Promise.all(Array.from(mount.querySelectorAll("img")).map(img => img.decode().catch(() => undefined)));
 
-        const doc = new jsPDF({
-            orientation: "portrait",
-            unit: "pt",
-            format: isRemarkable ? [594, 792] : "letter"
-        });
+    const previousTitle = document.title;
+    const safeName = (data.name || "Character").replace(/[^a-zA-Z0-9_-]/g, "_");
+    document.title = `${safeName}-Character-Sheet-${isRemarkable ? "reMarkable" : "Letter"}`;
 
-        for (let i = 0; i < pageElements.length; i++) {
-            statusCallback?.(`Rendering page ${i + 1} of ${pageElements.length}...`);
-            if (i > 0) {
-                doc.addPage(isRemarkable ? [594, 792] : "letter", "portrait");
-            }
-
-            const canvas = await html2canvas(pageElements[i], {
-                scale: 2, // 2x resolution for clean outline print
-                useCORS: true,
-                backgroundColor: "#ffffff",
-                logging: false,
-                windowWidth: pageWidth,
-                windowHeight: pageHeight
-            });
-
-            const imgData = canvas.toDataURL("image/png");
-            doc.addImage(imgData, "PNG", 0, 0, pdfPageWidthPt, pdfPageHeightPt);
-        }
-
-        const safeName = (data.name || "Character").replace(/[^a-zA-Z0-9_-]/g, "_");
-        const formatSuffix = isRemarkable ? "reMarkable" : "Letter";
-        const filename = `${safeName}-Character-Sheet-${formatSuffix}.pdf`;
-        doc.save(filename);
-        statusCallback?.(`Downloaded ${filename}`);
-    } catch (err) {
-        console.error("PDF export error:", err);
-        statusCallback?.("Failed to generate PDF. Check console for details.");
-        throw err;
-    } finally {
+    const cleanUp = () => {
         mount.remove();
+        document.title = previousTitle;
+    };
+    window.addEventListener("afterprint", cleanUp, { once: true, signal: el.signal });
+
+    statusCallback?.('Choose "Save as PDF" in the print dialog to save the sheet.');
+    try {
+        window.print();
+    } catch (err) {
+        cleanUp();
+        throw err;
     }
 }
-

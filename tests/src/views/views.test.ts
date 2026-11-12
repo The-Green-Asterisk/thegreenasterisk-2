@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SEED_ITEM_MECHANICS } from '../../../server/services/database/itemMechanics';
 import { setClassRules, setFeatRules, setItemRules, setSpeciesRules } from '../../../src/services/classRules';
 import characterCreatorTemplate from '../../../src/views/characterCreator/characterCreator.template';
@@ -1862,6 +1862,66 @@ describe('Frontend View Templates', () => {
         const letterStyles = getPdfStyles('letter');
         expect(letterStyles).toContain('width: 816px');
         expect(letterStyles).toContain('height: 1056px');
+    });
+
+    it('exports the PDF through the print dialog and cleans up afterwards', async () => {
+        const { exportPdfCharacterSheet, getPdfStyles, getPrintStyles } = await import(
+            '../../../src/views/characterSheet/services/pdfExport'
+        );
+        const character: any = {
+            name: 'Darvell the Bold',
+            level: 5,
+            classes: [{ name: 'Bard', level: 5 }],
+            race: 'Aasimar',
+            vitals: { maxHp: 38, currentHp: 38, tempHp: 0, armorClass: 14, initiative: 2, speed: '30 ft.', proficiencyBonus: 3 },
+            abilities: [
+                { name: 'Strength', abbr: 'STR', score: 8, modifier: -1, save: -1 },
+                { name: 'Dexterity', abbr: 'DEX', score: 14, modifier: 2, save: 2 },
+                { name: 'Constitution', abbr: 'CON', score: 12, modifier: 1, save: 1 },
+                { name: 'Intelligence', abbr: 'INT', score: 10, modifier: 0, save: 0 },
+                { name: 'Wisdom', abbr: 'WIS', score: 13, modifier: 1, save: 1 },
+                { name: 'Charisma', abbr: 'CHA', score: 18, modifier: 4, save: 7 }
+            ],
+            skills: [],
+            weapons: [],
+            features: [],
+            equipment: [],
+            spells: []
+        };
+        const originalPrint = window.print;
+        const print = vi.fn();
+        window.print = print;
+        document.title = 'The Green Asterisk';
+        const statuses: string[] = [];
+
+        try {
+            await exportPdfCharacterSheet(character, { format: 'letter', statusCallback: msg => statuses.push(msg) });
+
+            expect(print).toHaveBeenCalledTimes(1);
+            const mount = document.getElementById('pdf-print-mount');
+            expect(mount?.parentElement).toBe(document.body);
+            expect(mount?.querySelectorAll('.pdf-page').length).toBeGreaterThan(0);
+            expect(mount?.querySelector('style')?.textContent).toContain('@page { size: 8.5in 11in; margin: 0; }');
+            expect(document.title).toBe('Darvell_the_Bold-Character-Sheet-Letter');
+            expect(statuses.at(-1)).toContain('Save as PDF');
+
+            window.dispatchEvent(new Event('afterprint'));
+            expect(document.getElementById('pdf-print-mount')).toBeNull();
+            expect(document.title).toBe('The Green Asterisk');
+
+            await exportPdfCharacterSheet(character, { format: 'remarkable' });
+            await exportPdfCharacterSheet(character, { format: 'remarkable' });
+            expect(document.querySelectorAll('#pdf-print-mount').length).toBe(1);
+            expect(document.getElementById('pdf-print-mount')?.querySelector('style')?.textContent).toContain('size: 8.25in 11in');
+            window.dispatchEvent(new Event('afterprint'));
+        } finally {
+            window.print = originalPrint;
+            document.getElementById('pdf-print-mount')?.remove();
+        }
+
+        expect(getPrintStyles('letter')).toContain('body > *:not(#pdf-print-mount) { display: none !important; }');
+        expect(getPdfStyles()).not.toMatch(/^\s*\*\s*\{/m);
+        expect(getPdfStyles()).toContain(':where(.pdf-page, .pdf-page *)');
     });
 
     it('includes damage and scaling effects in PDF spell entries', async () => {
