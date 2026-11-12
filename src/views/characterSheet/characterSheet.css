@@ -4589,6 +4589,95 @@ el-character-sheet .content-slate section {
     color: var(--text-muted);
 }
 
+.skill-row-custom .skill-stat-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.35rem;
+}
+
+.skill-custom-tag {
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.skill-remove-btn {
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    background: var(--surface-muted);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.skill-remove-btn:hover {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+.custom-skill-form {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-soft);
+}
+
+.custom-skill-heading {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+}
+
+.custom-skill-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.custom-skill-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.custom-skill-field input {
+    min-width: 0;
+    width: 14rem;
+    max-width: 100%;
+}
+
+.custom-skill-field input,
+.custom-skill-field select,
+.custom-skill-add-btn {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.custom-skill-add-btn {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.custom-skill-status {
+    min-height: 1.2em;
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 .skill-status {
     font-size: 0.75rem;
     font-weight: 700;

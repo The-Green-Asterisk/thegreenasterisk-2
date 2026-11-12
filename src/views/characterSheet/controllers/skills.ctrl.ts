@@ -1,4 +1,6 @@
 import el from "@elements";
+import { renderSkills } from "../components/skills";
+import { addCustomSkill, removeCustomSkill } from "../services/customSkills";
 import { CharacterSheetContext } from "./context";
 
 export function initSkillsController(ctx: CharacterSheetContext) {
@@ -63,6 +65,42 @@ export function initSkillsController(ctx: CharacterSheetContext) {
             }
 
             ctx.scheduleDebouncedAutoSave();
+        }, { signal: el.signal });
+    });
+
+    // Re-renders the table after adding or removing a skill, then puts focus and a message where the player is
+    const rerender = (message: string, focusSelector: string) => {
+        const container = ctx.sheet.querySelector<HTMLElement>("#tab-skills .skills-container");
+        if (!container) return;
+        container.innerHTML = renderSkills(character);
+        initSkillsController(ctx);
+        const status = container.querySelector<HTMLElement>("#custom-skill-status");
+        if (status) status.textContent = message;
+        container.querySelector<HTMLElement>(focusSelector)?.focus();
+        ctx.scheduleDebouncedAutoSave();
+    };
+
+    const form = ctx.sheet.querySelector<HTMLFormElement>("#tab-skills .custom-skill-form");
+    form?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const nameInput = form.querySelector<HTMLInputElement>("#custom-skill-name");
+        const abilitySelect = form.querySelector<HTMLSelectElement>("#custom-skill-ability");
+        const status = form.querySelector<HTMLElement>("#custom-skill-status");
+        const result = addCustomSkill(character, nameInput?.value || "", abilitySelect?.value || "");
+        if (typeof result === "string") {
+            if (status) status.textContent = result;
+            nameInput?.setAttribute("aria-invalid", "true");
+            nameInput?.focus();
+            return;
+        }
+        const index = character.skills.indexOf(result);
+        rerender(`Added ${result.name} (${result.stat}).`, `.skill-training-select[data-skill-index="${index}"]`);
+    }, { signal: el.signal });
+
+    ctx.sheet.querySelectorAll<HTMLButtonElement>("#tab-skills .skill-remove-btn[data-remove-skill]").forEach(button => {
+        button.addEventListener("click", () => {
+            const name = button.getAttribute("data-remove-skill") || "";
+            if (removeCustomSkill(character, name)) rerender(`Removed ${name}.`, "#custom-skill-name");
         }, { signal: el.signal });
     });
 }

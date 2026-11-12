@@ -578,6 +578,16 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             proficiency: isExpert ? "expertise" : isProf ? "proficient" : "none"
         };
     });
+    // Skills the player added on the sheet aren't creator choices; keep them, with bonuses from the new abilities
+    const trainingMultiplier: Record<string, number> = { proficient: 1, expertise: 2 };
+    const ownSkills = ((ctx.loadedCharacter?.skills || []) as any[])
+        .filter((s) => s?.custom && !skillsPayload.some((sk) => sk.name.toLowerCase() === String(s.name).toLowerCase()))
+        .map((s) => {
+            const stat = String(s.stat || "").toUpperCase();
+            const proficiency = s.proficiency === "proficient" || s.proficiency === "expertise" ? s.proficiency : "none";
+            const bonus = ctx.getAbilityModifier(stat.toLowerCase() as AbilityName) + pb * (trainingMultiplier[proficiency] || 0);
+            return { name: String(s.name), stat, bonus, proficiency, custom: true };
+        });
 
     // Weapons
     const weaponsPayload = ctx.state.selectedWeapons.map((wName) => {
@@ -1289,7 +1299,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             damageResistances
         },
         abilities: abilitiesPayload,
-        skills: skillsPayload,
+        skills: [...skillsPayload, ...ownSkills],
         weapons: weaponsPayload,
         equipment: equipmentPayload,
         spells: spellsPayload,

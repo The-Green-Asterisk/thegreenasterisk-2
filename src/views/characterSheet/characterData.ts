@@ -49,6 +49,8 @@ export interface SkillItem {
     stat: string;
     bonus: number;
     proficiency: "none" | "proficient" | "expertise";
+    /** A skill this character added, not one of the rules' skills. Kept through D&D Beyond reloads and the creator. */
+    custom?: boolean;
 }
 
 export interface ActionItem {

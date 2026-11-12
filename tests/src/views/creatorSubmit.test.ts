@@ -30,4 +30,36 @@ describe("creator save", () => {
         await Promise.resolve();
         expect(putData).toHaveBeenCalledTimes(1);
     });
+
+    it("keeps skills the player added on the sheet when the character is saved again", async () => {
+        // The save in flight from the test above never settles; fresh modules start without it
+        vi.resetModules();
+        putData.mockClear();
+        const { CharacterCreatorController } = await import("../../../src/views/characterCreator/characterCreator.ctrl");
+        const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+        const { bindNavigationEvents } = await import("../../../src/views/characterCreator/controllers/navigation.ctrl");
+        const { serverRulesClasses } = await import("./serverRulesClasses");
+        document.body.innerHTML = "";
+        document.body.appendChild(characterCreatorTemplate());
+        const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
+        ctrl.state.name = "Keeps Cooking";
+        ctrl.state.savedId = 6;
+        ctrl.loadedCharacter = { skills: [
+            { name: "Stealth", stat: "DEX", bonus: 9, proficiency: "expertise" },
+            { name: "Cooking", stat: "WIS", bonus: 99, proficiency: "proficient", custom: true }
+        ] };
+        bindNavigationEvents(ctrl);
+        ctrl.renderStep(9);
+        (document.getElementById("creator-submit-btn") as HTMLButtonElement).click();
+        await Promise.resolve();
+        expect(putData).toHaveBeenCalledTimes(1);
+        const body: any = (putData.mock.calls[0] as any[])[1];
+        const skills: any[] = (body.character || body.payload || body).skills;
+        expect(skills).toHaveLength(19);
+        const cooking = skills.find((s) => s.name === "Cooking");
+        const pb = Number((body.character || body.payload || body).vitals?.proficiencyBonus) || 2;
+        expect(cooking).toEqual({ name: "Cooking", stat: "WIS", proficiency: "proficient", custom: true, bonus: ctrl.getAbilityModifier("wis") + pb });
+        expect(skills.filter((s) => s.name === "Stealth")).toHaveLength(1);
+    });
 });

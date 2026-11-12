@@ -1372,12 +1372,19 @@ export default class CharacterController extends BaseController {
             }))
             : (fallbackPayload?.abilities || []);
 
+        // Rows have no column for a skill the player added; the payload marks it
+        const customSkillNames = new Set<string>(
+            (Array.isArray(fallbackPayload?.skills) ? fallbackPayload.skills : [])
+                .filter((s: any) => s?.custom && typeof s.name === "string")
+                .map((s: any) => s.name.toLowerCase())
+        );
         const skills = record.skills && record.skills.length > 0
             ? record.skills.map(s => ({
                 name: s.name,
                 stat: s.stat,
                 bonus: s.bonus,
-                proficiency: s.proficiency
+                proficiency: s.proficiency,
+                ...(customSkillNames.has(s.name.toLowerCase()) ? { custom: true } : {})
             }))
             : (fallbackPayload?.skills || []);
 
