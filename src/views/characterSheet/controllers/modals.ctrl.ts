@@ -1667,7 +1667,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 }
 
                 if (modalSource) {
-                    modalSource.innerHTML = `<strong>Source Tier:</strong> ${spellSourceTier || 'Local Database'} • <em>${independentSpell.source || 'SRD / Custom'}</em>`;
+                    modalSource.innerHTML = `<strong>Source Tier:</strong> ${escapeHtml(String(spellSourceTier || 'Local Database'))} • <em>${escapeHtml(String(independentSpell.source || 'SRD / Custom'))}</em>`;
                 }
 
                 if (token === spellModalToken) setSpellEditTarget(independentSpell);
@@ -2228,7 +2228,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 }
 
                 if (modalItemSource) {
-                    modalItemSource.innerHTML = `<strong>Source Tier:</strong> ${independentRes.sourceTier || 'Local Database'} • <em>${itemObj.source || 'Standard / SRD'}</em>`;
+                    modalItemSource.innerHTML = `<strong>Source Tier:</strong> ${escapeHtml(String(independentRes.sourceTier || 'Local Database'))} • <em>${escapeHtml(String(itemObj.source || 'Standard / SRD'))}</em>`;
                 }
 
                 if (token === itemModalToken) setItemEditTarget(itemObj);

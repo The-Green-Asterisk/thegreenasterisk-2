@@ -421,6 +421,13 @@ export default class SpellController extends BaseController {
     }
 
     public static async syncCharacterSpells(req: http.IncomingMessage, _res: http.ServerResponse) {
+        if (!SessionController.getUser(req)) {
+            return {
+                response: JSON.stringify({ error: "Log in to sync character spells." }),
+                status: 401
+            };
+        }
+
         try {
             const body = await BaseController.readBody<{ spells?: any[] }>(req);
             const spells = Array.isArray(body?.spells) ? body.spells : [];

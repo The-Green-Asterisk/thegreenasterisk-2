@@ -27,7 +27,9 @@ import { featMechanicsJson } from "../services/database/featMechanics";
 import Item from "../services/database/entity/Item";
 import { itemMechanicsRules } from "../services/database/itemMechanics";
 import { findServerClassRule, loadClassRulesData } from "../services/classRulesData";
+import { sanitizeUserContent } from "../services/userContent";
 import BaseController from "./baseController";
+import SessionController from "./sessionController";
 import SpellController from "./spellController";
 
 function slugify(text: string): string {
@@ -598,6 +600,8 @@ export default class RulesController extends BaseController {
                 if (err?.code === "ER_BAD_FIELD_ERROR" || String(err?.message || "").includes("ER_BAD_FIELD_ERROR")) {
                     console.warn("ER_BAD_FIELD_ERROR when fetching rule_classes, falling back to raw table query:", err?.message);
                     dbClasses = await classRepo.query("SELECT * FROM `rule_classes` ORDER BY `name` ASC");
+                    // Raw rows skip the load-time sanitizer, so run it here
+                    dbClasses.forEach(row => sanitizeUserContent("RuleClass", row));
                 } else {
                     throw err;
                 }
@@ -1819,6 +1823,13 @@ export default class RulesController extends BaseController {
      * Ingests a loaded character's rules (classes, subclasses, species, backgrounds, feats) into the database.
      */
     public static async syncCharacterRules(req: http.IncomingMessage, _res: http.ServerResponse) {
+        if (!SessionController.getUser(req)) {
+            return {
+                response: JSON.stringify({ error: "Log in to sync character rules." }),
+                status: 401
+            };
+        }
+
         try {
             const body = await this.readBody(req);
             let count = 0;
