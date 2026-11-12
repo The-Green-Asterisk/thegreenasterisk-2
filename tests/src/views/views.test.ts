@@ -705,6 +705,29 @@ describe('Frontend View Templates', () => {
         expect(sword?.damage).toBe('1d8 + 5 Slashing');
     });
 
+    it('adds Jack of All Trades to Initiative for a 2014 Bard only', async () => {
+        const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        // Darvell's shape: Bard 10 / Warlock 10 (PB +6), DEX 15 (+2)
+        const bard = (sourceId: number) => ({
+            id: 555004,
+            name: 'Darvell',
+            classes: [
+                { level: 10, definition: { id: 1, name: 'Bard', hitDice: 8, sources: [{ sourceId }], classFeatures: [{ id: 10292181, name: 'Jack of All Trades' }] } },
+                { level: 10, definition: { id: 2, name: 'Warlock', hitDice: 8, sources: [{ sourceId }], classFeatures: [] } }
+            ],
+            baseHitPoints: 100,
+            stats: [8, 15, 12, 10, 13, 15].map((value, i) => ({ id: i + 1, value })),
+            modifiers: { class: [{ type: 'half-proficiency', subType: 'ability-checks', componentId: 10292181 }] },
+            inventory: [],
+            spells: {}
+        });
+
+        // 2024 Jack of All Trades only covers skill checks, so Initiative is DEX alone (+2), as D&D Beyond shows
+        expect(parseDndBeyondCharacter(bard(145) as any).vitals.initiative).toBe(2);
+        // 2014 Jack of All Trades covers every ability check: +2 DEX + 3 (half of PB 6)
+        expect(parseDndBeyondCharacter(bard(1) as any).vitals.initiative).toBe(5);
+    });
+
     it('seeds all 15 D&D 5.5 conditions in migration and renders Active Conditions box & Exhaustion tracker', async () => {
         const { CreateConditionsTable1792784000000 } = await import(
             '../../../server/services/database/migration/1792784000000-create_conditions_table'
