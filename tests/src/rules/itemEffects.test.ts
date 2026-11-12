@@ -72,4 +72,42 @@ describe("magic item effects from data", () => {
         expect(unknown.vitals.armorClass).toBe(10);
         expect(extractPlusBonus("Holy Avenger")).toBe(3);
     });
+
+    describe("Initiative", () => {
+        // DEX 14 (+2), PB +3, and Alert from the creator: Initiative +5
+        const alertChar = (equipment: any[]) => {
+            const c = siteChar(equipment);
+            const dex = c.abilities.find((a: any) => a.abbr === "DEX");
+            Object.assign(dex, { score: 14, baseScore: 14, modifier: 2 });
+            c.vitals.initiative = 5;
+            return c;
+        };
+        const reload = (c: any) => JSON.parse(JSON.stringify(c));
+
+        it("keeps the creator's bonuses like Alert", () => {
+            const c = alertChar([]);
+            applyMagicalItemBonuses(c);
+            applyMagicalItemBonuses(c);
+            expect(c.vitals.initiative).toBe(5);
+        });
+
+        it("adds an item's Initiative, ability check and DEX bonuses once, across saves, and takes them off when unequipped", () => {
+            const c = alertChar([
+                item("Sentry Charm", { modifiers: [{ target: "vitals.initiative", type: "bonus", value: 2 }] }),
+                item("Luckstone", { modifiers: [{ target: "checks.all", type: "bonus", value: 1 }] }),
+                item("Gloves of Quickness", { modifiers: [{ target: "abilities.dexterity", type: "bonus", value: 2 }] })
+            ]);
+            applyMagicalItemBonuses(c);
+            // 5 + 2 + 1 + 1 (DEX 16)
+            expect(c.vitals.initiative).toBe(9);
+
+            const loaded = reload(c);
+            applyMagicalItemBonuses(loaded);
+            expect(loaded.vitals.initiative).toBe(9);
+
+            loaded.equipment.forEach((i: any) => { i.equipped = false; });
+            applyMagicalItemBonuses(loaded);
+            expect(loaded.vitals.initiative).toBe(5);
+        });
+    });
 });

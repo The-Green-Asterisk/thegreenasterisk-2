@@ -2646,6 +2646,7 @@ export function applyLockedFieldsToRefreshedCharacter(
     }
 
     const abilityKeys = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+    const dexModBeforeLocks = target.abilities?.find(a => a.abbr === "DEX")?.modifier ?? 0;
     let anyAbilityLocked = false;
     abilityKeys.forEach((abbr, idx) => {
         const lockKey = `abilities.${abbr}`;
@@ -2688,7 +2689,8 @@ export function applyLockedFieldsToRefreshedCharacter(
         if (locks["abilities.DEX"] || locks["abilities.1"]) {
             const dexAb = target.abilities.find(a => a.abbr === "DEX");
             if (dexAb) {
-                target.vitals.initiative = dexAb.modifier;
+                // Move Initiative by the change in DEX only, keeping D&D Beyond's other Initiative bonuses
+                target.vitals.initiative += dexAb.modifier - dexModBeforeLocks;
             }
         }
     }

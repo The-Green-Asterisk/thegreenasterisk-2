@@ -911,12 +911,14 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     const profBonus = character.vitals?.proficiencyBonus || Math.floor(((character.level || 1) - 1) / 4) + 2;
 
     // --- 1. RECALCULATE ABILITY SCORES ---
+    const naturalMods: Record<string, number> = {};
     if (itemStatsFromData) character.abilities.forEach(ability => {
         const abbr = ability.abbr;
         // Natural score is baseScore + natural bonus (from racial, leveling, feats)
         const naturalBase = typeof ability.baseScore === "number" ? ability.baseScore : (ability.score - (ability.bonus || 0));
         const naturalBonus = typeof ability.bonus === "number" ? ability.bonus : 0;
         const naturalTotal = naturalBase + naturalBonus;
+        naturalMods[abbr] = Math.floor((naturalTotal - 10) / 2);
 
         const magicFlat = aggregated.statBonuses[abbr] || 0;
         let score = naturalTotal + magicFlat;
@@ -974,8 +976,13 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         const naturalAc = (character.vitals as any)._naturalArmorClass || 10;
         character.vitals.armorClass = naturalAc + aggregated.acBonus;
 
-        // Initiative: DEX modifier + initiative bonuses
-        character.vitals.initiative = dexMod + aggregated.initiativeBonus;
+        // Initiative keeps what the creator and sheet choices put there (Alert, Dread Ambusher) and swaps the items'
+        // part (their initiative and ability check bonuses, and any DEX change) for the current one. The last part
+        // applied is saved with the character, so reloading doesn't count it twice
+        const vitals = character.vitals as any;
+        const itemInitiative = (dexMod - (naturalMods.DEX ?? dexMod)) + aggregated.initiativeBonus + aggregated.globalCheckBonus;
+        character.vitals.initiative = (Number(character.vitals.initiative) || 0) - (Number(vitals._itemInitiative) || 0) + itemInitiative;
+        vitals._itemInitiative = itemInitiative;
 
         // Spell Save DC & Attack Bonus
         const spellAbilityAbbr = character.vitals.spellcastingAbility

@@ -2468,6 +2468,19 @@ describe('Frontend View Templates', () => {
         expect(charB.abilities[0].score).toBe(10);
     });
 
+    it('moves Initiative by the DEX change only when a locked DEX is reapplied', async () => {
+        const { applyLockedFieldsToRefreshedCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
+        const ability = (abbr: string, score: number) => ({ abbr, score, baseScore: score, bonus: 0, modifier: Math.floor((score - 10) / 2), save: 0 });
+        const abilities = (dex: number) => ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'].map(a => ability(a, a === 'DEX' ? dex : 10));
+
+        // Fresh from D&D Beyond: DEX 12 (+1) + Alert (+3) = +4; the player had locked DEX at 16 (+3)
+        const refreshed: any = { id: 1, abilities: abilities(12), skills: [], vitals: { initiative: 4, proficiencyBonus: 3 } };
+        const local: any = { id: 1, abilities: abilities(16), vitals: {}, lockedFields: { 'abilities.DEX': true } };
+        applyLockedFieldsToRefreshedCharacter(refreshed, local);
+
+        expect(refreshed.vitals.initiative).toBe(6);
+    });
+
     it('grants an equipped Quarterstaff (+2) when Staff of the Woodlands is equipped and attuned', async () => {
         const { parseDndBeyondCharacter } = await import('../../../src/views/characterSheet/characterAdapter');
         const { applyMagicalItemBonuses } = await import('../../../src/views/characterSheet/services/magicItemBonuses');
