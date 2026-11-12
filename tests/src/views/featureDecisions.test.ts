@@ -361,4 +361,24 @@ describe("Feature Decisions Progression Choice Integration", () => {
         expect(dec[1].options.map(o => o.label)).toEqual(["— Select Choice —", "Acid", "Cold", "Fire", "Lightning", "Thunder"]);
         expect(allMods.some(m => m.type === "resistance")).toBe(false);
     });
+
+    it("moves passive scores with their skill when a choice changes WIS, keeping advantage's +5", () => {
+        const char = createMockCharacter();
+        // WIS 17 (+3); Perception +3 and passive 18 (10 + 3 + 5 for advantage)
+        char.abilities.find(a => a.abbr === "WIS")!.score = 17;
+        char.vitals.passivePerception = 18;
+        char.features.push({
+            name: "Ability Score Improvement", source: "Feat", type: "Feat", description: "",
+            decisions: [{ id: "asi-wis", label: "Ability Score Increase", selectedValue: "none", options: [{ value: "none", label: "None" }, { value: "ability:5:1", label: "Wisdom +1" }] }]
+        } as any);
+
+        applyFeatureDecisionOnCharacterData(char, "asi-wis", "ability:5:1");
+        expect(char.skills.find(s => s.name === "Perception")!.bonus).toBe(4);
+        expect(char.vitals.passivePerception).toBe(19);
+        expect(char.vitals.passiveInsight).toBe(15);
+
+        applyFeatureDecisionOnCharacterData(char, "asi-wis", "none");
+        expect(char.vitals.passivePerception).toBe(18);
+        expect(char.vitals.passiveInsight).toBe(14);
+    });
 });

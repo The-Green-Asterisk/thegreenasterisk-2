@@ -952,17 +952,22 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     const chaMod = abilityMods.CHA ?? 0;
 
     // --- 2. RECALCULATE SKILLS ---
-    if (itemStatsFromData && Array.isArray(character.skills)) {
+    // Like Initiative below: skills keep what the creator and sheet choices put there (Jack of All Trades, bonuses to
+    // one skill) and swap the items' part (ability check bonuses and ability score changes) for the current one
+    const skillItemChanges: Record<string, number> = {};
+    if (itemStatsFromData && Array.isArray(character.skills) && character.vitals) {
+        const vitals = character.vitals as any;
+        const lastApplied: Record<string, number> = vitals._itemSkillBonuses || {};
+        const applied: Record<string, number> = {};
         character.skills.forEach(skill => {
             const statMod = abilityMods[skill.stat] ?? 0;
-            let b = statMod;
-            if (skill.proficiency === "expertise") {
-                b += profBonus * 2;
-            } else if (skill.proficiency === "proficient") {
-                b += profBonus;
-            }
-            skill.bonus = b + aggregated.globalCheckBonus;
+            const itemPart = (statMod - (naturalMods[skill.stat] ?? statMod)) + aggregated.globalCheckBonus;
+            const change = itemPart - (Number(lastApplied[skill.name]) || 0);
+            skill.bonus = (Number(skill.bonus) || 0) + change;
+            skillItemChanges[skill.name.toLowerCase()] = change;
+            applied[skill.name] = itemPart;
         });
+        vitals._itemSkillBonuses = applied;
     }
 
     // --- 3. RECALCULATE VITALS ---
@@ -994,14 +999,10 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         character.vitals.spellAttackBonus = profBonus + spellMod + aggregated.spellAtkBonus;
         character.vitals.spellcastingAbility = `${STAT_ABBRS[spellAbilityAbbr.toLowerCase()] || spellAbilityAbbr} (${spellMod >= 0 ? `+${spellMod}` : spellMod})`;
 
-        // Passive Senses
-        const getSkillBonus = (skillName: string): number => {
-            const s = character.skills?.find(sk => sk.name.toLowerCase() === skillName.toLowerCase());
-            return s ? s.bonus : 0;
-        };
-        character.vitals.passivePerception = 10 + getSkillBonus("Perception");
-        character.vitals.passiveInvestigation = 10 + getSkillBonus("Investigation");
-        character.vitals.passiveInsight = 10 + getSkillBonus("Insight");
+        // Passive scores move with their skill, keeping their own bonuses (advantage's +5)
+        character.vitals.passivePerception = (Number(character.vitals.passivePerception) || 10) + (skillItemChanges.perception || 0);
+        character.vitals.passiveInvestigation = (Number(character.vitals.passiveInvestigation) || 10) + (skillItemChanges.investigation || 0);
+        character.vitals.passiveInsight = (Number(character.vitals.passiveInsight) || 10) + (skillItemChanges.insight || 0);
 
         // Speed
         const baseSpeedNum = parseInt(character.vitals.speed, 10) || 30;

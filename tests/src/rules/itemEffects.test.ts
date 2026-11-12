@@ -110,4 +110,44 @@ describe("magic item effects from data", () => {
             expect(loaded.vitals.initiative).toBe(5);
         });
     });
+
+    describe("Skills and passive scores", () => {
+        // PB +3, WIS 10; Perception +1 from 2024 Jack of All Trades (unproficient), passive 16 with advantage's +5
+        const bard = (equipment: any[]) => {
+            const c = siteChar(equipment);
+            c.skills = [{ name: "Perception", stat: "WIS", bonus: 1, proficiency: "none" }];
+            c.vitals.passivePerception = 16;
+            return c;
+        };
+        const reload = (c: any) => JSON.parse(JSON.stringify(c));
+
+        it("keeps the creator's skill extras and passive bonuses", () => {
+            const c = bard([]);
+            applyMagicalItemBonuses(c);
+            applyMagicalItemBonuses(c);
+            expect(c.skills[0].bonus).toBe(1);
+            expect(c.vitals.passivePerception).toBe(16);
+        });
+
+        it("adds items' check and WIS bonuses once, across saves, and takes them off when unequipped", () => {
+            const c = bard([
+                item("Luckstone", { modifiers: [{ target: "checks.all", type: "bonus", value: 1 }] }),
+                item("Periapt of Insight", { modifiers: [{ target: "abilities.wisdom", type: "bonus", value: 2 }] })
+            ]);
+            applyMagicalItemBonuses(c);
+            // 1 + 1 (checks) + 1 (WIS 12)
+            expect(c.skills[0].bonus).toBe(3);
+            expect(c.vitals.passivePerception).toBe(18);
+
+            const loaded = reload(c);
+            applyMagicalItemBonuses(loaded);
+            expect(loaded.skills[0].bonus).toBe(3);
+            expect(loaded.vitals.passivePerception).toBe(18);
+
+            loaded.equipment.forEach((i: any) => { i.equipped = false; });
+            applyMagicalItemBonuses(loaded);
+            expect(loaded.skills[0].bonus).toBe(1);
+            expect(loaded.vitals.passivePerception).toBe(16);
+        });
+    });
 });
