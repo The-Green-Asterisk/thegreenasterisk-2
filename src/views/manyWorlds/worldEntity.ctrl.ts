@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { Category, Segment, Stat, User, World, WorldEntity } from "@entities";
 import FileService from "@services/fileService";
@@ -90,7 +91,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
         const segmentContent = html`
             <div class="entity-segment" data-draggable="true" data-id="${segment.id}">
                 <div class="header">
-                    <h3>${segment.name}</h3>
+                    <h3>${escapeHtml(segment.name)}</h3>
                     ${el.checkAdmin(gripLines, true)}
                 </div>
                 <p>${segment.description}</p>
@@ -275,7 +276,7 @@ export default async function worldEntityCtrl(entity: WorldEntity, category: Cat
                 getData<User[]>('/get-all-users').then(allUsersRes => {
                     allUsers = allUsersRes;
                     allUsers.forEach(user => {
-                        const option = html`<option value="${user.id}">${user.firstName} ${user.lastName} (${user.username})</option>` as HTMLOptionElement;
+                        const option = html`<option value="${user.id}">${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)} (${escapeHtml(user.username)})</option>` as HTMLOptionElement;
                         if (entity.editors.find(e => e.id === user.id)) {
                             option.selected = true;
                         }
@@ -348,7 +349,7 @@ const buildStatItem = (stat: Stat) => {
     `
     const statElement = html`
         <li>
-            <span><b>${stat.name}:</b> ${stat.value}</span>
+            <span><b>${escapeHtml(stat.name)}:</b> ${escapeHtml(stat.value)}</span>
             ${el.checkAdmin(editDeleteStat, true)}
         </li>
     `;
@@ -363,7 +364,7 @@ const buildStatItem = (stat: Stat) => {
                 stat.value = newValue.stripScripts();
                 putData<Stat>('/edit-stat', stat).then((res) => {
                     stat = res;
-                    statElement.querySelector('span')!.innerHTML = `<b>${stat.name}:</b> ${stat.value}`;
+                    statElement.querySelector('span')!.innerHTML = `<b>${escapeHtml(stat.name)}:</b> ${escapeHtml(stat.value)}`;
                 }).catch(error => {
                     alert('Error updating stat: ' + error);
                 });

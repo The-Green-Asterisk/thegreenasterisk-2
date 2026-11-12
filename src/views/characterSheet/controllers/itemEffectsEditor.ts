@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { effectTargetOption, renderEffectRow } from "../components/itemEffects";
@@ -38,7 +39,7 @@ export function createItemEffectsEditor(els: EffectsEditorElements) {
         if (loaded) targetSelect.value = loaded.target;
         const option = effectTargetOption(targetSelect.value);
         const previousType = mod?.type || typeSelect.value;
-        typeSelect.innerHTML = (option?.types || []).map(t => `<option value="${t.type}">${t.label}</option>`).join("");
+        typeSelect.innerHTML = (option?.types || []).map(t => `<option value="${t.type}">${escapeHtml(t.label)}</option>`).join("");
         typeSelect.disabled = !option;
         if (option?.types.some(t => t.type === previousType)) typeSelect.value = previousType;
 

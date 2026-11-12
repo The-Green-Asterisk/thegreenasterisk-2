@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { STANDARD_ARRAY } from "../services/rulesCalculations";
 import { AsiSlot } from "../characterCreator.types";
@@ -75,7 +76,7 @@ export function renderAsiMilestoneCard(ctx: CharacterCreatorContext, slot: AsiSl
                         <label class="asi-select-label" for="asi-${key}-feat">Choose Feat:</label>
                         <select id="asi-${key}-feat" class="creator-select asi-feat-select" data-asi-key="${key}">
                             ${availableFeats.map((f) => `
-                                <option value="${f.id}" ${choice.featId === f.id ? "selected" : ""}>${f.name}${f.isEpicBoon ? " (Epic Boon)" : ""}</option>
+                                <option value="${f.id}" ${choice.featId === f.id ? "selected" : ""}>${escapeHtml(f.name)}${f.isEpicBoon ? " (Epic Boon)" : ""}</option>
                             `).join("")}
                         </select>
                         <p class="asi-feat-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">${currentFeat?.description}</p>

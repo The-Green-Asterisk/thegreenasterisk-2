@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { SPELLS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
 import { getProgressionGrantedSpellNames, getSpellFeat, getSpellFeatAbility } from "../services/spellReconciliation";
@@ -15,7 +16,7 @@ function renderFeatSpellAbility(ctx: CharacterCreatorContext): string {
     return `
             <div class="creator-detail-box">
                 <div class="creator-form-group">
-                    <label class="creator-label" for="feat-spell-ability-select">${feat.name} Spellcasting Ability</label>
+                    <label class="creator-label" for="feat-spell-ability-select">${escapeHtml(feat.name)} Spellcasting Ability</label>
                     <select id="feat-spell-ability-select" class="creator-select">
                         ${options.map((ab) => `<option value="${ab}" ${ab === current ? "selected" : ""}>${ABILITY_LABELS[ab] || ab.toUpperCase()}</option>`).join("")}
                     </select>
@@ -39,13 +40,13 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
         return `
             <div class="step-panel active">
                 <div class="panel-header">
-                    <h3 class="panel-title">Spells & Magic (${cls?.name || "Class"})</h3>
+                    <h3 class="panel-title">Spells & Magic (${escapeHtml(cls?.name || "Class")})</h3>
                     <p class="panel-desc">Your class does not have spellcasting features at Level ${ctx.state.level}.</p>
                 </div>
                 <div class="equipment-stat-alert warning">
                     <i class="fa-solid fa-circle-info"></i>
                     <div>
-                        <strong>No Spellcasting:</strong> As a Level ${ctx.state.level} ${cls?.name || "character"}, your character does not learn cantrips or prepare spell slots.
+                        <strong>No Spellcasting:</strong> As a Level ${ctx.state.level} ${escapeHtml(cls?.name || "character")}, your character does not learn cantrips or prepare spell slots.
                         <div style="margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted);">
                             You may proceed to Step 9 (Review), or choose an Origin Feat like <em>Magic Initiate</em> in Step 4 to gain bonus spells.
                         </div>
@@ -83,7 +84,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
     const viaPill = (name: string): string => {
         const feature = bucket?.via[name];
         return feature
-            ? `<span class="stat-req-pill met" title="Not on the ${bucket?.baseList} spell list; available through ${feature}"><i class="fa-solid fa-key" aria-hidden="true"></i> ${feature}</span>`
+            ? `<span class="stat-req-pill met" title="Not on the ${escapeHtml(bucket?.baseList)} spell list; available through ${escapeHtml(feature)}"><i class="fa-solid fa-key" aria-hidden="true"></i> ${escapeHtml(feature)}</span>`
             : "";
     };
 
@@ -146,7 +147,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                             <div class="creator-detail-box feature-spell-choice-box" data-feature-section-id="${sec.id}" style="margin-bottom: 1rem;">
                                 <div class="box-header-with-badge">
                                     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                        <h4 style="margin: 0;"><i class="fa-solid fa-wand-magic-sparkles"></i> ${sec.title}</h4>
+                                        <h4 style="margin: 0;"><i class="fa-solid fa-wand-magic-sparkles"></i> ${escapeHtml(sec.title)}</h4>
                                         <span class="stat-req-pill met">${sec.sourceLabel}</span>
                                     </div>
                                     <span class="spell-count-badge ${isOver ? "over-limit" : isMaxed ? "maxed" : "info"}">
@@ -162,19 +163,19 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                                             <div class="item-check-row feature-spell-row ${isSelected ? "selected" : ""}"
                                                  role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate
                                                  data-feature-section-id="${sec.id}"
-                                                 data-spell-name="${sp.name}"
-                                                 data-spell-school="${sp.school}"
+                                                 data-spell-name="${escapeHtml(sp.name)}"
+                                                 data-spell-school="${escapeHtml(sp.school)}"
                                                  data-spell-level="${sp.level}">
                                                 <div class="item-row-left">
                                                     <div class="item-row-title">
-                                                        <span>${sp.name}</span>
+                                                        <span>${escapeHtml(sp.name)}</span>
                                                         <span class="stat-req-pill met">${sp.level === 0 ? "Cantrip" : `Lvl ${sp.level}`}</span>
-                                                        <span class="stat-req-pill">${sp.school}</span>
+                                                        <span class="stat-req-pill">${escapeHtml(sp.school)}</span>
                                                         ${sp.classes.map((c) => `<span class="stat-req-pill">${c}</span>`).join(" ")}
                                                         ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll"></i> Ritual</span>' : ""}
                                                         ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain"></i> Conc.</span>' : ""}
                                                     </div>
-                                                    <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
+                                                    <div class="item-row-meta">${escapeHtml(sp.castingTime)} • ${escapeHtml(sp.range)} • ${escapeHtml(sp.duration)}</div>
                                                     <div class="item-row-desc">${sp.description}</div>
                                                 </div>
                                                 <span class="card-check"><i class="fa-solid fa-check"></i></span>
@@ -200,7 +201,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
         return `
                             <button type="button" class="creator-nav-btn secondary-btn spell-class-tab-btn ${b.key === bucket?.key ? "active" : ""} ${over ? "over-limit" : ""}" data-class="${b.key}" aria-pressed="${b.key === bucket?.key}" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
                                 ${over ? '<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>' : ""}
-                                ${b.label}${b.kind === "class" ? ` ${b.level}` : ""} (${counts}${over ? ", over limit" : ""})
+                                ${escapeHtml(b.label)}${b.kind === "class" ? ` ${b.level}` : ""} (${counts}${over ? ", over limit" : ""})
                             </button>
                         `;
     }).join("")}
@@ -221,7 +222,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                         ${showBucketTabs ? `${bucket?.label} does not grant cantrips at this level.` : "Your class features do not grant cantrips at current level."}
                     </p>
                 ` : `
-                    <div class="item-select-list" role="group" aria-label="${bucket?.label} cantrips">
+                    <div class="item-select-list" role="group" aria-label="${escapeHtml(bucket?.label)} cantrips">
                         ${displayedCantrips.map((sp) => {
         const isGranted = grantedNames.has(sp.name.toLowerCase());
         const isSelected = isGranted || selection.cantrips.includes(sp.name);
@@ -229,15 +230,15 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
         return `
                                 <div class="item-check-row cantrip-row ${isSelected ? "selected" : ""} ${isGranted ? "progression-granted" : ""}"
                                      role="checkbox" tabindex="0" aria-checked="${isSelected}"
-                                     data-spell-name="${sp.name}"${isGranted ? ' data-granted="true" aria-disabled="true"' : ""}>
+                                     data-spell-name="${escapeHtml(sp.name)}"${isGranted ? ' data-granted="true" aria-disabled="true"' : ""}>
                                     <div class="item-row-left">
                                         <div class="item-row-title">
-                                            <span>${sp.name} (${sp.school})</span>
+                                            <span>${escapeHtml(sp.name)} (${escapeHtml(sp.school)})</span>
                                             ${isGranted ? grantedPill : ""}
                                             ${viaPill(sp.name)}
                                             ${elsewhere.map((c) => `<span class="stat-req-pill">Also known as ${c}</span>`).join(" ")}
                                         </div>
-                                        <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
+                                        <div class="item-row-meta">${escapeHtml(sp.castingTime)} • ${escapeHtml(sp.range)} • ${escapeHtml(sp.duration)}</div>
                                         <div class="item-row-desc">${sp.description}</div>
                                     </div>
                                     <span class="card-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
@@ -289,7 +290,7 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
                         ` : ""}
                     </div>
 
-                    <div class="item-select-list" role="group" aria-label="${bucket?.label} prepared spells">
+                    <div class="item-select-list" role="group" aria-label="${escapeHtml(bucket?.label)} prepared spells">
                         ${displayedLeveled.map((sp) => {
         const isGranted = grantedNames.has(sp.name.toLowerCase());
         const isSelected = isGranted || selection.prepared.includes(sp.name);
@@ -297,21 +298,21 @@ export function renderStep8Spells(ctx: CharacterCreatorContext): string {
         return `
                                 <div class="item-check-row spell1-row ${isSelected ? "selected" : ""} ${isGranted ? "progression-granted" : ""}"
                                      role="checkbox" tabindex="0" aria-checked="${isSelected}"
-                                     data-spell-name="${sp.name}"
-                                     data-spell-school="${sp.school}"
+                                     data-spell-name="${escapeHtml(sp.name)}"
+                                     data-spell-school="${escapeHtml(sp.school)}"
                                      data-spell-level="${sp.level}"${isGranted ? ' data-granted="true" aria-disabled="true"' : ""}>
                                     <div class="item-row-left">
                                         <div class="item-row-title">
-                                            <span>${sp.name}</span>
+                                            <span>${escapeHtml(sp.name)}</span>
                                             ${isGranted ? grantedPill : ""}
                                             <span class="stat-req-pill met">Lvl ${sp.level}</span>
-                                            <span class="stat-req-pill">${sp.school}</span>
+                                            <span class="stat-req-pill">${escapeHtml(sp.school)}</span>
                                             ${viaPill(sp.name)}
                                             ${elsewhere.map((c) => `<span class="stat-req-pill">Also prepared as ${c}</span>`).join(" ")}
                                             ${sp.ritual ? '<span class="stat-req-pill met"><i class="fa-solid fa-scroll" aria-hidden="true"></i> Ritual</span>' : ""}
                                             ${sp.concentration ? '<span class="stat-req-pill unmet"><i class="fa-solid fa-brain" aria-hidden="true"></i> Conc.</span>' : ""}
                                         </div>
-                                        <div class="item-row-meta">${sp.castingTime} • ${sp.range} • ${sp.duration}</div>
+                                        <div class="item-row-meta">${escapeHtml(sp.castingTime)} • ${escapeHtml(sp.range)} • ${escapeHtml(sp.duration)}</div>
                                         <div class="item-row-desc">${sp.description}</div>
                                     </div>
                                     <span class="card-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span>

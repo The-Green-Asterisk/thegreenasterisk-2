@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterData } from "../characterData";
 import { isCharacterSpeciesSpell } from "./spells";
 
@@ -79,7 +80,7 @@ export function renderDetailsAndNotes(data: CharacterData): string {
                 <div class="currency-grid">
                     ${COINS.map((coin) => `
                         <div class="currency-field">
-                            <label for="currency-${coin.key}">${coin.label}</label>
+                            <label for="currency-${coin.key}">${escapeHtml(coin.label)}</label>
                             <input type="number" id="currency-${coin.key}" class="currency-input" data-coin="${coin.key}" min="0" step="1" inputmode="numeric" value="${Math.max(0, Number(currency[coin.key]) || 0)}">
                         </div>`).join("")}
                 </div>
@@ -126,6 +127,6 @@ export function renderSpeciesSpellcasting(data: CharacterData): string {
     return `
         <p class="species-spellcasting-note">
             <i class="fa-solid fa-dna" aria-hidden="true"></i>
-            ${escapeText(data.lineage || data.species || "Species")} spells use <strong>${summary.ability}</strong>: save DC <strong>${summary.dc}</strong>, spell attack <strong>${attack}</strong>
+            ${escapeText(data.lineage || data.species || "Species")} spells use <strong>${escapeHtml(summary.ability)}</strong>: save DC <strong>${escapeHtml(summary.dc)}</strong>, spell attack <strong>${attack}</strong>
         </p>`;
 }

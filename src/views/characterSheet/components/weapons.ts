@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { renderUsesTracker } from "./usesTracker";
 import { itemChargesKey } from "../dndBeyondExtras";
 import { CharacterData } from "../characterData";
@@ -55,9 +56,9 @@ export function renderWeapons(data: CharacterData): string {
                 data-weapon-id="${w.definitionId || w.id || ''}"
                 data-mastery-name="${encodeURIComponent(w.mastery.name)}"
                 aria-pressed="${w.mastery.unlocked ? 'true' : 'false'}"
-                title="${w.mastery.description || w.mastery.name} (Click to toggle)"
+                title="${escapeHtml(w.mastery.description || w.mastery.name)} (Click to toggle)"
             >
-                <i class="fa-solid fa-burst"></i> Mastery: ${w.mastery.name}${w.mastery.unlocked ? ' (Active)' : ''}
+                <i class="fa-solid fa-burst"></i> Mastery: ${escapeHtml(w.mastery.name)}${w.mastery.unlocked ? ' (Active)' : ''}
                </button>`
             : '';
 
@@ -67,14 +68,14 @@ export function renderWeapons(data: CharacterData): string {
                 <div class="weapon-card-header">
                     <div class="weapon-title-group">
                         <h4 class="weapon-name">
-                            <i class="fa-solid fa-khanda weapon-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${w.name}</button>${w.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}
+                            <i class="fa-solid fa-khanda weapon-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${escapeHtml(w.name)}</button>${w.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}
                         </h4>
-                        <span class="weapon-category">${w.category}</span>
+                        <span class="weapon-category">${escapeHtml(w.category)}</span>
                     </div>
                     <div class="weapon-status-badges">
                         <div class="item-qty-stepper weapon-qty-stepper" data-weapon-name="${encodeURIComponent(w.name)}" title="Quantity: Click - / + or type a number">
                             <button type="button" class="item-qty-btn qty-dec" data-qty-delta="-1" aria-label="Decrease quantity" title="Decrease quantity">&minus;</button>
-                            <input type="number" class="item-qty-input" min="0" max="9999" value="${w.quantity}" data-weapon-name="${encodeURIComponent(w.name)}" aria-label="Quantity for ${w.name}" />
+                            <input type="number" class="item-qty-input" min="0" max="9999" value="${w.quantity}" data-weapon-name="${encodeURIComponent(w.name)}" aria-label="Quantity for ${escapeHtml(w.name)}" />
                             <button type="button" class="item-qty-btn qty-inc" data-qty-delta="1" aria-label="Increase quantity" title="Increase quantity">&plus;</button>
                         </div>
                         ${equippedBadge}
@@ -91,11 +92,11 @@ export function renderWeapons(data: CharacterData): string {
                     </div>
                     <div class="wstat-box dmg-stat">
                         <span class="wstat-label"><i class="fa-solid fa-burst"></i> DAMAGE</span>
-                        <span class="wstat-val">${w.damage}</span>
+                        <span class="wstat-val">${escapeHtml(w.damage)}</span>
                     </div>
                     <div class="wstat-box range-stat">
                         <span class="wstat-label"><i class="fa-solid fa-arrows-left-right"></i> RANGE</span>
-                        <span class="wstat-val">${w.range}</span>
+                        <span class="wstat-val">${escapeHtml(w.range)}</span>
                     </div>
                 </div>
 

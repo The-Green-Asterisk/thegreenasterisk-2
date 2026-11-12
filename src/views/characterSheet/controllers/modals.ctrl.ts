@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import FileService from "@services/fileService";
 import { getData, postData, putData } from "@services/request";
@@ -24,14 +25,6 @@ import { initEquipmentController } from "./equipment.ctrl";
 import { initSpellsController } from "./spells.ctrl";
 import { initWeaponsController } from "./weapons.ctrl";
 
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
 
 export function initModalsController(ctx: CharacterSheetContext) {
     // Tab stays in an open dialog, and focus returns to its opener when it closes
@@ -326,7 +319,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (filteredConditions.length === 0) {
                 conditionsModalList.innerHTML = `
                     <div class="conditions-empty-search">
-                        No conditions match "${(conditionsSearchInput?.value || "").trim()}".
+                        No conditions match "${escapeHtml((conditionsSearchInput?.value || "").trim())}".
                     </div>
                 `;
                 return;
@@ -341,16 +334,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         : (isActive ? "Active" : "Inactive");
 
                     return `
-                        <article class="condition-modal-card ${isActive ? 'is-active' : ''}" data-condition-name="${cond.name}" data-condition-slug="${cond.slug}">
+                        <article class="condition-modal-card ${isActive ? 'is-active' : ''}" data-condition-name="${escapeHtml(cond.name)}" data-condition-slug="${cond.slug}">
                             <div class="condition-card-header">
                                 <div class="condition-card-title-group">
                                     <span class="condition-card-icon"><i class="${cond.icon || 'fa-solid fa-circle-exclamation'}"></i></span>
                                     <div>
-                                        <h3 class="condition-card-name">${cond.name}</h3>
-                                        <p class="condition-card-summary">${cond.summary}</p>
+                                        <h3 class="condition-card-name">${escapeHtml(cond.name)}</h3>
+                                        <p class="condition-card-summary">${escapeHtml(cond.summary)}</p>
                                     </div>
                                 </div>
-                                <button type="button" class="condition-toggle-btn ${isActive ? 'active' : ''}" data-toggle-condition="${cond.name}" aria-pressed="${isActive ? 'true' : 'false'}">
+                                <button type="button" class="condition-toggle-btn ${isActive ? 'active' : ''}" data-toggle-condition="${escapeHtml(cond.name)}" aria-pressed="${isActive ? 'true' : 'false'}">
                                     <i class="fa-solid ${isActive ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
                                     <span>${statusBadge}</span>
                                 </button>
@@ -605,12 +598,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                         ${levelSpells.map(s => `
                             <li class="manage-abbrev-spell-row" data-current-spell-name="${encodeURIComponent(s.name)}">
                                 <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-spell-name="${encodeURIComponent(s.name)}" title="Click to view spell description">
-                                    <span class="manage-abbrev-spell-name">${s.name}</span>
-                                    <span class="manage-abbrev-spell-meta">${s.school} • ${s.castingTime}</span>
+                                    <span class="manage-abbrev-spell-name">${escapeHtml(s.name)}</span>
+                                    <span class="manage-abbrev-spell-meta">${escapeHtml(s.school)} • ${escapeHtml(s.castingTime)}</span>
                                     ${s.concentration ? '<span class="manage-mini-tag conc">C</span>' : ''}
                                     ${s.ritual ? '<span class="manage-mini-tag ritual">R</span>' : ''}
                                 </button>
-                                <button type="button" class="manage-remove-spell-btn" data-remove-spell-name="${encodeURIComponent(s.name)}" title="Remove ${s.name} from character spell list" aria-label="Remove ${s.name}">
+                                <button type="button" class="manage-remove-spell-btn" data-remove-spell-name="${encodeURIComponent(s.name)}" title="Remove ${escapeHtml(s.name)} from character spell list" aria-label="Remove ${escapeHtml(s.name)}">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </li>
@@ -783,16 +776,16 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     <div class="manage-db-spell-card ${isAdded ? 'is-added' : ''}" data-db-spell-idx="${idx}">
                         <div class="manage-db-spell-info" data-preview-db-idx="${idx}" title="Click to preview full description">
                             <div class="manage-db-spell-title-row">
-                                <span class="manage-db-spell-name">${spell.name}</span>
+                                <span class="manage-db-spell-name">${escapeHtml(spell.name)}</span>
                                 <span class="manage-db-lvl-pill">${lvlBadge}</span>
-                                <span class="manage-db-school">${spell.school || 'Universal'}</span>
+                                <span class="manage-db-school">${escapeHtml(spell.school || 'Universal')}</span>
                             </div>
                             <div class="manage-db-spell-sub">
-                                <span><i class="fa-regular fa-clock"></i> ${spell.castingTime || '1 Action'}</span>
-                                <span><i class="fa-solid fa-bullseye"></i> ${spell.range || 'Self'}</span>
+                                <span><i class="fa-regular fa-clock"></i> ${escapeHtml(spell.castingTime || '1 Action')}</span>
+                                <span><i class="fa-solid fa-bullseye"></i> ${escapeHtml(spell.range || 'Self')}</span>
                                 ${spell.concentration ? '<span class="manage-mini-tag conc">Conc</span>' : ''}
                                 ${spell.ritual ? '<span class="manage-mini-tag ritual">Ritual</span>' : ''}
-                                ${spell.source ? `<span class="manage-db-source">${spell.source}</span>` : ''}
+                                ${spell.source ? `<span class="manage-db-source">${escapeHtml(spell.source)}</span>` : ''}
                             </div>
                         </div>
                         <button
@@ -995,12 +988,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 return `
                     <li class="manage-abbrev-spell-row" data-current-weapon-idx="${idx}">
                         <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-weapon-name="${encodeURIComponent(w.name)}" title="Click to view weapon details">
-                            <span class="manage-abbrev-spell-name">${w.name}</span>
-                            <span class="manage-abbrev-spell-meta">${w.category || 'Weapon'} • ${w.damage || '—'}</span>
+                            <span class="manage-abbrev-spell-name">${escapeHtml(w.name)}</span>
+                            <span class="manage-abbrev-spell-meta">${escapeHtml(w.category || 'Weapon')} • ${escapeHtml(w.damage || '—')}</span>
                             ${isMagic ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
-                            ${w.mastery?.unlocked ? `<span class="manage-mini-tag ritual">${w.mastery.name}</span>` : ''}
+                            ${w.mastery?.unlocked ? `<span class="manage-mini-tag ritual">${escapeHtml(w.mastery.name)}</span>` : ''}
                         </button>
-                        <button type="button" class="manage-remove-spell-btn" data-remove-weapon-name="${encodeURIComponent(w.name)}" title="Remove ${w.name} from character sheet" aria-label="Remove ${w.name}">
+                        <button type="button" class="manage-remove-spell-btn" data-remove-weapon-name="${encodeURIComponent(w.name)}" title="Remove ${escapeHtml(w.name)} from character sheet" aria-label="Remove ${escapeHtml(w.name)}">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </li>
@@ -1016,12 +1009,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 return `
                     <li class="manage-abbrev-spell-row" data-current-equipment-idx="${idx}">
                         <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-equipment-name="${encodeURIComponent(e.name)}" data-preview-equipment-type="${encodeURIComponent(e.type || 'Equipment')}" title="Click to view item details">
-                            <span class="manage-abbrev-spell-name">${e.name}</span>
+                            <span class="manage-abbrev-spell-name">${escapeHtml(e.name)}</span>
                             <span class="manage-abbrev-spell-meta">${e.type || 'Item'}${isMagic && e.rarity && e.rarity !== 'Common' ? ` • ${e.rarity}` : ''}${e.quantity > 1 ? ` ×${e.quantity}` : ''}</span>
                             ${isMagic ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
                             ${e.equipped ? '<span class="manage-mini-tag ritual">Equipped</span>' : ''}
                         </button>
-                        <button type="button" class="manage-remove-spell-btn" data-remove-equipment-name="${encodeURIComponent(e.name)}" title="Remove ${e.name} from character sheet" aria-label="Remove ${e.name}">
+                        <button type="button" class="manage-remove-spell-btn" data-remove-equipment-name="${encodeURIComponent(e.name)}" title="Remove ${escapeHtml(e.name)} from character sheet" aria-label="Remove ${escapeHtml(e.name)}">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </li>
@@ -1239,17 +1232,17 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     <div class="manage-db-spell-card ${isAdded ? 'is-added' : ''}" data-db-item-idx="${idx}">
                         <div class="manage-db-spell-info" data-preview-db-item-idx="${idx}" title="Click to preview item description">
                             <div class="manage-db-spell-title-row">
-                                <span class="manage-db-spell-name">${item.name}</span>
+                                <span class="manage-db-spell-name">${escapeHtml(item.name)}</span>
                                 <span class="manage-db-lvl-pill">${categoryLabel}</span>
                                 ${rarityBadge ? `<span class="manage-db-school">${rarityBadge}</span>` : ''}
                             </div>
                             <div class="manage-db-spell-sub">
-                                ${item.damage ? `<span><i class="fa-solid fa-khanda"></i> ${item.damage}</span>` : ''}
-                                ${item.range ? `<span><i class="fa-solid fa-bullseye"></i> ${item.range}</span>` : ''}
+                                ${item.damage ? `<span><i class="fa-solid fa-khanda"></i> ${escapeHtml(item.damage)}</span>` : ''}
+                                ${item.range ? `<span><i class="fa-solid fa-bullseye"></i> ${escapeHtml(item.range)}</span>` : ''}
                                 ${item.weight ? `<span><i class="fa-solid fa-weight-hanging"></i> ${item.weight} lb.</span>` : ''}
                                 ${(!isMundaneEquipment(item.name) && item.isMagic) ? '<span class="manage-mini-tag conc">Magic</span>' : ''}
-                                ${item.mastery ? `<span class="manage-mini-tag ritual">${item.mastery}</span>` : ''}
-                                ${item.source ? `<span class="manage-db-source">${item.source}</span>` : ''}
+                                ${item.mastery ? `<span class="manage-mini-tag ritual">${escapeHtml(item.mastery)}</span>` : ''}
+                                ${item.source ? `<span class="manage-db-source">${escapeHtml(item.source)}</span>` : ''}
                             </div>
                         </div>
                         <button
@@ -1525,7 +1518,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         if (modalBadges) {
             let badgesHtml = `<span class="modal-badge school-badge">${displaySchool}</span>`;
-            if (localSpell?.source) badgesHtml += `<span class="modal-badge source-badge">${localSpell.source}</span>`;
+            if (localSpell?.source) badgesHtml += `<span class="modal-badge source-badge">${escapeHtml(localSpell.source)}</span>`;
             const localDamage = localSpell ? getSpellDamageDisplay(localSpell, undefined, activeCharLevel, activeChar) : "";
             if (localDamage) {
                 const dmgType = getSpellDamageType(localSpell, localDamage);
@@ -1619,7 +1612,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 if (modalSpellType) modalSpellType.textContent = `${levelStr} • ${independentSpell.school || displaySchool}`;
 
                 if (modalBadges) {
-                    let badges = `<span class="modal-badge school-badge">${independentSpell.school || displaySchool}</span>`;
+                    let badges = `<span class="modal-badge school-badge">${escapeHtml(independentSpell.school || displaySchool)}</span>`;
                     badges += `<span class="modal-badge tier-badge tier-${String(spellSourceTier).toLowerCase().replace(/[^a-z0-9]/g, '-')}"><i class="fa-solid fa-database"></i> Source: ${spellSourceTier}</span>`;
                     const indDamage = getSpellDamageDisplay(independentSpell, undefined, activeCharLevel, activeChar);
                     if (indDamage) {
@@ -2115,7 +2108,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 badges += `<span class="modal-badge magic-badge"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>`;
             }
             if (localWeapon?.mastery) {
-                badges += `<span class="modal-badge mastery-badge ${localWeapon.mastery.unlocked ? 'unlocked' : ''}"><i class="fa-solid fa-burst"></i> Mastery: ${localWeapon.mastery.name}</span>`;
+                badges += `<span class="modal-badge mastery-badge ${localWeapon.mastery.unlocked ? 'unlocked' : ''}"><i class="fa-solid fa-burst"></i> Mastery: ${escapeHtml(localWeapon.mastery.name)}</span>`;
             }
             modalItemBadges.innerHTML = badges;
         }
@@ -2173,19 +2166,19 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 if (modalItemType) modalItemType.textContent = itemObj.category || itemObj.filterType || displayType;
 
                 if (modalItemBadges) {
-                    let badges = `<span class="modal-badge school-badge">${itemObj.category || itemObj.filterType || displayType}</span>`;
+                    let badges = `<span class="modal-badge school-badge">${escapeHtml(itemObj.category || itemObj.filterType || displayType)}</span>`;
                     const sourceTier = independentRes.sourceTier || (itemObj.isCustom ? 'Custom Database' : 'Database');
                     badges += `<span class="modal-badge tier-badge tier-${sourceTier.toLowerCase().replace(/[^a-z0-9]/g, '-')}"><i class="fa-solid fa-database"></i> Source: ${sourceTier}</span>`;
                     const itemIsMundane = isMundaneEquipment(itemObj.name);
                     const itemIsMagic = itemIsMundane ? false : !!itemObj.isMagic;
                     if (itemObj.rarity && itemObj.rarity !== 'Common' && !itemIsMundane) {
-                        badges += `<span class="modal-badge rarity-badge">${itemObj.rarity}</span>`;
+                        badges += `<span class="modal-badge rarity-badge">${escapeHtml(itemObj.rarity)}</span>`;
                     }
                     if (itemIsMagic) {
                         badges += `<span class="modal-badge magic-badge"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>`;
                     }
                     if (itemObj.mastery) {
-                        badges += `<span class="modal-badge mastery-badge unlocked"><i class="fa-solid fa-burst"></i> Mastery: ${itemObj.mastery}</span>`;
+                        badges += `<span class="modal-badge mastery-badge unlocked"><i class="fa-solid fa-burst"></i> Mastery: ${escapeHtml(itemObj.mastery)}</span>`;
                     }
                     modalItemBadges.innerHTML = badges;
                 }

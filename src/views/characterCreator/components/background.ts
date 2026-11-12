@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterCreatorContext } from "../controllers/context";
 
 export function renderStep4Background(ctx: CharacterCreatorContext): string {
@@ -15,7 +16,7 @@ export function renderStep4Background(ctx: CharacterCreatorContext): string {
                 ${ctx.backgrounds.map((bg) => `
                     <div class="select-card background-card ${ctx.state.backgroundId === bg.id ? "selected" : ""}" data-background-id="${bg.id}" role="radio" aria-checked="${ctx.state.backgroundId === bg.id}" tabindex="0" data-kbd-activate>
                         <div class="card-title-row">
-                            <h4 class="card-title">${bg.name}</h4>
+                            <h4 class="card-title">${escapeHtml(bg.name)}</h4>
                             <span class="card-check"><i class="fa-solid fa-check"></i></span>
                         </div>
                         <span class="card-tag">Abilities: ${bg.allowedAbilities.map((a) => a.toUpperCase()).join(", ")}</span>
@@ -25,7 +26,7 @@ export function renderStep4Background(ctx: CharacterCreatorContext): string {
             </div>
 
             <div class="creator-detail-box">
-                <h4>${currentBg.name} Configuration</h4>
+                <h4>${escapeHtml(currentBg.name)} Configuration</h4>
                 <div class="creator-form-grid">
                     <fieldset class="creator-form-group creator-fieldset">
                         <legend class="creator-label">Ability Score Distribution</legend>
@@ -61,12 +62,12 @@ export function renderStep4Background(ctx: CharacterCreatorContext): string {
                     </div>
                     <div class="creator-form-group">
                         <label class="creator-label" for="bg-feat-granted">Origin Feat Granted</label>
-                        <input type="text" id="bg-feat-granted" class="creator-input" value="${feat.name}" readonly />
+                        <input type="text" id="bg-feat-granted" class="creator-input" value="${escapeHtml(feat.name)}" readonly />
                     </div>
                 </div>
 
                 <div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);">
-                    <strong style="color: var(--ui-text); font-size: 0.95rem;">${feat.name}:</strong>
+                    <strong style="color: var(--ui-text); font-size: 0.95rem;">${escapeHtml(feat.name)}:</strong>
                     <p style="font-size: 0.85rem; margin: 0.25rem 0 0 0; color: var(--text-muted);">${feat.description}</p>
                     <ul style="margin: 0.35rem 0 0 0; padding-left: 1.2rem; font-size: 0.82rem; color: var(--text);">
                         ${feat.benefits.map((b) => `<li>${b}</li>`).join("")}

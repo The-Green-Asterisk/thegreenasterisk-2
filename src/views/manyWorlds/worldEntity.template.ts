@@ -1,9 +1,10 @@
+import { escapeHtml } from "@services/escape";
 import { Category, World, WorldEntity } from "@entities";
 import Helpers from "@services/helpers";
 
 const worldEntityTemplate = (entity: WorldEntity, category: Category, world: World) => Helpers.html`
     <div id="world-content">
-        <a style="margin-left: 10px" href="/many-worlds/world/${world.id}/category/${category.id}">&larr; Back to ${category.name}</a>
+        <a style="margin-left: 10px" href="/many-worlds/world/${world.id}/category/${escapeHtml(category.id)}">&larr; Back to ${escapeHtml(category.name)}</a>
         <div id="entity-details">
             <div id="img-and-stats">
                 <img src="${
@@ -12,12 +13,12 @@ const worldEntityTemplate = (entity: WorldEntity, category: Category, world: Wor
                     : `/storage/images/default-thumbnail.jpg`
                 }" alt="Entity Thumbnail" light-box id="entity-thumbnail"/>
                 <div id="entity-stats">
-                    <h3>${entity.name}'s Quick Stats</h3>
+                    <h3>${escapeHtml(entity.name)}'s Quick Stats</h3>
                     <ul>
                     </ul>
                 </div>
             </div>
-            <h2 id="entity-name">${entity.name}</h2>
+            <h2 id="entity-name">${escapeHtml(entity.name)}</h2>
             <div id="entity-description">
                 <p>
                     ${entity.description || 'No description available for this entity.'}

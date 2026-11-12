@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { renderUsesTracker } from "./usesTracker";
 import { itemChargesKey } from "../dndBeyondExtras";
 import { CharacterData } from "../characterData";
@@ -37,18 +38,18 @@ export function renderEquipment(data: CharacterData): string {
             : '';
         const isMagic = isMundaneEquipment(item.name) ? false : !!item.isMagic;
         const magicBadge = isMagic ? '<span class="item-badge magic"><i class="fa-solid fa-wand-sparkles"></i> Magic</span>' : '';
-        const rarityBadge = !isMagic ? '' : (item.rarity && item.rarity !== 'Common' ? `<span class="item-badge rarity-${item.rarity.toLowerCase().replace(/\s+/g, '-')}">${item.rarity}</span>` : '');
+        const rarityBadge = !isMagic ? '' : (item.rarity && item.rarity !== 'Common' ? `<span class="item-badge rarity-${escapeHtml(item.rarity.toLowerCase().replace(/\s+/g, '-'))}">${escapeHtml(item.rarity)}</span>` : '');
         const charges = item.charges ? renderUsesTracker(item.name, itemChargesKey(item), item.charges.max, item.charges.resetOn, item.charges.resetLabel) : '';
         const card = `
             <div class="equipment-row clickable-item-card" data-item-name="${encodeURIComponent(item.name)}" data-item-id="${item.definitionId || item.id || ''}" data-item-type="${item.type || ''}" title="Click to view details and tiered info">
                 <div class="item-info">
-                    <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${item.name}</button>${item.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}</span>
+                    <span class="item-name"><i class="fa-solid fa-box-open item-lead-icon" aria-hidden="true"></i> <button type="button" class="card-open-btn" aria-haspopup="dialog">${escapeHtml(item.name)}</button>${item.locked ? ' <span class="copy-locked-indicator" title="Locked on this character"><i class="fa-solid fa-lock" aria-hidden="true"></i><span class="visually-hidden">(locked on this character)</span></span>' : ''}</span>
                     <span class="item-type">${item.type}</span>
                 </div>
                 <div class="item-badges">
                     <div class="item-qty-stepper" data-item-name="${encodeURIComponent(item.name)}" title="Quantity: Click - / + or type a number">
                         <button type="button" class="item-qty-btn qty-dec" data-qty-delta="-1" aria-label="Decrease quantity" title="Decrease quantity">&minus;</button>
-                        <input type="number" class="item-qty-input" min="0" max="9999" value="${item.quantity}" data-item-name="${encodeURIComponent(item.name)}" aria-label="Quantity for ${item.name}" />
+                        <input type="number" class="item-qty-input" min="0" max="9999" value="${item.quantity}" data-item-name="${encodeURIComponent(item.name)}" aria-label="Quantity for ${escapeHtml(item.name)}" />
                         <button type="button" class="item-qty-btn qty-inc" data-qty-delta="1" aria-label="Increase quantity" title="Increase quantity">&plus;</button>
                     </div>
                     ${equippedBadge}

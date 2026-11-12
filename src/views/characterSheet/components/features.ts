@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterData, FeatureItem } from "../characterData";
 import { escapeText } from "./details";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
@@ -60,8 +61,8 @@ export function renderFeatures(data: CharacterData): string {
             return `
             <div class="feature-card">
                 <div class="feature-top">
-                    <h4 class="feature-name">${f.name}</h4>
-                    <span class="feature-badge ${badgeClass}">${f.source}</span>
+                    <h4 class="feature-name">${escapeHtml(f.name)}</h4>
+                    <span class="feature-badge ${badgeClass}">${escapeHtml(f.source)}</span>
                 </div>
                 ${body}
             </div>

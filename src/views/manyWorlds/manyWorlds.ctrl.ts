@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from '@elements';
 import { Category, World, WorldEntity } from '@entities';
 import Helpers from "@services/helpers";
@@ -52,7 +53,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
 
     const buildTabs = () => {
         worlds.forEach(world => {
-            const tab = html`<button class="tab">${world.name}</button>`;
+            const tab = html`<button class="tab">${escapeHtml(world.name)}</button>`;
             tab.addEventListener('click', () => {
                 history.pushState({ world }, '', `/many-worlds/world/${world.id}`);
                 renderWorld(world);
@@ -78,7 +79,7 @@ export default async function manyWorlds(pathParams: Record<string, number>) {
                     const response = await postData<World>('/create-world', newWorld);
                     worlds.push(response);
 
-                    const newTab = html`<button class="tab">${response.name}</button>`;
+                    const newTab = html`<button class="tab">${escapeHtml(response.name)}</button>`;
                     newTab.addEventListener('click', () => {
                         history.pushState({ world: response }, '', `/many-worlds/world/${response.id}`);
                         renderWorld(response);

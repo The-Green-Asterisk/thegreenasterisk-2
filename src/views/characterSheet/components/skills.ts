@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterData } from "../characterData";
 
 export function renderSkills(data: CharacterData): string {
@@ -14,8 +15,8 @@ export function renderSkills(data: CharacterData): string {
             <select
                 class="skill-training-select"
                 data-skill-index="${index}"
-                aria-label="Training level for ${skill.name}"
-                title="Adjust training level for ${skill.name}"
+                aria-label="Training level for ${escapeHtml(skill.name)}"
+                title="Adjust training level for ${escapeHtml(skill.name)}"
             >
                 <option value="none" ${skill.proficiency === 'none' ? 'selected' : ''}>○ Not Proficient</option>
                 <option value="proficient" ${skill.proficiency === 'proficient' ? 'selected' : ''}>● Proficient</option>
@@ -26,7 +27,7 @@ export function renderSkills(data: CharacterData): string {
         return `
             <tr class="skill-row ${profClass}">
                 <td class="skill-stat-name">
-                    <span class="skill-name">${skill.name}</span>
+                    <span class="skill-name">${escapeHtml(skill.name)}</span>
                     <span class="skill-stat">(${skill.stat})</span>
                 </td>
                 <td class="skill-status">${trainingSelect}</td>

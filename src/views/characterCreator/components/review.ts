@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { SPELLS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
 import { getProgressionChoices, getProgressionPools } from "../services/progressionModifiers";
@@ -21,13 +22,13 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
             <div class="review-card-layout">
                 <div class="review-section">
                     <h4>Hero Overview</h4>
-                    <div class="review-row"><span class="label">Name:</span><strong>${ctx.state.name}</strong></div>
+                    <div class="review-row"><span class="label">Name:</span><strong>${escapeHtml(ctx.state.name)}</strong></div>
                     <div class="review-row"><span class="label">Class & Level:</span><strong>${cls} (Level ${ctx.state.level})</strong></div>
-                    ${ctx.state.subclassId ? `<div class="review-row"><span class="label">Subclass:</span><strong>${currentClsDef?.subclasses.find((s) => s.id === ctx.state.subclassId)?.name || ctx.state.subclassId}</strong></div>` : ""}
-                    <div class="review-row"><span class="label">Species:</span><strong>${species}</strong></div>
+                    ${ctx.state.subclassId ? `<div class="review-row"><span class="label">Subclass:</span><strong>${escapeHtml(currentClsDef?.subclasses.find((s) => s.id === ctx.state.subclassId)?.name || ctx.state.subclassId)}</strong></div>` : ""}
+                    <div class="review-row"><span class="label">Species:</span><strong>${escapeHtml(species)}</strong></div>
                     <div class="review-row"><span class="label">Background:</span><strong>${bg}</strong></div>
                     <div class="review-row"><span class="label">Origin Feat:</span><strong>${feat}</strong></div>
-                    <div class="review-row"><span class="label">Alignment:</span><strong>${ctx.state.alignment}</strong></div>
+                    <div class="review-row"><span class="label">Alignment:</span><strong>${escapeHtml(ctx.state.alignment)}</strong></div>
                     <div class="review-row"><span class="label">Armor & Shield:</span><strong>${ctx.state.selectedArmor} ${ctx.state.hasShield ? "+ Shield" : ""}</strong></div>
                     <div class="review-row"><span class="label">Mastered Weapons:</span><strong>${ctx.state.weaponMasteries.join(", ") || "None"}</strong></div>
                 </div>
@@ -44,13 +45,13 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                 <div class="review-section">
                     <h4>Class & Progression Features</h4>
                     ${getProgressionChoices(ctx).filter((e) => e.unlocked && e.selectedOptions.length > 0).map((e) =>
-                        `<div class="review-row"><span class="label">${e.choice.name}${e.isSubclass ? ` (${e.sourceName})` : ""}:</span><strong>${e.selectedOptions.map((o) => o.name).join(", ")}</strong></div>`
+                        `<div class="review-row"><span class="label">${escapeHtml(e.choice.name)}${e.isSubclass ? ` (${e.sourceName})` : ""}:</span><strong>${e.selectedOptions.map((o) => escapeHtml(o.name)).join(", ")}</strong></div>`
                     ).join("")}
                     ${getProgressionPools(ctx).map((p) => {
                         const picked = ((ctx.state as any)[p.pool] as string[] | undefined) || [];
                         if (picked.length === 0) return "";
                         const names = picked.map((id) => p.options.find((o) => o.id === id)?.name || id);
-                        return `<div class="review-row"><span class="label">${p.name}${p.isSubclass ? ` (${p.sourceName})` : ""}:</span><strong>${names.join(", ")}</strong></div>`;
+                        return `<div class="review-row"><span class="label">${escapeHtml(p.name)}${p.isSubclass ? ` (${p.sourceName})` : ""}:</span><strong>${names.join(", ")}</strong></div>`;
                     }).join("")}
                     ${ctx.state.expertiseSkills.length > 0 ? `<div class="review-row"><span class="label">Expertise Skills:</span><strong>${ctx.state.expertiseSkills.join(", ")}</strong></div>` : ""}
                     ${ctx.getAsiSlots().length > 0 ? `
@@ -63,7 +64,7 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                                 if (ch.type === "single") return `<div>• ${where}: ${ch.statA ? `+2 ${ch.statA.toUpperCase()}` : "Not chosen"}</div>`;
                                 if (ch.type === "dual") return `<div>• ${where}: +1 ${ch.statA?.toUpperCase()}, +1 ${ch.statB?.toUpperCase()}</div>`;
                                 const fDef = ctx.generalFeats.find((f) => f.id === ch.featId);
-                                return `<div>• ${where}: Feat (${fDef?.name || ch.featId})${ch.statA ? ` [+1 ${ch.statA.toUpperCase()}]` : ""}</div>`;
+                                return `<div>• ${where}: Feat (${escapeHtml(fDef?.name || ch.featId)})${ch.statA ? ` [+1 ${ch.statA.toUpperCase()}]` : ""}</div>`;
                             }).join("")}
                         </div>
                     ` : ""}
@@ -85,13 +86,13 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                             const sel = ctx.state.classSpellSelections?.[b.key] || { cantrips: [], prepared: [] };
                             const prefix = buckets.length > 1 ? `${b.label} ` : "";
                             const note = (name: string) => (b.via[name] ? ` [${b.via[name]}]` : "");
-                            return `<div class="review-row"><span class="label">${prefix}Cantrips (${sel.cantrips.length}/${b.maxCantrips}):</span><strong>${sel.cantrips.map((n) => n + note(n)).join(", ") || "None"}</strong></div>
-                    <div class="review-row"><span class="label">${prefix}Prepared Spells (${sel.prepared.length}/${b.maxPrepared}):</span><strong>${sel.prepared.map((n) => withLevel(n) + note(n)).join(", ") || "None"}</strong></div>`;
+                            return `<div class="review-row"><span class="label">${prefix}Cantrips (${sel.cantrips.length}/${b.maxCantrips}):</span><strong>${sel.cantrips.map((n) => escapeHtml(n + note(n))).join(", ") || "None"}</strong></div>
+                    <div class="review-row"><span class="label">${prefix}Prepared Spells (${sel.prepared.length}/${b.maxPrepared}):</span><strong>${sel.prepared.map((n) => escapeHtml(withLevel(n) + note(n))).join(", ") || "None"}</strong></div>`;
                         }).join("");
                     })()}
                     ${ctx.getFeatureSpellChoiceSections().map((sec) => {
                         const chosen = ctx.state.featureSpellChoices[sec.id] || [];
-                        return `<div class="review-row"><span class="label">${sec.title} (${chosen.length}/${sec.chooseCount}):</span><strong>${chosen.join(", ") || "None"}</strong></div>`;
+                        return `<div class="review-row"><span class="label">${escapeHtml(sec.title)} (${chosen.length}/${sec.chooseCount}):</span><strong>${chosen.join(", ") || "None"}</strong></div>`;
                     }).join("")}
                     ${(() => {
                         const grantedList: string[] = [];
@@ -123,7 +124,7 @@ export function renderStep9Review(ctx: CharacterCreatorContext): string {
                     ${(() => {
                         const casterStats = ctx.getSpellcasterStatsList();
                         if (casterStats.length > 0) {
-                            return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${casterStats.map((c: any) => `${c.className}: ${c.ability.toUpperCase()} (Save DC: ${c.saveDc}, Atk: +${c.attackMod}, Max Spell Lvl: ${c.maxSpellLevel})`).join(" | ")} • Slots: ${ctx.getSpellSlotsSummary()}</strong></div>`;
+                            return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${casterStats.map((c: any) => `${escapeHtml(c.className)}: ${c.ability.toUpperCase()} (Save DC: ${c.saveDc}, Atk: +${c.attackMod}, Max Spell Lvl: ${c.maxSpellLevel})`).join(" | ")} • Slots: ${ctx.getSpellSlotsSummary()}</strong></div>`;
                         }
                         if (spellAbility) {
                             return `<div class="review-row"><span class="label">Spellcasting:</span><strong>${spellAbility.toUpperCase()} (Save DC: ${ctx.getSpellSaveDc()}, Attack: +${ctx.getSpellAttackModifier()}, Max Slot Level: ${ctx.getMaxSpellLevel()}, Slots: ${ctx.getSpellSlotsSummary()})</strong></div>`;

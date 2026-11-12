@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { AbilityName } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
@@ -129,7 +130,7 @@ export function renderLockToggle(ctx: CharacterCreatorContext, key: string): str
     const group = findLockGroup(key);
     if (!group) return "";
     const on = isLockOn(ctx, key);
-    return `<button type="button" class="creator-lock-btn${on ? " is-locked" : ""}" data-lock-key="${key}" aria-pressed="${on}" aria-label="Lock ${group.label}" title="${on ? "Keeps this through D&amp;D Beyond refreshes" : "D&amp;D Beyond refreshes replace this"}"><i class="fa-solid ${on ? "fa-lock" : "fa-lock-open"}" aria-hidden="true"></i> Lock</button>`;
+    return `<button type="button" class="creator-lock-btn${on ? " is-locked" : ""}" data-lock-key="${key}" aria-pressed="${on}" aria-label="Lock ${escapeHtml(group.label)}" title="${on ? "Keeps this through D&amp;D Beyond refreshes" : "D&amp;D Beyond refreshes replace this"}"><i class="fa-solid ${on ? "fa-lock" : "fa-lock-open"}" aria-hidden="true"></i> Lock</button>`;
 }
 
 /** The note atop a step explaining locks, for imported characters. */
@@ -305,7 +306,7 @@ export function decorateStepLocks(ctx: CharacterCreatorContext, step: number, ro
         panel.insertAdjacentHTML("beforeend", `
             <fieldset class="creator-detail-box creator-fieldset creator-lock-list">
                 <legend><h4>Locked from D&amp;D Beyond refreshes</h4></legend>
-                <ul>${LOCK_GROUPS.map((g) => `<li><span>${g.label}</span>${renderLockToggle(ctx, g.key)}</li>`).join("")}</ul>
+                <ul>${LOCK_GROUPS.map((g) => `<li><span>${escapeHtml(g.label)}</span>${renderLockToggle(ctx, g.key)}</li>`).join("")}</ul>
             </fieldset>`);
     }
 }

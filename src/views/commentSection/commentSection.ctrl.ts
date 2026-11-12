@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import el from "@elements";
 import { Comment } from "@entities";
 import Helpers from "@services/helpers";
@@ -40,7 +41,7 @@ export default async function commentSection(commentableType: string, commentabl
             <div id="submit-comment-section">
                 <img
                     src="${el.currentUser.profilePicture}"
-                    title="Commenting as ${el.currentUser.username}"
+                    title="Commenting as ${escapeHtml(el.currentUser.username)}"
                     class="comment-author-avatar"
                 />
             </div>
@@ -95,7 +96,7 @@ const buildComment = (comment: Comment) => {
                 <span class="fa fa-pencil" title="Edit Comment" style="cursor:pointer;"></span>
                 <span class="fa fa-times delete-comment-button" title="Delete Comment" style="cursor:pointer;"></span>
             </div>
-            <small>${comment.author.firstName} ${comment.author.lastName} (${comment.author.username}) on ${new Date(comment.createdAt).toLocaleString()}</small>
+            <small>${escapeHtml(comment.author.firstName)} ${escapeHtml(comment.author.lastName)} (${escapeHtml(comment.author.username)}) on ${new Date(comment.createdAt).toLocaleString()}</small>
         </div>
     `;
 

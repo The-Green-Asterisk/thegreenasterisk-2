@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { BASE_ARMOR_2024, BASE_WEAPONS_2024 } from "../../../rules/dnd5e_2024";
 import { CharacterCreatorContext } from "../controllers/context";
 
@@ -29,7 +30,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                 <div class="creator-currency-grid">
                     ${COINS.map((coin) => `
                         <div class="creator-form-group">
-                            <label class="creator-label" for="char-coin-${coin.key}">${coin.label}</label>
+                            <label class="creator-label" for="char-coin-${coin.key}">${escapeHtml(coin.label)}</label>
                             <input type="number" id="char-coin-${coin.key}" class="creator-input char-coin-input" data-coin="${coin.key}" min="0" step="1" inputmode="numeric" value="${Math.max(0, Number(ctx.state.currency?.[coin.key]) || 0)}" />
                         </div>`).join("")}
                 </div>
@@ -38,7 +39,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
             ${cls && cls.startingEquipmentOptions && cls.startingEquipmentOptions.length > 0 ? `
                 <div class="starting-packages-section">
                     <div class="starting-packages-header-row">
-                        <h4 class="starting-packages-title"><i class="fa-solid fa-box-open"></i> ${cls.name} Starting Equipment Kits</h4>
+                        <h4 class="starting-packages-title"><i class="fa-solid fa-box-open"></i> ${escapeHtml(cls.name)} Starting Equipment Kits</h4>
                         ${(() => {
                             const eqIdx = cls.startingEquipmentOptions.findIndex((_, i) => ctx.isKitEquipped(i));
                             if (eqIdx >= 0) {
@@ -46,7 +47,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                                 return `
                                     <div class="kit-equipped-banner">
                                         <i class="fa-solid fa-circle-check"></i>
-                                        <span><strong>Option ${String.fromCharCode(65 + eqIdx)}: ${eqOpt.name}</strong> is equipped</span>
+                                        <span><strong>Option ${String.fromCharCode(65 + eqIdx)}: ${escapeHtml(eqOpt.name)}</strong> is equipped</span>
                                     </div>
                                 `;
                             }
@@ -60,7 +61,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                                 <div class="starting-package-card ${isEquipped ? "equipped" : ""}" data-package-index="${idx}">
                                     <div class="package-card-header">
                                         <div class="package-card-title-group">
-                                            <strong>Option ${String.fromCharCode(65 + idx)}: ${opt.name}</strong>
+                                            <strong>Option ${String.fromCharCode(65 + idx)}: ${escapeHtml(opt.name)}</strong>
                                             ${isEquipped ? `<span class="package-equipped-badge"><i class="fa-solid fa-check"></i> Equipped</span>` : ""}
                                         </div>
                                         <button type="button" class="creator-nav-btn secondary-btn equip-package-btn ${isEquipped ? "equipped" : ""}" data-package-index="${idx}">
@@ -87,8 +88,8 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                             const reqWarning = a.strengthRequired && effectiveStr < a.strengthRequired ? " [⚠️ -10ft Speed]" : "";
                             const profWarning = !ctx.isProficientWithArmor(a.name) ? " [⚠️ Non-Proficient]" : "";
                             return `
-                                <option value="${a.name}" ${ctx.state.selectedArmor === a.name ? "selected" : ""}>
-                                    ${a.name} (${a.category}, AC ${a.baseAc}${reqStr})${reqWarning}${profWarning}
+                                <option value="${escapeHtml(a.name)}" ${ctx.state.selectedArmor === a.name ? "selected" : ""}>
+                                    ${escapeHtml(a.name)} (${escapeHtml(a.category)}, AC ${a.baseAc}${reqStr})${reqWarning}${profWarning}
                                 </option>
                             `;
                         }).join("")}
@@ -109,7 +110,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                     ${!isArmorProficient ? `
                         <div class="equipment-stat-alert danger">
                             <i class="fa-solid fa-shield-halved"></i>
-                            <div><strong>Non-Proficient Armor:</strong> ${cls?.name || "Class"} lacks proficiency with ${selectedArmorDef?.category} armor. (Imposes Disadvantage on STR/DEX rolls and blocks spellcasting).</div>
+                            <div><strong>Non-Proficient Armor:</strong> ${escapeHtml(cls?.name || "Class")} lacks proficiency with ${escapeHtml(selectedArmorDef?.category)} armor. (Imposes Disadvantage on STR/DEX rolls and blocks spellcasting).</div>
                         </div>
                     ` : ""}
                 </div>
@@ -123,7 +124,7 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                     ${ctx.state.hasShield && !isShieldProficient ? `
                         <div class="equipment-stat-alert danger">
                             <i class="fa-solid fa-shield"></i>
-                            <div><strong>Non-Proficient Shield:</strong> ${cls?.name || "Class"} lacks shield proficiency.</div>
+                            <div><strong>Non-Proficient Shield:</strong> ${escapeHtml(cls?.name || "Class")} lacks shield proficiency.</div>
                         </div>
                     ` : ""}
                 </div>
@@ -141,10 +142,10 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                         const isProf = ctx.isProficientWithWeapon(w.name);
 
                         return `
-                            <div class="item-check-row weapon-row ${isSelected ? "selected" : ""}" data-weapon-name="${w.name}" role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate>
+                            <div class="item-check-row weapon-row ${isSelected ? "selected" : ""}" data-weapon-name="${escapeHtml(w.name)}" role="checkbox" aria-checked="${isSelected}" tabindex="0" data-kbd-activate>
                                 <div class="item-row-left">
                                     <div class="item-row-title">
-                                        ${w.name} (${w.category})
+                                        ${escapeHtml(w.name)} (${escapeHtml(w.category)})
                                         ${statReq ? (
                                             statReq.met
                                                 ? `<span class="stat-req-pill met"><i class="fa-solid fa-check"></i> Req: ${statReq.stat.toUpperCase()} 13 ✓</span>`
@@ -152,8 +153,8 @@ export function renderStep7Equipment(ctx: CharacterCreatorContext): string {
                                         ) : ""}
                                         ${!isProf ? `<span class="stat-req-pill non-prof"><i class="fa-solid fa-ban"></i> Non-Proficient</span>` : ""}
                                     </div>
-                                    <div class="item-row-meta">Damage: ${w.damageDie} ${w.damageType} • Mastery: ${w.mastery}</div>
-                                    <div class="item-row-desc">${w.properties.join(", ") || "None"}</div>
+                                    <div class="item-row-meta">Damage: ${escapeHtml(w.damageDie)} ${escapeHtml(w.damageType)} • Mastery: ${escapeHtml(w.mastery)}</div>
+                                    <div class="item-row-desc">${escapeHtml(w.properties.join(", ") || "None")}</div>
                                 </div>
                                 <span class="card-check"><i class="fa-solid fa-check"></i></span>
                             </div>

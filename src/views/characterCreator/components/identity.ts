@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterCreatorContext } from "../controllers/context";
 
 function escape(str: string): string {
@@ -41,7 +42,7 @@ function renderDetailsAndPersonality(ctx: CharacterCreatorContext): string {
                 <div class="creator-form-grid">
                     ${DETAIL_FIELDS.map((f) => `
                         <div class="creator-form-group">
-                            <label class="creator-label" for="char-detail-${f.key}">${f.label}</label>
+                            <label class="creator-label" for="char-detail-${f.key}">${escapeHtml(f.label)}</label>
                             <input type="text" id="char-detail-${f.key}" class="creator-input char-detail-input" data-detail="${f.key}" placeholder="${escape(f.placeholder)}" value="${escape(String(details[f.key] ?? ""))}" />
                         </div>`).join("")}
                     <div class="creator-form-group">
@@ -58,7 +59,7 @@ function renderDetailsAndPersonality(ctx: CharacterCreatorContext): string {
                 <div class="creator-form-grid">
                     ${NOTE_FIELDS.map((f) => `
                         <div class="creator-form-group" ${f.key === "backstory" ? 'style="grid-column: 1 / -1;"' : ""}>
-                            <label class="creator-label" for="char-note-${f.key}">${f.label}</label>
+                            <label class="creator-label" for="char-note-${f.key}">${escapeHtml(f.label)}</label>
                             <textarea id="char-note-${f.key}" class="creator-input char-note-input" data-note="${f.key}" rows="${f.key === "backstory" ? 6 : 3}">${escape(notes[f.key] || "")}</textarea>
                         </div>`).join("")}
                 </div>

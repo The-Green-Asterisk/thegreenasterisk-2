@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { findItemRule } from "../../../services/classRules";
@@ -582,7 +583,7 @@ export function applyGrantedWeapons(character: CharacterData): void {
                 properties: [...grant.baseDef.properties],
                 isMagic: true,
                 rarity: item.rarity || "Common",
-                description: grant.baseDef.description || `<p>Proficiency with a ${grant.baseDef.name} allows you to add your proficiency bonus to the attack roll for any attack you make with it.</p>`,
+                description: grant.baseDef.description || `<p>Proficiency with a ${escapeHtml(grant.baseDef.name)} allows you to add your proficiency bonus to the attack roll for any attack you make with it.</p>`,
                 imageUrl: item.imageUrl,
                 mastery: grant.baseDef.mastery
                     ? {

@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { CharacterData } from "../characterData";
 
 export function renderSpellSlotsAndResources(data: CharacterData): string {
@@ -13,7 +14,7 @@ export function renderSpellSlotsAndResources(data: CharacterData): string {
             slotTrackers.push(`
                 <div class="slot-tracker" data-slot-level="${lvl}">
                     <div class="slot-header">
-                        <span class="slot-name">${slot.label || `Level ${lvl}`}</span>
+                        <span class="slot-name">${escapeHtml(slot.label || `Level ${lvl}`)}</span>
                         <span class="slot-count" id="count-lvl-${lvl}">${slot.total} / ${slot.total}</span>
                     </div>
                     <div class="slot-pips" id="pips-lvl-${lvl}">
@@ -32,7 +33,7 @@ export function renderSpellSlotsAndResources(data: CharacterData): string {
         slotTrackers.push(`
             <div class="slot-tracker pact-magic" data-slot-level="pact">
                 <div class="slot-header">
-                    <span class="slot-name">${pact.label || 'Pact Magic'}</span>
+                    <span class="slot-name">${escapeHtml(pact.label || 'Pact Magic')}</span>
                     <span class="slot-count" id="count-lvl-pact">${pact.total} / ${pact.total}</span>
                 </div>
                 <div class="slot-pips" id="pips-lvl-pact">
@@ -58,7 +59,7 @@ export function renderSpellSlotsAndResources(data: CharacterData): string {
         let pipsHtml = "";
         if (!isCounterOnly) {
             pipsHtml = Array.from({ length: res.total })
-                .map((_, i) => `<button class="pip active bardic-pip" data-resource-key="${resKey}" data-reset-on="${res.resetOn}" data-pip-idx="${i}" aria-label="${res.name} ${i + 1}"></button>`)
+                .map((_, i) => `<button class="pip active bardic-pip" data-resource-key="${resKey}" data-reset-on="${res.resetOn}" data-pip-idx="${i}" aria-label="${escapeHtml(res.name)} ${i + 1}"></button>`)
                 .join('');
         } else {
             pipsHtml = `<div class="resource-counter-pill"><span class="res-pool-value">${res.total} Points Available</span> <span class="res-reset-badge">Resets on ${res.resetOn} rest</span></div>`;
@@ -67,7 +68,7 @@ export function renderSpellSlotsAndResources(data: CharacterData): string {
         slotTrackers.push(`
             <div class="slot-tracker class-resource-tracker" data-resource-key="${resKey}" data-reset-on="${res.resetOn}">
                 <div class="slot-header">
-                    <span class="slot-name">${res.name}</span>
+                    <span class="slot-name">${escapeHtml(res.name)}</span>
                     <span class="slot-count" id="count-${resKey}">${res.total} / ${res.total}</span>
                 </div>
                 <div class="slot-pips" id="pips-${resKey}">

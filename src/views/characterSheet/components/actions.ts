@@ -1,3 +1,4 @@
+import { escapeHtml } from "@services/escape";
 import { resolveActionSpellDamage } from "../../../services/spellDamage";
 import { CharacterData } from "../characterData";
 import { linkifyConditionAndSpellTags } from "./markupLinks";
@@ -26,7 +27,7 @@ export function renderActions(data: CharacterData): string {
             >
                 <div class="action-header">
                     <div>
-                        <h4 class="action-name"><button type="button" class="card-open-btn" aria-haspopup="dialog">${action.name}</button></h4>
+                        <h4 class="action-name"><button type="button" class="card-open-btn" aria-haspopup="dialog">${escapeHtml(action.name)}</button></h4>
                         <span class="action-badge ${action.type.toLowerCase().replace(/ /g, '-')}">${action.type}</span>
                     </div>
                     ${spellBtn}
