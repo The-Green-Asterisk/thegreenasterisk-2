@@ -1,6 +1,7 @@
 import path from 'path';
 import "reflect-metadata";
 import { DataSource } from "typeorm";
+import { UserContentSubscriber } from "./userContentSubscriber";
 
 if (!process.env.DB_HOST) {
     require("dotenv").config();
@@ -26,5 +27,5 @@ export const AppDataSource = new DataSource({
         path.resolve(__dirname, 'migration', '*.{js,ts}').replace(/\\/g, '/'),
         path.resolve(__dirname, '..', '..', 'services', 'database', 'migration', '*.{js,ts}').replace(/\\/g, '/')
     ])),
-    subscribers: [],
+    subscribers: [UserContentSubscriber],
 })
