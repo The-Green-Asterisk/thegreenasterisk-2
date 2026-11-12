@@ -45,7 +45,7 @@ export default class BaseEl {
      * abort() already gets called upon the window's pagehide event
      * this is here in case listeners ever need to be removed manually
      */
-    public static readonly removeListeners = abortController.abort;
+    public static readonly removeListeners = () => abortController.abort();
     /**
      * this is only to be used for event listeners
      */
