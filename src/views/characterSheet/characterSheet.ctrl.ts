@@ -224,11 +224,11 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             const percentage = Math.max(0, Math.min(100, Math.round((currentHp / Math.max(1, maxHp)) * 100)));
             hpBarFill.style.width = `${percentage}%`;
             if (percentage <= 25) {
-                hpBarFill.style.backgroundColor = "#ef4444";
+                hpBarFill.style.backgroundColor = "var(--red-500)";
             } else if (percentage <= 50) {
-                hpBarFill.style.backgroundColor = "#f59e0b";
+                hpBarFill.style.backgroundColor = "var(--amber-500)";
             } else {
-                hpBarFill.style.backgroundColor = "#10b981";
+                hpBarFill.style.backgroundColor = "var(--emerald-500)";
             }
         }
 
@@ -264,11 +264,11 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             const percentage = Math.max(0, Math.min(100, Math.round((currentHp / Math.max(1, maxHp)) * 100)));
             stickyHpBarFill.style.width = `${percentage}%`;
             if (percentage <= 25) {
-                stickyHpBarFill.style.backgroundColor = "#ef4444";
+                stickyHpBarFill.style.backgroundColor = "var(--red-500)";
             } else if (percentage <= 50) {
-                stickyHpBarFill.style.backgroundColor = "#f59e0b";
+                stickyHpBarFill.style.backgroundColor = "var(--amber-500)";
             } else {
-                stickyHpBarFill.style.backgroundColor = "#10b981";
+                stickyHpBarFill.style.backgroundColor = "var(--emerald-500)";
             }
         }
 
