@@ -1,4 +1,4 @@
-import { BonusPart, CharacterData } from "../../views/characterSheet/characterData";
+import { BonusPart, CharacterData, VitalKey } from "../../views/characterSheet/characterData";
 import { findClassOption } from "./classOptions";
 import { abilityKey, applySaveEffect, normalizeAgainst, SaveEffect } from "./saveEffects";
 import { applySenseGrants, senseGrantsFrom, senseKeyOfTarget } from "./senses";
@@ -53,6 +53,12 @@ function syncBonusPart(list: BonusPart[], part: BonusPart, sign: 1 | -1): void {
 
 const CHECK_ABILITIES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 
+/** Adds or takes away one named piece of a vital, for the breakdowns. */
+function syncVitalPart(character: CharacterData, key: VitalKey, part: BonusPart, sign: 1 | -1): void {
+    character.vitalParts = character.vitalParts || {};
+    syncBonusPart(character.vitalParts[key] = character.vitalParts[key] || [], part, sign);
+}
+
 export function applyStatModifier(character: CharacterData, mod: StatModifier, sign: 1 | -1, source?: string): void {
     if (!character || !mod) return;
 
@@ -75,11 +81,13 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
             if (!isArmored) return;
         }
         character.vitals.armorClass = (character.vitals.armorClass || 10) + sign * (delta || 1);
+        syncVitalPart(character, "ac", { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta || 1 }, sign);
     }
     // Max HP
     else if (target === "vitals.maxHp" || target === "vitals.hp") {
         const hpDelta = sign * (delta || 1);
         character.vitals.maxHp = Math.max(1, (character.vitals.maxHp || 10) + hpDelta);
+        syncVitalPart(character, "maxHp", { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta || 1 }, sign);
         character.vitals.currentHp = Math.max(0, Math.min(character.vitals.maxHp, (character.vitals.currentHp || character.vitals.maxHp) + hpDelta));
     }
     // Speed
@@ -89,6 +97,7 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
         const newSpeed = Math.max(0, currentSpeed + sign * delta);
         const currentParen = String(character.vitals.speed || "").match(/\s*(\([^)]+\))/);
         character.vitals.speed = `${newSpeed} ft.${currentParen ? currentParen[0] : ""}`;
+        syncVitalPart(character, "speed", { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta }, sign);
     }
     // Special Speeds: climb, swim, fly, burrow
     else if (
@@ -117,6 +126,7 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
     else if (target === "vitals.initiative") {
         if (type === "bonus" || type === "penalty") {
             character.vitals.initiative = (character.vitals.initiative || 0) + sign * delta;
+            syncVitalPart(character, "initiative", { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta }, sign);
         } else if (type === "advantage" || type === "disadvantage") {
             const note = `Initiative (${type === "advantage" ? "Advantage" : "Disadvantage"})`;
             syncCharacterNote(character, note, sign === 1);
@@ -127,19 +137,24 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
         const prop = target.split(".")[1] as "passivePerception" | "passiveInsight" | "passiveInvestigation";
         if (type === "bonus" || type === "penalty") {
             character.vitals[prop] = (character.vitals[prop] || 10) + sign * delta;
+            syncVitalPart(character, prop, { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta }, sign);
         } else if (type === "advantage") {
             character.vitals[prop] = (character.vitals[prop] || 10) + sign * 5;
+            syncVitalPart(character, prop, { label: `${source ? `${source}: ` : ""}Advantage`, value: 5 }, sign);
         } else if (type === "disadvantage") {
             character.vitals[prop] = (character.vitals[prop] || 10) - sign * 5;
+            syncVitalPart(character, prop, { label: `${source ? `${source}: ` : ""}Disadvantage`, value: -5 }, sign);
         }
     }
     // Spell Save DC
     else if (target === "vitals.spellSaveDc" || target === "spells.dc") {
         character.vitals.spellSaveDc = (character.vitals.spellSaveDc || 10) + sign * delta;
+        syncVitalPart(character, "spellSaveDc", { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta }, sign);
     }
     // Spell Attack Bonus
     else if (target === "vitals.spellAttackBonus" || target === "spells.attack") {
         character.vitals.spellAttackBonus = (character.vitals.spellAttackBonus || 0) + sign * delta;
+        syncVitalPart(character, "spellAttackBonus", { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta }, sign);
     }
     // Special senses (darkvision, blindsight, ..., Devil's Sight, and any senses.<key>), undone exactly by source
     else if (senseKeyOfTarget(target)) {
@@ -344,6 +359,12 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
     // Weapon Attacks
     else if (target.startsWith("attacks.")) {
         const attackScope = target.split(".")[1]?.toLowerCase() || "all";
+        if ((type === "bonus" || type === "penalty") && (attackScope === "all" || attackScope === "melee" || attackScope === "ranged")) {
+            character.attackExtras = character.attackExtras || {};
+            const scope = attackScope as "all" | "melee" | "ranged";
+            syncBonusPart(character.attackExtras[scope] = character.attackExtras[scope] || [],
+                { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: delta }, sign);
+        }
         if (type === "bonus" || type === "penalty") {
             if (Array.isArray(character.weapons)) {
                 character.weapons.forEach(w => {

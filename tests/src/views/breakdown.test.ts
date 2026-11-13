@@ -97,7 +97,7 @@ describe('breakdowns', () => {
         expect(breakdownFor(c, 'save', 'dex')?.total).toBe(3);
         expect(breakdownFor(c, 'skill', 'Nope')).toBeNull();
         expect(breakdownFor(null, 'skill', 'Stealth')).toBeNull();
-        expect(describeBreakdown(skillBreakdown(c, skill(c, 'Stealth')))).toBe('From DEX modifier (DEX 10) +0, Proficiency +3. Jack of All Trades +1 overridden by Proficiency.');
+        expect(describeBreakdown(skillBreakdown(c, skill(c, 'Stealth')))).toBe('From DEX modifier (DEX 10) +0, Proficiency +3. Total +3. Jack of All Trades +1 overridden by Proficiency.');
     });
 });
 

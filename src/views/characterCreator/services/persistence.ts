@@ -1,3 +1,5 @@
+import { featModifierNumber } from "../../../rules/dnd5e_2024/featRules";
+import { getArmorClassParts, getInitiativeParts, getMaxHpParts, getSpeedParts } from "./rulesCalculations";
 import { BonusPart } from "../../characterSheet/characterData";
 import el from "@elements";
 import { getData, postData, putData } from "@services/request";
@@ -610,13 +612,30 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             return { name: String(s.name), stat, bonus, proficiency, custom: true };
         });
 
+    // Bonuses to weapon attacks from class options and feats (Archery), named, on all weapons or melee or ranged ones
+    const attackExtras: { all: BonusPart[]; melee: BonusPart[]; ranged: BonusPart[] } = { all: [], melee: [], ranged: [] };
+    const totalLevelForFeats = ctx.getTotalLevel() || 1;
+    const attackSources: Array<{ label: string; m: any }> = [
+        ...progressionMods.map((m) => ({ label: m.source, m })),
+        ...getCharacterFeats(ctx).flatMap((f) => (f.modifiers || []).map((m: any) => ({ label: f.name, m })))
+    ];
+    for (const { label, m } of attackSources) {
+        const scope = String(m.target || "").replace(/^attacks\./, "");
+        if (!String(m.target || "").startsWith("attacks.") || !["all", "melee", "ranged"].includes(scope)) continue;
+        if (m.type !== "bonus" && m.type !== "penalty") continue;
+        const value = featModifierNumber(m, totalLevelForFeats, pb) * (m.type === "penalty" ? -1 : 1);
+        attackExtras[scope as "all" | "melee" | "ranged"].push({ label, value });
+    }
+
     // Weapons
     const weaponsPayload = ctx.state.selectedWeapons.map((wName) => {
         const baseW = BASE_WEAPONS_2024.find((b) => b.name === wName);
         const isFinesse = baseW?.properties.some((p) => p.includes("Finesse"));
-        const isRanged = baseW?.category.includes("Ranged");
+        const isRanged = !!baseW?.category.includes("Ranged");
         const statToUse: AbilityName = (isRanged || (isFinesse && ctx.getAbilityModifier("dex") > ctx.getAbilityModifier("str"))) ? "dex" : "str";
-        const attackMod = ctx.getAbilityModifier(statToUse) + pb;
+        const extraParts = [...attackExtras.all, ...(isRanged ? attackExtras.ranged : attackExtras.melee)];
+        const attackParts: BonusPart[] = [{ label: `${statToUse.toUpperCase()} modifier`, value: ctx.getAbilityModifier(statToUse) }, { label: "Proficiency", value: pb }, ...extraParts];
+        const attackMod = attackParts.reduce((sum, p) => sum + p.value, 0);
         const damageMod = ctx.getAbilityModifier(statToUse);
         const masteryUnlocked = ctx.state.weaponMasteries.includes(wName);
 
@@ -630,6 +649,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             damageDie: baseW?.damageDie || "1d6",
             attackBonus: (attackMod >= 0 ? "+" : "") + attackMod,
             toHitModifier: attackMod,
+            attackParts,
             range: baseW?.range || "5 ft.",
             properties: baseW?.properties || [],
             mastery: {
@@ -1324,6 +1344,13 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         checkExtras,
         skillExtras,
         saveExtras,
+        attackExtras,
+        vitalParts: {
+            ac: getArmorClassParts(ctx),
+            initiative: getInitiativeParts(ctx),
+            speed: getSpeedParts(ctx),
+            maxHp: getMaxHpParts(ctx)
+        },
         weapons: weaponsPayload,
         equipment: equipmentPayload,
         spells: spellsPayload,

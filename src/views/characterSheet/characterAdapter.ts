@@ -1,6 +1,6 @@
 import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
 import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
-import { featBonus, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
+import { featBonus, featModifierNumber, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
 import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
 import { abilityKey, effectsFromLegacyNotes, mergeSaveEffects, normalizeAgainst, SaveEffect, saveEffectsFromRules } from "../../rules/dnd5e_2024/saveEffects";
 import { rangeFeet, resolveSenses, senseGrantsFrom, writeSenses } from "../../rules/dnd5e_2024/senses";
@@ -311,7 +311,10 @@ export function parseDndBeyondCharacter(
     const SOURCE_KEY_LABELS: Record<string, string> = { class: "Class feature", race: "Species trait", feat: "Feat", background: "Background", item: "Item", condition: "Condition" };
     const modSourceName = (m: any): string =>
         componentNameMap.get(Number(m?.componentId)) || SOURCE_KEY_LABELS[String(m?._sourceKey || "")] || "D&D Beyond modifier";
-
+    // Named parts of the vitals, for the breakdowns
+    const vitalParts: NonNullable<CharacterData["vitalParts"]> = {};
+    const sgn = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+    const overrideAll = (lines: BonusPart[], by: string) => lines.forEach(l => { l.overriddenBy = by; });
     // Helper to check if a modifier is unconditional (no restriction text)
     const isUnrestrictedMod = (m: any): boolean => {
         return !m?.restriction || String(m.restriction).trim() === "";
@@ -754,6 +757,33 @@ export function parseDndBeyondCharacter(
 
     // In D&D Beyond baseHitPoints doesn't include CON modifier for each level in the raw field
     const calculatedMaxHp = overrideHp || baseHp + conMod * totalLevel + bonusHp + hpPerLevelBonus + flatHpBonus;
+    {
+        const hpLines: BonusPart[] = [{ label: "Hit dice (D&D Beyond)", value: baseHp }, { label: `CON modifier × ${totalLevel} levels`, value: conMod * totalLevel }];
+        if (bonusHp) hpLines.push({ label: "Bonus hit points (D&D Beyond)", value: bonusHp });
+        for (const m of hpPerLevelMods) {
+            const perLevelVal = getModFlatValue(m);
+            if (perLevelVal === 0) continue;
+            const compId = Number(m.componentId);
+            const levels = m._sourceKey === "class" && !Number.isNaN(compId) && componentClassLevelMap.has(compId) ? componentClassLevelMap.get(compId)! : totalLevel;
+            hpLines.push({ label: `${modSourceName(m)} (${sgn(perLevelVal)} × ${levels})`, value: perLevelVal * levels });
+        }
+        if (hpPerLevelMods.length === 0) {
+            for (const f of featMechanics) {
+                for (const m of (f.modifiers || []).filter((m: any) => m.target === "vitals.maxHp" && m.type === "bonus")) {
+                    hpLines.push({ label: String(f.name || "Feat"), value: featModifierNumber(m, totalLevel, profBonus) });
+                }
+            }
+            for (const m of ruleMods("vitals.maxHp", "bonus")) hpLines.push({ label: String((m as any)._source || "Class feature"), value: modifierNumber(m) });
+        }
+        allMods
+            .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && (m.subType === "hit-points" || m.subType === "maximum-hit-points") && (!m.dice || (!m.dice.diceCount && !m.dice.diceString)))
+            .forEach(m => hpLines.push({ label: modSourceName(m), value: resolveModValue(m) }));
+        if (overrideHp) {
+            overrideAll(hpLines, "Hit point override (D&D Beyond)");
+            hpLines.push({ label: "Hit point override (D&D Beyond)", value: overrideHp });
+        }
+        vitalParts.maxHp = hpLines;
+    }
     const currentHp = Math.max(0, calculatedMaxHp - removedHp);
 
     // Hit Dice string dynamically computed per class
@@ -822,8 +852,8 @@ export function parseDndBeyondCharacter(
         return false;
     };
 
+    const acLines: BonusPart[] = [];
     let baseArmorClass = 10;
-
     if (isArmored) {
         const def = equippedBodyArmor.definition;
         const armorBase = Number(def.armorClass) || 10;
@@ -873,6 +903,12 @@ export function parseDndBeyondCharacter(
             .reduce((sum, m) => sum + (Number(m.value) || 0), 0);
 
         baseArmorClass = armorBase + acDex + armoredBonus + defenseStyleBonus;
+        acLines.push({ label: String(def.name || "Armor"), value: armorBase });
+        if (addDexToAc) acLines.push({ label: `DEX modifier${maxDexBonus !== Infinity ? ` (max ${maxDexBonus})` : ""}`, value: acDex });
+        allMods
+            .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "armored-armor-class")
+            .forEach(m => acLines.push({ label: modSourceName(m), value: resolveModValue(m) }));
+        if (defenseStyleBonus) acLines.push({ label: "Defense fighting style", value: defenseStyleBonus });
     } else {
         // Unarmored AC calculation
         const ignoreUnarmoredDex = allMods.some(
@@ -896,8 +932,9 @@ export function parseDndBeyondCharacter(
         interface UnarmoredCandidate {
             ac: number;
             statIdUsed?: number;
+            label: string;
         }
-        const candidates: UnarmoredCandidate[] = [{ ac: 10 + unarmoredDex }];
+        const candidates: UnarmoredCandidate[] = [{ ac: 10 + unarmoredDex, label: `Base 10 + DEX modifier (${sgn(unarmoredDex)})` }];
 
         // 1) "set" unarmored-armor-class modifiers from D&D Beyond
         // (e.g. Monk statId=5, Barbarian statId=3, Draconic/Mage Armor/Lizardfolk value=3, Tortle value=7 + ignore dex, Loxodon value=2 + statId=3 + ignore dex)
@@ -917,7 +954,8 @@ export function parseDndBeyondCharacter(
             const dexPart = modIgnoresDex ? 0 : unarmoredDex;
             candidates.push({
                 ac: basePart + dexPart + statMod,
-                statIdUsed: !Number.isNaN(statId) && statId > 0 ? statId : undefined
+                statIdUsed: !Number.isNaN(statId) && statId > 0 ? statId : undefined,
+                label: `${modSourceName(m)} (${basePart}${modIgnoresDex ? "" : ` + DEX ${sgn(dexPart)}`}${!Number.isNaN(statId) && statId > 0 && abilityModsById[statId] !== undefined ? ` + ${ABILITY_NAMES[statId]?.abbr || "stat"} ${sgn(statMod)}` : ""})`
             });
         }
 
@@ -927,7 +965,8 @@ export function parseDndBeyondCharacter(
             const others = (m.abilities as AbilityName[]).filter(a => a !== "dex");
             candidates.push({
                 ac: 10 + (m.abilities.includes("dex") ? unarmoredDex : 0) + others.reduce((sum, a) => sum + (abilityModsById[ABILITY_IDS[a]] ?? 0), 0),
-                statIdUsed: others.length === 1 ? ABILITY_IDS[others[0]] : undefined
+                statIdUsed: others.length === 1 ? ABILITY_IDS[others[0]] : undefined,
+                label: `${String((m as any)._source || "Unarmored Defense")} (10 + ${(m.abilities as string[]).map(a => a.toUpperCase()).join(" + ")})`
             });
         }
 
@@ -947,6 +986,7 @@ export function parseDndBeyondCharacter(
                 !isBlockedByShield(m)
         );
         let unarmoredBonus = 0;
+        acLines.push({ label: bestCandidate.label, value: bestCandidate.ac });
         for (const m of unarmoredBonusMods) {
             const flatVal = getModFlatValue(m);
             const statId = Number(m.statId);
@@ -958,6 +998,7 @@ export function parseDndBeyondCharacter(
                     ? abilityModsById[statId]
                     : 0;
             unarmoredBonus += flatVal + statMod;
+            if (flatVal + statMod) acLines.push({ label: modSourceName(m), value: flatVal + statMod });
         }
 
         baseArmorClass = bestCandidate.ac + unarmoredBonus;
@@ -985,13 +1026,22 @@ export function parseDndBeyondCharacter(
             : 0;
 
     let armorClass = baseArmorClass + shieldBonus + globalAcBonus + dualWieldAcBonus;
+    if (shieldBonus) acLines.push({ label: "Shield", value: shieldBonus });
+    allMods
+        .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "armor-class" && !isBlockedByShield(m))
+        .forEach(m => acLines.push({ label: modSourceName(m), value: resolveModValue(m) }));
+    if (dualWieldAcBonus) acLines.push({ label: "Dual Wielder", value: dualWieldAcBonus });
 
     // Minimum / Hard-Set Armor Class modifiers (e.g. Barkskin sets minimum AC to 16 or 17)
     allMods
         .filter(m => m.type === "set" && (m.subType === "armor-class" || m.subType === "minimum-base-armor"))
         .forEach(m => {
             const setAc = getModFlatValue(m);
-            if (setAc > armorClass) armorClass = setAc;
+            if (setAc > armorClass) {
+                armorClass = setAc;
+                overrideAll(acLines, modSourceName(m));
+                acLines.push({ label: `${modSourceName(m)} (AC ${setAc})`, value: setAc });
+            }
         });
 
     // Check characterValues for manual AC overrides or custom AC bonuses
@@ -1000,15 +1050,19 @@ export function parseDndBeyondCharacter(
         .filter((cv: any) => (Number(cv.typeId) === 2 || Number(cv.typeId) === 3) && !cv.valueId)
         .reduce((sum: number, cv: any) => sum + (Number(cv.value) || 0), 0);
     armorClass += cvAcBonus;
+    if (cvAcBonus) acLines.push({ label: "Custom bonus (D&D Beyond)", value: cvAcBonus });
 
     const cvAcOverride = characterValues.find((cv: any) => Number(cv.typeId) === 1 && !cv.valueId && Number(cv.value) > 0);
     if (cvAcOverride) {
         armorClass = Number(cvAcOverride.value);
+        overrideAll(acLines, "AC override (D&D Beyond)");
+        acLines.push({ label: "AC override (D&D Beyond)", value: armorClass });
     }
+    vitalParts.ac = acLines;
 
     // 6. Speed & Senses (including innate-speed-walking, speed bonuses, and Monk/Barbarian Unarmored Movement)
     let walkSpeed = Number(raw.race?.weightSpeeds?.normal?.walk) || 30;
-
+    const speedLines: BonusPart[] = [{ label: `Base (${String(raw.race?.fullName || raw.race?.baseName || "species")})`, value: walkSpeed }];
     // Set base walking speed modifiers (e.g. Wood Elf, Centaur, Boots of Striding and Springing)
     allMods
         .filter(
@@ -1018,7 +1072,11 @@ export function parseDndBeyondCharacter(
         )
         .forEach(m => {
             const v = getModFlatValue(m);
-            if (v > walkSpeed) walkSpeed = v;
+            if (v > walkSpeed) {
+                walkSpeed = v;
+                overrideAll(speedLines, modSourceName(m));
+                speedLines.push({ label: `${modSourceName(m)} (${v} ft.)`, value: v });
+            }
         });
 
     // General speed bonuses (e.g. Mobile/Speedy feat +10, Longstrider +10)
@@ -1029,7 +1087,9 @@ export function parseDndBeyondCharacter(
                 (m.subType === "speed" || m.subType === "speed-walking")
         )
         .reduce((sum, m) => sum + resolveModValue(m), 0);
-
+    allMods
+        .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && (m.subType === "speed" || m.subType === "speed-walking"))
+        .forEach(m => speedLines.push({ label: modSourceName(m), value: resolveModValue(m) }));
     // Unarmored Movement modifiers (Monk Unarmored Movement, Barbarian Fast Movement)
     const unarmoredMoveMods = allMods.filter(
         m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "unarmored-movement"
@@ -1040,6 +1100,7 @@ export function parseDndBeyondCharacter(
             if (isBlockedByShield(m)) continue;
             if (isArmored && m._sourceKey === "class" && ruleMods("vitals.speed", "bonus").some((r: any) => r.requires === "no-armor-or-shield" || r.requires === "no-armor")) continue;
             unarmoredMoveBonus += resolveModValue(m);
+            speedLines.push({ label: modSourceName(m), value: resolveModValue(m) });
         }
         // Class rules fallback (Fast Movement, Unarmored Movement, Roving) if D&D Beyond listed no class speed modifiers
         const hasClassSpeedMods = allMods.some(
@@ -1048,7 +1109,9 @@ export function parseDndBeyondCharacter(
         if (!hasClassSpeedMods) {
             const armorCategory = isWearingHeavyArmor ? "Heavy" : isArmored ? "Light" : null;
             for (const m of ruleMods("vitals.speed", "bonus")) {
-                if (armorRequirementMet(m, armorCategory, hasShield)) unarmoredMoveBonus += modifierNumber(m);
+                if (!armorRequirementMet(m, armorCategory, hasShield)) continue;
+                unarmoredMoveBonus += modifierNumber(m);
+                speedLines.push({ label: String((m as any)._source || "Class feature"), value: modifierNumber(m) });
             }
         }
     }
@@ -1059,6 +1122,11 @@ export function parseDndBeyondCharacter(
     const hasFeatSpeedMods = allMods.some(m => m._sourceKey === "feat" && ["speed", "speed-walking"].includes(String(m.subType)));
     if (!hasFeatSpeedMods) {
         walkSpeed += featBonus(featMechanics, "vitals.speed", totalLevel, profBonus);
+        for (const f of featMechanics) {
+            for (const m of (f.modifiers || []).filter((m: any) => m.target === "vitals.speed" && m.type === "bonus")) {
+                speedLines.push({ label: String(f.name || "Feat"), value: featModifierNumber(m, totalLevel, profBonus) });
+            }
+        }
     }
 
     // Custom walking speed override from customSpeeds (movementId 1 = Walk)
@@ -1066,6 +1134,8 @@ export function parseDndBeyondCharacter(
         const customWalk = raw.customSpeeds.find((s: any) => Number(s.movementId) === 1 && Number(s.distance) > 0);
         if (customWalk) {
             walkSpeed = Number(customWalk.distance);
+            overrideAll(speedLines, "Custom speed (D&D Beyond)");
+            speedLines.push({ label: "Custom speed (D&D Beyond)", value: walkSpeed });
         }
     }
 
@@ -1093,6 +1163,7 @@ export function parseDndBeyondCharacter(
         }
         if (val > 0) specialSpeedList.push(`${speedLabels[k]} ${val} ft.`);
     }
+    vitalParts.speed = speedLines;
     const fullSpeedDisplay = specialSpeedList.length > 0 ? `${walkSpeed} ft. (${specialSpeedList.join(", ")})` : `${walkSpeed} ft.`;
 
     // Sight in magical darkness: a D&D Beyond darkvision sense restricted to magical darkness
@@ -1227,7 +1298,18 @@ export function parseDndBeyondCharacter(
     }
 
     const initiative = dexMod + initiativeBonus;
-
+    {
+        const initLines: BonusPart[] = initBonusMods.map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
+        const named = (type: string, subs: string[]) => allMods.find(m => m.type === type && subs.includes(String(m.subType || "")));
+        if (isInitExpert) initLines.push({ label: `${modSourceName(named("expertise", ["initiative"]))} (expertise)`, value: profBonus * 2 });
+        else if (isInitProficient) initLines.push({ label: `${modSourceName(named("proficiency", ["initiative"]))} (proficiency)`, value: profBonus });
+        else if (isInitHalfProfRoundUp) initLines.push({ label: `${modSourceName(named("half-proficiency-round-up", ["initiative", "dexterity-ability-checks", "ability-checks", "round-up"]))} (half proficiency)`, value: Math.ceil(profBonus / 2) });
+        else if (isInitHalfProf) initLines.push({ label: `${modSourceName(named("half-proficiency", ["initiative", "dexterity-ability-checks", "ability-checks", "round-down"]))} (half proficiency)`, value: Math.floor(profBonus / 2) });
+        if (!initBonusMods.some(m => m.subType === "initiative")) {
+            for (const m of ruleMods("vitals.initiative", "ability_mod")) initLines.push({ label: String((m as any)._source || "Class feature"), value: ruleAbilityMod(m) });
+        }
+        vitalParts.initiative = initLines;
+    }
     // 7. Skills & Passive Senses
     const proficientSkills = new Set<string>();
     const expertiseSkills = new Set<string>();
@@ -1353,10 +1435,18 @@ export function parseDndBeyondCharacter(
     });
 
     // Passive score helper (includes passive-<skill> modifiers like Observant feat +5, and +5/-5 from unrestricted skill advantage/disadvantage)
-    const computePassiveScore = (skillName: string, skillKey: string, abilityKey: string, fallbackMod: number): number => {
+    const computePassiveScore = (skillName: string, skillKey: string, abilityKey: string, fallbackMod: number, vitalKey: "passivePerception" | "passiveInvestigation" | "passiveInsight"): number => {
         const skillObj = skills.find(s => s.name === skillName);
         const basePassive = 10 + (skillObj?.bonus ?? fallbackMod);
-
+        const passiveLines: BonusPart[] = allMods
+            .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === `passive-${skillKey}` && isUnrestrictedMod(m))
+            .map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
+        const passiveSubs = [skillKey, `passive-${skillKey}`, `${abilityKey}-ability-checks`, "ability-checks"];
+        const advMod = allMods.find(m => m.type === "advantage" && passiveSubs.includes(String(m.subType || "")) && isUnrestrictedMod(m));
+        const disMod = allMods.find(m => m.type === "disadvantage" && passiveSubs.includes(String(m.subType || "")) && isUnrestrictedMod(m));
+        if (advMod) passiveLines.push({ label: `${modSourceName(advMod)}: Advantage`, value: 5 });
+        if (disMod) passiveLines.push({ label: `${modSourceName(disMod)}: Disadvantage`, value: -5 });
+        vitalParts[vitalKey] = passiveLines;
         const passiveModBonus = allMods
             .filter(
                 m =>
@@ -1389,9 +1479,9 @@ export function parseDndBeyondCharacter(
         return basePassive + passiveModBonus + advAdjustment;
     };
 
-    const passivePerception = computePassiveScore("Perception", "perception", "wisdom", wisMod);
-    const passiveInvestigation = computePassiveScore("Investigation", "investigation", "intelligence", intMod);
-    const passiveInsight = computePassiveScore("Insight", "insight", "wisdom", wisMod);
+    const passivePerception = computePassiveScore("Perception", "perception", "wisdom", wisMod, "passivePerception");
+    const passiveInvestigation = computePassiveScore("Investigation", "investigation", "intelligence", intMod, "passiveInvestigation");
+    const passiveInsight = computePassiveScore("Insight", "insight", "wisdom", wisMod, "passiveInsight");
 
     // 8. Spellcasting ability, Spell Save DC, and Spell Attack Bonus (including Rod of the Pact Keeper, Wand of the War Mage, Amulet of the Devout, etc.)
     let spellcastingAbilityId = 6; // default CHA
@@ -1437,6 +1527,13 @@ export function parseDndBeyondCharacter(
 
     const spellSaveDc = 8 + profBonus + spellMod + spellDcBonus;
     const spellAttackBonus = profBonus + spellMod + spellAttackModBonus;
+    const isSpellMod = (m: any, kinds: string[]) => {
+        if (m.type !== "bonus" && m.type !== "stacking-bonus") return false;
+        const sub = String(m.subType || "").toLowerCase();
+        return kinds.includes(sub) || classNamesLower.some((cn: string) => kinds.some(k => sub === `${cn}-${k}`));
+    };
+    vitalParts.spellSaveDc = allMods.filter(m => isSpellMod(m, ["spell-save-dc"])).map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
+    vitalParts.spellAttackBonus = allMods.filter(m => isSpellMod(m, ["spell-attacks", "ranged-spell-attacks", "melee-spell-attacks"])).map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
 
     // 9. Spells Collection
     const spellsMap = new Map<string, SpellDefinition>();
@@ -1730,6 +1827,7 @@ export function parseDndBeyondCharacter(
 
         // Base ability modifier
         let atkAbilityMod = isRanged ? dexMod : isFinesse || isMonkWeapon ? Math.max(dexMod, strMod) : strMod;
+        let atkAbilityAbbr = isRanged ? "DEX" : (isFinesse || isMonkWeapon) && dexMod > strMod ? "DEX" : "STR";
 
         // Hexblade / Pact of the Blade (uses CHA if higher)
         const isHexOrPactBound =
@@ -1742,11 +1840,13 @@ export function parseDndBeyondCharacter(
             );
         if (isHexOrPactBound && chaMod > atkAbilityMod) {
             atkAbilityMod = chaMod;
+            atkAbilityAbbr = "CHA";
         }
 
         // Artificer Battle Smith / Armorer (uses INT on magic weapons if higher)
         if (hasBattleReadyOrArmorer && (def.magic || isHexOrPactBound) && intMod > atkAbilityMod) {
             atkAbilityMod = intMod;
+            atkAbilityAbbr = "INT";
         }
 
         // Weapon Proficiency check
@@ -1887,6 +1987,29 @@ export function parseDndBeyondCharacter(
             globalAtkBonus +
             archeryFallback +
             cvToHitBonus;
+        // The attack bonus's named parts, for the breakdowns
+        const attackParts: BonusPart[] = [{ label: `${atkAbilityAbbr} modifier`, value: atkAbilityMod }];
+        if (isProficient) attackParts.push({ label: "Proficiency", value: profBonus });
+        if (magicBonus) attackParts.push({ label: `${String(def.name || "Weapon")} (magic)`, value: magicBonus });
+        allMods
+            .filter(m => {
+                if (m.type !== "bonus" && m.type !== "stacking-bonus") return false;
+                const sub = String(m.subType || "").toLowerCase();
+                if (sub === "weapon-attacks" || sub === "attack-rolls") return true;
+                if (isRanged && (sub === "ranged-weapon-attacks" || sub === "ranged-attacks")) return true;
+                if (!isRanged && (sub === "melee-weapon-attacks" || sub === "melee-attacks")) return true;
+                if (!isRanged && !isTwoHanded && sub === "one-handed-melee-attacks" && m.statId) return true;
+                return false;
+            })
+            .forEach(m => attackParts.push({ label: modSourceName(m), value: resolveModValue(m) }));
+        if (archeryFallback) {
+            for (const f of featMechanics) {
+                for (const m of (f.modifiers || []).filter((m: any) => m.target === "attacks.ranged" && m.type === "bonus")) {
+                    attackParts.push({ label: String(f.name || "Feat"), value: featModifierNumber(m, totalLevel, profBonus) });
+                }
+            }
+        }
+        if (cvToHitBonus) attackParts.push({ label: "Custom bonus (D&D Beyond)", value: cvToHitBonus });
 
         const totalDmgMod =
             atkAbilityMod +
@@ -1923,6 +2046,7 @@ export function parseDndBeyondCharacter(
             isRanged,
             categoryId,
             toHitModifier,
+            attackParts,
             dmgDie,
             dmgType,
             damage
@@ -2158,6 +2282,7 @@ export function parseDndBeyondCharacter(
             damageDie: wStats.dmgDie,
             attackBonus,
             toHitModifier: wStats.toHitModifier,
+            attackParts: wStats.attackParts,
             range: rangeStr,
             properties: wStats.props,
             isMagic: isMundaneEquipment(def.name) ? false : !!def.magic,
@@ -2407,6 +2532,7 @@ export function parseDndBeyondCharacter(
         checkExtras,
         skillExtras,
         saveExtras,
+        vitalParts,
         spellSlots,
         classResources,
         bardicCount,
