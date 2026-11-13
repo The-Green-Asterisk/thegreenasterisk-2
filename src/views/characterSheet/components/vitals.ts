@@ -1,6 +1,16 @@
 import { effectsForAllSaves, rowText } from "../../../rules/dnd5e_2024/saveEffects";
-import { CharacterData } from "../characterData";
+import { CharacterData, VitalKey } from "../characterData";
 import { escapeText } from "./details";
+import { signed, vitalBreakdown } from "../services/breakdown";
+import { renderBreakdownButton } from "./breakdownButton";
+/** A vital's number as a breakdown button; the speed keeps its full text ("30 ft. (Fly 30 ft.)"). */
+export function renderVitalNumber(data: CharacterData, key: VitalKey): string {
+    const breakdown = vitalBreakdown(data, key);
+    const value = Number((data.vitals as any)?.[key === "ac" ? "armorClass" : key]) || 0;
+    const display = key === "speed" ? String(data.vitals.speed || "") : key === "initiative" || key === "spellAttackBonus" ? signed(value) : String(value);
+    return renderBreakdownButton("vital", key, display, breakdown.title, breakdown);
+}
+
 
 
 interface BadgeSvgConfig {
@@ -145,7 +155,7 @@ export function renderVitalsSection(data: CharacterData): string {
                     <div id="hp-normal-mode" class="hp-mode-container ${isDying ? 'hidden' : ''}">
                         <div class="vital-header">
                             <span class="vital-title"><i class="fa-solid fa-heart-pulse"></i> HIT POINTS</span>
-                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${data.vitals.maxHp} Max${data.source === "dndbeyond" && data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
+                            <span class="vital-sub" id="hp-ratio">${data.vitals.currentHp} / ${renderVitalNumber(data, "maxHp")} Max${data.source === "dndbeyond" && data.lockedFields?.["vitals.maxHp"] ? ' <span class="field-locked-indicator" title="Max HP is locked from D&D Beyond refresh"><i class="fa-solid fa-lock"></i></span>' : ''}</span>
                         </div>
                         <div class="hp-gauge">
                             <div class="hp-bar-fill" id="hp-bar-fill" style="width: ${Math.round((data.vitals.currentHp / data.vitals.maxHp) * 100)}%;"></div>
@@ -226,7 +236,7 @@ export function renderVitalsSection(data: CharacterData): string {
                 ${acSvg}
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-shield-halved"></i></div>
-                    <div class="vital-val">${data.vitals.armorClass}</div>
+                    <div class="vital-val">${renderVitalNumber(data, "ac")}</div>
                     <div class="vital-label">ARMOR CLASS</div>
                     <div class="vital-subnote">Armor & DEX</div>
                 </div>
@@ -236,7 +246,7 @@ export function renderVitalsSection(data: CharacterData): string {
                 ${initSvg}
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-bolt"></i></div>
-                    <div class="vital-val">${data.vitals.initiative >= 0 ? `+${data.vitals.initiative}` : data.vitals.initiative}</div>
+                    <div class="vital-val">${renderVitalNumber(data, "initiative")}</div>
                     <div class="vital-label">INITIATIVE</div>
                     <div class="vital-subnote">DEX Modifier</div>
                 </div>
@@ -246,7 +256,7 @@ export function renderVitalsSection(data: CharacterData): string {
                 ${speedSvg}
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-person-running"></i></div>
-                    <div class="vital-val">${data.vitals.speed}</div>
+                    <div class="vital-val">${renderVitalNumber(data, "speed")}</div>
                     <div class="vital-label">WALKING SPEED</div>
                     <div class="vital-subnote">Base Speed</div>
                 </div>
@@ -256,7 +266,7 @@ export function renderVitalsSection(data: CharacterData): string {
                 ${dcSvg}
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-                    <div class="vital-val">${data.vitals.spellSaveDc}</div>
+                    <div class="vital-val">${renderVitalNumber(data, "spellSaveDc")}</div>
                     <div class="vital-label">SPELL SAVE DC</div>
                     <div class="vital-subnote"><span class="vital-ability-pill">${data.vitals.spellcastingAbility}</span></div>
                 </div>
@@ -266,7 +276,7 @@ export function renderVitalsSection(data: CharacterData): string {
                 ${attackSvg}
                 <div class="vital-card-inner">
                     <div class="vital-icon"><i class="fa-solid fa-crosshairs"></i></div>
-                    <div class="vital-val">+${data.vitals.spellAttackBonus}</div>
+                    <div class="vital-val">${renderVitalNumber(data, "spellAttackBonus")}</div>
                     <div class="vital-label">SPELL ATTACK</div>
                     <div class="vital-subnote">Prof + Ability</div>
                 </div>
@@ -288,9 +298,9 @@ export function renderVitalsSection(data: CharacterData): string {
                     <div class="vital-icon"><i class="fa-solid fa-eye"></i></div>
                     <div class="vital-label">PASSIVE SENSES</div>
                     <div class="special-senses-list">
-                        <div class="special-sense-row vital-passive-perception"><span>Perception</span><strong class="vital-val sense-passive-perception-val">${data.vitals.passivePerception}</strong></div>
-                        <div class="special-sense-row vital-passive-investigation"><span>Investigation</span><strong class="vital-val sense-passive-investigation-val">${data.vitals.passiveInvestigation}</strong></div>
-                        <div class="special-sense-row vital-passive-insight"><span>Insight</span><strong class="vital-val sense-passive-insight-val">${data.vitals.passiveInsight}</strong></div>
+                        <div class="special-sense-row vital-passive-perception"><span>Perception</span><strong class="vital-val sense-passive-perception-val">${renderVitalNumber(data, "passivePerception")}</strong></div>
+                        <div class="special-sense-row vital-passive-investigation"><span>Investigation</span><strong class="vital-val sense-passive-investigation-val">${renderVitalNumber(data, "passiveInvestigation")}</strong></div>
+                        <div class="special-sense-row vital-passive-insight"><span>Insight</span><strong class="vital-val sense-passive-insight-val">${renderVitalNumber(data, "passiveInsight")}</strong></div>
                     </div>
                 </div>
             </div>

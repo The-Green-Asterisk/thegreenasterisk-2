@@ -2,7 +2,7 @@ import { escapeHtml } from "@services/escape";
 import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { findItemRule } from "../../../services/classRules";
-import { CharacterData, ItemEffectPart, EquipmentItem } from "../characterData";
+import { BonusPart, CharacterData, ItemEffectPart, EquipmentItem } from "../characterData";
 
 export interface MagicBonusExtraction {
     statOverrides: Partial<Record<string, number>>;
@@ -513,6 +513,12 @@ export function extractGrantedWeaponFromItem(item?: {
  * When granting items are equipped & attuned, ensures granted weapons exist in character.weapons and character.actions.
  * When granting items are unequipped or unattuned, removes the granted weapons and actions.
  */
+/** The character's named bonuses that apply to this weapon's attack rolls (all weapons, plus melee or ranged). */
+export function weaponAttackExtras(character: Pick<CharacterData, "attackExtras">, isRanged: boolean): BonusPart[] {
+    const extras = character.attackExtras || {};
+    return [...(extras.all || []), ...((isRanged ? extras.ranged : extras.melee) || [])].map((p) => ({ label: p.label, value: p.value }));
+}
+
 export function applyGrantedWeapons(character: CharacterData): void {
     if (!character.weapons) {
         character.weapons = [];
@@ -893,6 +899,7 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         record("checks.all", extracted.globalCheckBonus);
         record("vitals.initiative", extracted.initiativeBonus);
         record("vitals.speed", extracted.speedBonusFt);
+        if (extracted.speedMultiplier > 1) record("vitals.speedMultiplier", extracted.speedMultiplier);
 
         // Merge stat overrides (highest override wins)
         Object.keys(extracted.statOverrides).forEach(stat => {
@@ -1035,6 +1042,9 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     // --- 4. RECALCULATE WEAPONS (Attack Bonus and Damage with Magic Bonuses) ---
     if (Array.isArray(character.weapons)) {
         character.weapons.forEach(weapon => {
+            // Imported weapons keep D&D Beyond's numbers (fighting styles, magic, custom bonuses); only weapons an
+            // item grants on the sheet are worked out here
+            if (!itemStatsFromData && !weapon.grantedBy) return;
             const wName = weapon.name || "";
             const wDesc = weapon.description || weapon.notes || "";
             const isMundane = !weapon.grantedBy && isMundaneEquipment(wName);
@@ -1064,8 +1074,13 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
                 chosenMod = Math.max(strMod, dexMod);
             }
 
-            const toHit = chosenMod + profBonus + effectiveMagicPlus;
+            const extraParts = weaponAttackExtras(character, isRanged);
+            const toHit = chosenMod + profBonus + effectiveMagicPlus + extraParts.reduce((sum, p) => sum + p.value, 0);
             weapon.toHitModifier = toHit;
+            const chosenAbbr = isRanged ? "DEX" : (isFinesse || isThrown) && dexMod > strMod ? "DEX" : "STR";
+            weapon.attackParts = [{ label: `${chosenAbbr} modifier`, value: chosenMod }, { label: "Proficiency", value: profBonus }];
+            if (effectiveMagicPlus) weapon.attackParts.push({ label: `${wName} (magic +${effectiveMagicPlus})`, value: effectiveMagicPlus });
+            weapon.attackParts.push(...extraParts);
             weapon.attackBonus = toHit >= 0 ? `+${toHit}` : `${toHit}`;
 
             // Adjust damage formula to reflect weapon's magic bonus (+1/+2/+3)

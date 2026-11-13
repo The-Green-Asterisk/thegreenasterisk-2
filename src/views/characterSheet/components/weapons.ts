@@ -1,4 +1,6 @@
 import { escapeHtml } from "@services/escape";
+import { weaponAttackBreakdown } from "../services/breakdown";
+import { renderBreakdownButton } from "./breakdownButton";
 import { renderUsesTracker } from "./usesTracker";
 import { itemChargesKey } from "../dndBeyondExtras";
 import { CharacterData } from "../characterData";
@@ -88,7 +90,7 @@ export function renderWeapons(data: CharacterData): string {
                 <div class="weapon-combat-stats">
                     <div class="wstat-box atk-stat">
                         <span class="wstat-label"><i class="fa-solid fa-crosshairs"></i> ATTACK</span>
-                        <span class="wstat-val">${w.attackBonus}</span>
+                        <span class="wstat-val">${renderBreakdownButton("weapon", w.name, String(w.attackBonus), `${w.name} attack ${w.attackBonus}`, weaponAttackBreakdown(data, w))}</span>
                     </div>
                     <div class="wstat-box dmg-stat">
                         <span class="wstat-label"><i class="fa-solid fa-burst"></i> DAMAGE</span>

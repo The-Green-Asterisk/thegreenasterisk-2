@@ -1,5 +1,5 @@
 import el from "@elements";
-import { Breakdown, breakdownFor, signed } from "../services/breakdown";
+import { Breakdown, breakdownFor, formatTotal, signed } from "../services/breakdown";
 import { CharacterSheetContext } from "./context";
 
 export const BREAKDOWN_HOVER_DELAY_MS = 1000;
@@ -64,7 +64,7 @@ export function initBreakdownController(ctx: CharacterSheetContext) {
         totalName.scope = "row";
         totalName.textContent = "Total";
         const totalValue = document.createElement("td");
-        totalValue.textContent = signed(breakdown.total);
+        totalValue.textContent = formatTotal(breakdown);
         totalRow.append(totalName, totalValue);
         foot.appendChild(totalRow);
         table.appendChild(foot);

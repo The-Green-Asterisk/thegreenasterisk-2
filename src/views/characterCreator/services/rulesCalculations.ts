@@ -2,10 +2,12 @@ import {
     AbilityName,
     BASE_ARMOR_2024,
     BASE_WEAPONS_2024,
-    checkClassPrerequisite
+    checkClassPrerequisite,
+    StatModifier
 } from "../../../rules/dnd5e_2024";
-import { featBonus, featModifiers } from "../../../rules/dnd5e_2024/featRules";
-import { speciesMaxHpBonus } from "../../../rules/dnd5e_2024/speciesRules";
+import { BonusPart } from "../../characterSheet/characterData";
+import { featModifierNumber, featModifiers } from "../../../rules/dnd5e_2024/featRules";
+import { speciesModifiers } from "../../../rules/dnd5e_2024/speciesRules";
 import { AsiChoice, AsiSlot } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 import { armorRequirementMet, getProgressionModifiers, modifierNumber } from "./progressionModifiers";
@@ -231,121 +233,132 @@ export function getAbilityModifier(ctx: CharacterCreatorContext, stat: AbilityNa
     return Math.floor((getEffectiveAbilityScore(ctx, stat) - 10) / 2);
 }
 
-export function getMaxHp(ctx: CharacterCreatorContext): number {
+const partsTotal = (parts: BonusPart[]) => parts.filter((p) => !p.overriddenBy).reduce((sum, p) => sum + p.value, 0);
+const modifierLabel = (m: StatModifier, fallback: string) => String((m as any).label || (m as any).description || fallback);
+
+/** Max HP as named parts: each class's hit dice, CON per level, feats, species traits, class features. */
+export function getMaxHpParts(ctx: CharacterCreatorContext): BonusPart[] {
     ctx.syncStateClassProperties();
     const conMod = getAbilityModifier(ctx, "con");
-    const classChoices = ctx.state.classes || [];
-
-    let hp = 0;
-    classChoices.forEach((choice, idx) => {
+    const parts: BonusPart[] = [];
+    (ctx.state.classes || []).forEach((choice, idx) => {
         const cls = ctx.classes.find((c) => c.id === choice.classId) || ctx.classes[0];
         const hitDie = cls.hitDie;
         const level = choice.level || 1;
         const avgDie = Math.floor(hitDie / 2) + 1;
-
         if (idx === 0) {
-            // First class Level 1: full hit die + Con mod
-            hp += hitDie + conMod;
-            if (level > 1) {
-                hp += (level - 1) * (avgDie + conMod);
-            }
+            // First class Level 1: full hit die, then the average for each level after
+            parts.push({ label: `${cls.name} hit dice (${hitDie}${level > 1 ? ` + ${avgDie} × ${level - 1}` : ""})`, value: hitDie + (level - 1) * avgDie });
         } else {
-            // Additional classes: average hit die + Con mod for each level
-            hp += level * (avgDie + conMod);
+            parts.push({ label: `${cls.name} hit dice (${avgDie} × ${level})`, value: level * avgDie });
         }
     });
-
     const totalLevel = ctx.getTotalLevel();
-    // Tough feat bonus (+2 HP per level)
-    // Feats (e.g. Tough: +2 per level)
-    hp += featBonus(getCharacterFeats(ctx), "vitals.maxHp", totalLevel, getProficiencyBonus(ctx));
-
-    // Species and lineage hit point bonuses (e.g. Dwarven Toughness: +1 per level)
-    hp += speciesMaxHpBonus(currentSpecies(ctx), currentLineage(ctx), totalLevel);
-
-    // Class and subclass features (e.g. Draconic Resilience: +1 HP per Sorcerer level)
-    for (const m of getProgressionModifiers(ctx)) {
-        if (m.target === "vitals.maxHp" && m.type === "bonus") hp += modifierNumber(m);
+    parts.push({ label: `CON modifier × ${totalLevel} levels`, value: conMod * totalLevel });
+    const pb = getProficiencyBonus(ctx);
+    for (const feat of getCharacterFeats(ctx)) {
+        for (const m of featModifiers([feat], "vitals.maxHp", "bonus")) parts.push({ label: feat.name, value: featModifierNumber(m, totalLevel, pb) });
     }
-
-    return Math.max(1, hp);
+    for (const m of speciesModifiers(currentSpecies(ctx), currentLineage(ctx), totalLevel)) {
+        if (m.target !== "vitals.maxHp" || m.type !== "bonus") continue;
+        parts.push({ label: modifierLabel(m, "Species trait"), value: typeof m.perClassLevel === "number" ? m.perClassLevel * totalLevel : Number(m.value) || 0 });
+    }
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target === "vitals.maxHp" && m.type === "bonus") parts.push({ label: m.source, value: modifierNumber(m) });
+    }
+    return parts;
 }
 
-export function getArmorClass(ctx: CharacterCreatorContext): number {
+export function getMaxHp(ctx: CharacterCreatorContext): number {
+    return Math.max(1, partsTotal(getMaxHpParts(ctx)));
+}
+
+/** AC as named parts: the armor or the winning unarmored formula, DEX, shield, and bonuses whose armor condition is met. */
+export function getArmorClassParts(ctx: CharacterCreatorContext): BonusPart[] {
     const dexMod = getAbilityModifier(ctx, "dex");
     const armor = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor);
-    let ac = 10 + dexMod;
-
+    const parts: BonusPart[] = [];
     if (armor) {
-        if (armor.category === "Light") {
-            ac = armor.baseAc + dexMod;
-        } else if (armor.category === "Medium") {
-            ac = armor.baseAc + Math.min(2, dexMod);
-        } else if (armor.category === "Heavy") {
-            ac = armor.baseAc;
-        }
+        parts.push({ label: armor.name, value: armor.baseAc });
+        if (armor.category === "Light") parts.push({ label: "DEX modifier", value: dexMod });
+        else if (armor.category === "Medium") parts.push({ label: "DEX modifier (max 2)", value: Math.min(2, dexMod) });
     } else {
+        let best: BonusPart[] = [{ label: "Base", value: 10 }, { label: "DEX modifier", value: dexMod }];
         // Unarmored Defense and similar class features: 10 + the listed abilities' modifiers
         for (const m of getProgressionModifiers(ctx)) {
             if (m.target !== "vitals.ac" || m.type !== "unarmored_ac" || !Array.isArray(m.abilities)) continue;
             if (ctx.state.hasShield && m.allowsShield === false) continue;
-            ac = Math.max(ac, 10 + m.abilities.reduce((sum, ab) => sum + getAbilityModifier(ctx, ab), 0));
+            const value = 10 + m.abilities.reduce((sum, ab) => sum + getAbilityModifier(ctx, ab), 0);
+            if (value > partsTotal(best)) best = [{ label: `${m.source} (10 + ${m.abilities.map((ab) => ab.toUpperCase()).join(" + ")})`, value }];
         }
+        parts.push(...best);
     }
-
-    if (ctx.state.hasShield) {
-        ac += 2;
-    }
-
+    if (ctx.state.hasShield) parts.push({ label: "Shield", value: 2 });
     // Bonuses to AC (e.g. Defense Fighting Style while wearing armor)
     const armorCategory = armor?.category || null;
     for (const m of getProgressionModifiers(ctx)) {
         if (m.target !== "vitals.ac" || m.type !== "bonus") continue;
         if (!armorRequirementMet(m, armorCategory, !!ctx.state.hasShield)) continue;
-        ac += modifierNumber(m);
+        parts.push({ label: m.source, value: modifierNumber(m) });
     }
+    return parts;
+}
 
-    return ac;
+export function getArmorClass(ctx: CharacterCreatorContext): number {
+    return partsTotal(getArmorClassParts(ctx));
+}
+
+/** What Initiative gets beyond the DEX modifier, named: feats (Alert) and class features (Dread Ambusher). */
+export function getInitiativeParts(ctx: CharacterCreatorContext): BonusPart[] {
+    const parts: BonusPart[] = [];
+    const level = ctx.getTotalLevel() || 1;
+    const pb = getProficiencyBonus(ctx);
+    for (const feat of getCharacterFeats(ctx)) {
+        for (const m of featModifiers([feat], "vitals.initiative", "bonus")) parts.push({ label: feat.name, value: featModifierNumber(m, level, pb) });
+    }
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target === "vitals.initiative" && m.type === "ability_mod" && m.abilitySource) {
+            parts.push({ label: m.source, value: Math.max(m.minimum ?? -Infinity, getAbilityModifier(ctx, m.abilitySource)) });
+        }
+    }
+    return parts;
 }
 
 export function getInitiative(ctx: CharacterCreatorContext): number {
-    let init = getAbilityModifier(ctx, "dex");
-    // Alert origin feat adds proficiency bonus
-    // Feats (e.g. Alert: + Proficiency Bonus)
-    init += featBonus(getCharacterFeats(ctx), "vitals.initiative", ctx.getTotalLevel() || 1, getProficiencyBonus(ctx));
-    // Class features that add an ability modifier to Initiative (e.g. Dread Ambusher)
-    for (const m of getProgressionModifiers(ctx)) {
-        if (m.target === "vitals.initiative" && m.type === "ability_mod" && m.abilitySource) {
-            init += Math.max(m.minimum ?? -Infinity, getAbilityModifier(ctx, m.abilitySource));
-        }
-    }
-    return init;
+    return getAbilityModifier(ctx, "dex") + partsTotal(getInitiativeParts(ctx));
 }
 
-export function getSpeed(ctx: CharacterCreatorContext): number {
+/** Walking speed as named parts: the species' base, lineage, feats, class features, and a heavy armor penalty. */
+export function getSpeedParts(ctx: CharacterCreatorContext): BonusPart[] {
     const species = ctx.species.find((s) => s.id === ctx.state.speciesId);
-    let speed = species?.speed || 30;
-    // Lineage speed bonus (e.g. Wood Elf's Fleet of Foot) and feats (e.g. Speedy)
-    speed += Number(currentLineage(ctx)?.speedBonus) || 0;
-    speed += featBonus(getCharacterFeats(ctx), "vitals.speed", ctx.getTotalLevel() || 1, getProficiencyBonus(ctx));
+    const parts: BonusPart[] = [{ label: `Base (${species?.name || "species"})`, value: species?.speed || 30 }];
+    const lineage = currentLineage(ctx);
+    if (Number(lineage?.speedBonus)) parts.push({ label: String(lineage?.name || "Lineage"), value: Number(lineage?.speedBonus) });
+    const level = ctx.getTotalLevel() || 1;
+    const pb = getProficiencyBonus(ctx);
+    for (const feat of getCharacterFeats(ctx)) {
+        for (const m of featModifiers([feat], "vitals.speed", "bonus")) parts.push({ label: feat.name, value: featModifierNumber(m, level, pb) });
+    }
     // Class and subclass features (e.g. Fast Movement, Unarmored Movement, Roving), when their armor condition is met
     const armorCategory = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor)?.category || null;
     for (const m of getProgressionModifiers(ctx)) {
         if (m.target !== "vitals.speed" || m.type !== "bonus") continue;
         if (!armorRequirementMet(m, armorCategory === "Shield" ? null : armorCategory, !!ctx.state.hasShield)) continue;
-        speed += modifierNumber(m);
+        parts.push({ label: m.source, value: modifierNumber(m) });
     }
     // Heavy Armor Strength requirement penalty: -10 ft if Strength is lower than required
     if (ctx.state.selectedArmor && ctx.state.selectedArmor !== "None") {
         const armor = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor);
-        if (armor?.strengthRequired) {
-            const effectiveStr = getEffectiveAbilityScore(ctx, "str");
-            if (effectiveStr < armor.strengthRequired) {
-                speed = Math.max(5, speed - 10);
-            }
+        if (armor?.strengthRequired && getEffectiveAbilityScore(ctx, "str") < armor.strengthRequired) {
+            const before = partsTotal(parts);
+            parts.push({ label: `${armor.name} (Strength ${armor.strengthRequired} needed)`, value: Math.max(5, before - 10) - before });
         }
     }
-    return speed;
+    return parts;
+}
+
+export function getSpeed(ctx: CharacterCreatorContext): number {
+    return partsTotal(getSpeedParts(ctx));
 }
 
 /** Climb / swim / fly speeds from class, subclass, and feat features ("walk" = equal to walking speed). */

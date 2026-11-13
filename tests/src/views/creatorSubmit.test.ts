@@ -62,4 +62,39 @@ describe("creator save", () => {
         expect(cooking).toEqual({ name: "Cooking", stat: "WIS", proficiency: "proficient", custom: true, bonus: ctrl.getAbilityModifier("wis") + pb });
         expect(skills.filter((s) => s.name === "Stealth")).toHaveLength(1);
     });
+
+    it("counts a chosen fighting style in the weapon's attack bonus, named", async () => {
+        vi.resetModules();
+        putData.mockClear();
+        const { CharacterCreatorController } = await import("../../../src/views/characterCreator/characterCreator.ctrl");
+        const { characterCreatorTemplate } = await import("../../../src/views/characterCreator/characterCreator.template");
+        const { bindNavigationEvents } = await import("../../../src/views/characterCreator/controllers/navigation.ctrl");
+        const { serverRulesClasses } = await import("./serverRulesClasses");
+        document.body.innerHTML = "";
+        document.body.appendChild(characterCreatorTemplate());
+        const ctrl = new CharacterCreatorController();
+        ctrl.classes = serverRulesClasses();
+        ctrl.state.name = "Arrow";
+        ctrl.state.savedId = 7;
+        bindNavigationEvents(ctrl);
+        ctrl.renderStep(9);
+        // Rendering fills in a default class; the fighter and the style go in after
+        ctrl.state.classes = [{ classId: "fighter", level: 1, subclassId: "" } as any];
+        ctrl.state.subclassFeatureChoices = { "fighter-1-fighting-style": "archery" };
+        ctrl.state.selectedWeapons = ["Longbow", "Longsword"];
+        (document.getElementById("creator-submit-btn") as HTMLButtonElement).click();
+        await Promise.resolve();
+        const body: any = (putData.mock.calls[0] as any[])[1];
+        const character = body.character || body.payload || body;
+        const bow = character.weapons.find((w: any) => w.name === "Longbow");
+        const sword = character.weapons.find((w: any) => w.name === "Longsword");
+        const dex = ctrl.getAbilityModifier("dex");
+        const str = ctrl.getAbilityModifier("str");
+        const pb = character.vitals.proficiencyBonus;
+        expect(character.attackExtras.ranged).toEqual([{ label: expect.stringContaining("Archery"), value: 2 }]);
+        expect(bow.toHitModifier).toBe(dex + pb + 2);
+        expect(bow.attackParts.map((p: any) => p.value)).toEqual([dex, pb, 2]);
+        expect(sword.toHitModifier).toBe(Math.max(str, str) + pb);
+    });
 });
+

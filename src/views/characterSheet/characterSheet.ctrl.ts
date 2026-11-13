@@ -5,14 +5,14 @@ import { carryLockedCopiesAndLinks } from "./services/characterCopies";
 import { carryCustomSkills } from "./services/customSkills";
 import { initBreakdownController } from "./controllers/breakdown.ctrl";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
-import { CharacterData, SpellDefinition } from "./characterData";
+import { CharacterData, SpellDefinition, VitalKey } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
 import { renderAbilityCards } from "./components/abilities";
 import { renderActions } from "./components/actions";
 import { renderSkills } from "./components/skills";
 import { describeDuplicateSpells } from "./components/spells";
 import { restoreUsePips } from "./components/usesTracker";
-import { renderSpecialSensesList } from "./components/vitals";
+import { renderSpecialSensesList, renderVitalNumber } from "./components/vitals";
 import { renderWeapons } from "./components/weapons";
 import {
     CharacterSheetContext,
@@ -219,7 +219,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             hpDisplay.max = String(maxHp);
         }
         if (tempHpDisplay) tempHpDisplay.value = tempHp.toString();
-        if (hpRatio) hpRatio.textContent = `${currentHp} / ${maxHp} Max`;
+        if (hpRatio) hpRatio.innerHTML = activeCharacter ? `${currentHp} / ${renderVitalNumber(activeCharacter, "maxHp")} Max` : `${currentHp} / ${maxHp} Max`;
         if (hpBarFill) {
             const percentage = Math.max(0, Math.min(100, Math.round((currentHp / Math.max(1, maxHp)) * 100)));
             hpBarFill.style.width = `${percentage}%`;
@@ -856,30 +856,20 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         }
 
         // Update Vitals cards in DOM if already rendered
-        const acEl = sheet.querySelector<HTMLElement>(".vital-ac .vital-val");
-        if (acEl) acEl.textContent = String(char.vitals.armorClass);
-        const initEl = sheet.querySelector<HTMLElement>(".vital-init .vital-val");
-        if (initEl) {
-            initEl.textContent =
-                char.vitals.initiative >= 0
-                    ? `+${char.vitals.initiative}`
-                    : String(char.vitals.initiative);
+        // Each number is a breakdown button, so it's rendered again rather than written as text
+        const vitalCells: Array<[string, VitalKey]> = [[".vital-ac .vital-val", "ac"], [".vital-init .vital-val", "initiative"], [".vital-speed .vital-val", "speed"], [".vital-dc .vital-val", "spellSaveDc"], [".vital-attack .vital-val", "spellAttackBonus"]];
+        for (const [selector, key] of vitalCells) {
+            const cell = sheet.querySelector<HTMLElement>(selector);
+            if (cell) cell.innerHTML = renderVitalNumber(char, key);
         }
-        const speedEl = sheet.querySelector<HTMLElement>(".vital-speed .vital-val");
-        if (speedEl) speedEl.textContent = char.vitals.speed;
-        const dcEl = sheet.querySelector<HTMLElement>(".vital-dc .vital-val");
-        if (dcEl) dcEl.textContent = String(char.vitals.spellSaveDc);
-        const atkEl = sheet.querySelector<HTMLElement>(".vital-attack .vital-val");
-        if (atkEl) atkEl.textContent = `+${char.vitals.spellAttackBonus}`;
         // Special senses change with equipped items (Goggles of Night)
         const sensesList = sheet.querySelector<HTMLElement>(".vital-special-senses .special-senses-list");
         if (sensesList) sensesList.innerHTML = renderSpecialSensesList(char);
-        const percEl = sheet.querySelector<HTMLElement>(".vital-passive-perception .vital-val, .sense-passive-perception-val");
-        if (percEl) percEl.textContent = String(char.vitals.passivePerception);
-        const invEl = sheet.querySelector<HTMLElement>(".vital-passive-investigation .vital-val, .sense-passive-investigation-val");
-        if (invEl) invEl.textContent = String(char.vitals.passiveInvestigation);
-        const insEl = sheet.querySelector<HTMLElement>(".vital-passive-insight .vital-val, .sense-passive-insight-val");
-        if (insEl) insEl.textContent = String(char.vitals.passiveInsight);
+        const passiveCells: Array<[string, VitalKey]> = [[".sense-passive-perception-val", "passivePerception"], [".sense-passive-investigation-val", "passiveInvestigation"], [".sense-passive-insight-val", "passiveInsight"]];
+        for (const [selector, key] of passiveCells) {
+            const cell = sheet.querySelector<HTMLElement>(selector);
+            if (cell) cell.innerHTML = renderVitalNumber(char, key);
+        }
 
         // Update sticky vitals bar stats if rendered
         const stickyAcEl = sheet.querySelector<HTMLElement>("#sticky-vital-ac-val");

@@ -44,12 +44,16 @@ export interface AbilityScore {
     notes?: string;
 }
 
+export type VitalKey = "ac" | "initiative" | "speed" | "maxHp" | "passivePerception" | "passiveInvestigation" | "passiveInsight" | "spellSaveDc" | "spellAttackBonus";
+
 /** One named piece of a number on the sheet, for the breakdowns. */
 export interface BonusPart {
     label: string;
     value: number;
     /** Applies only while the skill or save isn't proficient (Jack of All Trades). */
     untrainedOnly?: boolean;
+    /** What replaced this piece (a set AC, an HP override); shown but not counted. */
+    overriddenBy?: string;
 }
 
 /** One effect of an equipped item, recorded by the sheet's item pass. */
@@ -157,6 +161,8 @@ export interface WeaponItem {
     damageDie: string; // e.g. "1d4"
     attackBonus: string; // e.g. "+5"
     toHitModifier: number; // e.g. 5
+    /** The attack bonus's named parts, for the breakdowns. */
+    attackParts?: BonusPart[];
     range: string; // e.g. "Reach 5 ft." or "20/60 ft."
     properties: string[]; // e.g. ["Finesse", "Light", "Thrown"]
     isMagic?: boolean;
@@ -244,6 +250,13 @@ export interface CharacterData {
      * numbers already hold its items). Rewritten on every pass.
      */
     itemEffectParts?: ItemEffectPart[];
+    /**
+     * Named parts of the vitals: everything for AC, speed, and max HP; for the rest, what's beyond the live base
+     * (ability, proficiency, the skill behind a passive). Items worn on the sheet are in itemEffectParts.
+     */
+    vitalParts?: Partial<Record<VitalKey, BonusPart[]>>;
+    /** Named bonuses to weapon attack rolls (fighting styles, feats): on every weapon, melee only, or ranged only. */
+    attackExtras?: { all?: BonusPart[]; melee?: BonusPart[]; ranged?: BonusPart[] };
     /**
      * Import-only: spells D&D Beyond lists more than once where at least one copy is the player's pick, with where each copy comes from. wastedPicks counts regular
      * picks of a spell a feature already keeps always prepared.
