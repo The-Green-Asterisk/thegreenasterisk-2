@@ -85,6 +85,7 @@
     --slate-700: #334155;
     --slate-800: #1e293b;
     --slate-900: #0f172a;
+    --slate-950: #020617;
     --gray-500: #6b7280;
     --stone-100: #f5f5f4;
     --stone-400: #a8a29e;
@@ -108,6 +109,7 @@
     --fuchsia-100: #fae8ff;
     --fuchsia-400: #e879f9;
     --fuchsia-500: #d946ef;
+    --fuchsia-700: #a21caf;
     --fuchsia-800: #86198f;
     --purple-100: #f3e8ff;
     --purple-400: #c084fc;
@@ -116,12 +118,14 @@
     --purple-700: #7e22ce;
     --purple-800: #6b21a8;
     --violet-300: #c4b5fd;
+    --violet-400: #a78bfa;
     --indigo-100: #e0e7ff;
     --indigo-400: #818cf8;
     --indigo-500: #6366f1;
     --indigo-800: #3730a3;
     --blue-100: #dbeafe;
     --blue-200: #bfdbfe;
+    --blue-300: #93c5fd;
     --blue-400: #60a5fa;
     --blue-500: #3b82f6;
     --blue-600: #2563eb;
@@ -131,7 +135,10 @@
     --sky-500: #0ea5e9;
     --sky-600: #0284c7;
     --sky-700: #0369a1;
+    --sky-deep: #0277bd;
     --cyan-500: #06b6d4;
+    --teal-400: #2dd4bf;
+    --teal-600: #0d9488;
     --emerald-100: #d1fae5;
     --emerald-200: #a7f3d0;
     --emerald-300: #6ee7b7;
@@ -139,10 +146,14 @@
     --emerald-500: #10b981;
     --emerald-600: #059669;
     --emerald-700: #047857;
+    --emerald-800: #065f46;
     --green-100: #dcfce7;
+    --green-300: #86efac;
     --green-400: #4ade80;
     --green-500: #22c55e;
+    --green-700: #15803d;
     --green-800: #166534;
+    --green-deep: #198754;
     --lime-100: #ecfccb;
     --lime-400: #a3e635;
     --lime-500: #84cc16;
@@ -150,6 +161,7 @@
     --yellow-100: #fef9c3;
     --yellow-400: #facc15;
     --yellow-500: #eab308;
+    --yellow-600: #ca8a04;
     --yellow-800: #854d0e;
     --amber-100: #fef3c7;
     --amber-300: #fcd34d;
@@ -157,6 +169,7 @@
     --amber-500: #f59e0b;
     --amber-600: #d97706;
     --amber-800: #92400e;
+    --orange-400: #fb923c;
     --orange-700: #c2410c;
     --apricot: #f6ad55;
     --orchid: #ab47bc;
@@ -176,9 +189,11 @@
     --amber-tint-text-strong: #78350f;
     --conditions-active-bg: rgba(254, 243, 199, 0.45);
     --contrast: #000000;
+    --cyan-bg-100-2: #e0f7fa;
     --cyan-bg-50: #ecfeff;
     --cyan-border: #06b6d4;
     --cyan-border-strong: #0891b2;
+    --cyan-fill-hover: #0891b2;
     --cyan-tint: #cffafe;
     --cyan-tint-text: #155e75;
     --danger-tint: #fee2e2;
@@ -206,6 +221,7 @@
     --success-hover-bg: #f0fdf4;
     --success-tint: #ecfdf5;
     --success-tint-border: #a7f3d0;
+    --success-tint-faint: #ecfdf5;
     --success-tint-strong: #d1fae5;
     --success-tint-text: #065f46;
     --success-wash: rgba(34, 197, 94, 0.12);
@@ -263,9 +279,11 @@
     --amber-tint-text-strong: #fef3c7;
     --conditions-active-bg: rgba(239, 68, 68, 0.06);
     --contrast: #ffffff;
+    --cyan-bg-100-2: rgba(56, 189, 248, 0.12);
     --cyan-bg-50: rgba(6, 182, 212, 0.2);
     --cyan-border: rgba(6, 182, 212, 0.55);
     --cyan-border-strong: #06b6d4;
+    --cyan-fill-hover: rgba(8, 145, 178, 0.42);
     --cyan-tint: rgba(8, 145, 178, 0.28);
     --cyan-tint-text: #a5f3fc;
     --danger-tint: rgba(239, 68, 68, 0.22);
@@ -293,6 +311,7 @@
     --success-hover-bg: rgba(30, 41, 59, 0.9);
     --success-tint: rgba(16, 185, 129, 0.18);
     --success-tint-border: rgba(16, 185, 129, 0.35);
+    --success-tint-faint: rgba(16, 185, 129, 0.07);
     --success-tint-strong: rgba(16, 185, 129, 0.18);
     --success-tint-text: #d1fae5;
     --success-wash: rgba(34, 197, 94, 0.2);
