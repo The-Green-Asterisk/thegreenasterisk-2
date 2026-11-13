@@ -1,4 +1,4 @@
-import { CharacterData } from "../../views/characterSheet/characterData";
+import { BonusPart, CharacterData } from "../../views/characterSheet/characterData";
 import { findClassOption } from "./classOptions";
 import { abilityKey, applySaveEffect, normalizeAgainst, SaveEffect } from "./saveEffects";
 import { applySenseGrants, senseGrantsFrom, senseKeyOfTarget } from "./senses";
@@ -41,6 +41,18 @@ function syncSaveEffect(character: CharacterData, effect: SaveEffect, add: boole
 }
 
 /** Applies (sign 1) or undoes (sign -1) a modifier; `source` names what grants it, for save effects. */
+/** Adds (sign 1) or takes away (sign -1) one named piece of a number, for the breakdowns. */
+function syncBonusPart(list: BonusPart[], part: BonusPart, sign: 1 | -1): void {
+    if (sign === 1) {
+        list.push(part);
+        return;
+    }
+    const index = list.findIndex((p) => p.label === part.label && p.value === part.value && !!p.untrainedOnly === !!part.untrainedOnly);
+    if (index >= 0) list.splice(index, 1);
+}
+
+const CHECK_ABILITIES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+
 export function applyStatModifier(character: CharacterData, mod: StatModifier, sign: 1 | -1, source?: string): void {
     if (!character || !mod) return;
 
@@ -160,10 +172,16 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
                 character.abilities.forEach(a => {
                     a.save += sign * srcMod;
                 });
+                character.saveExtras = character.saveExtras || {};
+                syncBonusPart(character.saveExtras.all = character.saveExtras.all || [],
+                    { label: source || `${mod.abilitySource.toUpperCase()} modifier`, value: srcMod }, sign);
             } else if (type === "bonus" || type === "penalty") {
                 character.abilities.forEach(a => {
                     a.save += sign * delta;
                 });
+                character.saveExtras = character.saveExtras || {};
+                syncBonusPart(character.saveExtras.all = character.saveExtras.all || [],
+                    { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: type === "penalty" ? -delta : delta }, sign);
             } else if (type === "advantage" || type === "disadvantage") {
                 syncSaveEffect(character, { effect: type, against: normalizeAgainst(mod.condition), sources: source ? [source] : [] }, sign === 1);
             }
@@ -175,6 +193,10 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
                     ability.save = ability.modifier + (ability.proficientSave ? (character.vitals.proficiencyBonus || 2) : 0);
                 } else if (type === "bonus" || type === "penalty") {
                     ability.save += sign * delta;
+                    character.saveExtras = character.saveExtras || {};
+                    const abbr = ability.abbr.toUpperCase();
+                    syncBonusPart(character.saveExtras[abbr] = character.saveExtras[abbr] || [],
+                        { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: type === "penalty" ? -delta : delta }, sign);
                 } else if (type === "advantage" || type === "disadvantage") {
                     syncSaveEffect(character, {
                         ability: abilityKey(ability.abbr),
@@ -190,14 +212,19 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
     // and the record skills a player adds take their bonus from
     else if (target === "skills.unproficient") {
         if (type === "half_proficiency") {
-            const half = sign * Math.floor((character.vitals.proficiencyBonus || 2) / 2);
+            const amount = Math.floor((character.vitals.proficiencyBonus || 2) / 2);
+            const half = sign * amount;
             character.skills.forEach(sk => {
                 if (!sk.proficiency || sk.proficiency === "none") sk.bonus += half;
             });
-            if (character.checkExtras) {
-                for (const extras of Object.values(character.checkExtras)) {
-                    if (extras) extras.untrained += half;
-                }
+            if (!character.checkExtras) {
+                character.checkExtras = Object.fromEntries(CHECK_ABILITIES.map((ab) => [ab, { trained: 0, untrained: 0, parts: [] }]));
+            }
+            for (const extras of Object.values(character.checkExtras)) {
+                if (!extras) continue;
+                extras.untrained += half;
+                extras.parts = extras.parts || [];
+                syncBonusPart(extras.parts, { label: source || "Half proficiency", value: amount, untrainedOnly: true }, sign);
             }
         }
     }
@@ -221,8 +248,14 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
             } else if (type === "ability_mod" && mod.abilitySource) {
                 const srcMod = character.abilities.find(a => a.abbr.toLowerCase() === mod.abilitySource?.toLowerCase())?.modifier || 0;
                 skill.bonus += sign * srcMod;
+                character.skillExtras = character.skillExtras || {};
+                syncBonusPart(character.skillExtras[skill.name] = character.skillExtras[skill.name] || [],
+                    { label: source || `${mod.abilitySource.toUpperCase()} modifier`, value: srcMod }, sign);
             } else if (type === "bonus" || type === "penalty") {
                 skill.bonus += sign * delta;
+                character.skillExtras = character.skillExtras || {};
+                syncBonusPart(character.skillExtras[skill.name] = character.skillExtras[skill.name] || [],
+                    { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: type === "penalty" ? -delta : delta }, sign);
             } else if (type === "advantage" || type === "disadvantage") {
                 const advText = type === "advantage" ? "Advantage" : "Disadvantage";
                 const note = `${advText} on ${skill.name} checks${mod.condition ? ` (${mod.condition})` : ""}`;

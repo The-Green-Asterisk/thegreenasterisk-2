@@ -1,6 +1,8 @@
 import { abilityKey, cardText, effectsForAbility } from "../../../rules/dnd5e_2024/saveEffects";
 import { CharacterData } from "../characterData";
 import { escapeText } from "./details";
+import { saveBreakdown } from "../services/breakdown";
+import { renderBreakdownButton } from "./breakdownButton";
 
 /** An ability's save effects ("Advantage: Concentration", with what grants it), or its older note. */
 function renderSaveEffects(data: CharacterData, abbr: string, legacyNote?: string): string {
@@ -29,7 +31,7 @@ export function renderAbilityCards(data: CharacterData): string {
                 <div class="ability-score">${ability.score}</div>
                 <div class="ability-save">
                     <span class="save-label">SAVE</span>
-                    <span class="save-val">${saveSign}</span>
+                    <span class="save-val">${renderBreakdownButton("save", ability.abbr, saveSign, `${ability.name} saving throw ${saveSign}`, saveBreakdown(data, ability))}</span>
                     ${profBadge}
                 </div>
                 ${renderSaveEffects(data, ability.abbr, ability.notes)}

@@ -1,3 +1,4 @@
+import { BonusPart } from "../../characterSheet/characterData";
 import el from "@elements";
 import { getData, postData, putData } from "@services/request";
 import {
@@ -24,7 +25,7 @@ import { CharacterCreatorContext } from "../controllers/context";
 import { applyDndBeyondAbilityChoices } from "./dndBeyondAbilityChoices";
 import { isImportedCharacter, keepPlayState, mergeImportedCharacter } from "./importLocks";
 import { getProgressionChoices, getProgressionModifiers, getProgressionPools, isStateFieldChoice, optionAvailableAt, poolSingular, setProgressionChoice } from "./progressionModifiers";
-import { distributeImportedSkills, getCharacterFeats, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections } from "./skillRules";
+import { distributeImportedSkills, getCharacterFeats, getGrantedExpertiseSkills, getProficientSkills, getSkillBonusExtras, sanitizeSkillSelections, getGeneralCheckParts, getSkillExtraParts } from "./skillRules";
 import { currentLineage, getSpeciesFeatPicks } from "./speciesChoices";
 import { getProgressionGrantedSpellNames, getSpellFeat, MAGIC_INITIATE_BUCKET_KEY, resolveSpellBucketKey } from "./spellReconciliation";
 
@@ -578,15 +579,25 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             proficiency: isExpert ? "expertise" : isProf ? "proficient" : "none"
         };
     });
-    // What a check with each ability gets besides the modifier and proficiency (Jack of All Trades on untrained checks);
-    // skills the rules don't list take their bonus from it. No rules skill has this name, so only general effects count
-    const NO_RULES_SKILL = "";
-    const checkExtras: Record<string, { trained: number; untrained: number }> = Object.fromEntries(
+    // What a check with each ability gets besides the modifier and proficiency (Jack of All Trades on untrained checks),
+    // with each piece named; skills the rules don't list take their bonus from it
+    const generalCheckParts = getGeneralCheckParts(ctx, pb);
+    const checkExtras: Record<string, { trained: number; untrained: number; parts: BonusPart[] }> = Object.fromEntries(
         ["STR", "DEX", "CON", "INT", "WIS", "CHA"].map((abbr) => [abbr, {
-            trained: getSkillBonusExtras(ctx, NO_RULES_SKILL, true, pb),
-            untrained: getSkillBonusExtras(ctx, NO_RULES_SKILL, false, pb)
+            trained: generalCheckParts.filter((p) => !p.untrainedOnly).reduce((sum, p) => sum + p.value, 0),
+            untrained: generalCheckParts.reduce((sum, p) => sum + p.value, 0),
+            parts: generalCheckParts
         }])
     );
+    const skillExtras: Record<string, BonusPart[]> = {};
+    for (const sk of ALL_SKILLS) {
+        const parts = getSkillExtraParts(ctx, sk.name, pb);
+        if (parts.length > 0) skillExtras[sk.name] = parts;
+    }
+    const saveAllParts: BonusPart[] = progressionMods
+        .filter((m) => m.target === "saves.all" && m.type === "ability_mod" && m.abilitySource)
+        .map((m) => ({ label: m.source, value: Math.max(m.minimum ?? -Infinity, ctx.getAbilityModifier(m.abilitySource!)) }));
+    const saveExtras = saveAllParts.length > 0 ? { all: saveAllParts } : undefined;
     // Skills the player added on the sheet aren't creator choices; keep them, with bonuses from the new abilities
     const trainingMultiplier: Record<string, number> = { proficient: 1, expertise: 2 };
     const ownSkills = ((ctx.loadedCharacter?.skills || []) as any[])
@@ -1311,6 +1322,8 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         abilities: abilitiesPayload,
         skills: [...skillsPayload, ...ownSkills],
         checkExtras,
+        skillExtras,
+        saveExtras,
         weapons: weaponsPayload,
         equipment: equipmentPayload,
         spells: spellsPayload,

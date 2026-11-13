@@ -1,6 +1,8 @@
 import { escapeHtml } from "@services/escape";
 import { CharacterData } from "../characterData";
+import { skillBreakdown } from "../services/breakdown";
 import { CUSTOM_SKILL_NAME_MAX, SKILL_ABILITIES } from "../services/customSkills";
+import { renderBreakdownButton } from "./breakdownButton";
 
 export function renderSkills(data: CharacterData): string {
     const rows = data.skills.map((skill, index) => {
@@ -40,7 +42,7 @@ export function renderSkills(data: CharacterData): string {
                     ${customTag}
                 </td>
                 <td class="skill-status">${trainingSelect}</td>
-                <td class="skill-bonus">${bonusStr}</td>
+                <td class="skill-bonus">${renderBreakdownButton("skill", skill.name, bonusStr, `${skill.name} bonus ${bonusStr}`, skillBreakdown(data, skill))}</td>
             </tr>
         `;
     }).join('');

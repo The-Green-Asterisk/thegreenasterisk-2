@@ -9,7 +9,7 @@ import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, Progres
 import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
 import { extractSpellDamageInfo, getSpellDamageDisplay } from "../../services/spellDamage";
 import { armorRequirementMet, modifierNumber } from "../characterCreator/services/progressionModifiers";
-import {
+import { BonusPart,
     AbilityScore,
     ActionItem,
     CharacterData,
@@ -307,6 +307,11 @@ export function parseDndBeyondCharacter(
         return Number.isFinite(v) ? v : 0;
     };
 
+    // The feature, feat, trait, option, background, or item a modifier comes from, for the breakdowns
+    const SOURCE_KEY_LABELS: Record<string, string> = { class: "Class feature", race: "Species trait", feat: "Feat", background: "Background", item: "Item", condition: "Condition" };
+    const modSourceName = (m: any): string =>
+        componentNameMap.get(Number(m?.componentId)) || SOURCE_KEY_LABELS[String(m?._sourceKey || "")] || "D&D Beyond modifier";
+
     // Helper to check if a modifier is unconditional (no restriction text)
     const isUnrestrictedMod = (m: any): boolean => {
         return !m?.restriction || String(m.restriction).trim() === "";
@@ -570,13 +575,18 @@ export function parseDndBeyondCharacter(
         m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === "saving-throws" && isUnrestrictedMod(m)
     );
     let globalSaveBonus = globalSaveBonusMods.reduce((sum, m) => sum + resolveModValue(m), 0);
+    const saveExtras: NonNullable<CharacterData["saveExtras"]> = {
+        all: globalSaveBonusMods.map(m => ({ label: modSourceName(m), value: resolveModValue(m) }))
+    };
 
     // Class features adding an ability modifier to all saves (e.g. Aura of Protection), unless D&D Beyond already emitted it
     for (const m of ruleMods("saves.all", "ability_mod")) {
         const statId = m.abilitySource ? ABILITY_IDS[m.abilitySource as AbilityName] : 0;
         if (globalSaveBonusMods.some(g => Number(g.statId) === statId)) continue;
         globalSaveBonus += ruleAbilityMod(m);
+        saveExtras.all!.push({ label: String((m as any)._source || "Class feature"), value: ruleAbilityMod(m) });
     }
+    if (saveExtras.all!.length === 0) delete saveExtras.all;
 
     const abilities: AbilityScore[] = [];
     for (let id = 1; id <= 6; id++) {
@@ -598,14 +608,13 @@ export function parseDndBeyondCharacter(
         }
 
         // Ability-specific saving throw bonus modifiers
-        const specificSaveBonus = allMods
-            .filter(
-                m =>
-                    (m.type === "bonus" || m.type === "stacking-bonus") &&
-                    m.subType === `${meta.key}-saving-throws` &&
-                    isUnrestrictedMod(m)
-            )
-            .reduce((sum, m) => sum + resolveModValue(m), 0);
+        const specificSaveMods = allMods.filter(
+            m =>
+                (m.type === "bonus" || m.type === "stacking-bonus") &&
+                m.subType === `${meta.key}-saving-throws` &&
+                isUnrestrictedMod(m)
+        );
+        const specificSaveBonus = specificSaveMods.reduce((sum, m) => sum + resolveModValue(m), 0);
 
         // Custom save bonuses from characterValues (typeId 41 = custom bonus, 42 = magic bonus)
         const cvSaveBonus = characterValues
@@ -613,6 +622,15 @@ export function parseDndBeyondCharacter(
             .reduce((sum: number, cv: any) => sum + (Number(cv.value) || 0), 0);
 
         const save = modifier + profSaveContribution + globalSaveBonus + specificSaveBonus + cvSaveBonus;
+
+        const saveParts: BonusPart[] = specificSaveMods.map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
+        if (!isProf && profSaveContribution) {
+            const halfMod = allMods.find(m => (m.type === "half-proficiency" || m.type === "half-proficiency-round-up")
+                && (String(m.subType || "").toLowerCase() === `${meta.key}-saving-throws` || String(m.subType || "").toLowerCase() === "saving-throws"));
+            saveParts.push({ label: halfMod ? modSourceName(halfMod) : "Half proficiency", value: profSaveContribution, untrainedOnly: true });
+        }
+        if (cvSaveBonus) saveParts.push({ label: "Custom bonus (D&D Beyond)", value: cvSaveBonus });
+        if (saveParts.length > 0) saveExtras[meta.abbr] = saveParts;
 
         const baseVal = baseAbilityScoresMap[id] ?? score;
         abilities.push({
@@ -1248,6 +1266,7 @@ export function parseDndBeyondCharacter(
         )
         .reduce((sum, m) => sum + resolveModValue(m), 0);
 
+    const skillExtras: NonNullable<CharacterData["skillExtras"]> = {};
     const skills: SkillItem[] = SKILL_DEFINITIONS.map(def => {
         const ability = abilities.find(a => a.abbr === def.stat);
         const abilityKey = ability ? ability.name.toLowerCase() : "";
@@ -1287,6 +1306,19 @@ export function parseDndBeyondCharacter(
 
         bonus += globalAbilityCheckBonus + skillSpecificBonus;
 
+        // This skill's own named parts (the ability's and the general ones are in checkExtras)
+        const skillParts: BonusPart[] = allMods
+            .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && m.subType === def.key && isUnrestrictedMod(m))
+            .map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
+        if (proficiency === "none" && (halfProfRoundUpSkills.has(def.key) || halfProfSkills.has(def.key))
+            && !globalHalfProfRoundUpChecks && !globalHalfProfChecks
+            && !halfProfRoundUpSkills.has(`${abilityKey}-ability-checks`) && !halfProfSkills.has(`${abilityKey}-ability-checks`)) {
+            const roundUp = halfProfRoundUpSkills.has(def.key);
+            const halfMod = allMods.find(m => m.type === (roundUp ? "half-proficiency-round-up" : "half-proficiency") && String(m.subType || "").toLowerCase() === def.key);
+            skillParts.push({ label: halfMod ? modSourceName(halfMod) : "Half proficiency", value: roundUp ? Math.ceil(profBonus / 2) : Math.floor(profBonus / 2), untrainedOnly: true });
+        }
+        if (skillParts.length > 0) skillExtras[def.name] = skillParts;
+
         return {
             name: def.name,
             stat: def.stat,
@@ -1307,7 +1339,17 @@ export function parseDndBeyondCharacter(
             ? Math.ceil(profBonus / 2)
             : globalHalfProfChecks || halfProfSkills.has(`${abilityKey}-ability-checks`) ? Math.floor(profBonus / 2) : 0;
         const general = globalAbilityCheckBonus + abilityCheckBonus;
-        checkExtras[ability.abbr] = { trained: general, untrained: general + halfProficiency };
+        const parts: BonusPart[] = allMods
+            .filter(m => (m.type === "bonus" || m.type === "stacking-bonus") && isUnrestrictedMod(m)
+                && (m.subType === "ability-checks" || m.subType === `${abilityKey}-ability-checks`))
+            .map(m => ({ label: modSourceName(m), value: resolveModValue(m) }));
+        if (halfProficiency) {
+            const roundUp = globalHalfProfRoundUpChecks || halfProfRoundUpSkills.has(`${abilityKey}-ability-checks`);
+            const halfMod = allMods.find(m => m.type === (roundUp ? "half-proficiency-round-up" : "half-proficiency")
+                && ["ability-checks", roundUp ? "round-up" : "round-down", `${abilityKey}-ability-checks`].includes(String(m.subType || "").toLowerCase()));
+            parts.push({ label: halfMod ? modSourceName(halfMod) : "Half proficiency", value: halfProficiency, untrainedOnly: true });
+        }
+        checkExtras[ability.abbr] = { trained: general, untrained: general + halfProficiency, parts };
     });
 
     // Passive score helper (includes passive-<skill> modifiers like Observant feat +5, and +5/-5 from unrestricted skill advantage/disadvantage)
@@ -2363,6 +2405,8 @@ export function parseDndBeyondCharacter(
         abilities,
         skills,
         checkExtras,
+        skillExtras,
+        saveExtras,
         spellSlots,
         classResources,
         bardicCount,

@@ -43,6 +43,7 @@ export function renderSheetContent(data: CharacterData): string {
     return `
         ${renderStickyVitalsBar(data)}
         ${renderHeroSection(data)}
+        <p class="breakdown-hint"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Hover over, press and hold, or rest keyboard focus on any underlined number to see where it comes from.</p>
 
         <section class="vitals-section" aria-label="Core Combat Statistics">
             <div class="abilities-container" aria-label="Ability Scores & Saving Throws">
