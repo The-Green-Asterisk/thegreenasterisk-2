@@ -44,6 +44,24 @@ export interface AbilityScore {
     notes?: string;
 }
 
+/** One named piece of a number on the sheet, for the breakdowns. */
+export interface BonusPart {
+    label: string;
+    value: number;
+    /** Applies only while the skill or save isn't proficient (Jack of All Trades). */
+    untrainedOnly?: boolean;
+}
+
+/** One effect of an equipped item, recorded by the sheet's item pass. */
+export interface ItemEffectPart {
+    item: string;
+    /** "abilities.STR", "checks.all", "saves.all", "saves.DEX", "vitals.ac", "vitals.initiative", "spells.dc", "spells.attack", "vitals.speed" */
+    target: string;
+    value: number;
+    /** The value replaces the score instead of adding to it (Belt of Giant Strength). */
+    override?: boolean;
+}
+
 export interface SkillItem {
     name: string;
     stat: string;
@@ -213,9 +231,19 @@ export interface CharacterData {
     /**
      * What an ability check with each ability (keyed STR…CHA) gets besides the modifier and proficiency: Jack of All
      * Trades on untrained checks, bonuses to all checks or to one ability's checks. Skills the rules don't list (a
-     * player's own) take their bonus from it; the rules' skills already have these in their numbers.
+     * player's own) take their bonus from it; the rules' skills already have these in their numbers. `parts` names
+     * each piece for the breakdowns.
      */
-    checkExtras?: Partial<Record<string, { trained: number; untrained: number }>>;
+    checkExtras?: Partial<Record<string, { trained: number; untrained: number; parts?: BonusPart[] }>>;
+    /** Named bonuses to one skill (keyed by skill name) beyond ability, proficiency, and the check extras. */
+    skillExtras?: Record<string, BonusPart[]>;
+    /** Named bonuses to saving throws: "all" for every save, else keyed STR…CHA. */
+    saveExtras?: Partial<Record<string, BonusPart[]>>;
+    /**
+     * What each equipped item adds, as the sheet's item pass last applied it (site characters only; D&D Beyond's
+     * numbers already hold its items). Rewritten on every pass.
+     */
+    itemEffectParts?: ItemEffectPart[];
     /**
      * Import-only: spells D&D Beyond lists more than once where at least one copy is the player's pick, with where each copy comes from. wastedPicks counts regular
      * picks of a spell a feature already keeps always prepared.

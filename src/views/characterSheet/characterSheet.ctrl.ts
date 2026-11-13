@@ -3,6 +3,7 @@ import { delData, getData, postData, putData } from "@services/request";
 import { loadClassRules } from "../../services/classRules";
 import { carryLockedCopiesAndLinks } from "./services/characterCopies";
 import { carryCustomSkills } from "./services/customSkills";
+import { initBreakdownController } from "./controllers/breakdown.ctrl";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
@@ -1444,6 +1445,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     initModalsController(ctx);
     initLoaderBarController(ctx);
     initFullscreenController(sheet);
+    initBreakdownController(ctx);
 
     function renderActiveCharacterView() {
         updateSheetTitle();

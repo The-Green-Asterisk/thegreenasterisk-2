@@ -111,8 +111,11 @@ describe('skill bonuses react to what the character gains during play', () => {
             inventory: [], spells: {}
         } as any, '555004') as any;
         // PB +4 at level 10: half is 2; +1 to all checks; +2 to Wisdom checks
-        expect(bard.checkExtras.WIS).toEqual({ trained: 3, untrained: 5 });
-        expect(bard.checkExtras.STR).toEqual({ trained: 1, untrained: 3 });
+        expect(bard.checkExtras.WIS).toMatchObject({ trained: 3, untrained: 5 });
+        expect(bard.checkExtras.STR).toMatchObject({ trained: 1, untrained: 3 });
+        expect(bard.checkExtras.WIS.parts).toEqual([
+            { label: 'Item', value: 1 }, { label: 'Item', value: 2 }, { label: 'Jack of All Trades', value: 2, untrainedOnly: true }
+        ]);
         const before = { skills: [
             { name: 'Cooking', stat: 'WIS', bonus: 0, proficiency: 'none', custom: true },
             { name: 'Haggling', stat: 'CHA', bonus: 0, proficiency: 'proficient', custom: true }

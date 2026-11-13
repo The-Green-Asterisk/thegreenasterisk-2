@@ -2,7 +2,7 @@ import { escapeHtml } from "@services/escape";
 import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { findItemRule } from "../../../services/classRules";
-import { CharacterData, EquipmentItem } from "../characterData";
+import { CharacterData, ItemEffectPart, EquipmentItem } from "../characterData";
 
 export interface MagicBonusExtraction {
     statOverrides: Partial<Record<string, number>>;
@@ -871,12 +871,28 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
     const aggregated = emptyExtraction();
 
     const seenItemKeys = new Set<string>();
+    const itemEffectParts: ItemEffectPart[] = [];
     const processItem = (item: any) => {
         const key = (item.name || "").trim().toLowerCase();
         if (!key || seenItemKeys.has(key)) return;
         seenItemKeys.add(key);
 
         const extracted = extractItemMagicBonuses(item, isShieldEquipped, isBodyArmorEquipped);
+        // Each effect with the item it comes from, for the breakdowns
+        const itemName = String(item.name || "").trim();
+        const record = (target: string, value: number, override = false) => {
+            if (value) itemEffectParts.push({ item: itemName, target, value, ...(override ? { override: true } : {}) });
+        };
+        Object.entries(extracted.statBonuses).forEach(([stat, value]) => record(`abilities.${stat}`, value || 0));
+        Object.entries(extracted.statOverrides).forEach(([stat, value]) => record(`abilities.${stat}`, value || 0, true));
+        record("vitals.ac", extracted.acBonus);
+        record("saves.all", extracted.globalSaveBonus);
+        Object.entries(extracted.specificSaveBonuses).forEach(([stat, value]) => record(`saves.${stat}`, value || 0));
+        record("spells.dc", extracted.spellDcBonus);
+        record("spells.attack", extracted.spellAtkBonus);
+        record("checks.all", extracted.globalCheckBonus);
+        record("vitals.initiative", extracted.initiativeBonus);
+        record("vitals.speed", extracted.speedBonusFt);
 
         // Merge stat overrides (highest override wins)
         Object.keys(extracted.statOverrides).forEach(stat => {
@@ -903,6 +919,7 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
 
     equippedItems.forEach(processItem);
     equippedWeapons.forEach(processItem);
+    character.itemEffectParts = itemEffectParts;
     character.itemRollNotes = aggregated.rollNotes.length > 0 ? aggregated.rollNotes : undefined;
 
     // D&D Beyond's numbers already count its items' effects, and changing equipment re-reads them, so imported

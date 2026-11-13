@@ -1,5 +1,6 @@
 import { currentSpecies, getSpeciesFeatPicks, getSpeciesSkillPicks, traitBaseName } from "./speciesChoices";
 import { GeneralFeatDefinition, OriginFeatDefinition, StatModifier } from "../../../rules/dnd5e_2024";
+import { BonusPart } from "../../characterSheet/characterData";
 import { ALL_SKILLS } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 import { getProgressionModifiers } from "./progressionModifiers";
@@ -317,21 +318,38 @@ export function distributeImportedSkills(ctx: CharacterCreatorContext, proficien
  * (e.g. Thaumaturge: Wisdom modifier, minimum +1) and half_proficiency on skills without proficiency (e.g. Jack of
  * All Trades).
  */
-export function getSkillBonusExtras(ctx: CharacterCreatorContext, skill: string, proficient: boolean, pb: number): number {
-    let extra = 0;
+/** What every skill check gets from class features, named: half proficiency when untrained (Jack of All Trades). */
+export function getGeneralCheckParts(ctx: CharacterCreatorContext, pb: number): BonusPart[] {
+    const parts: BonusPart[] = [];
     for (const m of getProgressionSkillModifiers(ctx)) {
-        if (m.skill === "unproficient") {
-            if (!proficient && m.type === "half_proficiency") extra += Math.floor(pb / 2);
-            continue;
-        }
-        if (m.skill !== skill) continue;
-        if (m.type === "ability_mod" && m.abilitySource) {
-            extra += Math.max(m.minimum ?? -Infinity, ctx.getAbilityModifier(m.abilitySource));
-        } else if (m.type === "half_proficiency") {
-            extra += Math.floor(pb / 2);
-        } else if ((m.type === "bonus" || m.type === "penalty") && typeof m.value === "number") {
-            extra += m.type === "penalty" ? -m.value : m.value;
+        if (m.skill === "unproficient" && m.type === "half_proficiency") {
+            parts.push({ label: m.source, value: Math.floor(pb / 2), untrainedOnly: true });
         }
     }
+    return parts;
+}
+
+/** What one skill gets from class features beyond ability and proficiency, named. */
+export function getSkillExtraParts(ctx: CharacterCreatorContext, skill: string, pb: number): BonusPart[] {
+    const parts: BonusPart[] = [];
+    for (const m of getProgressionSkillModifiers(ctx)) {
+        if (m.skill !== skill) continue;
+        if (m.type === "ability_mod" && m.abilitySource) {
+            parts.push({ label: m.source, value: Math.max(m.minimum ?? -Infinity, ctx.getAbilityModifier(m.abilitySource)) });
+        } else if (m.type === "half_proficiency") {
+            parts.push({ label: m.source, value: Math.floor(pb / 2) });
+        } else if ((m.type === "bonus" || m.type === "penalty") && typeof m.value === "number") {
+            parts.push({ label: m.source, value: m.type === "penalty" ? -m.value : m.value });
+        }
+    }
+    return parts;
+}
+
+export function getSkillBonusExtras(ctx: CharacterCreatorContext, skill: string, proficient: boolean, pb: number): number {
+    let extra = 0;
+    for (const p of getGeneralCheckParts(ctx, pb)) {
+        if (!p.untrainedOnly || !proficient) extra += p.value;
+    }
+    for (const p of getSkillExtraParts(ctx, skill, pb)) extra += p.value;
     return extra;
 }
