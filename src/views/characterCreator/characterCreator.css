@@ -53,9 +53,9 @@ el-character-creator,
 .creator-badge {
     display: inline-block;
     padding: 0.25rem 0.6rem;
-    background: rgba(41, 112, 27, 0.12);
+    background: color-mix(in srgb, var(--ui-color) 12%, transparent);
     color: var(--ui-text);
-    border: 1px solid rgba(41, 112, 27, 0.35);
+    border: 1px solid color-mix(in srgb, var(--ui-color) 35%, transparent);
     border-radius: 999px;
     font-size: 0.75rem;
     font-weight: 700;
@@ -177,7 +177,7 @@ el-character-creator,
 }
 
 .stepper-item.completed .stepper-circle {
-    background: rgba(41, 112, 27, 0.2);
+    background: color-mix(in srgb, var(--ui-color) 20%, transparent);
     border-color: var(--ui-color);
     color: var(--ui-text);
 }
@@ -293,9 +293,9 @@ el-character-creator,
 }
 
 .creator-alert.warning {
-    background: rgba(234, 179, 8, 0.15);
-    border-color: rgba(234, 179, 8, 0.45);
-    color: #d97706;
+    background: color-mix(in srgb, var(--yellow-500) 15%, transparent);
+    border-color: color-mix(in srgb, var(--yellow-500) 45%, transparent);
+    color: var(--amber-600);
 }
 
 .creator-alert.hidden {
@@ -474,7 +474,7 @@ el-character-creator,
 .creator-textarea:focus {
     outline: none;
     border-color: var(--ui-color);
-    box-shadow: 0 0 0 3px rgba(41, 112, 27, 0.2);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-color) 20%, transparent);
 }
 
 /* Card Selection Grid */
@@ -532,7 +532,7 @@ el-character-creator,
 
 .select-card.selected {
     border-color: var(--ui-color);
-    background: rgba(41, 112, 27, 0.06);
+    background: color-mix(in srgb, var(--ui-color) 6%, transparent);
     box-shadow: 0 0 0 2px var(--ui-color);
 }
 
@@ -833,7 +833,7 @@ el-character-creator,
 .standard-array-select:focus {
     outline: none;
     border-color: var(--ui-color);
-    box-shadow: 0 0 0 2px rgba(41, 112, 27, 0.2);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 20%, transparent);
 }
 
 .point-buy-score-display {
@@ -872,7 +872,7 @@ el-character-creator,
 
 .skill-checkbox-card.selected {
     border-color: var(--ui-color);
-    background: rgba(41, 112, 27, 0.08);
+    background: color-mix(in srgb, var(--ui-color) 8%, transparent);
 }
 
 .skill-checkbox-card.locked {
@@ -943,7 +943,7 @@ el-character-creator,
 
 .creator-nav-btn.submit-btn {
     background: #198754;
-    color: white;
+    color: var(--text-on-accent);
 }
 
 .creator-nav-btn.submit-btn:hover:not(:disabled) {
@@ -994,7 +994,7 @@ el-character-creator,
 
 .item-check-row.selected {
     border-color: var(--ui-color);
-    background: rgba(41, 112, 27, 0.05);
+    background: color-mix(in srgb, var(--ui-color) 5%, transparent);
 }
 
 .item-row-left {
@@ -1220,20 +1220,20 @@ el-character-creator,
 }
 
 .equipment-stat-alert.warning {
-    background: rgba(234, 179, 8, 0.12);
-    border: 1px solid rgba(234, 179, 8, 0.4);
+    background: color-mix(in srgb, var(--yellow-500) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--yellow-500) 40%, transparent);
     color: var(--status-warning);
 }
 
 .equipment-stat-alert.danger {
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.4);
+    background: color-mix(in srgb, var(--red-500) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--red-500) 40%, transparent);
     color: var(--status-danger);
 }
 
 .equipment-stat-alert.success {
-    background: rgba(34, 197, 94, 0.12);
-    border: 1px solid rgba(34, 197, 94, 0.4);
+    background: color-mix(in srgb, var(--green-500) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--green-500) 40%, transparent);
     color: var(--status-success);
 }
 
@@ -1250,21 +1250,21 @@ el-character-creator,
 }
 
 .stat-req-pill.met {
-    background: rgba(34, 197, 94, 0.15);
+    background: color-mix(in srgb, var(--green-500) 15%, transparent);
     color: var(--status-success);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    border: 1px solid color-mix(in srgb, var(--green-500) 30%, transparent);
 }
 
 .stat-req-pill.unmet {
-    background: rgba(234, 179, 8, 0.15);
+    background: color-mix(in srgb, var(--yellow-500) 15%, transparent);
     color: var(--status-warning);
-    border: 1px solid rgba(234, 179, 8, 0.4);
+    border: 1px solid color-mix(in srgb, var(--yellow-500) 40%, transparent);
 }
 
 .stat-req-pill.non-prof {
-    background: rgba(239, 68, 68, 0.15);
+    background: color-mix(in srgb, var(--red-500) 15%, transparent);
     color: var(--status-danger);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    border: 1px solid color-mix(in srgb, var(--red-500) 30%, transparent);
 }
 
 /* Spells & Spellcasting Limitations */
@@ -1347,32 +1347,30 @@ el-character-creator,
 }
 
 .spell-count-badge.info {
-    background: rgba(59, 130, 246, 0.15);
+    background: color-mix(in srgb, var(--blue-500) 15%, transparent);
     color: var(--status-info);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    border: 1px solid color-mix(in srgb, var(--blue-500) 30%, transparent);
 }
 
 .spell-count-badge.maxed {
-    background: rgba(34, 197, 94, 0.15);
+    background: color-mix(in srgb, var(--green-500) 15%, transparent);
     color: var(--status-success);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    border: 1px solid color-mix(in srgb, var(--green-500) 30%, transparent);
 }
 
 .spell-count-badge.over-limit {
-    background: rgba(239, 68, 68, 0.18);
+    background: var(--danger-wash-strong);
     color: var(--status-danger);
-    border: 1px solid rgba(239, 68, 68, 0.45);
-    box-shadow: 0 0 6px rgba(239, 68, 68, 0.25);
+    border: 1px solid color-mix(in srgb, var(--red-500) 45%, transparent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--red-500) 25%, transparent);
 }
 
 :root[data-theme="dark"] .spell-count-badge.over-limit {
-    background: rgba(239, 68, 68, 0.25);
-    color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.55);
+    border-color: color-mix(in srgb, var(--red-500) 55%, transparent);
 }
 
 .spell-count-badge.zero {
-    background: rgba(107, 114, 128, 0.15);
+    background: color-mix(in srgb, var(--gray-500) 15%, transparent);
     color: var(--text-muted);
     border: 1px solid rgba(107, 114, 128, 0.3);
 }
@@ -1397,7 +1395,7 @@ el-character-creator,
 }
 
 .item-check-row.limit-reached:not(.selected):hover {
-    border-color: rgba(234, 179, 8, 0.5);
+    border-color: color-mix(in srgb, var(--yellow-500) 50%, transparent);
     cursor: not-allowed;
 }
 
@@ -1502,8 +1500,8 @@ el-character-creator,
     font-size: 0.88rem;
     font-weight: 700;
     color: var(--ui-text);
-    background: rgba(41, 112, 27, 0.12);
-    border: 1px solid rgba(41, 112, 27, 0.35);
+    background: color-mix(in srgb, var(--ui-color) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ui-color) 35%, transparent);
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
     letter-spacing: 0.02em;
@@ -1675,15 +1673,11 @@ el-character-creator,
 
 /* Selections inside locked levels are disabled (the controls are dimmed; the text describing them stays readable) */
 .level-progression-box.locked .level-choice-box {
-    background: rgba(0, 0, 0, 0.02);
+    background: color-mix(in srgb, var(--contrast) 2%, transparent);
     border: 1px dashed var(--border-soft);
     border-radius: var(--radius-sm);
     padding: 0.75rem 1rem;
     cursor: not-allowed;
-}
-
-:root[data-theme="dark"] .level-progression-box.locked .level-choice-box {
-    background: rgba(255, 255, 255, 0.02);
 }
 
 .level-progression-box.locked .select-card,
@@ -1828,7 +1822,7 @@ el-character-creator,
     border: 1px solid var(--border);
     border-top: none;
     border-radius: 0 0 var(--radius-md) var(--radius-md);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--black) 10%, transparent);
     padding: 0.65rem 1.25rem;
     display: flex;
     align-items: center;
@@ -1839,7 +1833,7 @@ el-character-creator,
 }
 
 :root[data-theme="dark"] .multiclass-top-bar {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--black) 45%, transparent);
 }
 
 .multiclass-top-bar.hidden {
@@ -1876,7 +1870,7 @@ el-character-creator,
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 16px color-mix(in srgb, var(--black) 10%, transparent);
     padding: 0.75rem 1.25rem;
     display: flex;
     flex-direction: column;
@@ -1888,7 +1882,7 @@ el-character-creator,
 }
 
 :root[data-theme="dark"] .multiclass-bottom-bar {
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 -4px 20px color-mix(in srgb, var(--black) 45%, transparent);
 }
 
 /* When scrolled to bottom of multiclass panel, stick to the page */
@@ -1900,12 +1894,12 @@ el-character-creator,
     margin: 0 auto;
     width: 100%;
     border-radius: var(--radius-md);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -2px 10px color-mix(in srgb, var(--black) 8%, transparent);
     transition: none !important;
 }
 
 :root[data-theme="dark"] .multiclass-bottom-bar.docked {
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -2px 12px color-mix(in srgb, var(--black) 30%, transparent);
 }
 
 .multiclass-bottom-bar .add-class-btn {
@@ -1920,7 +1914,7 @@ el-character-creator,
     padding: 0.65rem 1.25rem;
     background: var(--ui-color);
     color: var(--text-on-accent);
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    border: 1px solid color-mix(in srgb, var(--avatar-border) 15%, transparent);
     border-radius: var(--radius);
     box-shadow: var(--sm-shadow);
     cursor: pointer;
@@ -1953,7 +1947,7 @@ el-character-creator,
     background: var(--surface-alt);
     color: var(--text);
     border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--black) 15%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1964,7 +1958,7 @@ el-character-creator,
 
 :root[data-theme="dark"] .floating-scroll-bottom-btn {
     background: var(--surface-raised);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--black) 40%, transparent);
 }
 
 .floating-scroll-bottom-btn:hover {
@@ -2009,15 +2003,15 @@ el-character-creator,
     font-weight: 600;
     padding: 0.35rem 0.75rem;
     border-radius: var(--radius-sm);
-    background: rgba(220, 38, 38, 0.12);
+    background: color-mix(in srgb, var(--red-600) 12%, transparent);
     color: var(--status-danger);
-    border: 1px solid rgba(220, 38, 38, 0.3);
+    border: 1px solid color-mix(in srgb, var(--red-600) 30%, transparent);
     cursor: pointer;
     transition: background 0.15s ease;
 }
 
 .remove-class-btn:hover {
-    background: rgba(220, 38, 38, 0.25);
+    background: color-mix(in srgb, var(--red-600) 25%, transparent);
 }
 
 .progression-lvl-badge {
@@ -2028,7 +2022,7 @@ el-character-creator,
 
 .progression-lvl-badge:hover {
     transform: scale(1.06);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--black) 25%, transparent);
     opacity: 0.95;
 }
 
@@ -2070,7 +2064,7 @@ el-character-creator,
 .level-collapse-btn:hover {
     border-color: var(--ui-accent);
     color: var(--ui-accent);
-    background: rgba(255, 255, 255, 0.06);
+    background: color-mix(in srgb, var(--white) 6%, transparent);
 }
 
 .level-collapse-icon {
@@ -2169,7 +2163,7 @@ el-character-creator,
 }
 
 .level-choice-box.locked-choice {
-    background: rgba(0, 0, 0, 0.02);
+    background: color-mix(in srgb, var(--black) 2%, transparent);
     padding: 0.75rem 1rem;
     border-radius: var(--radius-sm);
     border: 1px dashed var(--border-soft);
@@ -2268,28 +2262,28 @@ el-character-creator,
 }
 
 .progression-feature-tag.asi {
-    background: rgba(234, 179, 8, 0.15);
+    background: color-mix(in srgb, var(--yellow-500) 15%, transparent);
     color: var(--status-warning);
-    border: 1px solid rgba(234, 179, 8, 0.35);
+    border: 1px solid color-mix(in srgb, var(--yellow-500) 35%, transparent);
 }
 
 .progression-feature-tag.subclass {
-    background: rgba(99, 102, 241, 0.15);
+    background: color-mix(in srgb, var(--indigo-500) 15%, transparent);
     color: var(--status-indigo);
-    border: 1px solid rgba(99, 102, 241, 0.35);
+    border: 1px solid color-mix(in srgb, var(--indigo-500) 35%, transparent);
 }
 
 .progression-feature-tag.epic,
 .progression-feature-tag.capstone {
-    background: rgba(236, 72, 153, 0.15);
+    background: color-mix(in srgb, var(--pink-500) 15%, transparent);
     color: var(--status-pink);
-    border: 1px solid rgba(236, 72, 153, 0.35);
+    border: 1px solid color-mix(in srgb, var(--pink-500) 35%, transparent);
 }
 
 .progression-feature-tag.magic {
-    background: rgba(14, 165, 233, 0.15);
+    background: color-mix(in srgb, var(--sky-500) 15%, transparent);
     color: var(--status-info);
-    border: 1px solid rgba(14, 165, 233, 0.35);
+    border: 1px solid color-mix(in srgb, var(--sky-500) 35%, transparent);
 }
 
 .progression-feature-desc {
@@ -2331,9 +2325,9 @@ el-character-creator,
 }
 
 .progression-status-pill.status-unlocked {
-    background: rgba(34, 197, 94, 0.15);
+    background: color-mix(in srgb, var(--green-500) 15%, transparent);
     color: var(--status-success);
-    border: 1px solid rgba(34, 197, 94, 0.35);
+    border: 1px solid color-mix(in srgb, var(--green-500) 35%, transparent);
 }
 
 .progression-status-pill.status-locked {
@@ -2376,39 +2370,36 @@ el-character-creator,
 }
 
 .class-prereq-badge.locked {
-    background: rgba(239, 68, 68, 0.12);
+    background: var(--danger-wash);
     color: #dc2626;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    border: 1px solid color-mix(in srgb, var(--red-500) 30%, transparent);
 }
 
 :root[data-theme="dark"] .class-prereq-badge.locked {
-    background: rgba(239, 68, 68, 0.22);
     color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.4);
+    border-color: color-mix(in srgb, var(--red-500) 40%, transparent);
 }
 
 .class-prereq-badge.met {
-    background: rgba(34, 197, 94, 0.12);
+    background: var(--success-wash);
     color: var(--status-success);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    border: 1px solid color-mix(in srgb, var(--green-500) 30%, transparent);
 }
 
 :root[data-theme="dark"] .class-prereq-badge.met {
-    background: rgba(34, 197, 94, 0.2);
     color: #86efac;
-    border-color: rgba(34, 197, 94, 0.35);
+    border-color: color-mix(in srgb, var(--green-500) 35%, transparent);
 }
 
 .class-prereq-badge.info {
-    background: rgba(14, 165, 233, 0.1);
+    background: var(--info-wash);
     color: var(--status-info);
-    border: 1px solid rgba(14, 165, 233, 0.25);
+    border: 1px solid color-mix(in srgb, var(--sky-500) 25%, transparent);
 }
 
 :root[data-theme="dark"] .class-prereq-badge.info {
-    background: rgba(14, 165, 233, 0.2);
     color: var(--status-info);
-    border-color: rgba(14, 165, 233, 0.35);
+    border-color: color-mix(in srgb, var(--sky-500) 35%, transparent);
 }
 
 .add-class-btn.disabled,
@@ -2417,18 +2408,12 @@ el-character-creator,
     cursor: not-allowed !important;
 }
 
-
-
-
-
-
 /* Spells granted by class/subclass progression: shown as selected but locked; they don't count against the base allotment */
 .item-check-row.progression-granted {
     cursor: default;
     opacity: 0.75;
     border-style: dashed;
 }
-
 
 .sr-only {
     position: absolute;
@@ -2472,7 +2457,6 @@ textarea.creator-input {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 110px), 1fr));
     gap: 0.5rem;
 }
-
 
 /* Unavailable class cards stay readable: their prerequisite badge says why (WCAG 1.4.3); the dashed border, lock
    badge, and grayscale mark them unavailable */
