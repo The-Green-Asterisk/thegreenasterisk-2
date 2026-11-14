@@ -314,7 +314,6 @@ function computeRecursiveContents(
     equipment: EquipmentItem[],
     childrenByParent: Map<string, Array<{ item: EquipmentItem; key: string }>>,
     containerKey: string,
-    respectNestedExtradimensional: boolean,
     visited: Set<string>
 ): { weight: number; quantity: number } {
     const children = childrenByParent.get(containerKey) || [];
@@ -336,11 +335,10 @@ function computeRecursiveContents(
                 equipment,
                 childrenByParent,
                 child.key,
-                respectNestedExtradimensional,
                 visited
             );
             totalQuantity += nested.quantity;
-            if (!respectNestedExtradimensional || !childExt) {
+            if (!childExt) {
                 totalWeight = roundWeightLb(totalWeight + nested.weight);
             }
         } else {
@@ -372,8 +370,10 @@ function buildChildrenMap(equipment: EquipmentItem[]): {
 }
 
 /**
- * Computes recursive weight (including container's own weight, all contained items, and nested containers
- * even for extradimensional containers) and total item quantity inside a container.
+ * Computes recursive weight (including container's own weight, all contained items, and nested containers;
+ * nested extradimensional containers contribute only their own weight to their parent container).
+ * For extradimensional containers, `totalWeight` reports only `ownWeight` while `contentsWeight` and
+ * `isOverCapacity` evaluate internal contents against `capacityWeight`.
  */
 export function getContainerSummary(
     character: Pick<CharacterData, "equipment">,
@@ -386,12 +386,14 @@ export function getContainerSummary(
 
     const ownWeight = roundWeightLb(itemUnitWeight(entry.item) * itemQuantity(entry.item));
     const visited = new Set<string>([entry.key]);
-    const contents = computeRecursiveContents(equipment, childrenByParent, entry.key, false, visited);
-    const totalWeight = roundWeightLb(ownWeight + contents.weight);
+    const contents = computeRecursiveContents(equipment, childrenByParent, entry.key, visited);
+    const extradimensional = isExtradimensionalContainerName(entry.item.name, entry.item.description);
+    const totalWeight = extradimensional ? ownWeight : roundWeightLb(ownWeight + contents.weight);
     const capRaw = entry.item.capacityWeight;
     const capacityWeight = capRaw !== undefined && capRaw !== null && Number.isFinite(Number(capRaw)) && Number(capRaw) > 0
         ? Number(capRaw)
         : null;
+    const comparedWeight = extradimensional ? contents.weight : totalWeight;
 
     return {
         key: entry.key,
@@ -400,9 +402,9 @@ export function getContainerSummary(
         contentsWeight: contents.weight,
         totalWeight,
         capacityWeight,
-        isOverCapacity: capacityWeight !== null && totalWeight > capacityWeight,
+        isOverCapacity: capacityWeight !== null && comparedWeight > capacityWeight,
         totalQuantity: contents.quantity,
-        extradimensional: isExtradimensionalContainerName(entry.item.name, entry.item.description)
+        extradimensional
     };
 }
 
@@ -418,7 +420,9 @@ export function getCharacterWeightSummary(character: CharacterData): CharacterWe
 
     equipment.forEach((item, index) => {
         const key = getInventoryKey(item, equipment, index);
-        const parentEntry = item.containerId ? byKey.get(item.containerId) : undefined;
+        const parentEntry = item.containerId
+            ? (byKey.get(item.containerId) || byKey.get(item.containerId.toLowerCase()))
+            : undefined;
         if (parentEntry && parentEntry.item.isContainer && parentEntry.key !== key) {
             return; // Counted under its ancestor container
         }
@@ -432,7 +436,7 @@ export function getCharacterWeightSummary(character: CharacterData): CharacterWe
         if (item.isContainer) {
             const ext = isExtradimensionalContainerName(item.name, item.description);
             if (!ext) {
-                const contents = computeRecursiveContents(equipment, childrenByParent, key, true, visited);
+                const contents = computeRecursiveContents(equipment, childrenByParent, key, visited);
                 carriedWeight = roundWeightLb(carriedWeight + contents.weight);
             }
         }
