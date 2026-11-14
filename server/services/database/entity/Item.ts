@@ -45,6 +45,12 @@ export class Item {
     @Column({ type: "float", default: 0 })
     weight!: number;
 
+    @Column({ type: "boolean", default: false })
+    isContainer!: boolean;
+
+    @Column({ type: "float", nullable: true })
+    capacityWeight?: number | null;
+
     @Column({ type: "float", nullable: true })
     cost?: number;
 

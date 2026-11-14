@@ -151,6 +151,9 @@ export async function propagateItemEdit(
     const properties = item.properties ? String(item.properties).split(",").map((p) => p.trim()).filter(Boolean) : [];
     const common = {
         name: item.name,
+        weight: Number(item.weight) || 0,
+        isContainer: !!item.isContainer,
+        capacityWeight: item.capacityWeight ?? null,
         isMagic: !!item.isMagic,
         rarity: fit(item.rarity, 50),
         requiresAttunement: !!item.requiresAttunement,
@@ -186,7 +189,12 @@ export async function propagateItemEdit(
     }
     if (changed.length > 0) await repo.save(changed);
 
-    const payloadCommon = { ...common, imageUrl: item.imageUrl || undefined, itemId: item.id };
+    const payloadCommon = {
+        ...common,
+        capacityWeight: item.capacityWeight ?? undefined,
+        imageUrl: item.imageUrl || undefined,
+        itemId: item.id
+    };
     const newModifiers = parseJsonField(item.modifiersJson);
     /** A locked copy keeps the effects it had; true when that changed the entry */
     const freezeEffects = (entry: any) => {

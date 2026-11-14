@@ -318,7 +318,8 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Powerful Build",
-                description: "You count as one size larger when determining your carrying capacity and the weight you can push, drag, or lift."
+                description: "You count as one size larger when determining your carrying capacity and the weight you can push, drag, or lift.",
+                modifiers: [{ target: "vitals.carryingCapacity", type: "multiplier", value: 2 }]
             },
             {
                 name: "Relentless Endurance",
@@ -346,7 +347,8 @@ export const SPECIES_2024: SpeciesDefinition[] = [
             },
             {
                 name: "Powerful Build",
-                description: "You count as one size larger when determining your carrying capacity and the weight you can push, drag, or lift. You also have Advantage on saving throws to end the Grappled condition."
+                description: "You count as one size larger when determining your carrying capacity and the weight you can push, drag, or lift. You also have Advantage on saving throws to end the Grappled condition.",
+                modifiers: [{ target: "vitals.carryingCapacity", type: "multiplier", value: 2 }]
             }
         ],
         lineages: [

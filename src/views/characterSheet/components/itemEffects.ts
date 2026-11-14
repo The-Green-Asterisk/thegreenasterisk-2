@@ -37,6 +37,7 @@ export const ITEM_EFFECT_TARGETS: EffectTargetOption[] = [
     { target: "spells.dc", label: "Spell save DC", group: "Spellcasting", types: [BONUS] },
     { target: "vitals.initiative", label: "Initiative", group: "Combat and Movement", types: [BONUS, ADVANTAGE] },
     { target: "vitals.speed", label: "Speed", group: "Combat and Movement", types: [{ type: "bonus", label: "Faster by (ft.)", value: "feet" }] },
+    { target: "vitals.carryingCapacity", label: "Carrying Capacity", group: "Combat and Movement", types: [{ type: "bonus", label: "Bonus (lb.)", value: "number" }, { type: "multiplier", label: "Multiply by", value: "number" }] },
     { target: "item.plus", label: "This item's +N (attack and damage, or AC)", group: "Combat and Movement", types: [{ type: "set", label: "Is", value: "number" }] },
     ...SENSES.map(([key, name]): EffectTargetOption => ({ target: `senses.${key}`, label: name, group: "Senses", types: SENSE_TYPES }))
 ];

@@ -47,7 +47,12 @@ function syncBonusPart(list: BonusPart[], part: BonusPart, sign: 1 | -1): void {
         list.push(part);
         return;
     }
-    const index = list.findIndex((p) => p.label === part.label && p.value === part.value && !!p.untrainedOnly === !!part.untrainedOnly);
+    const index = list.findIndex((p) =>
+        p.label === part.label &&
+        p.value === part.value &&
+        p.multiplier === part.multiplier &&
+        !!p.untrainedOnly === !!part.untrainedOnly
+    );
     if (index >= 0) list.splice(index, 1);
 }
 
@@ -57,6 +62,41 @@ const CHECK_ABILITIES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 function syncVitalPart(character: CharacterData, key: VitalKey, part: BonusPart, sign: 1 | -1): void {
     character.vitalParts = character.vitalParts || {};
     syncBonusPart(character.vitalParts[key] = character.vitalParts[key] || [], part, sign);
+}
+
+/** Recomputes carrying capacity locally in the rules layer without pulling in view breakdowns. */
+function recalculateCarryingCapacity(character: CharacterData): number {
+    const strAbility = character.abilities?.find((a) => String(a.abbr || "").toUpperCase() === "STR");
+    const strScore = Number(strAbility?.score) || 10;
+    let total = Math.round(strScore * 15 * 10000) / 10000;
+    const multipliers: number[] = [];
+
+    for (const part of character.vitalParts?.carryingCapacity || []) {
+        if (part.overriddenBy) continue;
+        const mMatch = String(part.label || "").match(/\(×(\d+(?:\.\d+)?)\)\s*$/i);
+        const mult = typeof part.multiplier === "number" && Number.isFinite(part.multiplier) && part.multiplier > 0
+            ? part.multiplier
+            : (mMatch ? Number(mMatch[1]) : null);
+        if (mult !== null && mult > 0) {
+            if (mult !== 1) multipliers.push(mult);
+        } else if (part.value) {
+            total += part.value;
+        }
+    }
+
+    if (character.source !== "dndbeyond") {
+        for (const part of (character.itemEffectParts || []).filter((p) => p.target === "vitals.carryingCapacity")) {
+            total += part.value;
+        }
+        for (const part of (character.itemEffectParts || []).filter((p) => p.target === "vitals.carryingCapacityMultiplier")) {
+            if (part.value > 0 && part.value !== 1) multipliers.push(part.value);
+        }
+    }
+
+    for (const mult of multipliers) {
+        total = Math.round(total * mult * 10000) / 10000;
+    }
+    return Math.round(total * 10000) / 10000;
 }
 
 export function applyStatModifier(character: CharacterData, mod: StatModifier, sign: 1 | -1, source?: string): void {
@@ -160,6 +200,30 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
     else if (senseKeyOfTarget(target)) {
         applySenseGrants(character, senseGrantsFrom([{ name: source, modifiers: [mod] }]), sign === -1);
     }
+    // Carrying Capacity
+    else if (target === "vitals.carryingCapacity") {
+        if (type === "multiplier") {
+            const mult = Number(mod.value) || 1;
+            if (mult > 0 && mult !== 1) {
+                syncVitalPart(
+                    character,
+                    "carryingCapacity",
+                    { label: `${source || "Carrying capacity"} (×${mult})`, value: 0, multiplier: mult },
+                    sign
+                );
+                character.vitals.carryingCapacity = recalculateCarryingCapacity(character);
+            }
+        } else if (type === "bonus" || type === "penalty") {
+            const signedVal = type === "penalty" ? -delta : delta;
+            syncVitalPart(
+                character,
+                "carryingCapacity",
+                { label: source || (type === "penalty" ? "Penalty" : "Bonus"), value: signedVal },
+                sign
+            );
+            character.vitals.carryingCapacity = recalculateCarryingCapacity(character);
+        }
+    }
     // Abilities
     else if (target.startsWith("abilities.")) {
         const abilityKey = target.split(".")[1]?.toLowerCase();
@@ -176,6 +240,9 @@ export function applyStatModifier(character: CharacterData, mod: StatModifier, s
             character.skills.forEach(sk => {
                 if (sk.stat.toLowerCase() === ability.abbr.toLowerCase()) sk.bonus += change;
             });
+            if (ability.abbr.toUpperCase() === "STR") {
+                character.vitals.carryingCapacity = recalculateCarryingCapacity(character);
+            }
         }
     }
     // Saving Throws

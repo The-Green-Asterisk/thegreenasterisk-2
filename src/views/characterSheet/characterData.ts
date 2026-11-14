@@ -44,12 +44,14 @@ export interface AbilityScore {
     notes?: string;
 }
 
-export type VitalKey = "ac" | "initiative" | "speed" | "maxHp" | "passivePerception" | "passiveInvestigation" | "passiveInsight" | "spellSaveDc" | "spellAttackBonus";
+export type VitalKey = "ac" | "initiative" | "speed" | "maxHp" | "carryingCapacity" | "passivePerception" | "passiveInvestigation" | "passiveInsight" | "spellSaveDc" | "spellAttackBonus";
 
 /** One named piece of a number on the sheet, for the breakdowns. */
 export interface BonusPart {
     label: string;
     value: number;
+    /** Optional multiplicative factor (e.g. 2 for ×2 carrying capacity) so STR changes recompute dynamically. */
+    multiplier?: number;
     /** Applies only while the skill or save isn't proficient (Jack of All Trades). */
     untrainedOnly?: boolean;
     /** What replaced this piece (a set AC, an HP override); shown but not counted. */
@@ -59,7 +61,7 @@ export interface BonusPart {
 /** One effect of an equipped item, recorded by the sheet's item pass. */
 export interface ItemEffectPart {
     item: string;
-    /** "abilities.STR", "checks.all", "saves.all", "saves.DEX", "vitals.ac", "vitals.initiative", "spells.dc", "spells.attack", "vitals.speed" */
+    /** "abilities.STR", "checks.all", "saves.all", "saves.DEX", "vitals.ac", "vitals.initiative", "spells.dc", "spells.attack", "vitals.speed", "vitals.carryingCapacity" */
     target: string;
     value: number;
     /** The value replaces the score instead of adding to it (Belt of Giant Strength). */
@@ -135,6 +137,10 @@ export interface EquipmentItem {
     isMagic?: boolean;
     description?: string;
     imageUrl?: string;
+    weight?: number;
+    isContainer?: boolean;
+    capacityWeight?: number | null;
+    containerId?: string | null;
     notes?: string;
     /** Rules modifiers while equipped (and attuned): the item's own (custom, or from D&D Beyond); else the item rules' */
     modifiers?: StatModifier[];
@@ -174,6 +180,10 @@ export interface WeaponItem {
         description?: string;
         unlocked: boolean; // whether character has mastery unlocked for this weapon
     };
+    weight?: number;
+    isContainer?: boolean;
+    capacityWeight?: number | null;
+    containerId?: string | null;
     notes?: string;
     grantedBy?: string;
 }
@@ -223,6 +233,7 @@ export interface CharacterData {
         allowedSpellsByLevel?: Record<number, number>;
         featureChoices?: Record<string, string>;
         itemQuantities?: Record<string, number>;
+        collapsedContainers?: Record<string, boolean>;
         deathSaves?: {
             successes: number;
             failures: number;
@@ -277,6 +288,7 @@ export interface CharacterData {
         armorClass: number;
         initiative: number;
         speed: string;
+        carryingCapacity?: number;
         proficiencyBonus: number;
         passivePerception: number;
         passiveInvestigation: number;

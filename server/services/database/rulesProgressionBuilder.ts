@@ -168,6 +168,7 @@ export type ModifierTarget =
     | "vitals.maxHp"
     | "vitals.initiative"
     | "vitals.speed"
+    | "vitals.carryingCapacity"
     | "vitals.blindsight"
     | "vitals.darkvision"
     | "vitals.devilsSight"
@@ -1161,7 +1162,7 @@ export const DRUID_LAND_BIOMES: ProgressionChoiceOption[] = [
 ];
 
 export const BARBARIAN_ASPECTS: ProgressionChoiceOption[] = [
-    { id: "elephant", name: "Aspect of the Elephant", description: "Advantage on Athletics checks and carrying capacity doubled.", modifiers: [{ target: "skills.athletics", type: "advantage", description: "Advantage on Athletics checks" }] },
+    { id: "elephant", name: "Aspect of the Elephant", description: "Advantage on Athletics checks and carrying capacity doubled.", modifiers: [{ target: "skills.athletics", type: "advantage", description: "Advantage on Athletics checks" }, { target: "vitals.carryingCapacity", type: "multiplier", value: 2, description: "Carrying capacity doubled" }] },
     { id: "owl", name: "Aspect of the Owl", description: "Gain Darkvision 60 ft. and Advantage on Perception checks.", modifiers: [{ target: "vitals.darkvision", type: "bonus", value: 60, description: "Gain Darkvision 60 ft." }, { target: "skills.perception", type: "advantage", description: "Advantage on Perception checks" }] },
     { id: "panther", name: "Aspect of the Panther", description: "Gain climbing speed equal to walking speed.", modifiers: [{ target: "vitals.climb", type: "set", value: "walk", description: "Climbing speed equals walking speed" }] },
     { id: "pike", name: "Aspect of the Pike", description: "Gain swimming speed equal to walking speed.", modifiers: [{ target: "vitals.swim", type: "set", value: "walk", description: "Swimming speed equals walking speed" }] },

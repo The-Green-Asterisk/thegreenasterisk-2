@@ -14,6 +14,7 @@ import SavedCharacter from "services/database/entity/SavedCharacter";
 import cache from "../cache";
 import { resolveDefinitionLinks } from "../services/characterCopies";
 import { mergeRowItems } from "../services/characterItems";
+import { parseWeightLb } from "../services/itemWeightsAndContainers";
 import { mergeVitals } from "../services/characterVitals";
 import { classFeatureUsage, expectedClassResourceTotals, findServerClassRule, getLoadedClassRules, loadClassRulesData } from "../services/classRulesData";
 import { extractSpellDamageInfo, getSpellDamageDisplay, parseDamageScalingString } from "../services/spellDamage";
@@ -1388,8 +1389,17 @@ export default class CharacterController extends BaseController {
             }))
             : (fallbackPayload?.skills || []);
 
+        const stripNullItemMeta = (items: any[]) => items.map((item) => {
+            if (!item || typeof item !== "object") return item;
+            const out = { ...item };
+            if (!out.containerId) delete out.containerId;
+            if (out.capacityWeight === null) delete out.capacityWeight;
+            if (!out.isContainer) delete out.isContainer;
+            return out;
+        });
+
         const weapons = record.inventory && record.inventory.length > 0
-            ? mergeRowItems(record.inventory
+            ? stripNullItemMeta(mergeRowItems(record.inventory
                 .filter(i => i.damage || i.category?.toLowerCase().includes("melee") || i.category?.toLowerCase().includes("ranged"))
                 .map(w => ({
                     id: w.id,
@@ -1397,7 +1407,7 @@ export default class CharacterController extends BaseController {
                     itemId: w.itemId ?? undefined,
                     locked: w.locked || undefined,
                     quantity: w.quantity,
-                    equipped: w.equipped,
+                    equipped: w.containerId ? false : w.equipped,
                     attuned: w.attuned,
                     requiresAttunement: w.requiresAttunement,
                     category: w.category,
@@ -1413,17 +1423,21 @@ export default class CharacterController extends BaseController {
                         description: w.masteryDescription,
                         unlocked: w.masteryUnlocked ?? false
                     } : undefined,
+                    weight: w.weight ?? 0,
+                    isContainer: Boolean(w.isContainer),
+                    capacityWeight: w.capacityWeight ?? null,
+                    containerId: w.containerId || null,
                     isMagic: w.isMagic,
                     rarity: w.rarity,
                     description: w.description,
                     notes: w.notes,
                     grantedBy: w.grantedBy,
                     imageUrl: w.imageUrl
-                })), fallbackPayload?.weapons)
+                })), fallbackPayload?.weapons))
             : (fallbackPayload?.weapons || []);
 
         const equipment = record.inventory && record.inventory.length > 0
-            ? mergeRowItems(record.inventory
+            ? stripNullItemMeta(mergeRowItems(record.inventory
                 .filter(i => !(i.damage || i.category?.toLowerCase().includes("melee") || i.category?.toLowerCase().includes("ranged")))
                 .map(e => ({
                     id: e.id,
@@ -1431,18 +1445,22 @@ export default class CharacterController extends BaseController {
                     itemId: e.itemId ?? undefined,
                     locked: e.locked || undefined,
                     quantity: e.quantity,
-                    equipped: e.equipped,
+                    equipped: e.containerId ? false : e.equipped,
                     attuned: e.attuned,
                     requiresAttunement: e.requiresAttunement,
                     type: e.category,
                     filterType: e.category,
+                    weight: e.weight ?? 0,
+                    isContainer: Boolean(e.isContainer),
+                    capacityWeight: e.capacityWeight ?? null,
+                    containerId: e.containerId || null,
                     isMagic: e.isMagic,
                     rarity: e.rarity,
                     description: e.description,
                     notes: e.notes,
                     grantedBy: e.grantedBy,
                     imageUrl: e.imageUrl
-                })), fallbackPayload?.equipment)
+                })), fallbackPayload?.equipment))
             : (fallbackPayload?.equipment || []);
 
         const spells = record.spells && record.spells.length > 0
@@ -1723,60 +1741,194 @@ export default class CharacterController extends BaseController {
             // 6. Inventory Items (Weapons & Equipment)
             const itemRepo = AppDataSource.getRepository(CharacterInventoryItem);
             await itemRepo.delete({ savedCharacter: { id: savedCharacter.id } });
-            const itemsToSave: any[] = [];
-            if (Array.isArray(data.weapons)) {
-                for (const w of data.weapons) {
-                    itemsToSave.push(itemRepo.create({
-                        savedCharacter: charRef,
-                        name: w.name,
-                        itemId: Number(w.itemId) > 0 ? Number(w.itemId) : null,
-                        locked: Boolean(w.locked),
-                        quantity: Number(w.quantity) || 1,
-                        equipped: Boolean(w.equipped),
-                        attuned: Boolean(w.attuned),
-                        requiresAttunement: Boolean(w.requiresAttunement),
-                        category: w.category || "Simple Melee",
-                        damage: w.damage || undefined,
-                        damageType: w.damageType || undefined,
-                        damageDie: w.damageDie || undefined,
-                        attackBonus: w.attackBonus || undefined,
-                        toHitModifier: w.toHitModifier !== undefined ? Number(w.toHitModifier) : undefined,
-                        range: w.range || undefined,
-                        propertiesJson: w.properties ? JSON.stringify(w.properties) : undefined,
-                        masteryName: w.mastery?.name || undefined,
-                        masteryUnlocked: w.mastery?.unlocked !== undefined ? Boolean(w.mastery.unlocked) : undefined,
-                        masteryDescription: w.mastery?.description || undefined,
-                        isMagic: Boolean(w.isMagic),
-                        rarity: w.rarity || undefined,
-                        description: w.description || undefined,
-                        notes: w.notes || undefined,
-                        grantedBy: w.grantedBy || undefined,
-                        imageUrl: w.imageUrl || undefined
-                    }));
+            const itemsToSave: CharacterInventoryItem[] = [];
+            const entryKeys: string[][] = [];
+            const equipmentList = Array.isArray(data.equipment) ? data.equipment : [];
+            const weaponsList = Array.isArray(data.weapons) ? data.weapons : [];
+            const claimedEquipmentIndices = new Set<number>();
+            const nameCounts = new Map<string, number>();
+
+            const nextNameKey = (rawName: unknown): { lower: string; indexed: string } => {
+                const lower = String(rawName || "").trim().toLowerCase();
+                const occ = nameCounts.get(lower) ?? 0;
+                nameCounts.set(lower, occ + 1);
+                return { lower, indexed: `name:${lower}#${occ}` };
+            };
+
+            const collectKeys = (raw: any, nameInfo: { lower: string; indexed: string }): string[] => {
+                const keys = [nameInfo.indexed];
+                if (raw?.id !== undefined && raw?.id !== null && String(raw.id).trim() !== "") {
+                    const idStr = String(raw.id).trim();
+                    keys.push(`id:${idStr}`, idStr);
+                }
+                if (nameInfo.lower) keys.push(`name:${nameInfo.lower}`);
+                return keys;
+            };
+
+            for (const w of weaponsList) {
+                const wNameLower = String(w?.name || "").trim().toLowerCase();
+                let twinIdx = -1;
+                if (wNameLower) {
+                    if (w?.id !== undefined && w?.id !== null) {
+                        twinIdx = equipmentList.findIndex((e: any, idx: number) =>
+                            !claimedEquipmentIndices.has(idx)
+                            && e?.id === w.id
+                            && String(e?.name || "").trim().toLowerCase() === wNameLower
+                        );
+                    }
+                    if (twinIdx < 0) {
+                        twinIdx = equipmentList.findIndex((e: any, idx: number) =>
+                            !claimedEquipmentIndices.has(idx)
+                            && String(e?.name || "").trim().toLowerCase() === wNameLower
+                            && (e?._weaponTwin === true || String(e?.filterType || e?.type || "").toLowerCase() === "weapon")
+                        );
+                    }
+                    if (twinIdx < 0) {
+                        twinIdx = equipmentList.findIndex((e: any, idx: number) =>
+                            !claimedEquipmentIndices.has(idx)
+                            && String(e?.name || "").trim().toLowerCase() === wNameLower
+                        );
+                    }
+                }
+                const twin = twinIdx >= 0 ? equipmentList[twinIdx] : undefined;
+                if (twinIdx >= 0) claimedEquipmentIndices.add(twinIdx);
+
+                const rawContainerId = twin?.containerId ?? w.containerId;
+                const containerId = rawContainerId !== undefined && rawContainerId !== null && String(rawContainerId).trim() !== ""
+                    ? String(rawContainerId).trim().slice(0, 100)
+                    : null;
+                const equipped = containerId ? false : Boolean(w.equipped ?? twin?.equipped);
+                const weight = parseWeightLb(twin?.weight ?? w.weight) ?? 0;
+                const isContainer = Boolean(twin?.isContainer ?? w.isContainer);
+                const rawCap = twin?.capacityWeight ?? w.capacityWeight;
+                const capacityWeight = isContainer && rawCap !== undefined && rawCap !== null && !Number.isNaN(Number(rawCap))
+                    ? Number(rawCap)
+                    : null;
+
+                const nameInfo = nextNameKey(w.name);
+                const keys = collectKeys(w, nameInfo);
+                if (twin?.id !== undefined && twin?.id !== null && String(twin.id).trim() !== "") {
+                    const tid = String(twin.id).trim();
+                    keys.push(`id:${tid}`, tid);
+                }
+                entryKeys.push(keys);
+
+                itemsToSave.push(itemRepo.create({
+                    savedCharacter: charRef,
+                    name: w.name,
+                    itemId: Number(w.itemId ?? twin?.itemId) > 0 ? Number(w.itemId ?? twin?.itemId) : null,
+                    locked: Boolean(w.locked || twin?.locked),
+                    quantity: Number(w.quantity ?? twin?.quantity) || 1,
+                    equipped,
+                    attuned: Boolean(w.attuned ?? twin?.attuned),
+                    requiresAttunement: Boolean(w.requiresAttunement ?? twin?.requiresAttunement),
+                    category: w.category || "Simple Melee",
+                    damage: w.damage || undefined,
+                    damageType: w.damageType || undefined,
+                    damageDie: w.damageDie || undefined,
+                    attackBonus: w.attackBonus || undefined,
+                    toHitModifier: w.toHitModifier !== undefined ? Number(w.toHitModifier) : undefined,
+                    range: w.range || undefined,
+                    propertiesJson: w.properties ? JSON.stringify(w.properties) : undefined,
+                    masteryName: w.mastery?.name || undefined,
+                    masteryUnlocked: w.mastery?.unlocked !== undefined ? Boolean(w.mastery.unlocked) : undefined,
+                    masteryDescription: w.mastery?.description || undefined,
+                    weight,
+                    isContainer,
+                    capacityWeight,
+                    containerId,
+                    isMagic: Boolean(w.isMagic),
+                    rarity: w.rarity || undefined,
+                    description: w.description || undefined,
+                    notes: w.notes || undefined,
+                    grantedBy: w.grantedBy || undefined,
+                    imageUrl: w.imageUrl || undefined
+                }));
+            }
+
+            equipmentList.forEach((e: any, idx: number) => {
+                if (claimedEquipmentIndices.has(idx)) return;
+                const containerId = e.containerId !== undefined && e.containerId !== null && String(e.containerId).trim() !== ""
+                    ? String(e.containerId).trim().slice(0, 100)
+                    : null;
+                const equipped = containerId ? false : Boolean(e.equipped);
+                const weight = parseWeightLb(e.weight) ?? 0;
+                const isContainer = Boolean(e.isContainer);
+                const capacityWeight = isContainer && e.capacityWeight !== undefined && e.capacityWeight !== null && !Number.isNaN(Number(e.capacityWeight))
+                    ? Number(e.capacityWeight)
+                    : null;
+
+                const nameInfo = nextNameKey(e.name);
+                entryKeys.push(collectKeys(e, nameInfo));
+
+                itemsToSave.push(itemRepo.create({
+                    savedCharacter: charRef,
+                    name: e.name,
+                    itemId: Number(e.itemId) > 0 ? Number(e.itemId) : null,
+                    locked: Boolean(e.locked),
+                    quantity: Number(e.quantity) || 1,
+                    equipped,
+                    attuned: Boolean(e.attuned),
+                    requiresAttunement: Boolean(e.requiresAttunement),
+                    category: e.type || e.filterType || "Gear",
+                    weight,
+                    isContainer,
+                    capacityWeight,
+                    containerId,
+                    isMagic: Boolean(e.isMagic),
+                    rarity: e.rarity || undefined,
+                    description: e.description || undefined,
+                    notes: e.notes || undefined,
+                    grantedBy: e.grantedBy || undefined,
+                    imageUrl: e.imageUrl || undefined
+                }));
+            });
+
+            if (itemsToSave.length > 0) {
+                const savedRows = await itemRepo.save(itemsToSave);
+                if (Array.isArray(savedRows) && savedRows.some((r) => r?.id !== undefined && r?.id !== null)) {
+                    const keyToNewContainerId = new Map<string, string>();
+                    const ambiguousNames = new Set<string>();
+                    const seenPlainNames = new Set<string>();
+
+                    savedRows.forEach((row, i) => {
+                        if (!row?.id) return;
+                        const newRef = `id:${row.id}`.slice(0, 100);
+                        for (const key of entryKeys[i] || []) {
+                            if (/^name:[^#]+$/.test(key)) {
+                                if (seenPlainNames.has(key)) ambiguousNames.add(key);
+                                seenPlainNames.add(key);
+                            }
+                            if (!keyToNewContainerId.has(key)) {
+                                keyToNewContainerId.set(key, newRef);
+                            }
+                        }
+                    });
+                    for (const amb of ambiguousNames) {
+                        keyToNewContainerId.delete(amb);
+                    }
+
+                    const remappedRows: CharacterInventoryItem[] = [];
+                    const allHaveIds = savedRows.every((r) => r?.id !== undefined && r?.id !== null);
+                    for (const row of savedRows) {
+                        if (!row?.containerId) continue;
+                        const remapped = keyToNewContainerId.get(row.containerId);
+                        const selfRef = row.id ? `id:${row.id}` : "";
+                        if (remapped && remapped !== selfRef) {
+                            if (row.containerId !== remapped) {
+                                row.containerId = remapped;
+                                remappedRows.push(row);
+                            }
+                        } else if (remapped === selfRef || (allHaveIds && !remapped)) {
+                            row.containerId = null;
+                            remappedRows.push(row);
+                        }
+                    }
+                    if (remappedRows.length > 0) {
+                        await itemRepo.save(remappedRows);
+                    }
                 }
             }
-            if (Array.isArray(data.equipment)) {
-                for (const e of data.equipment) {
-                    itemsToSave.push(itemRepo.create({
-                        savedCharacter: charRef,
-                        name: e.name,
-                        itemId: Number(e.itemId) > 0 ? Number(e.itemId) : null,
-                        locked: Boolean(e.locked),
-                        quantity: Number(e.quantity) || 1,
-                        equipped: Boolean(e.equipped),
-                        attuned: Boolean(e.attuned),
-                        requiresAttunement: Boolean(e.requiresAttunement),
-                        category: e.type || e.filterType || "Gear",
-                        isMagic: Boolean(e.isMagic),
-                        rarity: e.rarity || undefined,
-                        description: e.description || undefined,
-                        notes: e.notes || undefined,
-                        grantedBy: e.grantedBy || undefined,
-                        imageUrl: e.imageUrl || undefined
-                    }));
-                }
-            }
-            if (itemsToSave.length > 0) await itemRepo.save(itemsToSave);
 
             // 7. Spells
             if (Array.isArray(data.spells)) {

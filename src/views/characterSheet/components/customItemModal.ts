@@ -118,7 +118,18 @@ export function renderCustomItemModal(kind: CustomItemKind): string {
                                             <span>Requires Attunement</span>
                                         </span>
                                     </label>
+                                    <label class="form-toggle-pill" for="${p}-is-container">
+                                        <input type="checkbox" id="${p}-is-container" />
+                                        <span class="toggle-pill-ui">
+                                            <i class="fa-solid fa-sack" aria-hidden="true"></i>
+                                            <span>Container</span>
+                                        </span>
+                                    </label>
                                 </div>
+                                <label class="form-field" id="${p}-capacity-field">
+                                    <span class="form-label">Container Capacity (lb.)</span>
+                                    <input type="number" id="${p}-capacity-weight" min="0" step="any" inputmode="decimal" placeholder="Optional" disabled />
+                                </label>
                             </div>
                         </div>
                         ${isWeapon ? weaponSection : ""}

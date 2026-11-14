@@ -1,5 +1,7 @@
 import el from "@elements";
 import { CharacterSheetContext } from "./context";
+import { refreshEquipmentGrid } from "./equipment.ctrl";
+import { setItemEquippedWithContainerUnstow } from "../services/inventoryContainers";
 
 export function initWeaponsController(ctx: CharacterSheetContext) {
     const character = ctx.getCharacter();
@@ -32,9 +34,11 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
             const weaponName = decodeURIComponent(encodedWeaponName).toLowerCase();
             const nextState = btn.getAttribute("aria-pressed") !== "true";
 
+            let wasStowed = false;
             (character.weapons || []).forEach(w => {
                 if (w.name.toLowerCase() === weaponName) {
-                    w.equipped = nextState;
+                    if (w.containerId) wasStowed = true;
+                    setItemEquippedWithContainerUnstow(character, w, nextState);
                 }
             });
 
@@ -54,6 +58,10 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
             });
 
             void ctx.persistEquipState("weapon", encodedWeaponName, rawWeaponId, nextState);
+            if (wasStowed && nextState) {
+                refreshEquipmentGrid(ctx);
+                ctx.sheet.dispatchEvent(new CustomEvent("tga:inventory-changed"));
+            }
             ctx.syncSheetStats();
         }, { signal: el.signal });
 
@@ -157,13 +165,20 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
 
     // Open Manage Weapons/Items modal
     const openManageWeaponsBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-manage-weapons-btn");
-    openManageWeaponsBtn?.addEventListener("click", () => {
-        void ctx.openManageItemsModal("weapon");
-    }, { signal: el.signal });
+    if (openManageWeaponsBtn && openManageWeaponsBtn.dataset.bound !== "1") {
+        openManageWeaponsBtn.dataset.bound = "1";
+        openManageWeaponsBtn.addEventListener("click", () => {
+            void ctx.openManageItemsModal("weapon");
+        }, { signal: el.signal });
+    }
 
-    ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-weapon-btn")?.addEventListener("click", () => {
-        ctx.openCustomItemModal("weapon");
-    }, { signal: el.signal });
+    const openCustomWeaponBtn = ctx.sheet.querySelector<HTMLButtonElement>("#open-custom-weapon-btn");
+    if (openCustomWeaponBtn && openCustomWeaponBtn.dataset.bound !== "1") {
+        openCustomWeaponBtn.dataset.bound = "1";
+        openCustomWeaponBtn.addEventListener("click", () => {
+            ctx.openCustomItemModal("weapon");
+        }, { signal: el.signal });
+    }
 
     // Weapon quantity steppers & inputs
     const weaponQtySteppers = ctx.sheet.querySelectorAll<HTMLElement>('.weapon-card .item-qty-stepper');

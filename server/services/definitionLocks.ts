@@ -30,6 +30,8 @@ export const ITEM_LOCK_COLUMNS: Record<string, string[]> = {
     properties: ["properties"],
     mastery: ["mastery"],
     weight: ["weight"],
+    isContainer: ["isContainer"],
+    capacityWeight: ["capacityWeight"],
     cost: ["cost"],
     description: ["description"],
     imageUrl: ["imageUrl"]

@@ -1,5 +1,6 @@
 import { featModifierNumber } from "../../../rules/dnd5e_2024/featRules";
-import { getArmorClassParts, getInitiativeParts, getMaxHpParts, getSpeedParts } from "./rulesCalculations";
+import { lookupContainerDefaults, lookupItemWeightLb, parseWeightLb } from "../../../rules/dnd5e_2024/itemWeightsAndContainers";
+import { getArmorClassParts, getCarryingCapacity, getCarryingCapacityModifierParts, getInitiativeParts, getMaxHpParts, getSpeedParts } from "./rulesCalculations";
 import { BonusPart } from "../../characterSheet/characterData";
 import el from "@elements";
 import { getData, postData, putData } from "@services/request";
@@ -643,6 +644,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             name: wName,
             quantity: 1,
             equipped: true,
+            weight: parseWeightLb(baseW?.weight) ?? lookupItemWeightLb(wName, "Weapon") ?? 0,
             category: baseW?.category || "Simple Melee",
             damage: `${baseW?.damageDie || "1d6"} + ${damageMod} ${baseW?.damageType || "Slashing"}`,
             damageType: baseW?.damageType || "Slashing",
@@ -664,10 +666,13 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
     const equipmentPayload: any[] = [];
     if (ctx.state.selectedArmor && ctx.state.selectedArmor !== "None") {
         const armorDef = BASE_ARMOR_2024.find((a) => a.name === ctx.state.selectedArmor);
+        const containerDef = lookupContainerDefaults(ctx.state.selectedArmor);
         equipmentPayload.push({
             name: ctx.state.selectedArmor,
             quantity: 1,
             equipped: true,
+            weight: parseWeightLb(armorDef?.weight) ?? lookupItemWeightLb(ctx.state.selectedArmor, "Armor") ?? 0,
+            ...(containerDef ? { isContainer: true, capacityWeight: containerDef.capacityWeight } : {}),
             type: "Armor",
             filterType: "Armor",
             description: armorDef ? `${armorDef.category} Armor, AC ${armorDef.baseAc}` : ""
@@ -678,6 +683,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             name: "Shield",
             quantity: 1,
             equipped: true,
+            weight: lookupItemWeightLb("Shield", "Shield") ?? 6,
             type: "Shield",
             filterType: "Armor",
             description: "Shield (+2 AC)"
@@ -687,6 +693,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
         name: "Explorer's Pack",
         quantity: 1,
         equipped: false,
+        weight: lookupItemWeightLb("Explorer's Pack", "Gear") ?? 55,
         type: "Gear",
         description: "Backpack, bedroll, mess kit, tinderbox, 10 torches, 10 days rations, waterskin, 50 ft rope."
     });
@@ -1326,6 +1333,7 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             armorClass: ctx.getArmorClass(),
             initiative: ctx.getInitiative(),
             speed: ctx.getSpeedDisplay(),
+            carryingCapacity: getCarryingCapacity(ctx),
             proficiencyBonus: pb,
             passivePerception: 10 + (percSkill?.bonus || 0),
             passiveInvestigation: 10 + (invSkill?.bonus || 0),
@@ -1349,7 +1357,8 @@ export function buildPayload(ctx: CharacterCreatorContext): any {
             ac: getArmorClassParts(ctx),
             initiative: getInitiativeParts(ctx),
             speed: getSpeedParts(ctx),
-            maxHp: getMaxHpParts(ctx)
+            maxHp: getMaxHpParts(ctx),
+            carryingCapacity: getCarryingCapacityModifierParts(ctx)
         },
         weapons: weaponsPayload,
         equipment: equipmentPayload,

@@ -434,4 +434,96 @@ describe('CharacterController', () => {
             expect(save).toHaveBeenCalled();
         });
     });
+
+    describe('inventory containers, weight hydration & save remapping', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('enforces equipped=false for stowed items and clears stale containerId on hydration', () => {
+            const record: any = {
+                id: 42,
+                name: 'Tarin',
+                source: 'site',
+                payload: '{}',
+                inventory: [
+                    { id: 10, name: 'Backpack', itemType: 'equipment', quantity: 1, equipped: false, weight: 5, isContainer: true, capacityWeight: 30, containerId: null },
+                    { id: 11, name: 'Longsword', itemType: 'weapon', quantity: 1, equipped: true, category: 'Martial Melee', damage: '1d8 Slashing', damageType: 'Slashing', damageDie: '1d8', attackBonus: '+5', toHitModifier: 5, range: '5 ft.', weight: 3, containerId: 'id:10' },
+                    { id: 12, name: 'Torch', itemType: 'equipment', quantity: 2, equipped: false, weight: 1, containerId: null }
+                ]
+            };
+            const payload = {
+                weapons: [{ id: 11, name: 'Longsword', equipped: true, containerId: 'id:10' }],
+                equipment: [
+                    { id: 10, name: 'Backpack', isContainer: true, capacityWeight: 30 },
+                    { id: 12, name: 'Torch', containerId: 'id:10' } // stale payload containerId after unstowing
+                ]
+            };
+
+            const character = (CharacterController as any).hydrateFromRelationalEntities(record, payload);
+            expect(character.weapons[0].containerId).toBe('id:10');
+            expect(character.weapons[0].equipped).toBe(false);
+            expect(character.weapons[0].weight).toBe(3);
+            expect(character.equipment[0].isContainer).toBe(true);
+            expect(character.equipment[0].capacityWeight).toBe(30);
+            expect(character.equipment[1].containerId).toBeUndefined();
+        });
+
+        it('deduplicates weapon twins and remaps pre-save containerId keys to newly saved id:<rowId>', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const savedBatches: any[][] = [];
+            let nextId = 200;
+            const itemRepo = {
+                delete: vi.fn().mockResolvedValue({ affected: 0 }),
+                create: (row: any) => ({ ...row }),
+                save: vi.fn(async (rows: any[]) => {
+                    const saved = rows.map((r) => ({ ...r, id: r.id ?? ++nextId }));
+                    savedBatches.push(saved.map((r) => ({ ...r })));
+                    return saved;
+                })
+            };
+            vi.spyOn(AppDataSource, 'getRepository').mockImplementation((entity: any) => {
+                if (entity?.name === 'CharacterInventoryItem') return itemRepo as any;
+                return {
+                    findOne: vi.fn().mockResolvedValue(null),
+                    find: vi.fn().mockResolvedValue([]),
+                    delete: vi.fn().mockResolvedValue({ affected: 0 }),
+                    create: (row: any) => row,
+                    save: vi.fn(async (row: any) => row)
+                } as any;
+            });
+
+            const data = {
+                weapons: [
+                    { name: 'Longsword', quantity: 1, equipped: true, category: 'Martial Melee', damage: '1d8 Slashing', containerId: 'name:backpack#0', weight: 3 }
+                ],
+                equipment: [
+                    { name: 'Backpack', quantity: 1, equipped: false, type: 'Adventuring Gear', weight: 5, isContainer: true, capacityWeight: 30 },
+                    // Weapon twin created by client Inventory sync:
+                    { name: 'Longsword', quantity: 1, equipped: false, type: 'Martial Melee', filterType: 'Weapon', containerId: 'name:backpack#0', weight: 3 }
+                ]
+            };
+
+            await (CharacterController as any).syncCharacterRelationalEntities({ id: 42 }, data);
+
+            expect(savedBatches.length).toBeGreaterThanOrEqual(2);
+            const firstSave = savedBatches[0];
+            // Longsword weapon + equipment twin deduplicated into 1 weapon row, plus 1 Backpack row = 2 rows total
+            expect(firstSave).toHaveLength(2);
+            const backpackRow = firstSave.find((r) => r.name === 'Backpack');
+            const swordRow = firstSave.find((r) => r.name === 'Longsword');
+            expect(backpackRow).toBeDefined();
+            expect(backpackRow.isContainer).toBe(true);
+            expect(backpackRow.capacityWeight).toBe(30);
+            expect(swordRow).toBeDefined();
+            expect(swordRow.category).toBe('Martial Melee');
+            expect(swordRow.damage).toBe('1d8 Slashing');
+            expect(swordRow.equipped).toBe(false);
+
+            const remapSave = savedBatches[1];
+            expect(remapSave).toHaveLength(1);
+            expect(remapSave[0].name).toBe('Longsword');
+            expect(remapSave[0].containerId).toBe(`id:${backpackRow.id}`);
+        });
+    });
 });

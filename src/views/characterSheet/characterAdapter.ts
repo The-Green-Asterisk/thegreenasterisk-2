@@ -1,10 +1,11 @@
-import { findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
+import { findClassOption, findClassOptionByName } from "../../rules/dnd5e_2024/classOptions";
 import { resolveClassResources } from "../../rules/dnd5e_2024/classResources";
 import { featBonus, featModifierNumber, featModifiers, resolveFeatResources } from "../../rules/dnd5e_2024/featRules";
+import { lookupContainerDefaults, lookupItemWeightLb, parseWeightLb, roundWeightLb } from "../../rules/dnd5e_2024/itemWeightsAndContainers";
 import { calculateMulticlassSpellSlots } from "../../rules/dnd5e_2024/multiclass";
 import { abilityKey, effectsFromLegacyNotes, mergeSaveEffects, normalizeAgainst, SaveEffect, saveEffectsFromRules } from "../../rules/dnd5e_2024/saveEffects";
 import { rangeFeet, resolveSenses, senseGrantsFrom, writeSenses } from "../../rules/dnd5e_2024/senses";
-import { detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSenseGrants, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
+import { activeSpeciesTraits, detectLineage, resolveSpeciesResources, resolveSpeciesSpellAbility, speciesSenseGrants, speciesSpellAbilityOptions, traitBaseName } from "../../rules/dnd5e_2024/speciesRules";
 import { AbilityName, ClassDefinition, FeatMechanics, LineageDefinition, ProgressionLevel, StatModifier } from "../../rules/dnd5e_2024/types";
 import { findClassRule, findFeatRule, findSpeciesRule, getBackgroundRules, getClassRules, getSpeciesRules } from "../../services/classRules";
 import { extractSpellDamageInfo, getSpellDamageDisplay } from "../../services/spellDamage";
@@ -97,23 +98,51 @@ export function parseDndBeyondCharacter(
         });
     }
 
-    const rawInventory: any[] = (raw.inventory || []).map((item: any) => {
+    const rawItemsList: any[] = Array.isArray(raw.inventory) ? raw.inventory : [];
+    const referencedContainers = new Set<number>(
+        rawItemsList
+            .map((it: any) => Number(it?.containerEntityId))
+            .filter((cid: number) => Number.isFinite(cid) && cid > 0 && cid !== Number(raw.id))
+    );
+    const validContainerEntityIds = new Set<number>(
+        rawItemsList
+            .filter((it: any) => {
+                const itId = Number(it?.id);
+                if (!Number.isFinite(itId) || itId <= 0 || itId === Number(raw.id)) return false;
+                return Boolean(it.definition?.isContainer) || Boolean(lookupContainerDefaults(it.definition?.name)) || referencedContainers.has(itId);
+            })
+            .map((it: any) => Number(it.id))
+    );
+
+    const rawInventory: any[] = rawItemsList.map((item: any) => {
         const iName = (item.definition?.name || "").toLowerCase();
         const isWeapon = item.definition?.filterType === "Weapon";
         const itemKey = `item:${iName}`;
         const weaponKey = `weapon:${iName}`;
         const attuneKey = `attunement:${iName}`;
         let equipped = !!item.equipped;
+        let hasEquipOverride = false;
         if (isWeapon && stateOverrideMap.has(weaponKey)) {
             equipped = !!stateOverrideMap.get(weaponKey);
+            hasEquipOverride = true;
         } else if (stateOverrideMap.has(itemKey)) {
             equipped = !!stateOverrideMap.get(itemKey);
+            hasEquipOverride = true;
+        }
+        const parentContainerId = Number(item.containerEntityId);
+        let containerId: string | null = Number.isFinite(parentContainerId) && validContainerEntityIds.has(parentContainerId)
+            ? String(parentContainerId)
+            : null;
+        if (hasEquipOverride && equipped) {
+            containerId = null;
+        } else if (containerId) {
+            equipped = false;
         }
         let isAttuned = !!item.isAttuned;
         if (stateOverrideMap.has(attuneKey)) {
             isAttuned = !!stateOverrideMap.get(attuneKey);
         }
-        return { ...item, equipped, isAttuned };
+        return { ...item, equipped, isAttuned, containerId };
     });
 
     const characterValues: any[] = Array.isArray(raw.characterValues) ? raw.characterValues : [];
@@ -1310,6 +1339,83 @@ export function parseDndBeyondCharacter(
         }
         vitalParts.initiative = initLines;
     }
+
+    // 6c. Carrying Capacity (STR × 15 scaled by size, species traits, class options, feats, and modifiers)
+    let carryingCapacity = roundWeightLb((abilityScoresMap[1] ?? 10) * 15);
+    {
+        const strScore = abilityScoresMap[1] ?? 10;
+        const carryParts: BonusPart[] = [];
+        const carryMultipliers: Array<{ label: string; mult: number }> = [];
+        const seenCarrySources = new Set<string>();
+        const pushCarryMult = (label: string, mult: number) => {
+            if (!(mult > 0) || mult === 1) return;
+            const norm = label.toLowerCase().replace(/\s*\([^)]*\)\s*$/, "").trim();
+            if (seenCarrySources.has(norm)) return;
+            seenCarrySources.add(norm);
+            carryMultipliers.push({ label: `${label} (×${mult})`, mult });
+        };
+
+        const sizeId = Number(raw.race?.sizeId);
+        const sizeStr = String(raw.race?.size || "").toLowerCase();
+        if (sizeId === 2 || sizeStr === "tiny") pushCarryMult("Tiny size", 0.5);
+        else if (sizeId === 5 || sizeStr === "large") pushCarryMult("Large size", 2);
+        else if (sizeId === 6 || sizeStr === "huge") pushCarryMult("Huge size", 4);
+        else if (sizeId === 7 || sizeStr === "gargantuan") pushCarryMult("Gargantuan size", 8);
+
+        for (const m of allMods) {
+            const sub = String(m.subType || "").toLowerCase();
+            if (sub !== "carrying-capacity" || !isUnrestrictedMod(m)) continue;
+            const label = modSourceName(m);
+            if (m.type === "bonus" || m.type === "stacking-bonus") {
+                const val = resolveModValue(m);
+                if (val !== 0) carryParts.push({ label, value: val });
+            } else {
+                const rawMult = Number(m.value ?? m.fixedValue);
+                pushCarryMult(label, Number.isFinite(rawMult) && rawMult > 1 ? rawMult : 2);
+            }
+        }
+
+        const applyCarryRuleMod = (label: string, m: StatModifier) => {
+            if (m.target !== "vitals.carryingCapacity") return;
+            if (m.type === "multiplier") {
+                pushCarryMult(label, Number(m.value) || 1);
+            } else if (m.type === "bonus" || m.type === "penalty") {
+                const val = Number(m.value) || 0;
+                if (val !== 0) carryParts.push({ label, value: m.type === "penalty" ? -val : val });
+            }
+        };
+
+        for (const t of activeSpeciesTraits(ruleSpecies, getRuleLineage(), totalLevel)) {
+            for (const m of t.modifiers || []) applyCarryRuleMod(t.name, m);
+        }
+        for (const m of getRuleLineage()?.modifiers || []) applyCarryRuleMod(getRuleLineage()?.name || "Lineage", m);
+        for (const fm of featMechanics) {
+            for (const m of fm.modifiers || []) applyCarryRuleMod(fm.name, m);
+        }
+        for (const m of ruleFeatureModifiers) applyCarryRuleMod(String((m as any)._source || "Class feature"), m);
+        for (const [k, val] of Object.entries(activeFeatureChoices)) {
+            if (!val || val === "none") continue;
+            const [kind, optId] = val.includes(":") ? val.split(":") : [k, val];
+            const opt = findClassOption(kind, optId || kind)
+                || (ruleClasses as Array<{ def?: any; subclass?: any; level: number }>)
+                    .flatMap(({ def, subclass, level }) => [...(def?.progression || []), ...((subclass?.progression || []) as ProgressionLevel[])].filter((pl: ProgressionLevel) => pl.level <= level))
+                    .flatMap((pl: ProgressionLevel) => pl.choices || [])
+                    .flatMap((ch: any) => ch.options || [])
+                    .find((o: any) => o.id === (optId || val));
+            if (opt && Array.isArray(opt.modifiers)) {
+                for (const m of opt.modifiers) applyCarryRuleMod(opt.name, m);
+            }
+        }
+
+        let running = strScore * 15 + carryParts.reduce((s, p) => s + p.value, 0);
+        for (const m of carryMultipliers) {
+            const delta = roundWeightLb(running * m.mult - running);
+            running = roundWeightLb(running + delta);
+            carryParts.push({ label: m.label, value: delta, multiplier: m.mult });
+        }
+        vitalParts.carryingCapacity = carryParts;
+        carryingCapacity = roundWeightLb(running);
+    }
     // 7. Skills & Passive Senses
     const proficientSkills = new Set<string>();
     const expertiseSkills = new Set<string>();
@@ -2161,13 +2267,23 @@ export function parseDndBeyondCharacter(
             else if (defNameLower.includes("superior")) rarity = "Rare";
             else if (defNameLower.includes("supreme")) rarity = "Very Rare";
         }
+        const containerDef = lookupContainerDefaults(def?.name);
+        const parsedWeight = parseWeightLb(def?.weight);
+        const weight = parsedWeight !== null && parsedWeight > 0
+            ? parsedWeight
+            : (lookupItemWeightLb(def?.name, def?.filterType || def?.type) ?? parsedWeight ?? 0);
+        const isContainer = Boolean(def?.isContainer || containerDef?.isContainer || validContainerEntityIds.has(Number(i.id)));
+        const capacityWeight = def?.capacityWeight != null ? Number(def.capacityWeight) : (containerDef?.capacityWeight ?? null);
         return {
             ...itemSenseModifiers(def),
             id: i.id,
             definitionId: def?.id,
             name: def?.name || "Item",
             quantity: Number(i.quantity) || 1,
-            equipped: !!i.equipped,
+            equipped: i.containerId ? false : !!i.equipped,
+            weight,
+            ...(isContainer ? { isContainer: true, capacityWeight } : {}),
+            ...(i.containerId ? { containerId: i.containerId } : {}),
             attuned: isPotion ? false : isAttuned,
             requiresAttunement: isPotion ? false : requiresAttune,
             type: isPotion ? "Potion" : (def?.filterType || "Gear"),
@@ -2266,6 +2382,10 @@ export function parseDndBeyondCharacter(
             isAttuned = !!stateOverrideMap.get(attuneKey);
         }
 
+        const parsedWWeight = parseWeightLb(def.weight);
+        const wWeight = parsedWWeight !== null && parsedWWeight > 0
+            ? parsedWWeight
+            : (lookupItemWeightLb(def.name, def.filterType || "Weapon") ?? parsedWWeight ?? 0);
         return {
             ...itemSenseModifiers(def),
             charges: readItemCharges(item),
@@ -2273,7 +2393,9 @@ export function parseDndBeyondCharacter(
             definitionId: def.id,
             name: def.name,
             quantity: count,
-            equipped,
+            equipped: !equipped && item.containerId ? false : equipped,
+            weight: wWeight,
+            ...(!equipped && item.containerId ? { containerId: item.containerId } : {}),
             attuned: isAttuned,
             requiresAttunement: requiresAttune,
             category,
@@ -2502,6 +2624,7 @@ export function parseDndBeyondCharacter(
             armorClass,
             initiative,
             speed: fullSpeedDisplay,
+            carryingCapacity,
             proficiencyBonus: profBonus,
             passivePerception,
             passiveInvestigation,

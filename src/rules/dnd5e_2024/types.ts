@@ -157,6 +157,7 @@ export type ModifierTarget =
     | "vitals.maxHp"
     | "vitals.initiative"
     | "vitals.speed"
+    | "vitals.carryingCapacity"
     | "vitals.blindsight"
     | "vitals.darkvision"
     | "vitals.devilsSight"

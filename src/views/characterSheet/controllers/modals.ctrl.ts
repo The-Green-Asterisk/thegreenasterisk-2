@@ -17,6 +17,8 @@ import { isMundaneEquipment } from "../services/magicItemBonuses";
 import { CharacterSheetContext } from "./context";
 import { applySpellEditToCopies, chargesFromDb, databaseId } from "../services/characterCopies";
 import { canEditDbEntry, describePropagation, describeRequestError, releaseBodyScrollIfNoDialogOpen, restoreFocusAfterClose, setSelectValue } from "./customContentAccess";
+import { lookupContainerDefaults, lookupItemWeightLb, parseWeightLb } from "../../../rules/dnd5e_2024/itemWeightsAndContainers";
+import { getInventoryKey, resolveContainerKey } from "../services/inventoryContainers";
 import { customItemKindFor, initCustomItemModals } from "./customItemModals.ctrl";
 import { customItemNoun } from "../components/customItemModal";
 import { createLockPanel } from "./definitionLockPanel";
@@ -1152,6 +1154,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 const toHit = mod + profBonus;
                 const attackBonusStr = toHit >= 0 ? `+${toHit}` : `${toHit}`;
 
+                const parsedWeaponWeight = parseWeightLb(item.weight);
+                const resolvedWeaponWeight = (parsedWeaponWeight !== null && parsedWeaponWeight > 0)
+                    ? parsedWeaponWeight
+                    : (lookupItemWeightLb(item.name, item.category || item.filterType) ?? parsedWeaponWeight ?? 0);
+                const weaponContainerDefaults = lookupContainerDefaults(item.name);
+                const resolvedWeaponIsContainer = item.isContainer !== undefined
+                    ? Boolean(item.isContainer)
+                    : Boolean(weaponContainerDefaults?.isContainer);
+                const resolvedWeaponCapacity = item.capacityWeight != null
+                    ? Number(item.capacityWeight)
+                    : (resolvedWeaponIsContainer ? (weaponContainerDefaults?.capacityWeight ?? undefined) : undefined);
+
                 activeCharacter.weapons.push({
                     id: item.dndBeyondId || item.id,
                     itemId: databaseId(item.id),
@@ -1169,6 +1183,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     properties: props,
                     isMagic: !!item.isMagic,
                     rarity: item.rarity || "Common",
+                    weight: resolvedWeaponWeight,
+                    isContainer: resolvedWeaponIsContainer || undefined,
+                    capacityWeight: resolvedWeaponCapacity,
                     description: item.description,
                     imageUrl: item.imageUrl,
                     charges: newItemCharges(item),
@@ -1180,6 +1197,18 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (!activeCharacter.equipment) activeCharacter.equipment = [];
         const equipExists = activeCharacter.equipment.some(e => e.name.toLowerCase() === item.name.toLowerCase());
         if (!equipExists) {
+            const parsedEquipWeight = parseWeightLb(item.weight);
+            const resolvedEquipWeight = (parsedEquipWeight !== null && parsedEquipWeight > 0)
+                ? parsedEquipWeight
+                : (lookupItemWeightLb(item.name, item.category || item.filterType) ?? parsedEquipWeight ?? 0);
+            const equipContainerDefaults = lookupContainerDefaults(item.name);
+            const resolvedEquipIsContainer = item.isContainer !== undefined
+                ? Boolean(item.isContainer)
+                : Boolean(equipContainerDefaults?.isContainer);
+            const resolvedEquipCapacity = item.capacityWeight != null
+                ? Number(item.capacityWeight)
+                : (resolvedEquipIsContainer ? (equipContainerDefaults?.capacityWeight ?? undefined) : undefined);
+
             activeCharacter.equipment.push({
                 id: item.dndBeyondId || item.id,
                 itemId: databaseId(item.id),
@@ -1191,10 +1220,13 @@ export function initModalsController(ctx: CharacterSheetContext) {
                 filterType: item.filterType || (isWeapon ? "weapon" : "gear"),
                 rarity: item.rarity || "Common",
                 isMagic: !!item.isMagic,
+                weight: resolvedEquipWeight,
+                isContainer: resolvedEquipIsContainer || undefined,
+                capacityWeight: resolvedEquipCapacity,
                 description: item.description,
                 imageUrl: item.imageUrl,
                 charges: isWeapon ? undefined : newItemCharges(item),
-                notes: item.notes || (item.weight ? `${item.weight} lb.` : undefined)
+                notes: item.notes || (resolvedEquipWeight > 0 ? `${resolvedEquipWeight} lb.` : undefined)
             });
         }
 
@@ -1211,15 +1243,52 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (!activeCharacter) return;
 
         const nameLower = itemName.toLowerCase();
+        const equipmentList = activeCharacter.equipment || [];
+        const isRemovedEquip = (e: { name?: string; filterType?: string }) => {
+            const matchesName = String(e.name || "").toLowerCase() === nameLower;
+            if (!matchesName) return false;
+            if (preferredType === "weapon") return String(e.filterType || "").toLowerCase() === "weapon";
+            return true;
+        };
+
+        const removedContainerKeys = new Set<string>();
+        equipmentList.forEach((eq, idx) => {
+            if (!isRemovedEquip(eq) || !eq.isContainer) return;
+            removedContainerKeys.add(getInventoryKey(eq, equipmentList, idx));
+            if (eq.id !== undefined && eq.id !== null && String(eq.id).trim() !== "") {
+                removedContainerKeys.add(`id:${String(eq.id).trim()}`);
+                removedContainerKeys.add(String(eq.id).trim());
+            }
+            const lower = String(eq.name || "").trim().toLowerCase();
+            if (lower) removedContainerKeys.add(`name:${lower}`);
+        });
+
+        if (removedContainerKeys.size > 0) {
+            equipmentList.forEach(eq => {
+                if (!eq.containerId) return;
+                const resolved = resolveContainerKey(activeCharacter, eq.containerId);
+                if (removedContainerKeys.has(eq.containerId) || (resolved && removedContainerKeys.has(resolved))) {
+                    delete eq.containerId;
+                }
+            });
+            (activeCharacter.weapons || []).forEach(w => {
+                if (!w.containerId) return;
+                const resolved = resolveContainerKey(activeCharacter, w.containerId);
+                if (removedContainerKeys.has(w.containerId) || (resolved && removedContainerKeys.has(resolved))) {
+                    delete w.containerId;
+                }
+            });
+        }
+
         if (preferredType === "weapon") {
             activeCharacter.weapons = (activeCharacter.weapons || []).filter(w => w.name.toLowerCase() !== nameLower);
-            activeCharacter.equipment = (activeCharacter.equipment || []).filter(e => e.name.toLowerCase() !== nameLower || e.filterType !== "weapon");
+            activeCharacter.equipment = equipmentList.filter(e => e.name.toLowerCase() !== nameLower || String(e.filterType || "").toLowerCase() !== "weapon");
         } else if (preferredType === "equipment") {
-            activeCharacter.equipment = (activeCharacter.equipment || []).filter(e => e.name.toLowerCase() !== nameLower);
+            activeCharacter.equipment = equipmentList.filter(e => e.name.toLowerCase() !== nameLower);
             activeCharacter.weapons = (activeCharacter.weapons || []).filter(w => w.name.toLowerCase() !== nameLower);
         } else {
             activeCharacter.weapons = (activeCharacter.weapons || []).filter(w => w.name.toLowerCase() !== nameLower);
-            activeCharacter.equipment = (activeCharacter.equipment || []).filter(e => e.name.toLowerCase() !== nameLower);
+            activeCharacter.equipment = equipmentList.filter(e => e.name.toLowerCase() !== nameLower);
         }
 
         renderManageCurrentItemsPanel();
@@ -1371,25 +1440,33 @@ export function initModalsController(ctx: CharacterSheetContext) {
                     rarity: w.rarity,
                     isMagic: w.isMagic,
                     mastery: w.mastery?.name,
+                    weight: w.weight ?? lookupItemWeightLb(w.name, w.category) ?? undefined,
+                    isContainer: w.isContainer,
+                    capacityWeight: w.capacityWeight,
                     source: "Character Inventory",
                     description: w.description
                 });
             });
             (activeCharacter?.equipment || []).forEach(e => {
                 if (!fallbackMap.has(e.name.toLowerCase())) {
+                    const containerDef = lookupContainerDefaults(e.name);
                     fallbackMap.set(e.name.toLowerCase(), {
                         name: e.name,
                         category: e.type,
                         filterType: e.filterType || "gear",
                         rarity: e.rarity,
                         isMagic: e.isMagic,
+                        weight: e.weight ?? lookupItemWeightLb(e.name, e.filterType || e.type) ?? undefined,
+                        isContainer: e.isContainer ?? containerDef?.isContainer ?? false,
+                        capacityWeight: e.capacityWeight ?? containerDef?.capacityWeight ?? undefined,
                         source: "Character Inventory",
                         description: e.description
                     });
                 }
             });
             dbList = Array.from(fallbackMap.values()).filter(item => {
-                if (typeVal !== "all" && item.filterType !== typeVal) return false;
+                if (typeVal === "container" && !item.isContainer) return false;
+                if (typeVal !== "all" && typeVal !== "container" && item.filterType !== typeVal) return false;
                 if (!q) return true;
                 const haystack = `${item.name} ${item.category || ''} ${item.source || ''} ${item.description || ''}`.toLowerCase();
                 return haystack.includes(q.toLowerCase());
