@@ -53,20 +53,64 @@ export interface SheetSpellcastingBreakdown {
     legacyMagicInitiate: boolean;
 }
 
+function matchesProgressionFeatureOrOption(levels: Array<{ features?: Array<{ name?: string }>; choices?: Array<{ name?: string; options?: Array<{ name?: string }> }> }> | undefined, clean: string, ignoreBaseCasting: boolean): boolean {
+    for (const pl of levels || []) {
+        for (const f of pl.features || []) {
+            if (f.name && clean === f.name.toLowerCase() && (!ignoreBaseCasting || (clean !== "spellcasting" && clean !== "pact magic"))) {
+                return true;
+            }
+        }
+        for (const ch of pl.choices || []) {
+            if (ch.name && clean === ch.name.toLowerCase()) return true;
+            for (const opt of ch.options || []) {
+                if (opt.name && clean === opt.name.toLowerCase()) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function isClassFeatureOrSubclassSpellSource(src: string): boolean {
+    const clean = src.replace(/\s*\[legacy\]\s*$/i, "").trim().toLowerCase();
+    if (!clean || clean === "class" || clean === "database") return false;
+    const classes = getClassRules();
+    if (classes.some(c => clean === c.name.toLowerCase() || clean === c.id.toLowerCase())) {
+        return false;
+    }
+    for (const cls of classes) {
+        for (const sub of cls.subclasses || []) {
+            if (!sub.spellcastingOverride && sub.name && clean === sub.name.toLowerCase()) return true;
+            if ((sub.features || []).some(f => f.name && clean === f.name.toLowerCase())) return true;
+            if (matchesProgressionFeatureOrOption(sub.progression, clean, false)) return true;
+        }
+        if ((cls.features || []).some(f => f.name && clean === f.name.toLowerCase() && clean !== "spellcasting" && clean !== "pact magic")) {
+            return true;
+        }
+        if (matchesProgressionFeatureOrOption(cls.progression, clean, true)) return true;
+    }
+    return false;
+}
+
 /**
  * Spells that never count against a class's cantrip or prepared spell limits: always-prepared spells (subclass,
  * feature, and feat spells), species spells, and class spell picks that don't use the class's numbers (class rules).
  */
 export function isCharacterUncountedSpell(spell: SpellDefinition): boolean {
     if (spell.alwaysPrepared === true || isCharacterBonusSpell(spell)) return true;
+    const idStr = String(spell.id || "");
+    if (idStr.startsWith("prog-") || idStr.startsWith("granted-")) return true;
     const src = (spell.source || "").toLowerCase().trim();
     return (
         src.includes(" / ") ||
         src.includes("feat") ||
         // a feat's name (feat data, e.g. Magic Initiate)
-        getFeatRules().some(f => src.startsWith(f.name.toLowerCase().split(" (")[0])) ||
-        src === "item" ||
-        src === "background"
+        getFeatRules().some(f => {
+            const base = f.name.toLowerCase().split(" (")[0].trim();
+            return Boolean(base) && (src.startsWith(base) || src.includes(base));
+        }) ||
+        isClassFeatureOrSubclassSpellSource(src) ||
+        src.startsWith("item") ||
+        src.startsWith("background")
     );
 }
 
@@ -519,7 +563,9 @@ export function renderSpellsByLevel(
                 characterData?.allowedSpellsByLevel?.[level] !== undefined ||
                 (characterData?.trackingState as any)?.allowedSpellsByLevel?.[level] !== undefined;
 
-            const baseSpellsCount = levelSpells.filter(s => s.castAtLevel === undefined || s.castAtLevel === s.level).length;
+            const baseSpells = levelSpells.filter(s => s.castAtLevel === undefined || s.castAtLevel === s.level);
+            const baseSpellsCount = baseSpells.length;
+            const countedBaseSpellsCount = baseSpells.filter(s => !isCharacterUncountedSpell(s)).length;
             const upcastCount = levelSpells.length - baseSpellsCount;
             const upcastNote = upcastCount > 0 ? ` (+${upcastCount} upcast)` : '';
 
@@ -531,8 +577,8 @@ export function renderSpellsByLevel(
             } else if (isCantrip) {
                 countBadgeHtml = `<span class="spells-level-count" title="${baseSpellsCount} cantrips">${baseSpellsCount}</span>`;
             } else if (hasUserConfiguredLimit && explicitAllowed !== undefined && explicitAllowed >= 0) {
-                const isOver = baseSpellsCount > explicitAllowed;
-                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="${spellLevelLabel(level)}: ${baseSpellsCount} current${upcastNote} / ${explicitAllowed} allowed">${baseSpellsCount}${upcastNote}/${explicitAllowed}</span>`;
+                const isOver = countedBaseSpellsCount > explicitAllowed;
+                countBadgeHtml = `<span class="spells-level-count ${isOver ? 'over-limit' : ''}" title="${spellLevelLabel(level)}: ${countedBaseSpellsCount} current${upcastNote} / ${explicitAllowed} allowed">${countedBaseSpellsCount}${upcastNote}/${explicitAllowed}</span>`;
             } else {
                 countBadgeHtml = `<span class="spells-level-count" title="${baseSpellsCount} prepared spells for ${spellLevelLabel(level)}${upcastNote}">${baseSpellsCount}${upcastNote}</span>`;
             }

@@ -826,11 +826,11 @@ describe('Frontend View Templates', () => {
             }
         });
 
-        charData.spellSlots = [
-            { level: 1, total: 4, used: 1 },
-            { level: 2, total: 3, used: 0 },
-            { level: 3, total: 2, used: 0 }
-        ];
+        charData.spellSlots = {
+            level1: { level: 1, total: 4, label: '1st' },
+            level2: { level: 2, total: 3, label: '2nd' },
+            level3: { level: 3, total: 2, label: '3rd' }
+        };
         charData.allowedSpellsByLevel = { 0: 4, 1: 4, 2: 3, 3: 2 };
 
         const limits = getCharacterSpellLevelLimits(charData);
@@ -893,6 +893,229 @@ describe('Frontend View Templates', () => {
         const sheetHtml = renderSheetContent(darvellData);
         expect(sheetHtml).toContain('Prepared: <strong>17/17</strong>');
         expect(sheetHtml).toContain('Bard 10/10 • Warlock 7/7');
+    });
+
+    it('identifies feat-, feature-, subclass-, and species-granted spells as uncounted without affecting normal class spells', async () => {
+        const { isCharacterUncountedSpell } = await import('../../../src/views/characterSheet/components/spells');
+        const makeSpell = (overrides: Record<string, unknown>) => ({
+            id: 1,
+            name: 'Test Spell',
+            level: 1,
+            school: 'Evocation',
+            source: 'Wizard',
+            castingTime: '1 Action',
+            range: '60 ft.',
+            duration: 'Instantaneous',
+            components: 'V, S',
+            concentration: false,
+            ritual: false,
+            description: '<p>Test</p>',
+            ...overrides
+        } as any);
+
+        // Normal class-prepared spells must count
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Wizard' }))).toBe(false);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Warlock' }))).toBe(false);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Bard', viaFeature: 'Magical Secrets' }))).toBe(false);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Fighter' }))).toBe(false);
+
+        // Feat-granted spells
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Feat' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Feat [Legacy]' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Magic Initiate (Cleric)' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Fey Touched' }))).toBe(true);
+
+        // Feature, invocation, progression, and subclass-granted spells
+        expect(isCharacterUncountedSpell(makeSpell({ alwaysPrepared: true, source: 'Bard' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Warlock / Pact of the Tome' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Armor of Shadows' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Life Domain' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ id: 'prog-armor-of-shadows-mage-armor', source: 'Armor of Shadows' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ id: 'granted-speak-with-animals', source: 'Class Feature' }))).toBe(true);
+
+        // Species, item, and background spells
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Tiefling Legacy' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Species' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Item [Legacy]' }))).toBe(true);
+        expect(isCharacterUncountedSpell(makeSpell({ source: 'Background' }))).toBe(true);
+    });
+
+    it('excludes feat/feature-granted spells from Manage Spells counts and greys out & disables their add/remove buttons', async () => {
+        const requestMod = await import('../../../src/services/request');
+        const { renderSheetContent } = await import('../../../src/views/characterSheet/components/characterSheetDynamicContent');
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { initModalsController } = await import('../../../src/views/characterSheet/controllers/modals.ctrl');
+        const { darvellData } = await import('../../../src/views/characterSheet/characterData');
+
+        const cloned = structuredClone(darvellData);
+        // Add a feat-granted 1st-level spell to confirm feat-granted spells also stay uncounted & locked
+        cloned.spells.push({
+            id: 990001,
+            name: 'Detect Magic',
+            level: 1,
+            school: 'Divination',
+            source: 'Fey Touched',
+            alwaysPrepared: true,
+            castingTime: '1 Action',
+            range: 'Self',
+            duration: 'Concentration, up to 10 minutes',
+            components: 'V, S',
+            concentration: true,
+            ritual: true,
+            description: '<p>Sense magic.</p>'
+        });
+
+        const sheet = document.createElement('el-character-sheet');
+        sheet.innerHTML = renderSheetContent(cloned) + renderModals();
+        document.body.appendChild(sheet);
+
+        const searchMock = vi.spyOn(requestMod, 'getData').mockResolvedValue({
+            spells: [
+                {
+                    id: 101,
+                    name: 'Fire Bolt',
+                    level: 0,
+                    school: 'Evocation',
+                    source: 'PHB 2024',
+                    castingTime: '1 Action',
+                    range: '120 ft.',
+                    duration: 'Instantaneous',
+                    components: 'V, S',
+                    concentration: false,
+                    ritual: false,
+                    description: '<p>Hurl a mote of fire.</p>'
+                },
+                {
+                    id: 102,
+                    name: 'Detect Magic',
+                    level: 1,
+                    school: 'Divination',
+                    source: 'PHB 2024',
+                    castingTime: '1 Action',
+                    range: 'Self',
+                    duration: 'Concentration, up to 10 minutes',
+                    components: 'V, S',
+                    concentration: true,
+                    ritual: true,
+                    description: '<p>Sense magic.</p>'
+                },
+                {
+                    id: 103,
+                    name: 'Mage Hand',
+                    level: 0,
+                    school: 'Conjuration',
+                    source: 'PHB 2024',
+                    castingTime: '1 Action',
+                    range: '30 ft.',
+                    duration: '1 Minute',
+                    components: 'V, S',
+                    concentration: false,
+                    ritual: false,
+                    description: '<p>Spectral hand.</p>'
+                },
+                {
+                    id: 104,
+                    name: 'Shield',
+                    level: 1,
+                    school: 'Abjuration',
+                    source: 'PHB 2024',
+                    castingTime: '1 Reaction',
+                    range: 'Self',
+                    duration: '1 Round',
+                    components: 'V, S',
+                    concentration: false,
+                    ritual: false,
+                    description: '<p>Invisible barrier.</p>'
+                }
+            ],
+            fetchedOnline: false
+        } as any);
+        const syncMock = vi.spyOn(requestMod, 'postData').mockResolvedValue({ ok: true } as any);
+
+        try {
+            const spellMap = new Map(cloned.spells.map(s => [s.name.toLowerCase(), s]));
+            const ctx: any = {
+                sheet,
+                dynamicContainer: sheet,
+                getCharacter: () => cloned,
+                setCharacter: () => { },
+                spellMap,
+                renderActiveCharacterView: () => { },
+                syncHeaderSlotMarkers: () => { },
+                persistTrackerSnapshot: () => { },
+                scheduleDebouncedAutoSave: () => { },
+                openSpellModal: async () => { }
+            };
+
+            initModalsController(ctx);
+            await ctx.openManageSpellsModal();
+
+            // Header badge and level ratios exclude the 5 granted cantrips, 3 granted 1st-level spells, and 2 granted 2nd-level spells
+            const totalBadge = sheet.querySelector('#manage-spells-total-badge')?.textContent;
+            expect(totalBadge).toBe('Cantrips: 6/6 • Prepared: 17/17 [Bard 10/10 • Warlock 7/7] (23 Spells on Sheet)');
+
+            const cantripRatio = sheet.querySelector('[data-level-ratio="0"]') as HTMLElement;
+            expect(cantripRatio.textContent?.trim()).toBe('6/6');
+            expect(cantripRatio.classList.contains('over-limit')).toBe(false);
+            expect(cantripRatio.classList.contains('at-limit')).toBe(true);
+
+            expect(sheet.querySelector('[data-level-ratio="1"]')?.textContent?.trim()).toBe('6 Spells');
+            expect(sheet.querySelector('[data-level-ratio="2"]')?.textContent?.trim()).toBe('6 Spells');
+            expect(sheet.querySelector('[data-level-ratio="3"]')?.textContent?.trim()).toBe('5 Spells');
+
+            // Granted spells still show up in the current spells list, greyed out & disabled for removal
+            const fireBoltRow = sheet.querySelector('.manage-abbrev-spell-row[data-current-spell-name="Fire%20Bolt"]') as HTMLElement;
+            expect(fireBoltRow).not.toBeNull();
+            expect(fireBoltRow.classList.contains('is-granted')).toBe(true);
+            const fireBoltRemoveBtn = fireBoltRow.querySelector('.manage-remove-spell-btn') as HTMLButtonElement;
+            expect(fireBoltRemoveBtn.disabled).toBe(true);
+
+            const detectMagicRow = sheet.querySelector('.manage-abbrev-spell-row[data-current-spell-name="Detect%20Magic"]') as HTMLElement;
+            expect(detectMagicRow).not.toBeNull();
+            expect(detectMagicRow.classList.contains('is-granted')).toBe(true);
+            expect(detectMagicRow.querySelector('.manage-mini-tag.granted')?.textContent).toBe('Fey Touched');
+            const detectMagicRemoveBtn = detectMagicRow.querySelector('.manage-remove-spell-btn') as HTMLButtonElement;
+            expect(detectMagicRemoveBtn.disabled).toBe(true);
+
+            // Clicking disabled remove button does not remove the granted spell
+            fireBoltRemoveBtn.click();
+            expect(cloned.spells.some(s => s.name === 'Fire Bolt')).toBe(true);
+
+            // Database search results show granted spells greyed out with a disabled button, while regular spells can be toggled
+            const dbCards = Array.from(sheet.querySelectorAll<HTMLElement>('#manage-spells-db-results .manage-db-spell-card'));
+            const dbFireBoltCard = dbCards.find(c => c.textContent?.includes('Fire Bolt'))!;
+            expect(dbFireBoltCard.classList.contains('is-granted')).toBe(true);
+            const dbFireBoltBtn = dbFireBoltCard.querySelector('.manage-db-action-btn') as HTMLButtonElement;
+            expect(dbFireBoltBtn.disabled).toBe(true);
+            expect(dbFireBoltBtn.textContent).toContain('Granted');
+
+            const dbDetectMagicCard = dbCards.find(c => c.textContent?.includes('Detect Magic'))!;
+            expect(dbDetectMagicCard.classList.contains('is-granted')).toBe(true);
+            expect((dbDetectMagicCard.querySelector('.manage-db-action-btn') as HTMLButtonElement).disabled).toBe(true);
+
+            const dbMageHandCard = dbCards.find(c => c.textContent?.includes('Mage Hand'))!;
+            expect(dbMageHandCard.classList.contains('is-granted')).toBe(false);
+            const dbMageHandBtn = dbMageHandCard.querySelector('.manage-db-action-btn') as HTMLButtonElement;
+            expect(dbMageHandBtn.disabled).toBe(false);
+
+            const dbShieldCard = dbCards.find(c => c.textContent?.includes('Shield'))!;
+            expect(dbShieldCard.classList.contains('is-granted')).toBe(false);
+            const dbShieldBtn = dbShieldCard.querySelector('.manage-db-action-btn') as HTMLButtonElement;
+            expect(dbShieldBtn.disabled).toBe(false);
+            expect(dbShieldBtn.textContent).toContain('Add');
+
+            // Normal class spell can still be removed and updates counted totals
+            const mageHandRow = sheet.querySelector('.manage-abbrev-spell-row[data-current-spell-name="Mage%20Hand"]') as HTMLElement;
+            const mageHandRemoveBtn = mageHandRow.querySelector('.manage-remove-spell-btn') as HTMLButtonElement;
+            expect(mageHandRemoveBtn.disabled).toBe(false);
+            mageHandRemoveBtn.click();
+            expect(cloned.spells.some(s => s.name === 'Mage Hand')).toBe(false);
+            expect(sheet.querySelector('[data-level-ratio="0"]')?.textContent?.trim()).toBe('5/6');
+        } finally {
+            searchMock.mockRestore();
+            syncMock.mockRestore();
+            sheet.remove();
+        }
     });
 
     it('counts prepared spells per class for multiclass characters (2024 rules)', async () => {
@@ -3050,12 +3273,12 @@ describe('Frontend View Templates', () => {
         expect(secondWindAction?.type).toBe('Bonus Action');
 
         // 2. Class resources include species resources (Breath Weapon PB uses, Draconic Flight at lvl 5)
-        const resourceNames = char.classResources.map(r => r.name);
+        const resourceNames = (char.classResources ?? []).map(r => r.name);
         expect(resourceNames).toContain('Second Wind');
         expect(resourceNames).toContain('Breath Weapon');
         expect(resourceNames).toContain('Draconic Flight');
 
-        const bwRes = char.classResources.find(r => r.name === 'Breath Weapon');
+        const bwRes = (char.classResources ?? []).find(r => r.name === 'Breath Weapon');
         expect(bwRes?.total).toBe(3);
         expect(bwRes?.resetOn).toBe('long');
 

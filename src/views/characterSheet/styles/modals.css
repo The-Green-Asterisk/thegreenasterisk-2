@@ -2058,6 +2058,18 @@
     background: var(--success-tint-faint);
 }
 
+.manage-db-spell-card.is-granted,
+.manage-db-spell-card.is-granted:hover {
+    opacity: 0.65;
+    border-color: var(--border-soft);
+    background: var(--surface-alt);
+    box-shadow: none;
+}
+
+.manage-db-spell-card.is-granted .manage-db-spell-name {
+    color: var(--text-muted);
+}
+
 .manage-db-spell-info {
     display: flex;
     flex-direction: column;
@@ -2128,6 +2140,14 @@
     border: 1px solid var(--blue-200);
 }
 
+.manage-mini-tag.granted {
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    border: 1px solid var(--border-soft);
+    text-transform: none;
+    font-weight: 700;
+}
+
 .manage-db-action-btn {
     border-radius: 8px;
     padding: 0.36rem 0.7rem;
@@ -2163,6 +2183,19 @@
     background: var(--danger-tint);
     border-color: var(--danger-tint-border);
     color: var(--status-danger);
+}
+
+.manage-db-action-btn:disabled,
+.manage-db-action-btn.is-granted,
+.manage-db-action-btn.is-granted:hover,
+.manage-db-action-btn:disabled:active {
+    opacity: 0.65;
+    cursor: not-allowed;
+    background: var(--surface-alt);
+    border-color: var(--border-soft);
+    color: var(--text-muted);
+    filter: none;
+    transform: none;
 }
 
 .manage-level-group {
@@ -2280,6 +2313,18 @@
     box-shadow: 0 1px 2px color-mix(in srgb, var(--black) 4%, transparent);
 }
 
+.manage-abbrev-spell-row.is-granted,
+.manage-abbrev-spell-row.is-granted:hover {
+    opacity: 0.65;
+    background: var(--surface-alt);
+    border-color: var(--border-soft);
+    box-shadow: none;
+}
+
+.manage-abbrev-spell-row.is-granted .manage-abbrev-spell-name {
+    color: var(--text-muted);
+}
+
 .manage-abbrev-spell-main {
     display: flex;
     flex-wrap: wrap;
@@ -2328,6 +2373,17 @@
 .manage-remove-spell-btn:hover {
     background: var(--danger-tint);
     color: var(--status-danger);
+}
+
+.manage-remove-spell-btn:disabled,
+.manage-remove-spell-btn:disabled:hover,
+.manage-remove-spell-btn:disabled:active {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent;
+    color: var(--text-muted);
+    filter: none;
+    transform: none;
 }
 
 .manage-empty-level-note {
@@ -2461,6 +2517,35 @@
 :root[data-theme="dark"] .manage-abbrev-spell-main:focus-visible,
 .theme-dark .manage-abbrev-spell-main:focus-visible {
     outline-color: var(--blue-300);
+}
+
+:root[data-theme="dark"] .manage-db-spell-card.is-granted,
+:root[data-theme="dark"] .manage-db-spell-card.is-granted:hover,
+.theme-dark .manage-db-spell-card.is-granted,
+.theme-dark .manage-db-spell-card.is-granted:hover,
+:root[data-theme="dark"] .manage-abbrev-spell-row.is-granted,
+:root[data-theme="dark"] .manage-abbrev-spell-row.is-granted:hover,
+.theme-dark .manage-abbrev-spell-row.is-granted,
+.theme-dark .manage-abbrev-spell-row.is-granted:hover {
+    background: color-mix(in srgb, var(--surface-raised) 85%, transparent);
+    border-color: color-mix(in srgb, var(--white) 8%, transparent);
+}
+
+:root[data-theme="dark"] .manage-mini-tag.granted,
+.theme-dark .manage-mini-tag.granted {
+    background: var(--surface-raised);
+    border-color: color-mix(in srgb, var(--white) 12%, transparent);
+}
+
+:root[data-theme="dark"] .manage-db-action-btn:disabled,
+:root[data-theme="dark"] .manage-db-action-btn.is-granted,
+:root[data-theme="dark"] .manage-db-action-btn.is-granted:hover,
+.theme-dark .manage-db-action-btn:disabled,
+.theme-dark .manage-db-action-btn.is-granted,
+.theme-dark .manage-db-action-btn.is-granted:hover {
+    background: var(--surface-raised);
+    border-color: color-mix(in srgb, var(--white) 10%, transparent);
+    color: var(--text-muted);
 }
 
 /* ==========================================================================

@@ -10,7 +10,7 @@ import {
     linkifyConditionAndSpellTags,
     resolveDndBeyondActionUrl
 } from "../components/markupLinks";
-import { describePreparedByClass, getCharacterSpellLevelLimits, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
+import { describePreparedByClass, getCharacterSpellLevelLimits, isCharacterUncountedSpell, renderSpellsByLevel, spellLevelLabel } from "../components/spells";
 import { restoreUsePips } from "../components/usesTracker";
 import { renderWeapons } from "../components/weapons";
 import { isMundaneEquipment } from "../services/magicItemBonuses";
@@ -572,55 +572,67 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         const limits = getCharacterSpellLevelLimits(activeCharacter);
         const { availableLevels, allowedByLevel, currentByLevel } = limits;
+        const countedTotal = activeCharacter.spells.filter(s => !isCharacterUncountedSpell(s)).length;
 
         if (manageSpellsTotalBadge) {
             if (limits.maxPrepared > 0) {
                 const byClass = limits.byClass.length > 1 ? ` [${describePreparedByClass(limits)}]` : "";
-                manageSpellsTotalBadge.textContent = `Cantrips: ${limits.currentCantrips}/${limits.maxCantrips} • Prepared: ${limits.currentPrepared}/${limits.maxPrepared}${byClass} (${activeCharacter.spells.length} Spells on Sheet)`;
+                manageSpellsTotalBadge.textContent = `Cantrips: ${limits.currentCantrips}/${limits.maxCantrips} • Prepared: ${limits.currentPrepared}/${limits.maxPrepared}${byClass} (${countedTotal} Spells on Sheet)`;
             } else {
-                manageSpellsTotalBadge.textContent = `${activeCharacter.spells.length} Spells on Sheet`;
+                manageSpellsTotalBadge.textContent = `${countedTotal} Spells on Sheet`;
             }
         }
 
         manageSpellsCurrentLevels.innerHTML = availableLevels
             .map(lvl => {
                 const levelSpells = currentByLevel[lvl] || [];
+                const countedCount = levelSpells.filter(s => !isCharacterUncountedSpell(s)).length;
                 const isCantrip = lvl === 0;
                 const hasExplicitLimit =
                     activeCharacter.allowedSpellsByLevel?.[lvl] !== undefined ||
                     (activeCharacter.trackingState as any)?.allowedSpellsByLevel?.[lvl] !== undefined;
-                const allowed = allowedByLevel[lvl] ?? levelSpells.length;
-                const isOverLimit = levelSpells.length > allowed;
-                const isAtLimit = levelSpells.length === allowed && allowed > 0;
+                const allowed = allowedByLevel[lvl] ?? countedCount;
+                const isOverLimit = countedCount > allowed;
+                const isAtLimit = countedCount === allowed && allowed > 0;
 
                 const spellsListHtml = levelSpells.length > 0
                     ? `<ul class="manage-abbrev-spell-list">
-                        ${levelSpells.map(s => `
-                            <li class="manage-abbrev-spell-row" data-current-spell-name="${encodeURIComponent(s.name)}">
+                        ${levelSpells.map(s => {
+                            const isGranted = isCharacterUncountedSpell(s);
+                            const grantedSource = s.source || "Feat or Feature";
+                            const removeBtnHtml = isGranted
+                                ? `<button type="button" class="manage-remove-spell-btn" disabled title="Granted by ${escapeHtml(grantedSource)} — cannot be removed" aria-label="Cannot remove ${escapeHtml(s.name)} (granted by ${escapeHtml(grantedSource)})">
+                                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                </button>`
+                                : `<button type="button" class="manage-remove-spell-btn" data-remove-spell-name="${encodeURIComponent(s.name)}" title="Remove ${escapeHtml(s.name)} from character spell list" aria-label="Remove ${escapeHtml(s.name)}">
+                                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                </button>`;
+                            return `
+                            <li class="manage-abbrev-spell-row${isGranted ? ' is-granted' : ''}" data-current-spell-name="${encodeURIComponent(s.name)}">
                                 <button type="button" class="manage-abbrev-spell-main" aria-haspopup="dialog" data-preview-spell-name="${encodeURIComponent(s.name)}" title="Click to view spell description">
                                     <span class="manage-abbrev-spell-name">${escapeHtml(s.name)}</span>
                                     <span class="manage-abbrev-spell-meta">${escapeHtml(s.school)} • ${escapeHtml(s.castingTime)}</span>
                                     ${s.concentration ? '<span class="manage-mini-tag conc">C</span>' : ''}
                                     ${s.ritual ? '<span class="manage-mini-tag ritual">R</span>' : ''}
+                                    ${isGranted ? `<span class="manage-mini-tag granted" title="Granted by ${escapeHtml(grantedSource)}">${escapeHtml(grantedSource)}</span>` : ''}
                                 </button>
-                                <button type="button" class="manage-remove-spell-btn" data-remove-spell-name="${encodeURIComponent(s.name)}" title="Remove ${escapeHtml(s.name)} from character spell list" aria-label="Remove ${escapeHtml(s.name)}">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
+                                ${removeBtnHtml}
                             </li>
-                        `).join("")}
+                        `;
+                        }).join("")}
                     </ul>`
                     : `<div class="manage-empty-level-note">No ${spellLevelLabel(lvl).toLowerCase()} added yet.</div>`;
 
                 const controlsHtml = isCantrip || hasExplicitLimit
                     ? `<div class="manage-level-allowance-controls">
                         <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="-1" title="Decrease allowed spells for ${spellLevelLabel(lvl)}" aria-label="Decrease allowed spells for ${spellLevelLabel(lvl)}">&minus;</button>
-                        <span class="manage-level-ratio ${isOverLimit ? 'over-limit' : isAtLimit ? 'at-limit' : ''}" data-level-ratio="${lvl}" title="${levelSpells.length} spells currently on sheet / ${allowed} spells allowed for ${spellLevelLabel(lvl)}">
-                            ${levelSpells.length}/${allowed}
+                        <span class="manage-level-ratio ${isOverLimit ? 'over-limit' : isAtLimit ? 'at-limit' : ''}" data-level-ratio="${lvl}" title="${countedCount} spells currently counted / ${allowed} spells allowed for ${spellLevelLabel(lvl)}">
+                            ${countedCount}/${allowed}
                         </span>
                         <button type="button" class="manage-limit-step-btn" data-adjust-level="${lvl}" data-adjust-delta="1" title="Increase allowed spells for ${spellLevelLabel(lvl)}" aria-label="Increase allowed spells for ${spellLevelLabel(lvl)}">+</button>
                     </div>`
-                    : `<span class="manage-level-count-badge" data-level-ratio="${lvl}" title="${levelSpells.length} spells on sheet for ${spellLevelLabel(lvl)}">
-                        ${levelSpells.length} Spells
+                    : `<span class="manage-level-count-badge" data-level-ratio="${lvl}" title="${countedCount} spells counted for ${spellLevelLabel(lvl)}">
+                        ${countedCount} Spells
                     </span>`;
 
                 return `
@@ -697,28 +709,28 @@ export function initModalsController(ctx: CharacterSheetContext) {
         if (!activeCharacter) return;
 
         const exists = activeCharacter.spells.some(s => s.name.toLowerCase() === spell.name.toLowerCase());
-        if (!exists) {
-            activeCharacter.spells.push({
-                id: spell.id,
-                spellId: spell.spellId,
-                name: spell.name,
-                level: Number(spell.level) || 0,
-                school: spell.school || "Universal",
-                source: spell.source || "Database",
-                castingTime: spell.castingTime || "1 Action",
-                range: spell.range || "Self",
-                duration: spell.duration || "Instantaneous",
-                components: spell.components || "V, S",
-                concentration: !!spell.concentration,
-                ritual: !!spell.ritual,
-                description: spell.description || "<p>No description provided.</p>",
-                imageUrl: spell.imageUrl
-            });
-            activeCharacter.spells.sort((a, b) => {
-                if (a.level !== b.level) return a.level - b.level;
-                return a.name.localeCompare(b.name);
-            });
-        }
+        if (exists) return;
+
+        activeCharacter.spells.push({
+            id: spell.id,
+            spellId: spell.spellId,
+            name: spell.name,
+            level: Number(spell.level) || 0,
+            school: spell.school || "Universal",
+            source: spell.source || "Database",
+            castingTime: spell.castingTime || "1 Action",
+            range: spell.range || "Self",
+            duration: spell.duration || "Instantaneous",
+            components: spell.components || "V, S",
+            concentration: !!spell.concentration,
+            ritual: !!spell.ritual,
+            description: spell.description || "<p>No description provided.</p>",
+            imageUrl: spell.imageUrl
+        });
+        activeCharacter.spells.sort((a, b) => {
+            if (a.level !== b.level) return a.level - b.level;
+            return a.name.localeCompare(b.name);
+        });
 
         renderManageCurrentSpellsPanel();
         renderManageDbSearchResults();
@@ -731,8 +743,12 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const activeCharacter = ctx.getCharacter();
         if (!activeCharacter) return;
 
+        const targetLower = spellName.toLowerCase();
+        const matchingSpell = activeCharacter.spells.find(s => s.name.toLowerCase() === targetLower);
+        if (!matchingSpell || isCharacterUncountedSpell(matchingSpell)) return;
+
         activeCharacter.spells = activeCharacter.spells.filter(
-            s => s.name.toLowerCase() !== spellName.toLowerCase()
+            s => s.name.toLowerCase() !== targetLower || isCharacterUncountedSpell(s)
         );
 
         renderManageCurrentSpellsPanel();
@@ -748,8 +764,8 @@ export function initModalsController(ctx: CharacterSheetContext) {
         const activeCharacter = ctx.getCharacter();
         if (!manageSpellsDbResults) return;
 
-        const currentNames = new Set(
-            (activeCharacter?.spells || []).map(s => s.name.toLowerCase())
+        const currentSpellsByName = new Map(
+            (activeCharacter?.spells || []).map(s => [s.name.toLowerCase(), s])
         );
 
         if (manageDbResultsCount) {
@@ -770,10 +786,31 @@ export function initModalsController(ctx: CharacterSheetContext) {
 
         manageSpellsDbResults.innerHTML = cachedDbSpells
             .map((spell, idx) => {
-                const isAdded = currentNames.has(spell.name.toLowerCase());
+                const existingSpell = currentSpellsByName.get(spell.name.toLowerCase());
+                const isAdded = Boolean(existingSpell);
+                const isGranted = Boolean(existingSpell && isCharacterUncountedSpell(existingSpell));
+                const grantedSource = existingSpell?.source || "Feat or Feature";
                 const lvlBadge = Number(spell.level) === 0 ? "Cantrip" : `Lvl ${spell.level}`;
+                const actionBtnHtml = isGranted
+                    ? `<button
+                            type="button"
+                            class="manage-db-action-btn added is-granted"
+                            disabled
+                            title="Granted by ${escapeHtml(grantedSource)} — cannot be removed or added"
+                            aria-label="${escapeHtml(spell.name)} is granted by ${escapeHtml(grantedSource)} and cannot be removed"
+                        >
+                            <i class="fa-solid fa-check" aria-hidden="true"></i> Granted
+                        </button>`
+                    : `<button
+                            type="button"
+                            class="manage-db-action-btn ${isAdded ? 'added' : 'add'}"
+                            data-db-action-idx="${idx}"
+                            title="${isAdded ? 'Click to remove from character' : 'Add spell to character sheet'}"
+                        >
+                            ${isAdded ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> Add'}
+                        </button>`;
                 return `
-                    <div class="manage-db-spell-card ${isAdded ? 'is-added' : ''}" data-db-spell-idx="${idx}">
+                    <div class="manage-db-spell-card ${isAdded ? 'is-added' : ''}${isGranted ? ' is-granted' : ''}" data-db-spell-idx="${idx}">
                         <div class="manage-db-spell-info" data-preview-db-idx="${idx}" title="Click to preview full description">
                             <div class="manage-db-spell-title-row">
                                 <span class="manage-db-spell-name">${escapeHtml(spell.name)}</span>
@@ -788,14 +825,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
                                 ${spell.source ? `<span class="manage-db-source">${escapeHtml(spell.source)}</span>` : ''}
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            class="manage-db-action-btn ${isAdded ? 'added' : 'add'}"
-                            data-db-action-idx="${idx}"
-                            title="${isAdded ? 'Click to remove from character' : 'Add spell to character sheet'}"
-                        >
-                            ${isAdded ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> Add'}
-                        </button>
+                        ${actionBtnHtml}
                         ${canEditDbEntry(cachedDbSpellRows[idx]) ? `
                         <button type="button" class="manage-db-edit-btn" data-db-edit-idx="${idx}" aria-haspopup="dialog" aria-label="Edit ${escapeHtml(spell.name)}">
                             <i class="fa-solid fa-pen" aria-hidden="true"></i> Edit
@@ -808,12 +838,14 @@ export function initModalsController(ctx: CharacterSheetContext) {
         manageSpellsDbResults.querySelectorAll<HTMLButtonElement>(".manage-db-action-btn[data-db-action-idx]").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 e.stopPropagation();
+                if (btn.disabled) return;
                 const idx = Number(btn.getAttribute("data-db-action-idx") || "-1");
                 const spell = cachedDbSpells[idx];
                 if (!spell) return;
                 const activeChar = ctx.getCharacter();
-                const alreadyAdded = activeChar?.spells.some(s => s.name.toLowerCase() === spell.name.toLowerCase());
-                if (alreadyAdded) {
+                const existing = activeChar?.spells.find(s => s.name.toLowerCase() === spell.name.toLowerCase());
+                if (existing) {
+                    if (isCharacterUncountedSpell(existing)) return;
                     removeSpellFromCharacter(spell.name);
                 } else {
                     addSpellToCharacter(spell);

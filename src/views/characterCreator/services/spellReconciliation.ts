@@ -11,7 +11,7 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { FeatureSpellChoiceSection, SpellBucket, SpellBucketSelection } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
-import { getActiveSpellPicks } from "./progressionModifiers";
+import { getActiveSpellPicks, getProgressionChoices, getProgressionPools } from "./progressionModifiers";
 
 function getAllSpells(ctx: CharacterCreatorContext): RuleSpellDefinition[] {
     return (ctx.spells && ctx.spells.length > 0) ? ctx.spells : SPELLS_2024;
@@ -294,6 +294,17 @@ export function getProgressionGrantedSpellNames(ctx: CharacterCreatorContext): S
             if (pl.level <= unlocked && Array.isArray(pl.grantedSpells)) {
                 pl.grantedSpells.forEach(addGranted);
             }
+        }
+    }
+    for (const entry of getProgressionChoices(ctx).filter((e) => e.unlocked)) {
+        for (const opt of entry.selectedOptions) {
+            if (Array.isArray(opt.grantedSpells)) opt.grantedSpells.forEach(addGranted);
+        }
+    }
+    for (const pool of getProgressionPools(ctx)) {
+        const picked: string[] = ((ctx.state as any)[pool.pool] as string[] | undefined) || [];
+        for (const opt of pool.options.filter((o) => picked.includes(o.id))) {
+            if (Array.isArray(opt.grantedSpells)) opt.grantedSpells.forEach(addGranted);
         }
     }
     return names;
