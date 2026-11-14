@@ -1,0 +1,130 @@
+/* Inline Condition Link & Single Condition Definition Modal */
+.inline-condition-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: var(--amber-tint);
+    border: 1px solid var(--amber-500);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: var(--amber-tint-text);
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-condition-link:hover {
+    background: var(--amber-tint-strong);
+    border-color: var(--amber-icon);
+    color: var(--amber-tint-text-strong);
+}
+
+.inline-rule-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: var(--info-tint-soft);
+    border: 1px solid var(--blue-200);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: var(--info-tint-text);
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-rule-link:hover {
+    background: var(--info-tint);
+    border-color: var(--blue-500);
+    color: var(--info-tint-text);
+    text-decoration: none;
+}
+
+.inline-action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: var(--success-tint);
+    border: 1px solid var(--emerald-200);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: var(--status-emerald);
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-action-link:hover {
+    background: var(--success-tint-strong);
+    border-color: var(--emerald-500);
+    color: var(--success-tint-text);
+    text-decoration: none;
+}
+
+.inline-item-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    background: var(--magic-tint);
+    border: 1px solid var(--violet-300);
+    border-radius: 5px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.78em;
+    font-weight: 700;
+    color: var(--magic-tint-text);
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.25;
+    vertical-align: baseline;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inline-item-link:hover {
+    background: var(--magic-tint-strong);
+    border-color: var(--magic-border);
+    color: var(--magic-tint-text-strong);
+    text-decoration: none;
+}
+
+:root[data-theme="dark"] .inline-condition-link {
+    border-color: color-mix(in srgb, var(--amber-500) 45%, transparent);
+}
+
+:root[data-theme="dark"] .inline-condition-link:hover {
+    border-color: var(--amber-icon);
+}
+
+:root[data-theme="dark"] .inline-rule-link {
+    border-color: color-mix(in srgb, var(--blue-500) 45%, transparent);
+}
+
+:root[data-theme="dark"] .inline-rule-link:hover {
+    border-color: var(--blue-500);
+}
+
+:root[data-theme="dark"] .inline-action-link {
+    border-color: color-mix(in srgb, var(--emerald-500) 45%, transparent);
+}
+
+:root[data-theme="dark"] .inline-action-link:hover {
+    border-color: var(--emerald-500);
+}
+
+:root[data-theme="dark"] .inline-item-link {
+    border-color: color-mix(in srgb, var(--purple-500) 45%, transparent);
+}
+
+:root[data-theme="dark"] .inline-item-link:hover {
+    border-color: var(--magic-border);
+}

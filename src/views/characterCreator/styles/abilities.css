@@ -1,0 +1,230 @@
+/* Ability Score Generation */
+.ability-modes-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--border-soft);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tab-btn.active {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.ability-scores-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 800px) {
+    .ability-scores-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    .ability-scores-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.ability-score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.85rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: center;
+    box-shadow: var(--sm-shadow);
+}
+
+.ability-abbr {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.ability-score-display {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--ui-text);
+    line-height: 1;
+}
+
+.ability-mod-display {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+}
+
+.ability-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+}
+
+.score-control-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text);
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.score-control-btn:hover:not(:disabled) {
+    background: var(--surface-muted);
+}
+
+.score-control-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.score-num-input {
+    width: 44px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 800;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.25rem;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.ability-breakdown {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* Ability Mode Banners (Standard Array & Point Buy) */
+.ability-mode-info-banner,
+.point-buy-banner {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.15rem;
+    margin-top: 1rem;
+    box-sizing: border-box;
+}
+
+.ability-info-title,
+.point-buy-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.ability-info-desc,
+.point-buy-desc {
+    margin: 0.35rem 0 0 0;
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.point-buy-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.point-buy-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface);
+    border: 1.5px solid var(--ui-color);
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    box-shadow: var(--sm-shadow);
+}
+
+.point-buy-counter.is-spent {
+    border-color: var(--border-mid);
+    background: var(--surface-muted);
+}
+
+.point-buy-counter .counter-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.point-buy-counter .counter-val {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: var(--ui-text);
+}
+
+.point-buy-counter.is-spent .counter-val {
+    color: var(--text);
+}
+
+.standard-array-select {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 800;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.standard-array-select:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 20%, transparent);
+}
+
+.point-buy-score-display {
+    min-width: 32px;
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--text);
+    text-align: center;
+    display: inline-block;
+}
+
+.point-buy-cost-breakdown {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}

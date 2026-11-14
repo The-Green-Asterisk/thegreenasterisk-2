@@ -1,0 +1,1059 @@
+/* ==========================================================================
+   Spells Filter & Grid
+   ========================================================================== */
+.spell-filters-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.search-box .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.55rem 2.2rem 0.55rem 2.2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.search-box input:focus {
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 20%, transparent);
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 0.6rem;
+    font-size: 1.2rem;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.2rem;
+}
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.filter-chip {
+    padding: 0.3rem 0.65rem;
+    border-radius: 16px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border-soft);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filter-chip.active {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+    border-color: var(--ui-color);
+}
+
+.add-custom-spell-btn {
+    align-self: flex-start;
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--radius);
+    background: var(--surface-muted);
+    border: 1px solid var(--ui-color);
+    color: var(--ui-text);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.add-custom-spell-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.spells-click-prompt {
+    font-size: 0.8rem;
+    color: var(--ui-text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--surface-alt);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--ui-color);
+}
+
+.spells-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+}
+
+.spells-level-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.spells-level-section .level-spells-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.spells-level-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 0.6rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+}
+
+.spells-level-header h4 {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--ui-text);
+}
+
+.spells-level-title-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.header-slot-markers {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.header-slot-marker-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+}
+
+/* A 24px target (WCAG 2.5.8) drawing a 14px marker */
+.header-slot-marker-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.header-slot-marker-btn::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 1px solid var(--ui-color);
+    background: transparent;
+    transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+.header-slot-marker-btn.active::before {
+    background: var(--ui-color);
+}
+
+.header-slot-marker-btn:hover::before {
+    transform: scale(1.08);
+}
+
+.header-slot-marker-btn:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: -2px;
+    border-radius: 50%;
+}
+
+.header-slot-marker-btn.pact::before {
+    border-color: var(--discord);
+}
+
+.header-slot-marker-btn.pact.active::before {
+    background: var(--discord);
+}
+
+.spells-level-count {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+}
+
+.spells-level-count.over-limit {
+    color: var(--status-danger);
+    background: var(--danger-tint);
+    border: 1px solid var(--red-500);
+}
+
+:root[data-theme="light"] .spells-level-count.over-limit,
+.theme-light .spells-level-count.over-limit {
+    border-color: var(--red-500);
+}
+
+.spell-pool-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    white-space: nowrap;
+}
+
+.spell-pool-badge.over-limit {
+    color: var(--status-danger);
+    background: var(--danger-tint);
+    border: 1px solid var(--red-500);
+}
+
+:root[data-theme="light"] .spell-pool-badge.over-limit,
+.theme-light .spell-pool-badge.over-limit {
+    border-color: var(--red-500);
+}
+
+.manage-level-count-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+}
+
+/* Individual Spell Card */
+.spell-card {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+    padding: 0.5rem 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    box-shadow: none;
+}
+
+.level-spells-grid .spell-card:last-child {
+    border-bottom: none;
+}
+
+.spell-card:hover,
+.spell-card:focus-visible {
+    background: var(--surface-alt);
+    border-color: var(--ui-color);
+    outline: none;
+}
+
+.spell-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.spell-title-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.spell-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.spell-school-level {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.spell-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+}
+
+.badge {
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.badge-source {
+    background: var(--surface-muted);
+    color: var(--text);
+    border: 1px solid var(--border-soft);
+}
+
+.badge-conc {
+    background: color-mix(in srgb, var(--fuchsia-700) 15%, transparent);
+    color: var(--status-magic);
+    border: 1px solid var(--orchid);
+}
+
+.badge-ritual {
+    background: color-mix(in srgb, var(--teal-600) 15%, transparent);
+    color: var(--status-teal);
+    border: 1px solid var(--teal-600);
+}
+
+.badge-damage {
+    background: color-mix(in srgb, var(--red-600) 15%, transparent);
+    color: var(--red-500);
+    border: 1px solid color-mix(in srgb, var(--red-500) 40%, transparent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge-effect {
+    background: color-mix(in srgb, var(--purple-500) 15%, transparent);
+    color: var(--purple-400);
+    border: 1px solid color-mix(in srgb, var(--purple-400) 40%, transparent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge-upcast {
+    background: color-mix(in srgb, var(--blue-500) 15%, transparent);
+    color: var(--blue-400);
+    border: 1px solid color-mix(in srgb, var(--blue-400) 40%, transparent);
+}
+
+.spell-card-upcast {
+    border-left: 3px solid var(--blue-500);
+}
+
+.meta-damage .damage-dice-value {
+    color: var(--red-400);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.meta-effect .effect-value {
+    color: var(--purple-400);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+[data-theme="light"] .badge-damage,
+.light-mode .badge-damage {
+    background: var(--red-100);
+    color: var(--red-700);
+    border-color: var(--red-400);
+}
+
+[data-theme="light"] .badge-effect,
+.light-mode .badge-effect {
+    background: var(--purple-100);
+    color: var(--purple-700);
+    border-color: var(--purple-400);
+}
+
+[data-theme="light"] .badge-upcast,
+.light-mode .badge-upcast {
+    background: var(--blue-100);
+    color: var(--blue-700);
+    border-color: var(--blue-400);
+}
+
+[data-theme="light"] .meta-damage .damage-dice-value,
+.light-mode .meta-damage .damage-dice-value {
+    color: var(--red-700);
+}
+
+[data-theme="light"] .meta-effect .effect-value,
+.light-mode .meta-effect .effect-value {
+    color: var(--purple-700);
+}
+
+[data-theme="light"] .spell-card-upcast,
+.light-mode .spell-card-upcast {
+    border-left-color: var(--blue-600);
+}
+
+/* ==========================================================================
+   DAMAGE TYPE COLOR CODING (DARK THEME / DEFAULT)
+   ========================================================================== */
+
+/* Acid */
+.badge-damage.damage-type-acid,
+.modal-badge.damage-badge.damage-type-acid,
+.spell-damage-summary-badge.damage-type-acid,
+.damage-total-badge.damage-type-acid {
+    background: color-mix(in srgb, var(--lime-500) 18%, transparent);
+    color: var(--lime-400);
+    border: 1px solid color-mix(in srgb, var(--lime-400) 45%, transparent);
+}
+.meta-damage.damage-type-acid .damage-dice-value,
+.damage-dice-value.damage-type-acid {
+    color: var(--lime-400);
+}
+
+/* Bludgeoning */
+.badge-damage.damage-type-bludgeoning,
+.modal-badge.damage-badge.damage-type-bludgeoning,
+.spell-damage-summary-badge.damage-type-bludgeoning,
+.damage-total-badge.damage-type-bludgeoning {
+    background: color-mix(in srgb, var(--stone-400) 18%, transparent);
+    color: var(--text-on-accent);
+    border: 1px solid color-mix(in srgb, var(--stone-400) 45%, transparent);
+}
+.meta-damage.damage-type-bludgeoning .damage-dice-value,
+.damage-dice-value.damage-type-bludgeoning {
+    color: var(--text-on-accent);
+}
+
+/* Cold */
+.badge-damage.damage-type-cold,
+.modal-badge.damage-badge.damage-type-cold,
+.spell-damage-summary-badge.damage-type-cold,
+.damage-total-badge.damage-type-cold {
+    background: color-mix(in srgb, var(--sky-400) 18%, transparent);
+    color: var(--sky-400);
+    border: 1px solid color-mix(in srgb, var(--sky-400) 45%, transparent);
+}
+.meta-damage.damage-type-cold .damage-dice-value,
+.damage-dice-value.damage-type-cold {
+    color: var(--sky-400);
+}
+
+/* Fire */
+.badge-damage.damage-type-fire,
+.modal-badge.damage-badge.damage-type-fire,
+.spell-damage-summary-badge.damage-type-fire,
+.damage-total-badge.damage-type-fire {
+    background: color-mix(in srgb, var(--red-500) 18%, transparent);
+    color: var(--red-400);
+    border: 1px solid color-mix(in srgb, var(--red-500) 45%, transparent);
+}
+.meta-damage.damage-type-fire .damage-dice-value,
+.damage-dice-value.damage-type-fire {
+    color: var(--red-400);
+}
+
+/* Force */
+.badge-damage.damage-type-force,
+.modal-badge.damage-badge.damage-type-force,
+.spell-damage-summary-badge.damage-type-force,
+.damage-total-badge.damage-type-force {
+    background: color-mix(in srgb, var(--fuchsia-500) 18%, transparent);
+    color: var(--fuchsia-400);
+    border: 1px solid color-mix(in srgb, var(--fuchsia-500) 45%, transparent);
+}
+.meta-damage.damage-type-force .damage-dice-value,
+.damage-dice-value.damage-type-force {
+    color: var(--fuchsia-400);
+}
+
+/* Lightning */
+.badge-damage.damage-type-lightning,
+.modal-badge.damage-badge.damage-type-lightning,
+.spell-damage-summary-badge.damage-type-lightning,
+.damage-total-badge.damage-type-lightning {
+    background: color-mix(in srgb, var(--yellow-400) 18%, transparent);
+    color: var(--yellow-400);
+    border: 1px solid color-mix(in srgb, var(--yellow-400) 45%, transparent);
+}
+.meta-damage.damage-type-lightning .damage-dice-value,
+.damage-dice-value.damage-type-lightning {
+    color: var(--yellow-400);
+}
+
+/* Necrotic */
+.badge-damage.damage-type-necrotic,
+.modal-badge.damage-badge.damage-type-necrotic,
+.spell-damage-summary-badge.damage-type-necrotic,
+.damage-total-badge.damage-type-necrotic {
+    background: color-mix(in srgb, var(--purple-500) 18%, transparent);
+    color: var(--purple-400);
+    border: 1px solid color-mix(in srgb, var(--purple-500) 45%, transparent);
+}
+.meta-damage.damage-type-necrotic .damage-dice-value,
+.damage-dice-value.damage-type-necrotic {
+    color: var(--purple-400);
+}
+
+/* Piercing */
+.badge-damage.damage-type-piercing,
+.modal-badge.damage-badge.damage-type-piercing,
+.spell-damage-summary-badge.damage-type-piercing,
+.damage-total-badge.damage-type-piercing {
+    background: color-mix(in srgb, var(--slate-400) 18%, transparent);
+    color: var(--slate-300);
+    border: 1px solid color-mix(in srgb, var(--slate-400) 45%, transparent);
+}
+.meta-damage.damage-type-piercing .damage-dice-value,
+.damage-dice-value.damage-type-piercing {
+    color: var(--slate-300);
+}
+
+/* Poison */
+.badge-damage.damage-type-poison,
+.modal-badge.damage-badge.damage-type-poison,
+.spell-damage-summary-badge.damage-type-poison,
+.damage-total-badge.damage-type-poison {
+    background: color-mix(in srgb, var(--green-500) 18%, transparent);
+    color: var(--green-400);
+    border: 1px solid color-mix(in srgb, var(--green-500) 45%, transparent);
+}
+.meta-damage.damage-type-poison .damage-dice-value,
+.damage-dice-value.damage-type-poison {
+    color: var(--green-400);
+}
+
+/* Psychic */
+.badge-damage.damage-type-psychic,
+.modal-badge.damage-badge.damage-type-psychic,
+.spell-damage-summary-badge.damage-type-psychic,
+.damage-total-badge.damage-type-psychic {
+    background: color-mix(in srgb, var(--rose-500) 18%, transparent);
+    color: var(--rose-400);
+    border: 1px solid color-mix(in srgb, var(--rose-500) 45%, transparent);
+}
+.meta-damage.damage-type-psychic .damage-dice-value,
+.damage-dice-value.damage-type-psychic {
+    color: var(--rose-400);
+}
+
+/* Radiant */
+.badge-damage.damage-type-radiant,
+.modal-badge.damage-badge.damage-type-radiant,
+.spell-damage-summary-badge.damage-type-radiant,
+.damage-total-badge.damage-type-radiant {
+    background: color-mix(in srgb, var(--amber-500) 20%, transparent);
+    color: var(--amber-400);
+    border: 1px solid color-mix(in srgb, var(--amber-500) 48%, transparent);
+}
+.meta-damage.damage-type-radiant .damage-dice-value,
+.damage-dice-value.damage-type-radiant {
+    color: var(--amber-400);
+}
+
+/* Slashing */
+.badge-damage.damage-type-slashing,
+.modal-badge.damage-badge.damage-type-slashing,
+.spell-damage-summary-badge.damage-type-slashing,
+.damage-total-badge.damage-type-slashing {
+    background: color-mix(in srgb, var(--rose-600) 18%, transparent);
+    color: var(--rose-300);
+    border: 1px solid color-mix(in srgb, var(--rose-600) 45%, transparent);
+}
+.meta-damage.damage-type-slashing .damage-dice-value,
+.damage-dice-value.damage-type-slashing {
+    color: var(--rose-300);
+}
+
+/* Thunder */
+.badge-damage.damage-type-thunder,
+.modal-badge.damage-badge.damage-type-thunder,
+.spell-damage-summary-badge.damage-type-thunder,
+.damage-total-badge.damage-type-thunder {
+    background: color-mix(in srgb, var(--indigo-500) 18%, transparent);
+    color: var(--indigo-400);
+    border: 1px solid color-mix(in srgb, var(--indigo-500) 45%, transparent);
+}
+.meta-damage.damage-type-thunder .damage-dice-value,
+.damage-dice-value.damage-type-thunder {
+    color: var(--indigo-400);
+}
+
+/* Healing */
+.badge-damage.damage-type-healing,
+.modal-badge.damage-badge.damage-type-healing,
+.spell-damage-summary-badge.damage-type-healing,
+.damage-total-badge.damage-type-healing {
+    background: color-mix(in srgb, var(--emerald-500) 20%, transparent);
+    color: var(--emerald-400);
+    border: 1px solid color-mix(in srgb, var(--emerald-500) 50%, transparent);
+}
+.meta-damage.damage-type-healing .damage-dice-value,
+.damage-dice-value.damage-type-healing {
+    color: var(--emerald-400);
+}
+.damage-type-healing i.fa-heart {
+    color: currentColor;
+}
+
+/* ==========================================================================
+   DAMAGE TYPE COLOR CODING (LIGHT THEME)
+   ========================================================================== */
+
+/* Acid */
+[data-theme="light"] .badge-damage.damage-type-acid,
+.light-mode .badge-damage.damage-type-acid,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-acid,
+.light-mode .modal-badge.damage-badge.damage-type-acid,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-acid,
+.light-mode .spell-damage-summary-badge.damage-type-acid,
+[data-theme="light"] .damage-total-badge.damage-type-acid,
+.light-mode .damage-total-badge.damage-type-acid {
+    background: var(--lime-100);
+    color: var(--lime-800);
+    border-color: var(--lime-500);
+}
+[data-theme="light"] .meta-damage.damage-type-acid .damage-dice-value,
+.light-mode .meta-damage.damage-type-acid .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-acid,
+.light-mode .damage-dice-value.damage-type-acid {
+    color: var(--lime-800);
+}
+
+/* Bludgeoning */
+[data-theme="light"] .badge-damage.damage-type-bludgeoning,
+.light-mode .badge-damage.damage-type-bludgeoning,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-bludgeoning,
+.light-mode .modal-badge.damage-badge.damage-type-bludgeoning,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-bludgeoning,
+.light-mode .spell-damage-summary-badge.damage-type-bludgeoning,
+[data-theme="light"] .damage-total-badge.damage-type-bludgeoning,
+.light-mode .damage-total-badge.damage-type-bludgeoning {
+    background: var(--stone-100);
+    color: var(--stone-700);
+    border-color: var(--stone-400);
+}
+[data-theme="light"] .meta-damage.damage-type-bludgeoning .damage-dice-value,
+.light-mode .meta-damage.damage-type-bludgeoning .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-bludgeoning,
+.light-mode .damage-dice-value.damage-type-bludgeoning {
+    color: var(--stone-700);
+}
+
+/* Cold */
+[data-theme="light"] .badge-damage.damage-type-cold,
+.light-mode .badge-damage.damage-type-cold,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-cold,
+.light-mode .modal-badge.damage-badge.damage-type-cold,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-cold,
+.light-mode .spell-damage-summary-badge.damage-type-cold,
+[data-theme="light"] .damage-total-badge.damage-type-cold,
+.light-mode .damage-total-badge.damage-type-cold {
+    background: var(--sky-100);
+    color: var(--sky-700);
+    border-color: var(--sky-400);
+}
+[data-theme="light"] .meta-damage.damage-type-cold .damage-dice-value,
+.light-mode .meta-damage.damage-type-cold .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-cold,
+.light-mode .damage-dice-value.damage-type-cold {
+    color: var(--sky-700);
+}
+
+/* Fire */
+[data-theme="light"] .badge-damage.damage-type-fire,
+.light-mode .badge-damage.damage-type-fire,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-fire,
+.light-mode .modal-badge.damage-badge.damage-type-fire,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-fire,
+.light-mode .spell-damage-summary-badge.damage-type-fire,
+[data-theme="light"] .damage-total-badge.damage-type-fire,
+.light-mode .damage-total-badge.damage-type-fire {
+    background: var(--red-100);
+    color: var(--red-700);
+    border-color: var(--red-400);
+}
+[data-theme="light"] .meta-damage.damage-type-fire .damage-dice-value,
+.light-mode .meta-damage.damage-type-fire .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-fire,
+.light-mode .damage-dice-value.damage-type-fire {
+    color: var(--red-700);
+}
+
+/* Force */
+[data-theme="light"] .badge-damage.damage-type-force,
+.light-mode .badge-damage.damage-type-force,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-force,
+.light-mode .modal-badge.damage-badge.damage-type-force,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-force,
+.light-mode .spell-damage-summary-badge.damage-type-force,
+[data-theme="light"] .damage-total-badge.damage-type-force,
+.light-mode .damage-total-badge.damage-type-force {
+    background: var(--fuchsia-100);
+    color: var(--fuchsia-800);
+    border-color: var(--fuchsia-500);
+}
+[data-theme="light"] .meta-damage.damage-type-force .damage-dice-value,
+.light-mode .meta-damage.damage-type-force .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-force,
+.light-mode .damage-dice-value.damage-type-force {
+    color: var(--fuchsia-800);
+}
+
+/* Lightning */
+[data-theme="light"] .badge-damage.damage-type-lightning,
+.light-mode .badge-damage.damage-type-lightning,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-lightning,
+.light-mode .modal-badge.damage-badge.damage-type-lightning,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-lightning,
+.light-mode .spell-damage-summary-badge.damage-type-lightning,
+[data-theme="light"] .damage-total-badge.damage-type-lightning,
+.light-mode .damage-total-badge.damage-type-lightning {
+    background: var(--yellow-100);
+    color: var(--yellow-800);
+    border-color: var(--yellow-500);
+}
+[data-theme="light"] .meta-damage.damage-type-lightning .damage-dice-value,
+.light-mode .meta-damage.damage-type-lightning .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-lightning,
+.light-mode .damage-dice-value.damage-type-lightning {
+    color: var(--yellow-800);
+}
+
+/* Necrotic */
+[data-theme="light"] .badge-damage.damage-type-necrotic,
+.light-mode .badge-damage.damage-type-necrotic,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-necrotic,
+.light-mode .modal-badge.damage-badge.damage-type-necrotic,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-necrotic,
+.light-mode .spell-damage-summary-badge.damage-type-necrotic,
+[data-theme="light"] .damage-total-badge.damage-type-necrotic,
+.light-mode .damage-total-badge.damage-type-necrotic {
+    background: var(--purple-100);
+    color: var(--purple-800);
+    border-color: var(--purple-400);
+}
+[data-theme="light"] .meta-damage.damage-type-necrotic .damage-dice-value,
+.light-mode .meta-damage.damage-type-necrotic .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-necrotic,
+.light-mode .damage-dice-value.damage-type-necrotic {
+    color: var(--purple-800);
+}
+
+/* Piercing */
+[data-theme="light"] .badge-damage.damage-type-piercing,
+.light-mode .badge-damage.damage-type-piercing,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-piercing,
+.light-mode .modal-badge.damage-badge.damage-type-piercing,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-piercing,
+.light-mode .spell-damage-summary-badge.damage-type-piercing,
+[data-theme="light"] .damage-total-badge.damage-type-piercing,
+.light-mode .damage-total-badge.damage-type-piercing {
+    background: var(--slate-100);
+    color: var(--slate-700);
+    border-color: var(--slate-400);
+}
+[data-theme="light"] .meta-damage.damage-type-piercing .damage-dice-value,
+.light-mode .meta-damage.damage-type-piercing .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-piercing,
+.light-mode .damage-dice-value.damage-type-piercing {
+    color: var(--slate-700);
+}
+
+/* Poison */
+[data-theme="light"] .badge-damage.damage-type-poison,
+.light-mode .badge-damage.damage-type-poison,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-poison,
+.light-mode .modal-badge.damage-badge.damage-type-poison,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-poison,
+.light-mode .spell-damage-summary-badge.damage-type-poison,
+[data-theme="light"] .damage-total-badge.damage-type-poison,
+.light-mode .damage-total-badge.damage-type-poison {
+    background: var(--green-100);
+    color: var(--green-800);
+    border-color: var(--green-500);
+}
+[data-theme="light"] .meta-damage.damage-type-poison .damage-dice-value,
+.light-mode .meta-damage.damage-type-poison .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-poison,
+.light-mode .damage-dice-value.damage-type-poison {
+    color: var(--green-800);
+}
+
+/* Psychic */
+[data-theme="light"] .badge-damage.damage-type-psychic,
+.light-mode .badge-damage.damage-type-psychic,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-psychic,
+.light-mode .modal-badge.damage-badge.damage-type-psychic,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-psychic,
+.light-mode .spell-damage-summary-badge.damage-type-psychic,
+[data-theme="light"] .damage-total-badge.damage-type-psychic,
+.light-mode .damage-total-badge.damage-type-psychic {
+    background: var(--rose-100);
+    color: var(--rose-800);
+    border-color: var(--rose-400);
+}
+[data-theme="light"] .meta-damage.damage-type-psychic .damage-dice-value,
+.light-mode .meta-damage.damage-type-psychic .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-psychic,
+.light-mode .damage-dice-value.damage-type-psychic {
+    color: var(--rose-800);
+}
+
+/* Radiant */
+[data-theme="light"] .badge-damage.damage-type-radiant,
+.light-mode .badge-damage.damage-type-radiant,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-radiant,
+.light-mode .modal-badge.damage-badge.damage-type-radiant,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-radiant,
+.light-mode .spell-damage-summary-badge.damage-type-radiant,
+[data-theme="light"] .damage-total-badge.damage-type-radiant,
+.light-mode .damage-total-badge.damage-type-radiant {
+    background: var(--amber-100);
+    color: var(--amber-800);
+    border-color: var(--amber-500);
+}
+[data-theme="light"] .meta-damage.damage-type-radiant .damage-dice-value,
+.light-mode .meta-damage.damage-type-radiant .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-radiant,
+.light-mode .damage-dice-value.damage-type-radiant {
+    color: var(--amber-800);
+}
+
+/* Slashing */
+[data-theme="light"] .badge-damage.damage-type-slashing,
+.light-mode .badge-damage.damage-type-slashing,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-slashing,
+.light-mode .modal-badge.damage-badge.damage-type-slashing,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-slashing,
+.light-mode .spell-damage-summary-badge.damage-type-slashing,
+[data-theme="light"] .damage-total-badge.damage-type-slashing,
+.light-mode .damage-total-badge.damage-type-slashing {
+    background: var(--rose-50);
+    color: var(--rose-900);
+    border-color: var(--rose-500);
+}
+[data-theme="light"] .meta-damage.damage-type-slashing .damage-dice-value,
+.light-mode .meta-damage.damage-type-slashing .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-slashing,
+.light-mode .damage-dice-value.damage-type-slashing {
+    color: var(--rose-900);
+}
+
+/* Thunder */
+[data-theme="light"] .badge-damage.damage-type-thunder,
+.light-mode .badge-damage.damage-type-thunder,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-thunder,
+.light-mode .modal-badge.damage-badge.damage-type-thunder,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-thunder,
+.light-mode .spell-damage-summary-badge.damage-type-thunder,
+[data-theme="light"] .damage-total-badge.damage-type-thunder,
+.light-mode .damage-total-badge.damage-type-thunder {
+    background: var(--indigo-100);
+    color: var(--indigo-800);
+    border-color: var(--indigo-400);
+}
+[data-theme="light"] .meta-damage.damage-type-thunder .damage-dice-value,
+.light-mode .meta-damage.damage-type-thunder .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-thunder,
+.light-mode .damage-dice-value.damage-type-thunder {
+    color: var(--indigo-800);
+}
+
+/* Healing */
+[data-theme="light"] .badge-damage.damage-type-healing,
+.light-mode .badge-damage.damage-type-healing,
+[data-theme="light"] .modal-badge.damage-badge.damage-type-healing,
+.light-mode .modal-badge.damage-badge.damage-type-healing,
+[data-theme="light"] .spell-damage-summary-badge.damage-type-healing,
+.light-mode .spell-damage-summary-badge.damage-type-healing,
+[data-theme="light"] .damage-total-badge.damage-type-healing,
+.light-mode .damage-total-badge.damage-type-healing {
+    background: var(--emerald-100);
+    color: var(--emerald-700);
+    border-color: var(--emerald-500);
+}
+[data-theme="light"] .meta-damage.damage-type-healing .damage-dice-value,
+.light-mode .meta-damage.damage-type-healing .damage-dice-value,
+[data-theme="light"] .damage-dice-value.damage-type-healing,
+.light-mode .damage-dice-value.damage-type-healing {
+    color: var(--emerald-700);
+}
+
+.spell-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.9rem;
+    font-size: 0.74rem;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    border: none;
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.meta-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.meta-value {
+    color: var(--text);
+    font-weight: 600;
+    white-space: normal;
+}
+
+.spell-card-footer {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.view-details-hint {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ui-text);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.no-results {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-muted);
+}
+.no-results i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+@media screen and (min-width: 680px) {
+    .spells-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    .spells-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ==========================================================================
+   Manage Spells Button & Modal
+   ========================================================================== */
+
+.spell-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.spell-header-actions .manage-spells-btn,
+.spell-header-actions .add-custom-spell-btn,
+.manage-spells-btn {
+    align-self: center;
+    height: 36px;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.manage-spells-btn {
+    background: linear-gradient(135deg, var(--success-tint) 0%, var(--success-tint-strong) 100%);
+    border: 1px solid var(--success-fill);
+    color: var(--success-tint-text);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--emerald-500) 15%, transparent);
+    transition: all 0.16s ease;
+}
+
+.manage-spells-btn:hover {
+    background: linear-gradient(135deg, var(--success-fill) 0%, var(--success-fill-hover) 100%);
+    border-color: var(--success-border-strong);
+    color: var(--text-on-accent);
+    box-shadow: 0 3px 8px color-mix(in srgb, var(--emerald-500) 28%, transparent);
+    transform: translateY(-1px);
+}
+
+.manage-spells-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--emerald-500) 20%, transparent);
+}
+
+.manage-spells-btn:focus-visible {
+    outline: 2px solid var(--emerald-500);
+    outline-offset: 2px;
+}
+
+/* Dark mode theme overrides for manage buttons */
+:root[data-theme="dark"] .manage-spells-btn,
+.theme-dark .manage-spells-btn {
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-spells-btn:hover,
+.theme-dark .manage-spells-btn:hover {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--emerald-500) 25%, transparent);
+}
+
+.species-spellcasting-note {
+    margin: 0 0 0.75rem 0;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    background: var(--surface-alt);
+    color: var(--text);
+    font-size: 0.85rem;
+}

@@ -1,0 +1,154 @@
+/* ==========================================================================
+   Resources & Spell Slots Section
+   ========================================================================== */
+.resources-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--md-shadow);
+    padding: 1.25rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.section-title-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.section-title-bar h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--ui-text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.resource-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.rest-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rest-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.slots-grid,
+#slots-and-resources-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.slot-tracker {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.slot-tracker.pact-magic {
+    border: 1px solid var(--discord);
+}
+
+.slot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.slot-name {
+    color: var(--text);
+}
+
+.slot-count {
+    color: var(--ui-text);
+    font-weight: 800;
+}
+
+.slot-pips {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.pip {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--ui-color);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+}
+
+.pip.active {
+    background: var(--ui-color);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--ui-color) 40%, transparent);
+}
+
+.pip.pact-pip {
+    border-color: var(--discord);
+}
+
+.pip.pact-pip.active {
+    background: var(--discord);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--discord) 40%, transparent);
+}
+
+.pip.bardic-pip {
+    border-color: var(--yellow-600);
+}
+
+.pip.bardic-pip.active {
+    background: var(--alert-yellow);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--alert-yellow) 40%, transparent);
+}
+
+@media screen and (min-width: 680px) {
+    .slots-grid,
+    #slots-and-resources-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    .slots-grid,
+    #slots-and-resources-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}

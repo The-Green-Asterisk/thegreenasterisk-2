@@ -1,0 +1,357 @@
+/* ==========================================================================
+   5.5e D&D CHARACTER CREATOR STYLES
+   ========================================================================== */
+
+:root {
+    --ui-accent: var(--ui-color);
+    --ui-accent-rgb: 41, 112, 27;
+    --surface-raised: #f1f5f9;
+}
+
+:root[data-theme="dark"] {
+    --ui-accent: var(--ui-text);
+    --ui-accent-rgb: 108, 195, 90;
+    --surface-raised: #2a2a2a;
+}
+
+el-character-creator,
+.character-creator-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-height: calc(100vh - 70px);
+    padding: 0.75rem 1rem 3rem 1rem;
+    box-sizing: border-box;
+}
+
+.creator-container {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--lg-shadow);
+    padding: 1.25rem 1.5rem 1.75rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-sizing: border-box;
+}
+
+/* Form Controls & Grids */
+.creator-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.creator-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.creator-label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.creator-input,
+.creator-select,
+.creator-textarea {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.92rem;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.creator-input:focus,
+.creator-select:focus,
+.creator-textarea:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-color) 20%, transparent);
+}
+
+/* Card Selection Grid */
+.card-select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.select-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    user-select: none;
+    aspect-ratio: 1 / 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-mid) transparent;
+}
+
+.select-card::-webkit-scrollbar {
+    width: 6px;
+}
+
+.select-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.select-card::-webkit-scrollbar-thumb {
+    background: var(--border-mid);
+    border-radius: 3px;
+}
+
+.select-card::-webkit-scrollbar-thumb:hover {
+    background: var(--ui-color);
+}
+
+.select-card > * {
+    flex-shrink: 0;
+}
+
+.select-card:hover {
+    border-color: var(--ui-color);
+    box-shadow: var(--md-shadow);
+    transform: translateY(-2px);
+}
+
+.select-card.selected {
+    border-color: var(--ui-color);
+    background: color-mix(in srgb, var(--ui-color) 6%, transparent);
+    box-shadow: 0 0 0 2px var(--ui-color);
+}
+
+.card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.card-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    color: transparent;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.select-card.selected .card-check,
+.skill-checkbox-card.selected .card-check,
+.skill-checkbox-card.locked .card-check,
+.item-check-row.selected .card-check,
+.selected .card-check {
+    background: var(--ui-color);
+    border-color: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.select-card:hover:not(.selected) .card-check,
+.skill-checkbox-card:hover:not(.selected):not(.locked) .card-check,
+.item-check-row:hover:not(.selected) .card-check {
+    border-color: var(--ui-color);
+}
+
+.card-tag {
+    font-size: 0.72rem;
+    color: var(--ui-text);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.card-body {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.card-meta-list {
+    margin: 0.4rem 0 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.82rem;
+    color: var(--text);
+    line-height: 1.35;
+}
+
+/* Detail Box */
+.creator-detail-box {
+    margin-top: 1rem;
+    padding: 1.25rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.creator-detail-box h4 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* Spells & Items checklists */
+.item-select-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-height: 450px;
+    overflow-y: auto;
+    padding-right: 0.4rem;
+}
+
+.item-check-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.item-check-row:hover {
+    border-color: var(--ui-color);
+}
+
+.item-check-row.selected {
+    border-color: var(--ui-color);
+    background: color-mix(in srgb, var(--ui-color) 5%, transparent);
+}
+
+.item-row-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+}
+
+.item-row-title {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.item-row-meta {
+    font-size: 0.8rem;
+    color: var(--ui-text);
+    font-weight: 600;
+}
+
+.item-row-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Locks against D&D Beyond refreshes, for imported characters */
+.creator-lock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    align-self: flex-start;
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--border-mid);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.creator-lock-btn.is-locked {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: var(--text-on-ui-accent);
+}
+
+.creator-lock-btn:focus-visible {
+    outline: 2px solid var(--ui-text);
+    outline-offset: 2px;
+}
+
+.creator-lock-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.creator-lock-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.ability-score-card .creator-lock-btn {
+    align-self: center;
+    margin-top: 0.5rem;
+}
+
+.creator-lock-list ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.5rem 1rem;
+}
+
+.creator-lock-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}

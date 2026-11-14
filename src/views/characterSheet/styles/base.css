@@ -1,0 +1,42 @@
+/* Character Sheet Styles — Mobile First Responsive Design */
+
+el-character-sheet {
+    display: block;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+el-character-sheet .content-slate {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+el-character-sheet.loader-collapsed .content-slate {
+    padding-top: 0;
+}
+
+el-character-sheet .content-slate section {
+    max-width: 100%;
+    width: 100%;
+    margin: .5rem auto;
+    padding: 1.25rem !important;
+    box-sizing: border-box;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+#dnd-beyond-note.hidden {
+    display: none;
+}
+#dnd-beyond-note {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    text-align: center;
+    font-style: italic;
+}

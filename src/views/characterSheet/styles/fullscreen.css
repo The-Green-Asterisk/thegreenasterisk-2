@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Non-intrusive Full-Screen Controls
+   ========================================================================== */
+.sheet-fullscreen-floating-btn {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--black) 12%, transparent);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.88rem;
+    z-index: 1000;
+    opacity: 0.65;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.sheet-fullscreen-floating-btn:hover,
+.sheet-fullscreen-floating-btn:focus-visible {
+    opacity: 1;
+    transform: scale(1.08);
+    background: var(--surface);
+    border-color: var(--ui-color);
+    color: var(--ui-text);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--black) 20%, transparent);
+    outline: none;
+}
+
+.sheet-fullscreen-floating-btn:active {
+    transform: scale(0.96);
+}
+
+/* Dark mode subtle styling */
+@media (prefers-color-scheme: dark) {
+    .sheet-fullscreen-floating-btn {
+        border-color: color-mix(in srgb, var(--white) 15%, transparent);
+        background: color-mix(in srgb, var(--slate-800) 85%, transparent);
+        color: var(--slate-400);
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--black) 35%, transparent);
+        backdrop-filter: blur(4px);
+    }
+    .sheet-fullscreen-floating-btn:hover,
+    .sheet-fullscreen-floating-btn:focus-visible {
+        background: color-mix(in srgb, var(--slate-900) 95%, transparent);
+        border-color: var(--ui-color);
+        color: var(--text-on-accent);
+    }
+}
+
+body.dark-mode .sheet-fullscreen-floating-btn,
+[data-theme="dark"] .sheet-fullscreen-floating-btn {
+    border-color: color-mix(in srgb, var(--white) 15%, transparent);
+    background: color-mix(in srgb, var(--slate-800) 85%, transparent);
+    color: var(--slate-400);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--black) 35%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+body.dark-mode .sheet-fullscreen-floating-btn:hover,
+body.dark-mode .sheet-fullscreen-floating-btn:focus-visible,
+[data-theme="dark"] .sheet-fullscreen-floating-btn:hover,
+[data-theme="dark"] .sheet-fullscreen-floating-btn:focus-visible {
+    background: color-mix(in srgb, var(--slate-900) 95%, transparent);
+    border-color: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+:fullscreen el-character-sheet,
+:-webkit-full-screen el-character-sheet,
+el-character-sheet.is-fullscreen {
+    min-height: 100vh;
+    background-color: var(--surface);
+}

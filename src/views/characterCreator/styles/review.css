@@ -1,0 +1,43 @@
+/* Review Final Card */
+.review-card-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+    .review-card-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.review-section {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.review-section h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 0.4rem;
+}
+
+.review-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    color: var(--text);
+}
+
+.review-row .label {
+    color: var(--text-muted);
+    font-weight: 600;
+}

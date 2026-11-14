@@ -59,25 +59,44 @@ export function renderSkills(data: CharacterData): string {
             <tbody>
                 ${rows}
             </tbody>
+            <tfoot>
+                <tr class="skills-table-footer-row">
+                    <td colspan="3" class="skills-table-footer-cell">
+                        <div class="custom-skill-footer-bar">
+                            <button
+                                type="button"
+                                class="custom-skill-toggle-btn"
+                                id="custom-skill-toggle-btn"
+                                aria-expanded="false"
+                                aria-controls="custom-skill-form"
+                                aria-label="Add a skill"
+                                title="Add a skill"
+                            >
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                            </button>
+                            <p class="custom-skill-status" id="custom-skill-status" role="status" aria-live="polite"></p>
+                        </div>
+                        <form class="custom-skill-form" id="custom-skill-form" aria-labelledby="custom-skill-heading" novalidate hidden>
+                            <span id="custom-skill-heading" class="custom-skill-heading">Add a skill</span>
+                            <div class="custom-skill-fields">
+                                <label class="custom-skill-field" for="custom-skill-name">
+                                    <span class="custom-skill-field-label">Skill name</span>
+                                    <input type="text" name="_custom-skill-name" id="custom-skill-name" maxlength="${CUSTOM_SKILL_NAME_MAX}" autocomplete="off" />
+                                </label>
+                                <label class="custom-skill-field" for="custom-skill-ability">
+                                    <span class="custom-skill-field-label">Ability</span>
+                                    <select name="_custom-skill-ability" id="custom-skill-ability">
+                                        ${SKILL_ABILITIES.map((ab) => `<option value="${ab}">${ab}</option>`).join("")}
+                                    </select>
+                                </label>
+                                <button type="submit" class="custom-skill-add-btn">
+                                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Add skill
+                                </button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+            </tfoot>
         </table>
-        <form class="custom-skill-form" aria-labelledby="custom-skill-heading" novalidate>
-            <h4 id="custom-skill-heading" class="custom-skill-heading">Add a skill</h4>
-            <div class="custom-skill-fields">
-                <label class="custom-skill-field">
-                    <span>Skill name</span>
-                    <input type="text" name="_custom-skill-name" id="custom-skill-name" maxlength="${CUSTOM_SKILL_NAME_MAX}" autocomplete="off" />
-                </label>
-                <label class="custom-skill-field">
-                    <span>Ability</span>
-                    <select name="_custom-skill-ability" id="custom-skill-ability">
-                        ${SKILL_ABILITIES.map((ab) => `<option value="${ab}">${ab}</option>`).join("")}
-                    </select>
-                </label>
-                <button type="submit" class="custom-skill-add-btn">
-                    <i class="fa-solid fa-plus" aria-hidden="true"></i> Add skill
-                </button>
-            </div>
-            <p class="custom-skill-status" id="custom-skill-status" role="status" aria-live="polite"></p>
-        </form>
     `;
 }

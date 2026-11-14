@@ -1,0 +1,425 @@
+/* ==========================================================================
+   D&D BEYOND CHARACTER LOADER BAR
+   ========================================================================== */
+.character-loader-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--md-shadow);
+    padding: 0.6rem 0.75rem !important;
+    position: relative;
+}
+
+.character-loader-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.character-loader-title {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ui-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.loader-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.loader-collapse-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-alt);
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.loader-collapse-btn:hover {
+    background: var(--surface-muted);
+    border-color: var(--ui-color);
+    color: var(--ui-text);
+}
+
+.character-loader-content {
+    padding-top: 0.5rem;
+}
+
+.character-loader-bar.is-collapsed .character-loader-content {
+    display: none;
+}
+
+.character-loader-bar.is-collapsed .loader-collapse-btn i {
+    transform: rotate(180deg);
+}
+
+.character-loader-bar.is-collapsed {
+    padding: 0 0.6rem 0.2rem 0.6rem !important;
+    margin-top: 0;
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    min-height: 12px;
+}
+
+.character-loader-bar.is-collapsed .character-loader-header {
+    justify-content: center;
+    gap: 0;
+    min-height: 12px;
+}
+
+.character-loader-bar.is-collapsed .character-loader-title {
+    display: none;
+}
+
+.character-loader-bar.is-collapsed .loader-header-actions {
+    justify-content: center;
+}
+
+.character-loader-bar.is-collapsed .sheet-fullscreen-btn {
+    display: none !important;
+}
+
+.character-loader-bar.is-collapsed #character-loader-toggle-btn {
+    width: 68px;
+    height: 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-muted);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--black) 3%, transparent);
+}
+
+.character-loader-bar.is-collapsed #character-loader-toggle-btn i {
+    font-size: 0;
+}
+
+.load-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.load-input-wrap {
+    flex: 1 1 320px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.load-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--ui-color);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.load-input-wrap input {
+    width: 100%;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 0.75rem 1rem 0.75rem 2.85rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.load-input-wrap input:focus {
+    border-color: var(--emerald-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--emerald-500) 20%, transparent);
+}
+
+.load-btn {
+    background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600));
+    color: var(--text-on-accent);
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.4rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--emerald-500) 30%, transparent);
+    transition: transform 0.15s ease, background 0.2s ease, opacity 0.2s ease;
+    white-space: nowrap;
+}
+
+.load-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, var(--emerald-400), var(--emerald-500));
+}
+
+.load-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.load-btn.secondary {
+    background: var(--surface-alt);
+    color: var(--text);
+    box-shadow: none;
+    border: 1px solid var(--border-soft);
+}
+
+.load-btn.secondary:hover:not(:disabled) {
+    background: var(--surface-muted);
+}
+
+.load-btn.hidden {
+    display: none;
+}
+
+.rules-preference-toggle {
+    margin-top: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-soft);
+    font-size: 0.86rem;
+    user-select: none;
+}
+
+.rules-preference-toggle input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--emerald-500);
+    cursor: pointer;
+}
+
+.rules-preference-toggle span {
+    cursor: pointer;
+}
+
+.status-msg {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-msg.hidden {
+    display: none;
+}
+
+.status-msg.success {
+    background: color-mix(in srgb, var(--emerald-500) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--emerald-500) 40%, transparent);
+    color: var(--emerald-300);
+}
+
+.status-msg.error {
+    background: color-mix(in srgb, var(--red-500) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--red-500) 40%, transparent);
+    color: var(--red-300);
+}
+
+.status-msg.warning {
+    background: color-mix(in srgb, var(--amber-500) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--amber-500) 45%, transparent);
+    color: var(--amber-300);
+}
+
+.status-dismiss-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 24px;
+    min-height: 24px;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.status-dismiss-btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.saved-characters-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--md-shadow);
+}
+
+.saved-characters-panel h3 {
+    margin-top: 0;
+}
+
+.saved-characters-empty {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.saved-characters-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.saved-character-card-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0.6rem;
+}
+
+.saved-character-card-wrapper .saved-character-card {
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-character-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-soft);
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.saved-character-delete-btn:hover:not(:disabled) {
+    color: var(--status-danger);
+    border-color: var(--red-500);
+    background: color-mix(in srgb, var(--red-500) 12%, transparent);
+    transform: translateY(-1px);
+}
+
+.saved-character-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.saved-character-card {
+    width: 100%;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 0.65rem;
+    text-align: left;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.saved-character-card:hover {
+    border-color: var(--ui-color);
+    transform: translateY(-1px);
+}
+
+.saved-character-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-soft);
+    background: var(--surface-muted);
+}
+
+.saved-character-avatar.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+.saved-character-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.saved-character-card-body span,
+.saved-character-card-body small {
+    color: var(--text-muted);
+}
+
+.saved-character-card-body span {
+    font-style: italic;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.inline-edit-grid {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+}
+
+.inline-edit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.6rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+}
+
+.inline-edit-label {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    word-break: break-word;
+}
+
+.inline-edit-input {
+    width: 100%;
+    border: 1px solid var(--slate-700);
+    background: var(--slate-950);
+    color: var(--text-on-accent);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.9rem;
+}
+
+.inline-edit-input:focus {
+    outline: none;
+    border-color: var(--emerald-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--emerald-500) 20%, transparent);
+}
+
+.inline-edit-textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.inline-edit-row.checkbox-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.inline-edit-row.checkbox-row .inline-edit-input {
+    width: auto;
+    min-width: 18px;
+    min-height: 18px;
+}

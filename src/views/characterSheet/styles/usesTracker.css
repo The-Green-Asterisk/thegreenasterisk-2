@@ -1,0 +1,22 @@
+/* ==========================================================================
+   Uses beside actions and items (charges, limited uses)
+   ========================================================================== */
+.card-with-uses {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.slot-tracker.inline-uses {
+    padding: 0.35rem 0.6rem;
+}
+
+.slot-tracker.inline-uses .slot-pips {
+    flex-wrap: wrap;
+}
+
+.inline-uses-reset {
+    font-weight: 400;
+    color: var(--ui-text);
+}
