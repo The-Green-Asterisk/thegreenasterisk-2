@@ -1,0 +1,381 @@
+/* ==========================================================================
+   Hero & Character Identity
+   ========================================================================== */
+.sheet-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--md-shadow);
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sheet-identity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+}
+
+.avatar-wrap {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    flex-shrink: 0;
+}
+
+.character-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--ui-color);
+    box-shadow: var(--md-shadow);
+    background-color: var(--surface-muted);
+}
+
+.level-pill {
+    position: absolute;
+    bottom: -4px;
+    right: 4px;
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 12px;
+    box-shadow: var(--sm-shadow);
+    letter-spacing: 0.5px;
+}
+
+.identity-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.character-name {
+    margin: 0;
+    font-size: 1.85rem;
+    font-weight: 900;
+    color: var(--ui-text);
+    letter-spacing: -0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.inspiration-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.inspiration-badge.active {
+    background: var(--alert-yellow);
+    color: var(--text-on-yellow);
+    border-color: var(--yellow-600);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--alert-yellow) 50%, transparent);
+}
+
+.inspiration-badge:hover {
+    transform: scale(1.03);
+}
+
+.character-classes {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.character-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.tag-link {
+    background: var(--ui-color);
+    color: var(--text-on-accent) !important;
+    text-decoration: none !important;
+}
+.tag-link:hover {
+    filter: brightness(1.15);
+}
+
+@media screen and (min-width: 680px) {
+    .sheet-identity {
+        flex-direction: row;
+        text-align: left;
+        gap: 1.5rem;
+    }
+
+    .title-row {
+        justify-content: flex-start;
+    }
+
+    .character-tags {
+        justify-content: flex-start;
+    }
+}
+
+/* ==========================================================================
+   Active Conditions Box in Sheet Hero & Conditions Modal (D&D 5.5)
+   ========================================================================== */
+
+el-character-sheet .content-slate section.sheet-hero,
+.sheet-hero {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.25rem;
+}
+
+.sheet-hero .sheet-identity {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.active-conditions-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 280px;
+    min-width: 220px;
+    max-width: 340px;
+    flex: 0 0 auto;
+    align-self: center;
+    margin-left: auto;
+    user-select: none;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--black) 5%, transparent);
+}
+
+@media (max-width: 768px) {
+    el-character-sheet .content-slate section.sheet-hero,
+    .sheet-hero {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 1rem;
+    }
+
+    .sheet-hero .sheet-identity {
+        flex: 1 1 auto;
+        width: 100%;
+    }
+
+    .active-conditions-box {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        margin-left: 0;
+        align-self: stretch;
+    }
+}
+
+.active-conditions-box:hover,
+.active-conditions-box:focus-visible {
+    border-color: var(--ui-accent);
+    background: color-mix(in srgb, var(--ui-accent) 4%, transparent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--black) 8%, transparent);
+    outline: none;
+}
+
+.active-conditions-box.has-conditions {
+    border-color: var(--amber-border-soft);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--amber-500) 8%, transparent) 0%, var(--conditions-active-bg) 100%);
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--amber-600) 8%, transparent);
+}
+
+.active-conditions-box.has-conditions:hover {
+    border-color: var(--amber-border-strong);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--amber-500) 14%, transparent) 0%, color-mix(in srgb, var(--amber-100) 70%, transparent) 100%);
+}
+
+.active-conditions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.active-conditions-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.active-conditions-box.has-conditions .active-conditions-title {
+    color: var(--amber-tint-text);
+}
+
+.active-conditions-manage {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--ui-accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.active-conditions-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 28px;
+}
+
+.no-conditions-placeholder {
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.condition-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    padding: 0.26rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: var(--amber-tint);
+    border: 1px solid var(--amber-500);
+    color: var(--amber-tint-text);
+    line-height: 1.2;
+}
+
+.condition-pill.condition-pill-exhaustion {
+    background: var(--danger-tint);
+    border-color: var(--danger-tint-border);
+    color: var(--danger-tint-text);
+}
+
+.condition-pill.condition-pill-exhaustion.deadly {
+    background: var(--danger-tint-strong);
+    border-color: var(--red-500);
+    color: var(--danger-tint-text);
+    animation: pulse-danger 1.8s infinite;
+}
+
+@keyframes pulse-danger {
+    0%, 100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--red-500) 40%, transparent);
+    }
+    50% {
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--red-500) 0%, transparent);
+    }
+}
+
+/* Dark theme overrides for Active Conditions Box & Conditions Modals */
+:root[data-theme="dark"] .active-conditions-box {
+    border-color: color-mix(in srgb, var(--white) 10%, transparent);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .active-conditions-box:hover,
+:root[data-theme="dark"] .active-conditions-box:focus-visible {
+    border-color: var(--ui-accent);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--black) 28%, transparent);
+}
+
+:root[data-theme="dark"] .active-conditions-box.has-conditions {
+    border-color: var(--amber-border-soft);
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .active-conditions-box.has-conditions:hover {
+    border-color: var(--amber-border-strong);
+}
+
+:root[data-theme="dark"] .no-conditions-placeholder {
+    color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .condition-pill {
+    border-color: color-mix(in srgb, var(--amber-500) 45%, transparent);
+}
+
+:root[data-theme="dark"] .condition-pill.condition-pill-exhaustion {
+    border-color: var(--danger-tint-border);
+}
+
+:root[data-theme="dark"] .condition-pill.condition-pill-exhaustion.deadly {
+    border-color: var(--red-500);
+}
+
+.field-locked-indicator {
+    font-size: 0.85rem;
+    color: var(--status-warning);
+    margin-left: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    opacity: 0.9;
+}
+
+/* Heroic Inspiration is a toggle button */
+button.inspiration-badge {
+    font: inherit;
+}
+
+button.inspiration-badge:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}

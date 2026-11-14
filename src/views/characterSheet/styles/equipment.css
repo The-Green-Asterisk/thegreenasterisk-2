@@ -1,0 +1,345 @@
+.weapons-header-actions,
+.equipment-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+/* ==========================================================================
+   Equipment Tab
+   ========================================================================== */
+.equipment-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+}
+
+.equipment-row {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.item-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-name {
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.item-type {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.item-badges {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.item-badge {
+    min-height: 24px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.item-badge.equip-toggle-btn {
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.item-badge.equip-toggle-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--black) 12%, transparent);
+}
+
+.item-badge.equip-toggle-btn:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}
+
+.item-badge.equipped {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.item-badge.unequipped {
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+.item-badge.attune-toggle-btn,
+.weapon-badge.attune-toggle-btn {
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.item-badge.attune-toggle-btn:hover,
+.weapon-badge.attune-toggle-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--black) 15%, transparent);
+}
+
+.item-badge.attune-toggle-btn:focus-visible,
+.weapon-badge.attune-toggle-btn:focus-visible {
+    outline: 2px solid var(--fuchsia-700);
+    outline-offset: 2px;
+}
+
+.item-badge.attuned,
+.weapon-badge.attuned {
+    background: var(--fuchsia-700);
+    color: var(--text-on-accent);
+    border: 1px solid var(--purple-800);
+}
+
+.item-badge.unattuned,
+.weapon-badge.unattuned {
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+}
+
+/* Inline Item & Weapon Quantity Stepper */
+.item-qty-stepper {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 26px;
+    padding: 0;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.weapon-qty-stepper {
+    height: 22px;
+    border-radius: 11px;
+}
+
+.item-qty-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    width: 24px;
+    height: 100%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.item-qty-btn:hover {
+    background: color-mix(in srgb, var(--black) 8%, transparent);
+    color: var(--ui-color);
+}
+
+.item-qty-input {
+    width: 32px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-main);
+    padding: 0;
+    -moz-appearance: textfield;
+}
+
+.item-qty-input::-webkit-outer-spin-button,
+.item-qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.item-qty-input:focus {
+    outline: 1px solid var(--ui-color);
+    background: var(--surface);
+}
+
+.item-notes {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Clickable Item & Weapon Cards */
+.clickable-weapon-card,
+.clickable-item-card {
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.clickable-weapon-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--ui-color);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--black) 12%, transparent);
+}
+
+.clickable-item-card:hover {
+    border-color: var(--ui-color);
+    background-color: var(--surface-muted);
+}
+
+.item-lead-icon {
+    color: var(--ui-color);
+    margin-right: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.item-badge.magic,
+.weapon-badge.magic {
+    background: color-mix(in srgb, var(--purple-600) 15%, transparent);
+    color: var(--status-magic);
+    border: 1px solid color-mix(in srgb, var(--purple-600) 40%, transparent);
+}
+
+.item-badge.rarity-uncommon {
+    background: color-mix(in srgb, var(--emerald-500) 15%, transparent);
+    color: var(--status-emerald);
+    border: 1px solid color-mix(in srgb, var(--emerald-500) 40%, transparent);
+}
+
+.item-badge.rarity-rare {
+    background: color-mix(in srgb, var(--blue-600) 15%, transparent);
+    color: var(--blue-600);
+    border: 1px solid color-mix(in srgb, var(--blue-600) 40%, transparent);
+}
+
+.item-badge.rarity-very-rare {
+    background: color-mix(in srgb, var(--purple-600) 15%, transparent);
+    color: var(--status-magic);
+    border: 1px solid color-mix(in srgb, var(--purple-600) 40%, transparent);
+}
+
+.item-badge.rarity-legendary {
+    background: color-mix(in srgb, var(--amber-500) 15%, transparent);
+    color: var(--amber-600);
+    border: 1px solid color-mix(in srgb, var(--amber-500) 40%, transparent);
+}
+
+.manage-weapons-btn,
+.manage-equipment-btn {
+    align-self: center;
+    height: 36px;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.manage-equipment-btn {
+    background: linear-gradient(135deg, var(--cyan-bg-50) 0%, var(--cyan-tint) 100%);
+    border: 1px solid var(--cyan-border);
+    color: var(--cyan-tint-text);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--cyan-500) 15%, transparent);
+}
+
+.manage-equipment-btn:hover {
+    background: linear-gradient(135deg, var(--cyan-border) 0%, var(--cyan-fill-hover) 100%);
+    border-color: var(--cyan-border-strong);
+    color: var(--text-on-accent);
+    box-shadow: 0 3px 8px color-mix(in srgb, var(--cyan-500) 28%, transparent);
+    transform: translateY(-1px);
+}
+
+.manage-equipment-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--cyan-500) 20%, transparent);
+}
+
+.manage-equipment-btn:focus-visible {
+    outline: 2px solid var(--cyan-500);
+    outline-offset: 2px;
+}
+
+:root[data-theme="dark"] .manage-equipment-btn,
+.theme-dark .manage-equipment-btn {
+    box-shadow: none;
+}
+
+:root[data-theme="dark"] .manage-equipment-btn:hover,
+.theme-dark .manage-equipment-btn:hover {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cyan-500) 25%, transparent);
+}
+
+.equipment-header-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Card names open the card's details: a real button, styled as the name */
+.card-open-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.card-open-btn:hover {
+    text-decoration: underline;
+}
+
+.card-open-btn:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Small toggles keep 24px targets */
+.weapon-mastery-badge,
+.attune-toggle-btn {
+    min-height: 24px;
+}
+
+/* Quantity steppers keep 24px buttons when the row is narrow (WCAG 2.5.8) */
+.item-qty-stepper {
+    flex-shrink: 0;
+}
+
+.item-qty-btn {
+    flex-shrink: 0;
+    min-width: 24px;
+}

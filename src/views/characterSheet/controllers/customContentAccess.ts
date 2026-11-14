@@ -57,11 +57,11 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]):not([type="hidd
 export function restoreFocusAfterClose(opener: HTMLElement | null, root: HTMLElement) {
     setTimeout(() => {
         if (opener && opener.isConnected && opener.getClientRects().length > 0) {
-            opener.focus();
+            opener.focus({ preventScroll: true });
             return;
         }
         const open = Array.from(root.querySelectorAll<HTMLElement>('[role="dialog"]'))
             .filter(d => !d.classList.contains("hidden") && d.getAttribute("aria-hidden") !== "true");
-        open[open.length - 1]?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+        open[open.length - 1]?.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
     }, 0);
 }

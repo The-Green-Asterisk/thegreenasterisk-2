@@ -34,7 +34,7 @@ export function initDialogFocus(root: HTMLElement): void {
                 returnTo.delete(d);
                 const active = document.activeElement as HTMLElement | null;
                 const focusLost = !active || active === document.body || d.contains(active);
-                if (focusLost && openStack.length === 0 && target && document.contains(target)) target.focus();
+                if (focusLost && openStack.length === 0 && target && document.contains(target)) target.focus({ preventScroll: true });
             }
         }
     });

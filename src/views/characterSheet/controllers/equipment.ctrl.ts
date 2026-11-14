@@ -14,6 +14,7 @@ export function initEquipmentController(ctx: CharacterSheetContext) {
         if (!itemName) return;
 
         row.addEventListener("click", () => {
+            row.querySelector<HTMLElement>(".card-open-btn")?.focus({ preventScroll: true });
             void ctx.openItemModal(itemName, itemId || undefined, itemType || undefined);
         }, { signal: el.signal });
     });

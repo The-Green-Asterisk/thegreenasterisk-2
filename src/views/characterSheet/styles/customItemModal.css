@@ -1,0 +1,27 @@
+.add-custom-item-btn {
+    align-self: center;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    background: var(--surface-muted);
+    border: 1px solid var(--ui-color);
+    color: var(--ui-text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: all 0.2s ease;
+}
+
+.add-custom-item-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.add-custom-item-btn:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}
