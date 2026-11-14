@@ -1590,7 +1590,7 @@ export function parseDndBeyondCharacter(
             : sourceName;
 
         const isAlwaysPrepared = s.alwaysPrepared === true ||
-            (!isFromClassSpells && s.countsAsKnownSpell === false);
+            s.countsAsKnownSpell === false;
 
         const damageInfo = extractSpellDamageInfo({
             level: Number(def.level) || 0,
