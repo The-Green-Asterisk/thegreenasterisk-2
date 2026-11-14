@@ -826,11 +826,11 @@ describe('Frontend View Templates', () => {
             }
         });
 
-        charData.spellSlots = [
-            { level: 1, total: 4, used: 1 },
-            { level: 2, total: 3, used: 0 },
-            { level: 3, total: 2, used: 0 }
-        ];
+        charData.spellSlots = {
+            level1: { level: 1, total: 4, label: '1st' },
+            level2: { level: 2, total: 3, label: '2nd' },
+            level3: { level: 3, total: 2, label: '3rd' }
+        };
         charData.allowedSpellsByLevel = { 0: 4, 1: 4, 2: 3, 3: 2 };
 
         const limits = getCharacterSpellLevelLimits(charData);
@@ -3273,12 +3273,12 @@ describe('Frontend View Templates', () => {
         expect(secondWindAction?.type).toBe('Bonus Action');
 
         // 2. Class resources include species resources (Breath Weapon PB uses, Draconic Flight at lvl 5)
-        const resourceNames = char.classResources.map(r => r.name);
+        const resourceNames = (char.classResources ?? []).map(r => r.name);
         expect(resourceNames).toContain('Second Wind');
         expect(resourceNames).toContain('Breath Weapon');
         expect(resourceNames).toContain('Draconic Flight');
 
-        const bwRes = char.classResources.find(r => r.name === 'Breath Weapon');
+        const bwRes = (char.classResources ?? []).find(r => r.name === 'Breath Weapon');
         expect(bwRes?.total).toBe(3);
         expect(bwRes?.resetOn).toBe('long');
 
