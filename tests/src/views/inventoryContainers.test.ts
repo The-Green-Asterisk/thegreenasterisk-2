@@ -149,9 +149,11 @@ describe("inventory containers, recursive weights, and weapon sync", () => {
         expect(backpackSummary.totalQuantity).toBe(25);
 
         const bohSummary = getContainerSummary(char, "id:5")!;
-        // BoH own weight (15) + Chest (25) + 2x Plate Armor (130) = 170 lbs!
+        // BoH own weight = 15 lbs; Chest (25) + 2x Plate Armor (130) = 155 lbs contents
         expect(bohSummary.extradimensional).toBe(true);
-        expect(bohSummary.totalWeight).toBe(170);
+        expect(bohSummary.ownWeight).toBe(15);
+        expect(bohSummary.contentsWeight).toBe(155);
+        expect(bohSummary.totalWeight).toBe(15);
         expect(bohSummary.capacityWeight).toBe(500);
         expect(bohSummary.isOverCapacity).toBe(false);
         expect(bohSummary.totalQuantity).toBe(3);
@@ -161,6 +163,18 @@ describe("inventory containers, recursive weights, and weapon sync", () => {
         expect(charSummary.carriedWeight).toBe(30);
         expect(charSummary.carryingCapacity).toBe(180); // STR 12 * 15
         expect(charSummary.isEncumbered).toBe(false);
+
+        // Stowing Bag of Holding inside Backpack: parent Backpack only counts BoH's own weight (15), not its 155 lbs of internal contents
+        expect(stowItem(char, "id:5", "id:1")).toBe(true);
+        const nestedBohSummary = getContainerSummary(char, "id:5")!;
+        expect(nestedBohSummary.ownWeight).toBe(15);
+        expect(nestedBohSummary.contentsWeight).toBe(155);
+        expect(nestedBohSummary.totalWeight).toBe(15);
+        const nestedBackpackSummary = getContainerSummary(char, "id:1")!;
+        expect(nestedBackpackSummary.contentsWeight).toBe(25);
+        expect(nestedBackpackSummary.totalWeight).toBe(30);
+        expect(nestedBackpackSummary.isOverCapacity).toBe(false);
+        expect(getCharacterWeightSummary(char).carriedWeight).toBe(30);
     });
 
     it("flags over-capacity containers and encumbered characters, and rejects cyclic nesting", () => {
@@ -301,5 +315,56 @@ describe("inventory UI rendering & controller interactions", () => {
         expect(char.weapons[0].equipped).toBe(true);
         expect(char.weapons[0].containerId).toBeUndefined();
         expect(sheet.querySelector('.container-contents[data-parent-key="id:1"] .equipment-row[data-item-key="id:30"]')).toBeNull();
+    });
+
+    it("renders and updates separate own-weight and contents/capacity badges for extradimensional containers", () => {
+        const char = makeCharacter({
+            equipment: [
+                { id: 5, name: "Bag of Holding", quantity: 1, equipped: false, type: "Wondrous item", isContainer: true, capacityWeight: 500, weight: 15 },
+                { id: 6, name: "Plate Armor", quantity: 2, equipped: false, type: "Heavy Armor", weight: 65, containerId: "id:5" }
+            ]
+        });
+
+        const sheet = document.createElement("div");
+        sheet.innerHTML = `<div class="equipment-grid">${renderEquipment(char)}</div>`;
+        document.body.appendChild(sheet);
+
+        const banner = sheet.querySelector<HTMLElement>(".inventory-weight-banner")!;
+        expect(banner.querySelector(".carried-weight-value")?.textContent).toBe("15 lbs");
+
+        const bohRow = sheet.querySelector<HTMLElement>('.equipment-row[data-item-key="id:5"]')!;
+        const weightBadge = bohRow.querySelector<HTMLElement>(".item-weight-badge")!;
+        const capBadge = bohRow.querySelector<HTMLElement>(".container-capacity-badge")!;
+        expect(weightBadge.textContent).toBe("15 lbs");
+        expect(weightBadge.classList.contains("over-capacity")).toBe(false);
+        expect(capBadge.textContent).toBe("130 lbs / 500 lbs");
+        expect(capBadge.classList.contains("over-capacity")).toBe(false);
+        expect(bohRow.querySelector(".container-count-badge")?.textContent).toBe("2 items");
+
+        initEquipmentController({
+            sheet,
+            getCharacter: () => char,
+            openItemModal: vi.fn(async () => {}),
+            persistEquipState: vi.fn(async () => {}),
+            syncSheetStats: vi.fn(),
+            openManageItemsModal: vi.fn(async () => {}),
+            openCustomItemModal: vi.fn(),
+            setItemQuantity: (name: string, qty: number) => {
+                const match = char.equipment.find((e: any) => e.name === name);
+                if (match) match.quantity = qty;
+            }
+        } as any);
+
+        // Increase Plate Armor to 8 (520 lbs > 500 lb BoH capacity) via live qty input
+        const plateQtyInput = sheet.querySelector<HTMLInputElement>('.equipment-row[data-item-key="id:6"] .item-qty-input')!;
+        plateQtyInput.value = "8";
+        plateQtyInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+        expect(weightBadge.textContent).toBe("15 lbs");
+        expect(weightBadge.classList.contains("over-capacity")).toBe(false);
+        expect(capBadge.textContent).toBe("520 lbs / 500 lbs");
+        expect(capBadge.classList.contains("over-capacity")).toBe(true);
+        expect(bohRow.querySelector(".weight-warning-badge")).not.toBeNull();
+        expect(banner.querySelector(".carried-weight-value")?.textContent).toBe("15 lbs");
     });
 });
