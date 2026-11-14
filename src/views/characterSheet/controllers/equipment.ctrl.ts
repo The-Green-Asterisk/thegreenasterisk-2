@@ -52,7 +52,19 @@ function updateInventoryWeightsInPlace(ctx: CharacterSheetContext): void {
             if (!summary) return;
             row.classList.toggle("is-over-capacity", summary.isOverCapacity);
             row.closest(".equipment-container-group")?.classList.toggle("is-over-capacity", summary.isOverCapacity);
-            if (weightBadge) {
+            const capacityBadge = row.querySelector<HTMLElement>(".container-capacity-badge");
+            if (summary.extradimensional) {
+                if (weightBadge) {
+                    weightBadge.classList.remove("over-capacity");
+                    weightBadge.textContent = formatWeightLb(summary.ownWeight);
+                }
+                if (capacityBadge) {
+                    capacityBadge.classList.toggle("over-capacity", summary.isOverCapacity);
+                    capacityBadge.textContent = summary.capacityWeight !== null
+                        ? `${formatWeightLb(summary.contentsWeight)} / ${formatWeightLb(summary.capacityWeight)}`
+                        : `${formatWeightLb(summary.contentsWeight)} inside`;
+                }
+            } else if (weightBadge) {
                 weightBadge.classList.toggle("over-capacity", summary.isOverCapacity);
                 weightBadge.textContent = summary.capacityWeight !== null
                     ? `${formatWeightLb(summary.totalWeight)} / ${formatWeightLb(summary.capacityWeight)}`
@@ -69,7 +81,7 @@ function updateInventoryWeightsInPlace(ctx: CharacterSheetContext): void {
                 warn.setAttribute("role", "status");
                 warn.setAttribute("title", "Container exceeds its weight capacity");
                 warn.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Over capacity`;
-                weightBadge?.after(warn);
+                (capacityBadge ?? weightBadge)?.after(warn);
             } else if (!summary.isOverCapacity && existingRowWarn) {
                 existingRowWarn.remove();
             }
