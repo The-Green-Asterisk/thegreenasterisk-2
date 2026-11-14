@@ -180,9 +180,18 @@ function renderEquipmentEntry(
             </button>
         ` : '';
 
-        const weightBadge = containerSummary
-            ? `<span class="item-badge item-weight-badge ${containerSummary.isOverCapacity ? 'over-capacity' : ''}" title="Container total weight (includes container${containerSummary.extradimensional ? ', extradimensional contents do not count toward character carry load' : ''})">${escapeHtml(containerSummary.capacityWeight !== null ? `${formatWeightLb(containerSummary.totalWeight)} / ${formatWeightLb(containerSummary.capacityWeight)}` : formatWeightLb(containerSummary.totalWeight))}</span>`
-            : `<span class="item-badge item-weight-badge" title="${qty !== 1 ? `${formatWeightLb(unitWeight)} each` : 'Item weight'}">${escapeHtml(formatWeightLb(stackWeight))}</span>`;
+        let weightBadge: string;
+        if (containerSummary?.extradimensional) {
+            weightBadge = `<span class="item-badge item-weight-badge" title="Item weight (extradimensional container only contributes its own weight)">${escapeHtml(formatWeightLb(containerSummary.ownWeight))}</span>`;
+        } else if (containerSummary) {
+            weightBadge = `<span class="item-badge item-weight-badge ${containerSummary.isOverCapacity ? 'over-capacity' : ''}" title="Container total weight (includes container)">${escapeHtml(containerSummary.capacityWeight !== null ? `${formatWeightLb(containerSummary.totalWeight)} / ${formatWeightLb(containerSummary.capacityWeight)}` : formatWeightLb(containerSummary.totalWeight))}</span>`;
+        } else {
+            weightBadge = `<span class="item-badge item-weight-badge" title="${qty !== 1 ? `${formatWeightLb(unitWeight)} each` : 'Item weight'}">${escapeHtml(formatWeightLb(stackWeight))}</span>`;
+        }
+
+        const containerCapacityBadge = containerSummary?.extradimensional
+            ? `<span class="item-badge container-capacity-badge ${containerSummary.isOverCapacity ? 'over-capacity' : ''}" title="Contents weight / capacity">${escapeHtml(containerSummary.capacityWeight !== null ? `${formatWeightLb(containerSummary.contentsWeight)} / ${formatWeightLb(containerSummary.capacityWeight)}` : `${formatWeightLb(containerSummary.contentsWeight)} inside`)}</span>`
+            : '';
 
         const containerCountBadge = containerSummary
             ? `<span class="item-badge container-count-badge" title="Total quantity of items inside">${containerSummary.totalQuantity} ${containerSummary.totalQuantity === 1 ? 'item' : 'items'}</span>`
@@ -231,6 +240,7 @@ function renderEquipmentEntry(
                         <button type="button" class="item-qty-btn qty-inc" data-qty-delta="1" aria-label="Increase quantity" title="Increase quantity">&plus;</button>
                     </div>
                     ${weightBadge}
+                    ${containerCapacityBadge}
                     ${containerCountBadge}
                     ${overCapacityBadge}
                     ${containerSelect}

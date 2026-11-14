@@ -477,13 +477,15 @@
     padding: 0.4rem 0.65rem;
 }
 
-.item-weight-badge {
+.item-weight-badge,
+.container-capacity-badge {
     background: color-mix(in srgb, var(--slate-400) 14%, transparent);
     color: var(--text-muted);
     border: 1px solid var(--border-soft);
 }
 
-.item-weight-badge.over-capacity {
+.item-weight-badge.over-capacity,
+.container-capacity-badge.over-capacity {
     background: color-mix(in srgb, var(--red-500) 14%, transparent);
     color: var(--status-danger);
     border-color: color-mix(in srgb, var(--red-500) 40%, transparent);
