@@ -79,12 +79,6 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
-function isTruthyQuery(value: unknown): boolean {
-    if (typeof value !== "string") return false;
-    const normalized = value.trim().toLowerCase();
-    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
-}
-
 function isLegacySrdSource(source?: string): boolean {
     const normalized = (source || "").toLowerCase();
     return normalized.includes("open 5e") || normalized.includes("open5e") || normalized.includes("srd") || normalized.includes("5e api");
@@ -624,7 +618,6 @@ export default class ItemController extends BaseController {
         const nameQuery = typeof query.name === "string" ? query.name.trim() : "";
         const idQuery = typeof query.id === "string" ? query.id.trim() : "";
         const typeQuery = typeof query.type === "string" ? query.type.trim() : "";
-        const preferRules2024 = isTruthyQuery(query.preferRules2024);
         const dndBeyondId = idQuery && /^\d+$/.test(idQuery) ? parseInt(idQuery) : undefined;
 
         if (!nameQuery && !dndBeyondId) {
@@ -635,7 +628,7 @@ export default class ItemController extends BaseController {
         }
 
         const slug = slugify(nameQuery || `item-${dndBeyondId}`);
-        const cacheKey = `item_detail_${slug}_${preferRules2024 ? "pref2024" : "mixed"}`;
+        const cacheKey = `item_detail_${slug}_pref2024`;
         const cached = cache.get<string>(cacheKey) || cache.get<string>(`item_detail_${slug}`);
         if (cached) {
             try {
@@ -751,7 +744,7 @@ export default class ItemController extends BaseController {
                         if (differsFrom(dbItem, before)) await itemRepo.save(dbItem);
                     }
 
-                    if (preferRules2024 && isLegacySrdSource(dbItem.source)) {
+                    if (isLegacySrdSource(dbItem.source)) {
                         legacyDbItemFallback = dbItem;
                     } else {
                         const jsonRes = JSON.stringify({ sourceTier: "Database", item: dbItem });
@@ -843,7 +836,7 @@ export default class ItemController extends BaseController {
         const sourceTier = itemSource.includes("d&d beyond")
             ? "D&D Beyond"
             : itemSource.includes("open 5e") || itemSource.includes("open5e") || itemSource.includes("srd") || itemSource.includes("5e api")
-                ? (preferRules2024 ? "Legacy SRD Fallback" : "SRD")
+                ? "Legacy SRD Fallback"
                 : (foundItem.source || "External");
 
         const jsonOut = JSON.stringify({ sourceTier, item: savedItem });

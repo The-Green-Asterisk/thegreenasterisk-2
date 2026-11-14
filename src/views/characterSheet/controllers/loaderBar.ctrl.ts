@@ -4,7 +4,6 @@ import { CharacterSheetContext } from "./context";
 import { exportPdfCharacterSheet, PdfFormat } from "../services/pdfExport";
 
 const loaderStorageKey = "character-sheet-loader-collapsed";
-const rulesPreferenceStorageKey = "character-sheet-prefer-2024-rules";
 const pdfFormatStorageKey = "character-sheet-pdf-format-preference";
 
 export function initLoaderBarController(ctx: CharacterSheetContext) {
@@ -18,7 +17,6 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
     const refreshDndBeyondBtn = sheet.querySelector<HTMLButtonElement>("#refresh-dndbeyond-btn");
     const exportPdfBtn = sheet.querySelector<HTMLButtonElement>("#export-pdf-sheet-btn");
-    const prefer2024RulesToggle = sheet.querySelector<HTMLInputElement>("#prefer-2024-rules-toggle");
 
     function setLoaderCollapsed(collapsed: boolean) {
         if (!loaderBar || !loaderToggleBtn) return;
@@ -34,15 +32,6 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
             : false;
     setLoaderCollapsed(initialLoaderCollapsed);
 
-    const initialPrefer2024Rules =
-        typeof window !== "undefined" && window.localStorage
-            ? window.localStorage.getItem(rulesPreferenceStorageKey) !== "false"
-            : true;
-    ctx.prefer2024Rules.value = initialPrefer2024Rules;
-    if (prefer2024RulesToggle) {
-        prefer2024RulesToggle.checked = initialPrefer2024Rules;
-    }
-
     loaderToggleBtn?.addEventListener("click", () => {
         const isCollapsed = loaderBar?.classList.contains("is-collapsed") ?? false;
         const next = !isCollapsed;
@@ -50,18 +39,6 @@ export function initLoaderBarController(ctx: CharacterSheetContext) {
         if (typeof window !== "undefined" && window.localStorage) {
             window.localStorage.setItem(loaderStorageKey, String(next));
         }
-    }, { signal: el.signal });
-
-    prefer2024RulesToggle?.addEventListener("change", () => {
-        ctx.prefer2024Rules.value = !!prefer2024RulesToggle.checked;
-        if (typeof window !== "undefined" && window.localStorage) {
-            window.localStorage.setItem(rulesPreferenceStorageKey, ctx.prefer2024Rules.value ? "true" : "false");
-        }
-        ctx.showStatus(
-            ctx.prefer2024Rules.value
-                ? "Now preferring 2024-aligned sources for spell/item detail lookups."
-                : "Using mixed source lookups (including SRD fallbacks) for spell/item details."
-        );
     }, { signal: el.signal });
 
     const handleLoadSubmit = (e?: Event) => {

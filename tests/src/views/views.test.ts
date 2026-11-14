@@ -2705,7 +2705,6 @@ describe('Frontend View Templates', () => {
         const mockCtx: any = {
             sheet: container,
             dynamicContainer,
-            prefer2024Rules: { value: true },
             getSavedCharacters: () => mockSavedChars,
             loadSavedCharacter: vi.fn(),
             deleteSavedCharacter: mockDeleteSavedCharacter

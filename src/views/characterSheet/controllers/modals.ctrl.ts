@@ -1596,7 +1596,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
     /** Character-pull spells skip the database fetch, so look the row up separately to learn whether it's editable */
     async function resolveSpellEditTarget(spellName: string, token: number) {
         try {
-            const query = new URLSearchParams({ name: spellName, preferRules2024: ctx.prefer2024Rules.value ? "1" : "0" });
+            const query = new URLSearchParams({ name: spellName });
             const response = await getData<any>(`/get-spell?${query.toString()}`);
             if (token === spellModalToken) setSpellEditTarget(response?.spell || response);
         } catch {
@@ -1709,7 +1709,6 @@ export function initModalsController(ctx: CharacterSheetContext) {
             if (spellId !== undefined && spellId !== null && String(spellId).trim() !== "") {
                 spellQuery.set("id", String(spellId));
             }
-            spellQuery.set("preferRules2024", ctx.prefer2024Rules.value ? "1" : "0");
 
             const independentResponse = await getData<any>(`/get-spell?${spellQuery.toString()}`);
             const independentSpell = independentResponse?.spell || independentResponse;
@@ -2265,7 +2264,6 @@ export function initModalsController(ctx: CharacterSheetContext) {
             queryParams.set("name", decodedName);
             if (itemId) queryParams.set("id", String(itemId));
             if (itemType) queryParams.set("type", itemType);
-            queryParams.set("preferRules2024", ctx.prefer2024Rules.value ? "1" : "0");
 
             const independentRes = await getData<any>(`/get-item?${queryParams.toString()}`);
             const itemObj = independentRes?.item || independentRes;
