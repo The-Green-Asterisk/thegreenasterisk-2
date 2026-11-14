@@ -72,7 +72,9 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         lockField(kind, "weight", "Weight", "weight"),
         lockField(kind, "cost", "Cost", "cost"),
         lockField(kind, "isMagic", "Magic Item", "is-magic"),
-        lockField(kind, "requiresAttunement", "Attunement", "attunement")
+        lockField(kind, "requiresAttunement", "Attunement", "attunement"),
+        lockField(kind, "isContainer", "Container", "is-container"),
+        lockField(kind, "capacityWeight", "Container Capacity", "capacity-weight")
     ];
     const tailLocks = (kind: CustomItemKind) => [
         lockField(kind, "description", "Description", "description"),
@@ -157,6 +159,16 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         input(kind, "cost")!.value = item.cost !== undefined && item.cost !== null ? String(item.cost) : "";
         input(kind, "is-magic")!.checked = !!item.isMagic;
         input(kind, "attunement")!.checked = !!item.requiresAttunement;
+        const isContainer = !!item.isContainer;
+        const containerInput = input(kind, "is-container");
+        const capacityInput = input(kind, "capacity-weight");
+        if (containerInput) containerInput.checked = isContainer;
+        if (capacityInput) {
+            capacityInput.value = isContainer && item.capacityWeight !== undefined && item.capacityWeight !== null
+                ? String(item.capacityWeight)
+                : "";
+            capacityInput.disabled = !isContainer;
+        }
         q<HTMLTextAreaElement>(kind, "description")!.value = item.description || "";
         input(kind, "image")!.value = item.imageUrl || "";
         updateImagePreview(kind, item.imageUrl || "");
@@ -183,6 +195,8 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         if (!modal) return;
         openers[kind] = document.activeElement as HTMLElement | null;
         q<HTMLFormElement>(kind, "form")?.reset();
+        const capReset = input(kind, "capacity-weight");
+        if (capReset) capReset.disabled = !input(kind, "is-container")?.checked;
         hideUploadStatus(kind);
         updateImagePreview(kind, "");
         const status = q(kind, "status");
@@ -220,6 +234,8 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         modal.classList.add("hidden");
         modal.setAttribute("aria-hidden", "true");
         q<HTMLFormElement>(kind, "form")?.reset();
+        const capReset = input(kind, "capacity-weight");
+        if (capReset) capReset.disabled = !input(kind, "is-container")?.checked;
         hideUploadStatus(kind);
         updateImagePreview(kind, "");
         editing[kind] = null;
@@ -241,16 +257,32 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         return resetLabel ? { max, resetOn, resetLabel } : { max, resetOn };
     }
 
+    function hasInvalidCapacity(kind: CustomItemKind): boolean {
+        if (!input(kind, "is-container")?.checked) return false;
+        const raw = input(kind, "capacity-weight")?.value.trim() || "";
+        if (raw === "") return false;
+        const num = Number(raw);
+        return !Number.isFinite(num) || num < 0;
+    }
+
     function buildPayload(kind: CustomItemKind): DbItem {
         const original = editing[kind];
         const weight = input(kind, "weight")?.value.trim();
         const cost = input(kind, "cost")?.value.trim();
+        const isContainer = !!input(kind, "is-container")?.checked;
+        const capRaw = input(kind, "capacity-weight")?.value.trim();
+        const capNum = capRaw ? Number(capRaw) : undefined;
+        const capacityWeight = isContainer && capNum !== undefined && !Number.isNaN(capNum) && capNum > 0
+            ? capNum
+            : null;
         const common = {
             name: input(kind, "name")?.value.trim() || "",
             rarity: select(kind, "rarity")?.value || "Common",
             isMagic: !!input(kind, "is-magic")?.checked,
             requiresAttunement: !!input(kind, "attunement")?.checked,
             weight: weight ? Number(weight) : 0,
+            isContainer,
+            capacityWeight,
             cost: cost ? Number(cost) : undefined,
             description: q<HTMLTextAreaElement>(kind, "description")?.value.trim() || "",
             imageUrl: input(kind, "image")?.value.trim() || undefined,
@@ -322,6 +354,12 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
             return;
         }
 
+        if (hasInvalidCapacity(kind)) {
+            showStatus(kind, "Container capacity weight must be a non-negative number.", true);
+            input(kind, "capacity-weight")?.focus();
+            return;
+        }
+
         const effects = effectsEditors[kind].read();
         if (effects.invalid) {
             showStatus(kind, effects.problem || "Finish or remove the incomplete effect.", true);
@@ -376,6 +414,10 @@ export function initCustomItemModals(ctx: CharacterSheetContext, deps: CustomIte
         if (!modal) continue;
 
         q(kind, "close-btn")?.addEventListener("click", () => close(kind), { signal: el.signal });
+        input(kind, "is-container")?.addEventListener("change", () => {
+            const capField = input(kind, "capacity-weight");
+            if (capField) capField.disabled = !input(kind, "is-container")?.checked;
+        }, { signal: el.signal });
         q<HTMLButtonElement>(kind, "guide-btn")?.addEventListener("click", () => ctx.openMarkupGuideModal(), { signal: el.signal });
         q(kind, "cancel-btn")?.addEventListener("click", () => close(kind), { signal: el.signal });
         modal.addEventListener("click", (event) => {

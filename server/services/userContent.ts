@@ -55,7 +55,7 @@ export function sanitizeUrl<T extends string | null | undefined>(value: T): T | 
 
 const PAYLOAD_RICH_KEYS = new Set(["description", "htmlDescription", "notes", "masteryDescription", "effect"]);
 const PAYLOAD_PLAIN_KEYS = new Set(["name", "source", "school", "castingTime", "range", "duration", "components",
-    "category", "damage", "damageType", "rarity", "properties", "mastery", "masteryName", "grantedBy"]);
+    "category", "damage", "damageType", "rarity", "properties", "mastery", "masteryName", "grantedBy", "containerId"]);
 
 function sanitizeJsonValue(value: unknown, depth: number): unknown {
     if (depth > 20 || !value || typeof value !== "object") return value;
@@ -144,7 +144,7 @@ export const USER_CONTENT_FIELDS: Record<string, FieldRules> = {
     CharacterInventoryItem: {
         rich: ["description", "notes", "masteryDescription"],
         plain: ["name", "category", "damage", "damageType", "damageDie", "attackBonus", "range", "propertiesJson",
-            "masteryName", "rarity", "grantedBy"],
+            "masteryName", "rarity", "grantedBy", "containerId"],
         url: ["imageUrl"]
     },
     CharacterFeature: {

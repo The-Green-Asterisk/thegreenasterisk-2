@@ -1,8 +1,10 @@
 import { escapeHtml } from "@services/escape";
+import { roundWeightLb } from "../../../rules/dnd5e_2024/itemWeightsAndContainers";
 import { applyItemSenses } from "../../../rules/dnd5e_2024/senses";
 import { StatModifier } from "../../../rules/dnd5e_2024/types";
 import { findItemRule } from "../../../services/classRules";
 import { BonusPart, CharacterData, ItemEffectPart, EquipmentItem } from "../characterData";
+import { computeCarryingCapacity } from "./breakdown";
 
 export interface MagicBonusExtraction {
     statOverrides: Partial<Record<string, number>>;
@@ -15,6 +17,8 @@ export interface MagicBonusExtraction {
     globalCheckBonus: number;
     speedBonusFt: number;
     speedMultiplier: number;
+    carryingCapacityBonus: number;
+    carryingCapacityMultiplier: number;
     initiativeBonus: number;
     /** Advantage or disadvantage the item gives, as notes ("Advantage on Initiative (Weapon of Warning)") */
     rollNotes: string[];
@@ -773,6 +777,8 @@ const emptyExtraction = (): MagicBonusExtraction => ({
     globalCheckBonus: 0,
     speedBonusFt: 0,
     speedMultiplier: 1,
+    carryingCapacityBonus: 0,
+    carryingCapacityMultiplier: 1,
     initiativeBonus: 0,
     rollNotes: []
 });
@@ -818,6 +824,11 @@ export function extractItemMagicBonuses(
             result.spellDcBonus += num(m);
         } else if (target === "vitals.speed" && m.type === "bonus") {
             result.speedBonusFt += num(m);
+        } else if (target === "vitals.carryingCapacity" && m.type === "bonus") {
+            result.carryingCapacityBonus += num(m);
+        } else if (target === "vitals.carryingCapacity" && m.type === "multiplier") {
+            const mult = Number(m.value) || 1;
+            if (mult > 0 && mult !== 1) result.carryingCapacityMultiplier = roundWeightLb(result.carryingCapacityMultiplier * mult);
         } else if (target === "vitals.initiative" && m.type === "bonus") {
             result.initiativeBonus += num(m);
         } else if (m.type === "advantage" || m.type === "disadvantage") {
@@ -900,6 +911,10 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         record("vitals.initiative", extracted.initiativeBonus);
         record("vitals.speed", extracted.speedBonusFt);
         if (extracted.speedMultiplier > 1) record("vitals.speedMultiplier", extracted.speedMultiplier);
+        record("vitals.carryingCapacity", extracted.carryingCapacityBonus);
+        if (extracted.carryingCapacityMultiplier > 0 && extracted.carryingCapacityMultiplier !== 1) {
+            record("vitals.carryingCapacityMultiplier", extracted.carryingCapacityMultiplier);
+        }
 
         // Merge stat overrides (highest override wins)
         Object.keys(extracted.statOverrides).forEach(stat => {
@@ -920,6 +935,8 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         aggregated.globalCheckBonus += extracted.globalCheckBonus;
         aggregated.speedBonusFt += extracted.speedBonusFt;
         aggregated.speedMultiplier = Math.max(aggregated.speedMultiplier, extracted.speedMultiplier);
+        aggregated.carryingCapacityBonus += extracted.carryingCapacityBonus;
+        aggregated.carryingCapacityMultiplier = roundWeightLb(aggregated.carryingCapacityMultiplier * extracted.carryingCapacityMultiplier);
         aggregated.initiativeBonus += extracted.initiativeBonus;
         aggregated.rollNotes.push(...extracted.rollNotes);
     };
@@ -1034,6 +1051,9 @@ export function applyMagicalItemBonuses(character: CharacterData): CharacterData
         const adjustedSpeed = (baseSpeedNum + aggregated.speedBonusFt) * aggregated.speedMultiplier;
         const currentParen = String(character.vitals.speed || "").match(/\s*(\([^)]+\))/);
         character.vitals.speed = `${adjustedSpeed} ft.${currentParen ? currentParen[0] : ""}`;
+
+        // Carrying Capacity (reflects effective STR after belts/gauntlets plus item bonuses/multipliers)
+        character.vitals.carryingCapacity = computeCarryingCapacity(character).total;
     }
 
     // --- 3.5. PROCESS GRANTED WEAPONS FROM ACTIVE EQUIPMENT ---

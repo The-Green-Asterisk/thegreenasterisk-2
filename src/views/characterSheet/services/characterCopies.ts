@@ -140,6 +140,9 @@ export function applyItemEditToCopies(
         Object.assign(w, {
             itemId: id,
             name: item.name,
+            weight: Number(item.weight) || 0,
+            isContainer: !!item.isContainer,
+            capacityWeight: item.capacityWeight ?? undefined,
             category: item.category || w.category,
             damage: item.damage || w.damage,
             damageDie: dice || w.damageDie,
@@ -170,6 +173,9 @@ export function applyItemEditToCopies(
         Object.assign(e, {
             itemId: id,
             name: item.name,
+            weight: Number(item.weight) || 0,
+            isContainer: !!item.isContainer,
+            capacityWeight: item.capacityWeight ?? undefined,
             type: item.category || item.filterType || e.type,
             filterType: item.filterType || e.filterType,
             isMagic: !!item.isMagic,

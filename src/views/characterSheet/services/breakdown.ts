@@ -1,3 +1,8 @@
+import { findClassOption } from "../../../rules/dnd5e_2024/classOptions";
+import { featModifiers } from "../../../rules/dnd5e_2024/featRules";
+import { formatWeightLb, roundWeightLb } from "../../../rules/dnd5e_2024/itemWeightsAndContainers";
+import { activeSpeciesTraits, detectLineage } from "../../../rules/dnd5e_2024/speciesRules";
+import { findClassRule, findFeatRule, findSpeciesRule } from "../../../services/classRules";
 import { AbilityScore, BonusPart, CharacterData, SkillItem, VitalKey, WeaponItem } from "../characterData";
 import { checkExtrasFor, trainingMultiplier } from "./customSkills";
 
@@ -17,13 +22,14 @@ export interface Breakdown {
     title: string;
     total: number;
     lines: BreakdownLine[];
-    /** How to write the total: as a bonus (+3), a plain amount (AC 18, HP 44), or feet (30 ft.). */
-    totalStyle?: "signed" | "plain" | "feet";
+    /** How to write the total: as a bonus (+3), a plain amount (AC 18, HP 44), feet (30 ft.), or weight (240 lbs). */
+    totalStyle?: "signed" | "plain" | "feet" | "lbs";
 }
 
 export function formatTotal(breakdown: Breakdown): string {
     if (breakdown.totalStyle === "plain") return String(breakdown.total);
     if (breakdown.totalStyle === "feet") return `${breakdown.total} ft.`;
+    if (breakdown.totalStyle === "lbs") return formatWeightLb(breakdown.total);
     return signed(breakdown.total);
 }
 
@@ -156,6 +162,7 @@ function bestItemLine(character: CharacterData, target: string): BreakdownLine[]
 
 const VITAL_TITLES: Record<VitalKey, string> = {
     ac: "Armor Class", initiative: "Initiative", speed: "Walking speed", maxHp: "Hit point maximum",
+    carryingCapacity: "Carrying capacity",
     passivePerception: "Passive Perception", passiveInvestigation: "Passive Investigation", passiveInsight: "Passive Insight",
     spellSaveDc: "Spell save DC", spellAttackBonus: "Spell attack bonus"
 };
@@ -209,6 +216,15 @@ export function vitalBreakdown(character: CharacterData, key: VitalKey): Breakdo
             shown = String(total);
             lines = [...recorded];
             break;
+        case "carryingCapacity": {
+            const computed = computeCarryingCapacity(character);
+            total = character.source === "dndbeyond" && vitals?.carryingCapacity != null
+                ? Number(vitals.carryingCapacity)
+                : computed.total;
+            shown = formatWeightLb(total);
+            lines = computed.lines;
+            break;
+        }
         case "spellSaveDc":
             total = Number(vitals?.spellSaveDc) || 0;
             shown = String(total);
@@ -227,8 +243,155 @@ export function vitalBreakdown(character: CharacterData, key: VitalKey): Breakdo
             lines = [{ label: "Base", value: 10 }, { label: `${skillName} bonus`, value: Number(skill?.bonus) || 0 }, ...recorded];
         }
     }
-    const totalStyle = key === "speed" ? "feet" : key === "initiative" || key === "spellAttackBonus" ? "signed" : "plain";
+    const totalStyle = key === "speed" ? "feet" : key === "carryingCapacity" ? "lbs" : key === "initiative" || key === "spellAttackBonus" ? "signed" : "plain";
     return { title: `${VITAL_TITLES[key]} ${shown}`, total, lines: withRemainder(character, lines, total), totalStyle };
+}
+
+function parseMultiplierPart(part: BonusPart): number | null {
+    if (typeof part.multiplier === "number" && Number.isFinite(part.multiplier) && part.multiplier > 0) {
+        return part.multiplier;
+    }
+    const m = String(part.label || "").match(/\(×(\d+(?:\.\d+)?)\)\s*$/i);
+    return m ? Number(m[1]) : null;
+}
+
+/**
+ * Fallback carrying capacity modifiers from rules data (species traits, active choices, features, feats)
+ * for characters saved before vitalParts.carryingCapacity existed.
+ */
+export function inferCarryingCapacityRuleParts(character: CharacterData): BonusPart[] {
+    const parts: BonusPart[] = [];
+    const seen = new Set<string>();
+    const addMod = (label: string, m: any) => {
+        if (!m || m.target !== "vitals.carryingCapacity") return;
+        const norm = `${label.toLowerCase()}|${m.type}|${m.value}`;
+        if (seen.has(norm)) return;
+        seen.add(norm);
+        if (m.type === "multiplier") {
+            const mult = Number(m.value) || 1;
+            if (mult > 0 && mult !== 1) parts.push({ label: `${label} (×${mult})`, value: 0, multiplier: mult });
+        } else if (m.type === "bonus" || m.type === "penalty") {
+            const val = Number(m.value) || 0;
+            if (val !== 0) parts.push({ label, value: m.type === "penalty" ? -val : val });
+        }
+    };
+
+    const level = Number(character.level) || 1;
+    const sp = findSpeciesRule(character.species || character.race || "");
+    if (sp) {
+        const lineage = detectLineage(sp, {
+            texts: [character.lineage, character.race].filter(Boolean) as string[],
+            featureNames: (character.features || []).map((f) => f.name)
+        });
+        for (const t of activeSpeciesTraits(sp, lineage, level)) {
+            for (const m of t.modifiers || []) addMod(t.name, m);
+        }
+        for (const m of lineage?.modifiers || []) addMod(lineage?.name || sp.name, m);
+    }
+
+    const activeChoices: Record<string, string> = {
+        ...(character.creatorState?.subclassFeatureChoices || {}),
+        ...(character.creatorState?.featureChoices || {}),
+        ...(character.subclassFeatureChoices || {}),
+        ...(character.featureChoices || {}),
+        ...(character.trackingState?.featureChoices || {})
+    };
+    const classDefs = (character.classes || []).map((c) => ({
+        def: findClassRule(c.name),
+        level: Number(c.level) || level,
+        subclass: c.subclass
+    }));
+    const findProgressOption = (kind: string, optId: string) => {
+        const opt = findClassOption(kind, optId);
+        if (opt) return opt;
+        for (const { def, level: cLvl, subclass } of classDefs) {
+            if (!def) continue;
+            const subDef = subclass ? def.subclasses?.find((s) => s.name.toLowerCase() === subclass.toLowerCase() || s.id === subclass.toLowerCase()) : undefined;
+            for (const pl of [...(def.progression || []), ...(subDef?.progression || [])]) {
+                if ((pl.level || 0) > cLvl) continue;
+                for (const ch of pl.choices || []) {
+                    const chMeta = ch as { choiceId?: string; featureName?: string; name?: string; label?: string };
+                    if (ch.choiceId === kind || chMeta.featureName?.toLowerCase() === kind.toLowerCase() || chMeta.name?.toLowerCase() === kind.toLowerCase() || chMeta.label?.toLowerCase() === kind.toLowerCase()) {
+                        const found = ch.options?.find((o: any) => o.id === optId);
+                        if (found) return found;
+                    }
+                }
+            }
+        }
+        return undefined;
+    };
+    for (const [key, val] of Object.entries(activeChoices)) {
+        if (!val || val === "none") continue;
+        const [rawKind, rawId] = val.includes(":") ? val.split(":") : [key, val];
+        const opt = findProgressOption(rawKind, rawId || rawKind);
+        if (opt && Array.isArray(opt.modifiers)) {
+            for (const m of opt.modifiers) addMod(opt.name, m);
+        }
+    }
+
+    for (const f of character.features || []) {
+        if (f.type === "Feat") {
+            const feat = findFeatRule(f.name);
+            for (const m of featModifiers(feat ? [feat] : [], "vitals.carryingCapacity")) addMod(f.name, m);
+        } else {
+            const afterColon = f.name.includes(":") ? f.name.split(":").slice(1).join(":").trim().toLowerCase() : f.name.toLowerCase().trim();
+            for (const { def, level: cLvl, subclass } of classDefs) {
+                if (!def) continue;
+                const subDef = subclass ? def.subclasses?.find((s) => s.name.toLowerCase() === subclass.toLowerCase() || s.id === subclass.toLowerCase()) : undefined;
+                for (const pl of [...(def.progression || []), ...(subDef?.progression || [])]) {
+                    if ((pl.level || 0) > cLvl) continue;
+                    for (const ch of pl.choices || []) {
+                        const opt = ch.options?.find((o: any) => o.name.toLowerCase() === afterColon);
+                        if (opt) for (const m of opt.modifiers || []) addMod(opt.name, m);
+                    }
+                }
+            }
+        }
+    }
+
+    return parts;
+}
+
+/** Computes a character's carrying capacity (STR × 15 + additive bonuses, scaled by multipliers). */
+export function computeCarryingCapacity(character: CharacterData): { total: number; lines: BreakdownLine[] } {
+    const strAbility = findAbility(character, "STR");
+    const strScore = Number(strAbility?.score) || 10;
+    const lines: BreakdownLine[] = [{ label: `Strength (${strScore} × 15)`, value: roundWeightLb(strScore * 15) }];
+    const multipliers: Array<{ label: string; mult: number }> = [];
+
+    const sourceParts = character.vitalParts?.carryingCapacity !== undefined
+        ? character.vitalParts.carryingCapacity
+        : inferCarryingCapacityRuleParts(character);
+
+    for (const part of sourceParts || []) {
+        if (part.overriddenBy) continue;
+        const mult = parseMultiplierPart(part);
+        if (mult !== null && mult > 0) {
+            multipliers.push({ label: part.label, mult });
+        } else if (part.value) {
+            lines.push({ label: part.label, value: part.value });
+        }
+    }
+
+    if (itemsLayeredOnSheet(character)) {
+        for (const part of (character.itemEffectParts || []).filter((p) => p.target === "vitals.carryingCapacity")) {
+            lines.push({ label: part.item, value: part.value });
+        }
+        for (const part of (character.itemEffectParts || []).filter((p) => p.target === "vitals.carryingCapacityMultiplier")) {
+            if (part.value > 0 && part.value !== 1) {
+                multipliers.push({ label: `${part.item} (×${part.value})`, mult: part.value });
+            }
+        }
+    }
+
+    for (const m of multipliers) {
+        if (!(m.mult > 0) || m.mult === 1) continue;
+        const before = counted(lines);
+        const delta = roundWeightLb(before * m.mult - before);
+        lines.push({ label: m.label, value: delta });
+    }
+
+    return { total: roundWeightLb(counted(lines)), lines };
 }
 
 /** A weapon's attack bonus: the parts its path recorded (ability, proficiency, magic, fighting styles). */
@@ -259,7 +422,7 @@ export function abilityScoreBreakdown(character: CharacterData, ability: Ability
     return { title: `${ability.name} ${total} (${signed(modifier)})`, total, lines: withRemainder(character, lines, total), totalStyle: "plain" };
 }
 
-const VITAL_KEYS: VitalKey[] = ["ac", "initiative", "speed", "maxHp", "passivePerception", "passiveInvestigation", "passiveInsight", "spellSaveDc", "spellAttackBonus"];
+const VITAL_KEYS: VitalKey[] = ["ac", "initiative", "speed", "maxHp", "carryingCapacity", "passivePerception", "passiveInvestigation", "passiveInsight", "spellSaveDc", "spellAttackBonus"];
 
 /** The breakdown a sheet button asks for, by kind and key, or null when the number isn't there any more. */
 export function breakdownFor(character: CharacterData | null | undefined, kind: string, key: string): Breakdown | null {

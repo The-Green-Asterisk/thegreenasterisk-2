@@ -1,3 +1,4 @@
+import { lookupContainerDefaults, lookupItemWeightLb, parseWeightLb } from "../../rules/dnd5e_2024/itemWeightsAndContainers";
 import { ActionItem, CharacterData, ClassResource, EquipmentItem, ItemCharges } from "./characterData";
 
 /**
@@ -143,14 +144,23 @@ export function readCustomActions(raw: any): ActionItem[] {
 export function readCustomItems(raw: any): EquipmentItem[] {
     return (Array.isArray(raw?.customItems) ? raw.customItems : [])
         .filter((i: any) => text(i?.name))
-        .map((i: any) => ({
-            name: i.name,
-            quantity: Math.max(1, Number(i.quantity) || 1),
-            equipped: false,
-            type: "Custom Item",
-            description: text(i.description),
-            notes: text(i.notes)
-        }));
+        .map((i: any) => {
+            const containerDefaults = lookupContainerDefaults(i.name);
+            const parsedWeight = parseWeightLb(i.weight);
+            const fallbackWeight = parsedWeight !== null && parsedWeight > 0
+                ? parsedWeight
+                : (lookupItemWeightLb(i.name) ?? parsedWeight ?? 0);
+            return {
+                name: i.name,
+                quantity: Math.max(1, Number(i.quantity) || 1),
+                equipped: false,
+                weight: fallbackWeight,
+                ...(containerDefaults ? { isContainer: true, capacityWeight: containerDefaults.capacityWeight } : {}),
+                type: "Custom Item",
+                description: text(i.description),
+                notes: text(i.notes)
+            };
+        });
 }
 
 /** Pips for a pool of `total` uses with `used` spent: the first total - used are available. */

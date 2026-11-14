@@ -7,7 +7,8 @@ import {
 } from "../../../rules/dnd5e_2024";
 import { BonusPart } from "../../characterSheet/characterData";
 import { featModifierNumber, featModifiers } from "../../../rules/dnd5e_2024/featRules";
-import { speciesModifiers } from "../../../rules/dnd5e_2024/speciesRules";
+import { roundWeightLb } from "../../../rules/dnd5e_2024/itemWeightsAndContainers";
+import { activeSpeciesTraits, speciesModifiers } from "../../../rules/dnd5e_2024/speciesRules";
 import { AsiChoice, AsiSlot } from "../characterCreator.types";
 import { CharacterCreatorContext } from "../controllers/context";
 import { armorRequirementMet, getProgressionModifiers, modifierNumber } from "./progressionModifiers";
@@ -628,5 +629,79 @@ export function getTotalLevel(ctx: CharacterCreatorContext): number {
         return ctx.state.level || 1;
     }
     return ctx.state.classes.reduce((sum, c) => sum + (c.level || 1), 0);
+}
+
+/**
+ * Carrying capacity modifiers beyond Strength × 15 (species traits like Powerful Build, class choices like
+ * Aspect of the Elephant, and feats). Multipliers store `multiplier` so sheet STR changes recompute dynamically.
+ */
+export function getCarryingCapacityModifierParts(ctx: CharacterCreatorContext): BonusPart[] {
+    ctx.syncStateClassProperties();
+    const parts: BonusPart[] = [];
+    const multipliers: Array<{ label: string; mult: number }> = [];
+    const totalLevel = ctx.getTotalLevel() || 1;
+    const pb = getProficiencyBonus(ctx);
+
+    for (const feat of getCharacterFeats(ctx)) {
+        for (const m of featModifiers([feat], "vitals.carryingCapacity")) {
+            if (m.type === "multiplier") {
+                const mult = Number(m.value) || 1;
+                if (mult > 0 && mult !== 1) multipliers.push({ label: `${feat.name} (×${mult})`, mult });
+            } else if (m.type === "bonus" || m.type === "penalty") {
+                const val = featModifierNumber(m, totalLevel, pb);
+                if (val !== 0) parts.push({ label: feat.name, value: m.type === "penalty" ? -val : val });
+            }
+        }
+    }
+
+    const sp = currentSpecies(ctx);
+    const lin = currentLineage(ctx);
+    for (const t of activeSpeciesTraits(sp, lin, totalLevel)) {
+        for (const m of t.modifiers || []) {
+            if (m.target !== "vitals.carryingCapacity") continue;
+            if (m.type === "multiplier") {
+                const mult = Number(m.value) || 1;
+                if (mult > 0 && mult !== 1) multipliers.push({ label: `${t.name} (×${mult})`, mult });
+            } else if (m.type === "bonus" || m.type === "penalty") {
+                const val = typeof m.perClassLevel === "number" ? m.perClassLevel * totalLevel : Number(m.value) || 0;
+                if (val !== 0) parts.push({ label: t.name, value: m.type === "penalty" ? -val : val });
+            }
+        }
+    }
+    for (const m of lin?.modifiers || []) {
+        if (m.target !== "vitals.carryingCapacity") continue;
+        if (m.type === "multiplier") {
+            const mult = Number(m.value) || 1;
+            if (mult > 0 && mult !== 1) multipliers.push({ label: `${lin?.name || "Lineage"} (×${mult})`, mult });
+        } else if (m.type === "bonus" || m.type === "penalty") {
+            const val = Number(m.value) || 0;
+            if (val !== 0) parts.push({ label: lin?.name || "Lineage", value: m.type === "penalty" ? -val : val });
+        }
+    }
+
+    for (const m of getProgressionModifiers(ctx)) {
+        if (m.target !== "vitals.carryingCapacity") continue;
+        if (m.type === "multiplier") {
+            const mult = Number(m.value) || 1;
+            if (mult > 0 && mult !== 1) multipliers.push({ label: `${m.source} (×${mult})`, mult });
+        } else if (m.type === "bonus" || m.type === "penalty") {
+            const val = modifierNumber(m);
+            if (val !== 0) parts.push({ label: m.source, value: m.type === "penalty" ? -val : val });
+        }
+    }
+
+    let running = getEffectiveAbilityScore(ctx, "str") * 15 + parts.reduce((sum, p) => sum + p.value, 0);
+    for (const m of multipliers) {
+        const delta = roundWeightLb(running * m.mult - running);
+        running = roundWeightLb(running + delta);
+        parts.push({ label: m.label, value: delta, multiplier: m.mult });
+    }
+    return parts;
+}
+
+export function getCarryingCapacity(ctx: CharacterCreatorContext): number {
+    const strBase = getEffectiveAbilityScore(ctx, "str") * 15;
+    const modParts = getCarryingCapacityModifierParts(ctx);
+    return roundWeightLb(strBase + partsTotal(modParts));
 }
 

@@ -815,6 +815,7 @@ If you take the [action]Disengage[/action] action before casting this spell, you
                                     <option value="potion">Potions &amp; Consumables</option>
                                     <option value="wondrous">Wondrous Items</option>
                                     <option value="gear">Adventuring Gear</option>
+                                    <option value="container">Containers</option>
                                 </select>
                             </div>
                             <div class="manage-db-results-list" id="manage-items-db-results">

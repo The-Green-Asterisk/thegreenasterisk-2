@@ -5,7 +5,8 @@ import { Item } from "../services/database/entity/Item";
 import { isLegacyDndBeyondEntity } from "../services/database/legacyFilter";
 import { propagateItemEdit } from "../services/characterCopies";
 import { sanitizeItemCharges, sanitizeItemModifiers, seedItemModifiers } from "../services/database/itemMechanics";
-import { differsFrom, ITEM_LOCK_COLUMNS, keepLockedFields, normalizeLockedFields } from "../services/definitionLocks";
+import { differsFrom, ITEM_LOCK_COLUMNS, keepLockedFields, normalizeLockedFields, parseLockedFields } from "../services/definitionLocks";
+import { lookupContainerDefaults, lookupItemWeightLb, parseWeightLb, roundWeightLb } from "../services/itemWeightsAndContainers";
 import { sanitizeUserContent } from "../services/userContent";
 import BaseController from "./baseController";
 import SessionController from "./sessionController";
@@ -18,6 +19,52 @@ function parseModifiers(raw: string | null | undefined): any[] | undefined {
     } catch {
         return undefined;
     }
+}
+
+function normalizeItemWeightAndContainer(
+    name: string,
+    category?: string | null,
+    rawWeight?: unknown,
+    rawIsContainer?: unknown,
+    rawCapacity?: unknown
+): { weight: number; isContainer: boolean; capacityWeight: number | undefined } {
+    const parsedWeight = parseWeightLb(rawWeight);
+    const lookedUp = parsedWeight !== null && parsedWeight > 0 ? parsedWeight : lookupItemWeightLb(name, category);
+    const weight = lookedUp !== null ? roundWeightLb(lookedUp) : (parsedWeight ?? 0);
+    const defaults = lookupContainerDefaults(name);
+    const isContainer = rawIsContainer !== undefined && rawIsContainer !== null
+        ? Boolean(rawIsContainer) || Boolean(defaults?.isContainer)
+        : Boolean(defaults?.isContainer);
+    const parsedCap = parseWeightLb(rawCapacity);
+    const capacityWeight = isContainer
+        ? (parsedCap !== null && parsedCap > 0 ? parsedCap : (defaults?.capacityWeight ?? undefined))
+        : undefined;
+    return { weight, isContainer, capacityWeight };
+}
+
+function applyMissingWeightAndContainer(item: Item): boolean {
+    const locks = parseLockedFields(item.lockedFields);
+    let changed = false;
+    const currentWeight = typeof item.weight === "number" && !Number.isNaN(item.weight) ? item.weight : 0;
+    if (!locks.weight && currentWeight <= 0) {
+        const lookedUp = lookupItemWeightLb(item.name, item.category || item.filterType);
+        if (lookedUp !== null && lookedUp > 0) {
+            item.weight = roundWeightLb(lookedUp);
+            changed = true;
+        }
+    }
+    const defaults = lookupContainerDefaults(item.name);
+    if (defaults) {
+        if (!locks.isContainer && !item.isContainer && defaults.isContainer) {
+            item.isContainer = true;
+            changed = true;
+        }
+        if (!locks.capacityWeight && (item.capacityWeight === null || item.capacityWeight === undefined) && defaults.capacityWeight !== null) {
+            item.capacityWeight = defaults.capacityWeight;
+            changed = true;
+        }
+    }
+    return changed;
 }
 
 function slugify(text: string): string {
@@ -202,7 +249,7 @@ export default class ItemController extends BaseController {
                         const rarity = isMundane ? "Common" : String(rawWep.rarity || (isMagic ? "Uncommon" : "Common")).slice(0, 100);
                         const desc = String(rawWep.description || rawWep.notes || `<p>${name} (${category}).</p>`).trim();
                         const imageUrl = rawWep.imageUrl ? String(rawWep.imageUrl).slice(0, 500) : undefined;
-                        const weight = Number(rawWep.weight) || 0;
+                        const wc = normalizeItemWeightAndContainer(name, category, rawWep.weight, rawWep.isContainer, rawWep.capacityWeight);
                         const cost = Number(rawWep.cost) || undefined;
 
                         if (!existing) {
@@ -219,7 +266,9 @@ export default class ItemController extends BaseController {
                                 range,
                                 properties,
                                 mastery: mastery ? String(mastery).slice(0, 100) : undefined,
-                                weight,
+                                weight: wc.weight,
+                                isContainer: wc.isContainer,
+                                capacityWeight: wc.capacityWeight,
                                 cost,
                                 description: desc,
                                 imageUrl,
@@ -246,11 +295,23 @@ export default class ItemController extends BaseController {
                             if (desc) existing.description = desc;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+                            if (existing.weight <= 0 && wc.weight > 0) existing.weight = wc.weight;
+                            if (!existing.isContainer && wc.isContainer) existing.isContainer = true;
+                            if (existing.isContainer && existing.capacityWeight == null && wc.capacityWeight !== undefined) existing.capacityWeight = wc.capacityWeight;
                             keepLockedFields(existing, before, ITEM_LOCK_COLUMNS);
                             const saved = await itemRepo.save(existing);
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             savedCount++;
+                        } else if (!existing.isCustom) {
+                            const before = { ...existing };
+                            if (applyMissingWeightAndContainer(existing)) {
+                                keepLockedFields(existing, before, ITEM_LOCK_COLUMNS);
+                                if (differsFrom(existing, before)) {
+                                    await itemRepo.save(existing);
+                                    this.clearItemCache(slug);
+                                }
+                            }
                         }
                     } catch (wepErr) {
                         console.warn(`Could not upsert weapon "${rawWep?.name}":`, wepErr);
@@ -305,7 +366,7 @@ export default class ItemController extends BaseController {
                         }
                         const desc = String(rawEq.description || rawEq.notes || `<p>${name} (${filterType}).</p>`).trim();
                         const imageUrl = rawEq.imageUrl ? String(rawEq.imageUrl).slice(0, 500) : undefined;
-                        const weight = Number(rawEq.weight) || 0;
+                        const wc = normalizeItemWeightAndContainer(name, filterType, rawEq.weight, rawEq.isContainer, rawEq.capacityWeight);
                         const cost = Number(rawEq.cost) || undefined;
 
                         if (!existing) {
@@ -318,7 +379,9 @@ export default class ItemController extends BaseController {
                                 isMagic,
                                 requiresAttunement: isMundane || isPotion ? false : !!(rawEq.attuned || rawEq.requiresAttunement),
                                 source: sourceLabel,
-                                weight,
+                                weight: wc.weight,
+                                isContainer: wc.isContainer,
+                                capacityWeight: wc.capacityWeight,
                                 cost,
                                 description: desc,
                                 imageUrl,
@@ -353,11 +416,23 @@ export default class ItemController extends BaseController {
                             if (desc) existing.description = desc;
                             if (imageUrl) existing.imageUrl = imageUrl;
                             if (dndBeyondId) existing.dndBeyondId = dndBeyondId;
+                            if (existing.weight <= 0 && wc.weight > 0) existing.weight = wc.weight;
+                            if (!existing.isContainer && wc.isContainer) existing.isContainer = true;
+                            if (existing.isContainer && existing.capacityWeight == null && wc.capacityWeight !== undefined) existing.capacityWeight = wc.capacityWeight;
                             keepLockedFields(existing, before, ITEM_LOCK_COLUMNS);
                             const saved = await itemRepo.save(existing);
                             cache.set(`item_detail_${slug}_pref2024`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             cache.set(`item_detail_${slug}_mixed`, JSON.stringify({ sourceTier: "Database", item: saved }), 3600);
                             savedCount++;
+                        } else if (!existing.isCustom) {
+                            const before = { ...existing };
+                            if (applyMissingWeightAndContainer(existing)) {
+                                keepLockedFields(existing, before, ITEM_LOCK_COLUMNS);
+                                if (differsFrom(existing, before)) {
+                                    await itemRepo.save(existing);
+                                    this.clearItemCache(slug);
+                                }
+                            }
                         }
                     } catch (eqErr) {
                         console.warn(`Could not upsert equipment "${rawEq?.name}":`, eqErr);
@@ -473,6 +548,22 @@ export default class ItemController extends BaseController {
                 }
             }
 
+            // Auto-heal missing weights and container defaults on non-custom database items
+            for (const item of allItems) {
+                if (!item.isCustom) {
+                    const before = { ...item };
+                    if (applyMissingWeightAndContainer(item)) {
+                        keepLockedFields(item, before, ITEM_LOCK_COLUMNS);
+                        if (differsFrom(item, before)) {
+                            await itemRepo.save(item);
+                            const slug = item.slug || slugify(item.name);
+                            cache.del(`item_detail_${slug}_pref2024`);
+                            cache.del(`item_detail_${slug}_mixed`);
+                        }
+                    }
+                }
+            }
+
             let filtered = allItems.filter(item => {
                 const itemIsPotion = isPotionOrOil(item.name, item.category, item.filterType);
                 if (typeFilter && typeFilter !== "all") {
@@ -491,6 +582,8 @@ export default class ItemController extends BaseController {
                     } else if (typeFilter === "wondrous") {
                         if (itemIsPotion) return false;
                         if (!fType.includes("wondrous")) return false;
+                    } else if (typeFilter === "container") {
+                        if (!item.isContainer && !lookupContainerDefaults(item.name)?.isContainer) return false;
                     } else if (typeFilter === "gear") {
                         if (fType.includes("weapon") || fType.includes("armor")) return false;
                     }
@@ -653,6 +746,11 @@ export default class ItemController extends BaseController {
                         if (differsFrom(dbItem, before)) await itemRepo.save(dbItem);
                     }
 
+                    if (!dbItem.isCustom && applyMissingWeightAndContainer(dbItem)) {
+                        keepLockedFields(dbItem, before, ITEM_LOCK_COLUMNS);
+                        if (differsFrom(dbItem, before)) await itemRepo.save(dbItem);
+                    }
+
                     if (preferRules2024 && isLegacySrdSource(dbItem.source)) {
                         legacyDbItemFallback = dbItem;
                     } else {
@@ -706,6 +804,13 @@ export default class ItemController extends BaseController {
         try {
             if (AppDataSource.isInitialized) {
                 const itemRepo = AppDataSource.getRepository(Item);
+                const wc = normalizeItemWeightAndContainer(
+                    foundItem.name || nameQuery,
+                    foundItem.category || foundItem.filterType,
+                    foundItem.weight,
+                    foundItem.isContainer,
+                    foundItem.capacityWeight
+                );
                 const newItem = itemRepo.create({
                     slug: foundItem.slug || slug,
                     name: foundItem.name || nameQuery,
@@ -719,7 +824,9 @@ export default class ItemController extends BaseController {
                     range: foundItem.range,
                     properties: foundItem.properties,
                     mastery: foundItem.mastery,
-                    weight: foundItem.weight || 0,
+                    weight: wc.weight,
+                    isContainer: wc.isContainer,
+                    capacityWeight: wc.capacityWeight,
                     cost: foundItem.cost,
                     description: foundItem.description || "<p>No description provided.</p>",
                     imageUrl: foundItem.imageUrl,
@@ -751,6 +858,11 @@ export default class ItemController extends BaseController {
     /** The fields the Add/Edit Custom Weapon and Magic Item dialogs control, normalized the same way for both */
     private static customItemFields(body: Partial<Item>) {
         const cost = body.cost !== undefined && body.cost !== null && String(body.cost).trim() !== "" ? Number(body.cost) : undefined;
+        const isContainer = Boolean(body.isContainer);
+        const rawCap = body.capacityWeight !== undefined && body.capacityWeight !== null && String(body.capacityWeight).trim() !== ""
+            ? Number(body.capacityWeight)
+            : undefined;
+        const capacityWeight = isContainer && rawCap !== undefined && !Number.isNaN(rawCap) && rawCap > 0 ? rawCap : undefined;
         return {
             name: String(body.name || "").trim(),
             filterType: body.filterType?.trim() || "Item",
@@ -762,7 +874,9 @@ export default class ItemController extends BaseController {
             range: body.range?.trim() || undefined,
             properties: body.properties?.trim() || undefined,
             mastery: body.mastery?.trim() || undefined,
-            weight: Number(body.weight) || 0,
+            weight: parseWeightLb(body.weight) ?? 0,
+            isContainer,
+            capacityWeight,
             cost: cost !== undefined && !Number.isNaN(cost) ? cost : undefined,
             description: String(body.description || "").trim(),
             imageUrl: body.imageUrl?.trim() || undefined
@@ -929,7 +1043,7 @@ export default class ItemController extends BaseController {
             const chargesChanged = (body as any).charges !== undefined;
             if (chargesChanged) item.chargesJson = sanitizeItemCharges((body as any).charges);
             // TypeORM skips undefined on save, so a field the dialog cleared has to become null
-            for (const key of ["category", "damage", "range", "properties", "mastery", "cost", "imageUrl"] as const) {
+            for (const key of ["category", "damage", "range", "properties", "mastery", "cost", "capacityWeight", "imageUrl"] as const) {
                 if (item[key] === undefined || item[key] === "") (item as any)[key] = null;
             }
             const saved = await itemRepo.save(item);
@@ -1096,6 +1210,14 @@ export default class ItemController extends BaseController {
             }
         }
 
+        const htmlWeightMatch = html.match(/Weight:\s*(?:<\/[^>]+>\s*)*([0-9]+(?:\.[0-9]+|\/[0-9]+)?)\s*lb/i)
+            || html.match(/<div[^>]*class=["'][^"']*weight[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+        const wc = normalizeItemWeightAndContainer(
+            name,
+            isPotion ? "Potion" : undefined,
+            htmlWeightMatch ? cleanHtmlTags(htmlWeightMatch[1]) : undefined
+        );
+
         return {
             slug,
             name,
@@ -1109,6 +1231,9 @@ export default class ItemController extends BaseController {
             range,
             properties,
             mastery,
+            weight: wc.weight,
+            isContainer: wc.isContainer,
+            capacityWeight: wc.capacityWeight,
             description,
             imageUrl,
             dndBeyondId
@@ -1175,7 +1300,7 @@ export default class ItemController extends BaseController {
                             damage,
                             range,
                             properties,
-                            weight: data.weight || 0,
+                            ...normalizeItemWeightAndContainer(data.name || name, data.equipment_category?.name || typeHint, data.weight),
                             cost: data.cost?.quantity,
                             description: desc
                         };
@@ -1233,6 +1358,7 @@ export default class ItemController extends BaseController {
                                 category: itemIsPotion ? "Potion" : exact.category,
                                 damage: !itemIsPotion && exact.damage_dice ? `${exact.damage_dice} ${exact.damage_type || ""}`.trim() : undefined,
                                 properties: !itemIsPotion && Array.isArray(exact.properties) ? exact.properties.join(", ") : undefined,
+                                ...normalizeItemWeightAndContainer(exact.name || name, itemIsPotion ? "Potion" : exact.category, exact.weight),
                                 description: desc
                             };
                         }
@@ -1313,7 +1439,7 @@ export default class ItemController extends BaseController {
                                     category: String(match.category || "Simple Melee").slice(0, 100),
                                     damage: match.damage_dice ? `${match.damage_dice} ${match.damage_type || ""}`.trim().slice(0, 100) : undefined,
                                     properties: Array.isArray(match.properties) ? match.properties.join(", ").slice(0, 255) : undefined,
-                                    weight: Number(match.weight) || 0,
+                                    ...normalizeItemWeightAndContainer(String(match.name), String(match.category || "Weapon"), match.weight),
                                     cost: Number(match.cost) || undefined,
                                     description: desc
                                 });
@@ -1329,7 +1455,7 @@ export default class ItemController extends BaseController {
                                     requiresAttunement: false,
                                     source: `Open5e (${match.document__title || "SRD"})`.slice(0, 255),
                                     category: String(match.category || "Armor").slice(0, 100),
-                                    weight: Number(match.weight) || 0,
+                                    ...normalizeItemWeightAndContainer(String(match.name), String(match.category || "Armor"), match.weight),
                                     cost: Number(match.cost) || undefined,
                                     description: desc
                                 });
@@ -1357,6 +1483,7 @@ export default class ItemController extends BaseController {
                                     requiresAttunement: itemIsPotion ? false : !!(match.requires_attunement || (match.desc && match.desc.toLowerCase().includes("requires attunement"))),
                                     source: `Open5e (${match.document__title || "SRD"})`.slice(0, 255),
                                     category: itemIsPotion ? "Potion" : (match.type ? String(match.type).slice(0, 100) : undefined),
+                                    ...normalizeItemWeightAndContainer(String(match.name), itemIsPotion ? "Potion" : match.type, match.weight),
                                     description: desc
                                 });
                             }
@@ -1380,6 +1507,13 @@ export default class ItemController extends BaseController {
             try {
                 let dbItem = await itemRepo.findOne({ where: { slug } });
                 if (!dbItem) {
+                    const wc = normalizeItemWeightAndContainer(
+                        String(candidate.name || rawQuery),
+                        candidate.category || candidate.filterType,
+                        candidate.weight,
+                        candidate.isContainer,
+                        candidate.capacityWeight
+                    );
                     const created = itemRepo.create({
                         slug: slug.slice(0, 255),
                         name: String(candidate.name || rawQuery).slice(0, 255),
@@ -1393,7 +1527,9 @@ export default class ItemController extends BaseController {
                         range: candidate.range ? String(candidate.range).slice(0, 100) : undefined,
                         properties: candidate.properties ? String(candidate.properties).slice(0, 255) : undefined,
                         mastery: candidate.mastery ? String(candidate.mastery).slice(0, 100) : undefined,
-                        weight: Number(candidate.weight) || 0,
+                        weight: wc.weight,
+                        isContainer: wc.isContainer,
+                        capacityWeight: wc.capacityWeight,
                         cost: Number(candidate.cost) || undefined,
                         description: candidate.description || "<p>No description provided.</p>",
                         imageUrl: candidate.imageUrl ? String(candidate.imageUrl).slice(0, 500) : undefined,

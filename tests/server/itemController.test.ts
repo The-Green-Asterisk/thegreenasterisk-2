@@ -345,4 +345,82 @@ describe('ItemController', () => {
             expect(upsert).toHaveBeenCalledWith([{ name: 'Dagger' }], [{ name: 'Rope' }]);
         });
     });
+
+    describe('containers and weight scrubbing', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('persists isContainer and capacityWeight on custom magic items and clears capacityWeight when toggled off', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const createdRow: any = { id: 88, createdById: 7, name: 'Bottomless Satchel', filterType: 'Wondrous item', isCustom: true, isContainer: true, capacityWeight: 200 };
+            const mockSave = vi.fn(async (entity: any) => ({ ...entity }));
+            const mockCreate = vi.fn((entity: any) => ({ id: 88, ...entity }));
+            const mockFindOne = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(createdRow);
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                findOne: mockFindOne,
+                create: mockCreate,
+                save: mockSave
+            } as any);
+
+            vi.spyOn(BaseController, 'readBody').mockResolvedValueOnce({
+                name: 'Bottomless Satchel',
+                filterType: 'Wondrous item',
+                weight: '4 lb.',
+                isContainer: true,
+                capacityWeight: 200,
+                description: 'Holds heavy loot.'
+            } as any);
+            const createRes = await ItemController.createCustomItem(
+                { url: '/data/create-custom-item', method: 'POST' } as http.IncomingMessage,
+                mockRes as http.ServerResponse
+            );
+            expect(createRes.status).toBe(201);
+            const createdPayload = JSON.parse(createRes.response);
+            expect(createdPayload.item.weight).toBe(4);
+            expect(createdPayload.item.isContainer).toBe(true);
+            expect(createdPayload.item.capacityWeight).toBe(200);
+
+            vi.spyOn(BaseController, 'readBody').mockResolvedValueOnce({
+                id: 88,
+                name: 'Bottomless Satchel',
+                filterType: 'Wondrous item',
+                isContainer: false,
+                capacityWeight: null,
+                description: 'No longer a container.'
+            } as any);
+            const editRes = await ItemController.editCustomItem(
+                { url: '/data/edit-custom-item', method: 'PUT' } as http.IncomingMessage,
+                mockRes as http.ServerResponse
+            );
+            expect(editRes.status).toBe(200);
+            expect(createdRow.isContainer).toBe(false);
+            expect(createdRow.capacityWeight).toBeNull();
+        });
+
+        it('filters containers when type=container and scrubs missing weight/container metadata on searchItems', async () => {
+            Object.defineProperty(AppDataSource, 'isInitialized', { value: true, configurable: true });
+            const backpackRow: any = { id: 1, name: 'Backpack', filterType: 'Adventuring Gear', weight: null, isContainer: false, capacityWeight: null };
+            const swordRow: any = { id: 2, name: 'Longsword', filterType: 'Weapon', weight: null, isContainer: false, capacityWeight: null };
+            const mockSave = vi.fn(async (entity: any) => entity);
+
+            vi.spyOn(AppDataSource, 'getRepository').mockReturnValue({
+                find: vi.fn().mockResolvedValue([backpackRow, swordRow]),
+                save: mockSave
+            } as any);
+
+            const searchRes = await ItemController.searchItems(
+                { url: '/data/search-items?q=&type=container', method: 'GET' } as http.IncomingMessage,
+                mockRes as http.ServerResponse
+            );
+            expect(searchRes.status).toBe(200);
+            const payload = JSON.parse(searchRes.response);
+            expect(payload.items).toHaveLength(1);
+            expect(payload.items[0].name).toBe('Backpack');
+            expect(backpackRow.isContainer).toBe(true);
+            expect(backpackRow.capacityWeight).toBe(30);
+            expect(backpackRow.weight).toBe(5);
+            expect(swordRow.weight).toBe(3);
+        });
+    });
 });

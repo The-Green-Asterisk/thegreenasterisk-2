@@ -13,6 +13,8 @@ export default class Item {
     properties?: string;
     mastery?: string;
     weight!: number;
+    isContainer?: boolean;
+    capacityWeight?: number | null;
     cost?: number;
     description!: string;
     imageUrl?: string;

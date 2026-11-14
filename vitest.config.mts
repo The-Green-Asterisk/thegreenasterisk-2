@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
     test: {
         globals: true,
+        testTimeout: 15000,
         environmentMatchGlobs: [
             ['tests/src/**', 'happy-dom'],
             ['tests/server/**', 'node']

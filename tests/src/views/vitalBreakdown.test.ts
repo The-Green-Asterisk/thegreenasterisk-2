@@ -211,5 +211,41 @@ describe('vital breakdowns', () => {
         applyMagicalItemBonuses(site);
         expect(site.weapons[0].toHitModifier).toBe(6);
     });
+
+    it('breaks down carrying capacity from STR x 15, trait/size multipliers, and magic item effects', () => {
+        const c = siteChar();
+        c.abilities[0] = { ...c.abilities[0], score: 16, baseScore: 16, modifier: 3 };
+        // Base 16 * 15 = 240 lbs
+        expect(vitalBreakdown(c, 'carryingCapacity')).toEqual({
+            title: 'Carrying capacity 240 lbs',
+            total: 240,
+            lines: [{ label: 'Strength (16 × 15)', value: 240 }],
+            totalStyle: 'lbs'
+        });
+
+        // Powerful Build (x2) + flat +30 item bonus + Aspect of the Wilds: Elephant (x2)
+        c.vitalParts.carryingCapacity = [];
+        applyStatModifier(c, { target: 'vitals.carryingCapacity', type: 'multiplier', value: 2 } as any, 1, 'Powerful Build');
+        applyStatModifier(c, { target: 'vitals.carryingCapacity', type: 'multiplier', value: 2 } as any, 1, 'Aspect of the Wilds: Elephant');
+        c.itemEffectParts = [
+            { item: 'Belt of Hauling', target: 'vitals.carryingCapacity', value: 30 }
+        ];
+        const bd = breakdownFor(c, 'vital', 'carryingCapacity')!;
+        // (240 + 30) * 2 = 540 -> * 2 = 1080
+        expect(bd.total).toBe(1080);
+        expect(bd.title).toBe('Carrying capacity 1080 lbs');
+        expect(bd.totalStyle).toBe('lbs');
+        expect(counted(bd.lines)).toBe(1080);
+        expect(bd.lines.map((l) => l.label)).toEqual([
+            'Strength (16 × 15)',
+            'Belt of Hauling',
+            'Powerful Build (×2)',
+            'Aspect of the Wilds: Elephant (×2)'
+        ]);
+
+        // Undo Powerful Build multiplier cleanly
+        applyStatModifier(c, { target: 'vitals.carryingCapacity', type: 'multiplier', value: 2 } as any, -1, 'Powerful Build');
+        expect(vitalBreakdown(c, 'carryingCapacity').total).toBe(540);
+    });
 });
 

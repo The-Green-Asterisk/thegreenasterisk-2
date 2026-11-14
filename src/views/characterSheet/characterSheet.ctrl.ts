@@ -36,11 +36,23 @@ import {
 } from "./controllers/index";
 import { applyFeatureDecisionOnCharacterData, ensureFeatureDecisionsOnCharacterData } from "./featureDecisions";
 import { applyMagicalItemBonuses } from "./services/magicItemBonuses";
+import { refreshEquipmentGrid } from "./controllers/equipment.ctrl";
+import { ensureInventoryItemsSynced } from "./services/inventoryContainers";
 
 export default function characterSheet(initialParams?: { id?: string | number; characterId?: string | number; url?: string } | string | number) {
     const baseEl = el.getElement<HTMLElement>("el-character-sheet");
     if (!baseEl) return;
     const sheet: HTMLElement = baseEl;
+    sheet.addEventListener("tga:inventory-changed", () => {
+        persistTrackerSnapshot();
+        scheduleDebouncedAutoSave();
+        const activeInEquipQty = document.activeElement instanceof HTMLElement
+            && document.activeElement.classList.contains("item-qty-input")
+            && Boolean(document.activeElement.closest(".equipment-grid"));
+        if (!activeInEquipQty) {
+            refreshEquipmentGrid(ctx);
+        }
+    }, { signal: el.signal });
 
     // Resolve initial ID from argument, query parameters, or path
     let activeCharacterId = resolveInitialCharacterId(initialParams);
@@ -916,11 +928,21 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             sensesAndTraining.innerHTML = renderSensesAndTraining(char);
         }
 
+        ensureInventoryItemsSynced(char);
+
         // Update Weapons grids
         sheet.querySelectorAll<HTMLElement>(".weapons-grid").forEach(grid => {
             grid.innerHTML = renderWeapons(char);
         });
         initWeaponsController(ctx);
+
+        // Update Inventory / Equipment grid (unless user is mid-typing in a quantity input)
+        const activeInEquipQty = document.activeElement instanceof HTMLElement
+            && document.activeElement.classList.contains("item-qty-input")
+            && Boolean(document.activeElement.closest(".equipment-grid"));
+        if (!activeInEquipQty) {
+            refreshEquipmentGrid(ctx);
+        }
 
         // Update the Actions tab's action cards (the weapon attacks above it are a .weapons-grid)
         const actionsGrid = sheet.querySelector<HTMLElement>("#tab-actions .actions-grid");
@@ -970,9 +992,37 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.skills = recomputed.skills;
                 activeCharacter.checkExtras = recomputed.checkExtras;
                 carryCustomSkills(activeCharacter, { skills: skillsBeforeRecalc });
+                const prevWeaponsMeta = new Map<string, { weight?: number; isContainer?: boolean; capacityWeight?: number | null; containerId?: string | null }>();
+                (activeCharacter.weapons || []).forEach(prevW => {
+                    const meta = {
+                        weight: prevW.weight,
+                        isContainer: prevW.isContainer,
+                        capacityWeight: prevW.capacityWeight,
+                        containerId: prevW.containerId
+                    };
+                    if (prevW.id !== undefined && prevW.id !== null) {
+                        prevWeaponsMeta.set(`id:${String(prevW.id)}`, meta);
+                    }
+                    const nameKey = `name:${String(prevW.name || "").trim().toLowerCase()}`;
+                    if (!prevWeaponsMeta.has(nameKey)) {
+                        prevWeaponsMeta.set(nameKey, meta);
+                    }
+                });
                 // Weapons locked on this character stay as they are, and the rest keep their database links
                 carryLockedCopiesAndLinks(recomputed, activeCharacter);
-                activeCharacter.weapons = recomputed.weapons;
+                (recomputed.weapons || []).forEach(w => {
+                    const meta = (w.id !== undefined && w.id !== null ? prevWeaponsMeta.get(`id:${String(w.id)}`) : undefined)
+                        || prevWeaponsMeta.get(`name:${String(w.name || "").trim().toLowerCase()}`);
+                    if (!meta) return;
+                    if (w.weight === undefined && meta.weight !== undefined) w.weight = meta.weight;
+                    if (w.isContainer === undefined && meta.isContainer !== undefined) w.isContainer = meta.isContainer;
+                    if (w.capacityWeight === undefined && meta.capacityWeight !== undefined) w.capacityWeight = meta.capacityWeight;
+                    if (meta.containerId) {
+                        w.containerId = meta.containerId;
+                        w.equipped = false;
+                    }
+                });
+                activeCharacter.weapons = recomputed.weapons || [];
                 if (activeCharacter.trackingState?.itemQuantities) {
                     const quantities = activeCharacter.trackingState.itemQuantities;
                     activeCharacter.equipment.forEach(item => {
@@ -991,6 +1041,7 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                         }
                     });
                 }
+                ensureInventoryItemsSynced(activeCharacter);
                 activeCharacter.actions = recomputed.actions;
                 activeCharacter.features = recomputed.features;
                 activeCharacter.proficiencies = recomputed.proficiencies;
@@ -1057,6 +1108,12 @@ export default function characterSheet(initialParams?: { id?: string | number; c
 
         persistTrackerSnapshot();
         scheduleDebouncedAutoSave();
+        const activeInEquipQty = document.activeElement instanceof HTMLElement
+            && document.activeElement.classList.contains("item-qty-input")
+            && Boolean(document.activeElement.closest(".equipment-grid"));
+        if (!activeInEquipQty) {
+            refreshEquipmentGrid(ctx);
+        }
     }
 
     function applyPersistedEquipStates(
@@ -1076,6 +1133,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             const key = `item:${item.name.toLowerCase()}`;
             if (stateMap.has(key)) {
                 item.equipped = !!stateMap.get(key);
+                if (item.equipped && item.containerId) {
+                    delete item.containerId;
+                }
             }
             const attuneKey = `attunement:${item.name.toLowerCase()}`;
             if (stateMap.has(attuneKey)) {
@@ -1087,6 +1147,9 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             const key = `weapon:${weapon.name.toLowerCase()}`;
             if (stateMap.has(key)) {
                 weapon.equipped = !!stateMap.get(key);
+                if (weapon.equipped && weapon.containerId) {
+                    delete weapon.containerId;
+                }
             }
             const attuneKey = `attunement:${weapon.name.toLowerCase()}`;
             if (stateMap.has(attuneKey)) {
@@ -1124,6 +1187,15 @@ export default function characterSheet(initialParams?: { id?: string | number; c
             currentEquipOverrides[existingIdx].equipped = equipped;
         } else {
             currentEquipOverrides.push({ scope, itemName, equipped });
+        }
+        if (scope === "weapon" || scope === "item") {
+            const siblingScope: "weapon" | "item" = scope === "weapon" ? "item" : "weapon";
+            const siblingIdx = currentEquipOverrides.findIndex(
+                s => s.scope === siblingScope && s.itemName.toLowerCase() === itemName.toLowerCase()
+            );
+            if (siblingIdx >= 0) {
+                currentEquipOverrides[siblingIdx].equipped = equipped;
+            }
         }
         recalculateFromRawPayload();
         if (!el.isAuth) return;

@@ -84,6 +84,18 @@ export class CharacterInventoryItem {
     @Column({ type: "text", nullable: true })
     notes?: string;
 
+    @Column({ type: "float", default: 0 })
+    weight!: number;
+
+    @Column({ type: "boolean", default: false })
+    isContainer!: boolean;
+
+    @Column({ type: "float", nullable: true })
+    capacityWeight?: number | null;
+
+    @Column({ type: "varchar", length: 100, nullable: true })
+    containerId?: string | null;
+
     @Column({ type: "varchar", length: 255, nullable: true })
     grantedBy?: string;
 

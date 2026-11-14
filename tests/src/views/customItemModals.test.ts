@@ -359,3 +359,47 @@ describe("placeholder and tag guide in the item dialogs", () => {
         expect(ctx.closeMarkupGuideModal).toHaveBeenCalled();
     });
 });
+
+describe("container classification and capacity fields in magic item modal", () => {
+    it("toggles capacity input with is-container, validates non-negative capacity, and submits or clears container metadata", async () => {
+        const { modals, $, submit } = await setup();
+
+        // New custom container creation
+        modals.open("magic-item");
+        const isContainerCheckbox = $("custom-magic-item-is-container");
+        const capacityInput = $("custom-magic-item-capacity-weight");
+        expect(isContainerCheckbox.checked).toBe(false);
+
+        $("custom-magic-item-name").value = "Quartermaster's Chest";
+        $<HTMLTextAreaElement>("custom-magic-item-description").value = "A sturdy ironbound chest.";
+        isContainerCheckbox.checked = true;
+        isContainerCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+        capacityInput.value = "250";
+        await submit("custom-magic-item");
+
+        expect(postData).toHaveBeenCalledWith("/create-custom-item", expect.objectContaining({
+            name: "Quartermaster's Chest",
+            isContainer: true,
+            capacityWeight: 250
+        }));
+
+        // Invalid negative capacity blocks submission
+        modals.open("magic-item", { id: 42, name: "Quartermaster's Chest", filterType: "Gear", description: "Chest", isContainer: true, capacityWeight: 250 });
+        expect($("custom-magic-item-is-container").checked).toBe(true);
+        expect($("custom-magic-item-capacity-weight").value).toBe("250");
+        $("custom-magic-item-capacity-weight").value = "-5";
+        await submit("custom-magic-item");
+        expect(putData).not.toHaveBeenCalled();
+        expect($("custom-magic-item-status").textContent).toContain("capacity");
+
+        // Turning off container clears capacityWeight to null
+        $("custom-magic-item-is-container").checked = false;
+        $("custom-magic-item-is-container").dispatchEvent(new Event("change", { bubbles: true }));
+        await submit("custom-magic-item");
+        expect(putData).toHaveBeenCalledWith("/edit-custom-item", expect.objectContaining({
+            id: 42,
+            isContainer: false,
+            capacityWeight: null
+        }));
+    });
+});
