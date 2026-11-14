@@ -1,0 +1,119 @@
+/* Ability Scores */
+.abilities-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.ability-card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: var(--sm-shadow);
+}
+
+.ability-card.is-proficient {
+    border-color: var(--ui-color);
+}
+
+.ability-header {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.ability-mod {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--ui-text);
+    line-height: 1.1;
+}
+
+.ability-score {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin: 0.2rem 0;
+}
+
+.ability-save {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.7rem;
+    margin-top: 0.2rem;
+    font-weight: 700;
+}
+
+.save-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.save-val {
+    color: var(--text);
+    font-weight: 800;
+}
+
+.prof-dot {
+    color: var(--ui-text);
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+.ability-note {
+    font-size: 0.62rem;
+    color: var(--ui-text);
+    margin-top: 0.3rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.ability-note-source {
+    display: block;
+    margin-top: 0.1rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+@media screen and (min-width: 680px) {
+    .abilities-container {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+/* Ability Score in-place editor with base score & stacked modifiers */
+.ability-score-editor-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0.2rem 0;
+}
+
+.ability-locked-indicator {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 0.68rem;
+    color: var(--status-warning);
+}
+
+.ability-lock-btn {
+    font-size: 0.65rem !important;
+    padding: 1px 5px !important;
+    margin-top: 2px !important;
+}

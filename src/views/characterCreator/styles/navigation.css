@@ -1,0 +1,283 @@
+/* Header */
+.creator-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 1.25rem;
+}
+
+.creator-badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    background: color-mix(in srgb, var(--ui-color) 12%, transparent);
+    color: var(--ui-text);
+    border: 1px solid color-mix(in srgb, var(--ui-color) 35%, transparent);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+}
+
+.creator-title {
+    margin: 0;
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.creator-subtitle {
+    margin: 0.35rem 0 0 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    max-width: 750px;
+    line-height: 1.45;
+}
+
+.creator-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.95rem;
+    border-radius: var(--radius);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.creator-cancel-btn:hover {
+    background: var(--surface-muted);
+    border-color: var(--border-mid);
+}
+
+/* Stepper Progress Bar */
+.creator-stepper {
+    overflow-x: auto;
+    padding: 0.65rem 0.85rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    box-shadow: var(--sm-shadow);
+    box-sizing: border-box;
+}
+
+.stepper-list {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.5rem;
+    min-width: 650px;
+}
+
+.stepper-list > li {
+    display: flex;
+    flex: 1;
+}
+
+/* Step buttons: the current step's circle is filled, completed ones tinted, later ones plain (no fading, so every
+   label keeps full contrast) */
+.stepper-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-height: 32px;
+    padding: 0.15rem 0.25rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+}
+
+.stepper-item:focus-visible {
+    outline: 2px solid var(--ui-color);
+    outline-offset: 2px;
+}
+
+.stepper-item.active .stepper-label {
+    font-weight: 800;
+}
+
+.stepper-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--surface-alt);
+    border: 2px solid var(--border-mid);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.stepper-item.active .stepper-circle {
+    background: var(--ui-color);
+    border-color: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.stepper-item.completed .stepper-circle {
+    background: color-mix(in srgb, var(--ui-color) 20%, transparent);
+    border-color: var(--ui-color);
+    color: var(--ui-text);
+}
+
+.stepper-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.stepper-item.active .stepper-label {
+    color: var(--ui-text);
+    font-weight: 800;
+}
+
+/* Alert */
+.creator-alert {
+    padding: 0.75rem 1rem;
+    background: color-mix(in srgb, var(--rose-600) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--rose-600) 40%, transparent);
+    border-radius: var(--radius);
+    color: var(--rose-600);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.creator-alert i {
+    margin-right: 0.4rem;
+}
+
+.creator-alert.warning {
+    background: color-mix(in srgb, var(--yellow-500) 15%, transparent);
+    border-color: color-mix(in srgb, var(--yellow-500) 45%, transparent);
+    color: var(--amber-600);
+}
+
+.creator-alert.hidden {
+    display: none;
+}
+
+/* Step Panels */
+.creator-step-panels {
+    min-height: 400px;
+}
+
+.step-panel {
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+    animation: fadeIn 0.2s ease;
+}
+
+.step-panel.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-header {
+    margin-bottom: 0.5rem;
+}
+
+.panel-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.panel-desc {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Footer Navigation */
+.creator-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 1.25rem;
+    margin-top: 0.5rem;
+}
+
+.creator-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.creator-nav-btn.secondary-btn {
+    background: var(--surface-alt);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.creator-nav-btn.secondary-btn:hover:not(:disabled) {
+    background: var(--surface-muted);
+}
+
+.creator-nav-btn.primary-btn {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.creator-nav-btn.primary-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.creator-nav-btn.submit-btn {
+    background: var(--green-deep);
+    color: var(--text-on-accent);
+}
+
+.creator-nav-btn.submit-btn:hover:not(:disabled) {
+    background: var(--green-800);
+}
+
+.creator-nav-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.creator-nav-btn.hidden {
+    display: none;
+}
+
+.step-counter {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}

@@ -14,6 +14,7 @@ export function initWeaponsController(ctx: CharacterSheetContext) {
         if (!weaponName) return;
 
         card.addEventListener("click", () => {
+            card.querySelector<HTMLElement>(".card-open-btn")?.focus({ preventScroll: true });
             void ctx.openItemModal(weaponName, weaponId || undefined, weaponType);
         }, { signal: el.signal });
     });

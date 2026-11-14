@@ -1,0 +1,1470 @@
+/* ==========================================================================
+   Sticky Vitals Bar (Morphed Vitals on Scroll)
+   ========================================================================== */
+.sticky-vitals-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: calc(100% - 1.5rem);
+    max-width: 1100px;
+    z-index: 950;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--black) 16%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 1rem;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease, box-shadow 0.2s ease !important;
+}
+
+:root[data-theme="dark"] .sticky-vitals-bar {
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    box-shadow: 0 8px 28px color-mix(in srgb, var(--black) 45%, transparent);
+}
+
+.sticky-vitals-bar.is-sticky {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sticky-vitals-bar:hover {
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--black) 24%, transparent);
+}
+
+:root[data-theme="dark"] .sticky-vitals-bar:hover {
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--black) 55%, transparent);
+}
+
+/* HP Module in Sticky Bar */
+.sticky-vital-hp {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 250px;
+    flex: 1 1 auto;
+    max-width: 480px;
+    cursor: default;
+}
+
+.sticky-hp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.74rem;
+}
+
+.sticky-hp-title {
+    font-weight: 800;
+    color: var(--ui-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    letter-spacing: 0.3px;
+}
+
+.sticky-hp-title i {
+    color: var(--status-danger);
+    font-size: 0.8rem;
+}
+
+.sticky-hp-ratio {
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.sticky-hp-dying-badge {
+    background: var(--status-danger);
+    color: var(--text-on-accent);
+    font-size: 0.62rem;
+    font-weight: 900;
+    padding: 1px 6px;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+    animation: sticky-pulse 1.2s infinite ease-in-out;
+}
+
+.sticky-hp-dying-badge.hidden {
+    display: none !important;
+}
+
+@keyframes sticky-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.75; transform: scale(1.05); }
+}
+
+.sticky-hp-gauge {
+    width: 100%;
+    height: 5px;
+    background: var(--border-soft);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.sticky-hp-bar-fill {
+    height: 100%;
+    background-color: var(--emerald-500);
+    border-radius: 999px;
+    transition: width 0.25s ease, background-color 0.25s ease;
+}
+
+.sticky-hp-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.3rem;
+}
+
+.sticky-hp-controls .sticky-hp-btn {
+    box-sizing: border-box;
+    height: 28px;
+    min-width: 28px;
+    max-width: 36px;
+    padding: 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--ui-text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+    flex: 0 0 auto;
+    transition: background 0.12s ease, color 0.12s ease !important;
+}
+
+.sticky-hp-controls .sticky-hp-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.sticky-hp-controls .sticky-hp-input-cluster {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.sticky-hp-controls .sticky-hp-input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0;
+    cursor: default;
+}
+
+.sticky-hp-controls .hp-input-label {
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+    line-height: 1;
+}
+
+.sticky-hp-controls .sticky-hp-value-input {
+    box-sizing: border-box;
+    height: 28px;
+    width: 44px;
+    max-width: 48px;
+    min-width: 32px;
+    padding: 0 0.2rem;
+    font-size: 0.88rem;
+    font-weight: 900;
+    line-height: 26px;
+    text-align: center;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ui-text);
+    cursor: text;
+    margin: 0;
+}
+
+.sticky-hp-controls .sticky-hp-value-input.temp-hp-input {
+    color: var(--status-info);
+}
+
+.sticky-hp-controls .sticky-hp-value-input:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 35%, transparent);
+}
+
+/* Badges (AC, DC, Spell Atk) in Sticky Bar */
+.sticky-vitals-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.sticky-vital-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 0.3rem 0.6rem;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease !important;
+}
+
+.sticky-vital-badge:hover {
+    transform: translateY(-1px);
+    border-color: var(--border);
+}
+
+.sticky-vital-icon {
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.sticky-vital-ac .sticky-vital-icon {
+    color: var(--badge-ac-icon);
+    background: var(--badge-ac-icon-bg);
+}
+
+.sticky-vital-dc .sticky-vital-icon {
+    color: var(--badge-dc-icon);
+    background: var(--badge-dc-icon-bg);
+}
+
+.sticky-vital-attack .sticky-vital-icon {
+    color: var(--badge-attack-icon);
+    background: var(--badge-attack-icon-bg);
+}
+
+.sticky-vital-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.1;
+}
+
+.sticky-vital-val {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--text);
+}
+
+.sticky-vital-label {
+    font-size: 0.58rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.sticky-vital-label .vital-ability-pill {
+    font-size: 0.52rem;
+    padding: 1px 3px;
+    border-radius: 3px;
+    background: var(--surface-muted);
+    color: var(--ui-text);
+}
+
+/* Scroll cue indicator */
+.sticky-vitals-scroll-cue {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--ui-text);
+    font-size: 0.85rem;
+    gap: 0.1rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius);
+    transition: transform 0.18s ease, color 0.18s ease !important;
+    opacity: 0.8;
+}
+
+.sticky-scroll-text {
+    font-size: 0.54rem;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.sticky-vitals-bar:hover .sticky-vitals-scroll-cue {
+    opacity: 1;
+    transform: translateY(-2px);
+    color: var(--ui-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sticky-vitals-bar {
+        padding: 0.4rem 0.65rem;
+        gap: 0.6rem;
+    }
+
+    .sticky-vital-hp {
+        min-width: 200px;
+    }
+
+    .sticky-vital-badge {
+        padding: 0.25rem 0.45rem;
+        gap: 0.35rem;
+    }
+
+    .sticky-vital-val {
+        font-size: 0.95rem;
+    }
+
+    .sticky-vitals-scroll-cue {
+        display: none;
+    }
+}
+
+@media (max-width: 580px) {
+    .sticky-vitals-bar {
+        flex-wrap: wrap;
+        padding: 0.4rem 0.5rem;
+        gap: 0.4rem;
+    }
+
+    .sticky-vital-hp {
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    .sticky-vitals-badges {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .sticky-vital-badge {
+        flex: 1 1 0;
+        justify-content: center;
+    }
+
+    .sticky-hp-controls .sticky-hp-value-input {
+        width: 38px;
+    }
+}
+
+/* ==========================================================================
+   Vitals Section: Core Combat Info Up Front
+   ========================================================================== */
+.vitals-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--md-shadow);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.vitals-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+/* Saving Throw Modifiers Row (displayed once directly under ability stats) */
+.saving-throw-notes-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    font-size: 0.76rem;
+    color: var(--ui-text);
+    padding: 0.1rem 0.25rem;
+    margin-top: -0.65rem;
+    line-height: 1.35;
+}
+
+.saving-throw-notes-label {
+    font-weight: 700;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.saving-throw-notes-label i {
+    color: var(--ui-color);
+    font-size: 0.74rem;
+}
+
+.saving-throw-notes-text {
+    color: var(--ui-text);
+    font-weight: 500;
+}
+
+/* --- Vital Badge Variables (Dual Theme: Light / Dark) --- */
+:root {
+    /* Light Mode Badge Gradients & Outlines */
+    --badge-ac-fill-0: #e0f2fe;
+    --badge-ac-fill-1: #f0f9ff;
+    --badge-ac-fill-2: #ffffff;
+    --badge-ac-stroke-0: #0284c7;
+    --badge-ac-stroke-1: #0369a1;
+    --badge-ac-stroke-2: #075985;
+    --badge-ac-inner-stroke: rgba(2, 132, 199, 0.45);
+    --badge-ac-text: #0369a1;
+    --badge-ac-icon: #0284c7;
+    --badge-ac-icon-bg: rgba(2, 132, 199, 0.12);
+    --badge-ac-glow: rgba(2, 132, 199, 0.3);
+
+    --badge-init-fill-0: #fef3c7;
+    --badge-init-fill-1: #fffbeb;
+    --badge-init-fill-2: #ffffff;
+    --badge-init-stroke-0: #d97706;
+    --badge-init-stroke-1: #b45309;
+    --badge-init-stroke-2: #92400e;
+    --badge-init-inner-stroke: rgba(217, 119, 6, 0.45);
+    --badge-init-text: #92400e;
+    --badge-init-icon: #b45309;
+    --badge-init-icon-bg: rgba(217, 119, 6, 0.12);
+    --badge-init-glow: rgba(217, 119, 6, 0.3);
+
+    --badge-speed-fill-0: #d1fae5;
+    --badge-speed-fill-1: #ecfdf5;
+    --badge-speed-fill-2: #ffffff;
+    --badge-speed-stroke-0: #059669;
+    --badge-speed-stroke-1: #047857;
+    --badge-speed-stroke-2: #065f46;
+    --badge-speed-inner-stroke: rgba(5, 150, 105, 0.45);
+    --badge-speed-text: #065f46;
+    --badge-speed-icon: #047857;
+    --badge-speed-icon-bg: rgba(5, 150, 105, 0.12);
+    --badge-speed-glow: rgba(5, 150, 105, 0.3);
+
+    --badge-dc-fill-0: #f3e8ff;
+    --badge-dc-fill-1: #faf5ff;
+    --badge-dc-fill-2: #ffffff;
+    --badge-dc-stroke-0: #9333ea;
+    --badge-dc-stroke-1: #7e22ce;
+    --badge-dc-stroke-2: #6b21a8;
+    --badge-dc-inner-stroke: rgba(147, 51, 234, 0.45);
+    --badge-dc-text: #6b21a8;
+    --badge-dc-icon: #7e22ce;
+    --badge-dc-icon-bg: rgba(147, 51, 234, 0.12);
+    --badge-dc-glow: rgba(147, 51, 234, 0.3);
+
+    --badge-attack-fill-0: #ede9fe;
+    --badge-attack-fill-1: #f5f3ff;
+    --badge-attack-fill-2: #ffffff;
+    --badge-attack-stroke-0: #8b5cf6;
+    --badge-attack-stroke-1: #6d28d9;
+    --badge-attack-stroke-2: #5b21b6;
+    --badge-attack-inner-stroke: rgba(139, 92, 246, 0.45);
+    --badge-attack-text: #5b21b6;
+    --badge-attack-icon: #6d28d9;
+    --badge-attack-icon-bg: rgba(139, 92, 246, 0.12);
+    --badge-attack-glow: rgba(139, 92, 246, 0.3);
+
+    --badge-prof-fill-0: #fef9c3;
+    --badge-prof-fill-1: #fefce8;
+    --badge-prof-fill-2: #ffffff;
+    --badge-prof-stroke-0: #ca8a04;
+    --badge-prof-stroke-1: #a16207;
+    --badge-prof-stroke-2: #854d0e;
+    --badge-prof-inner-stroke: rgba(202, 138, 4, 0.45);
+    --badge-prof-text: #854d0e;
+    --badge-prof-icon: #a16207;
+    --badge-prof-icon-bg: rgba(202, 138, 4, 0.12);
+    --badge-prof-glow: rgba(202, 138, 4, 0.3);
+
+    --badge-perc-fill-0: #cffafe;
+    --badge-perc-fill-1: #ecfeff;
+    --badge-perc-fill-2: #ffffff;
+    --badge-perc-stroke-0: #0891b2;
+    --badge-perc-stroke-1: #0e7490;
+    --badge-perc-stroke-2: #155e75;
+    --badge-perc-inner-stroke: rgba(8, 145, 178, 0.45);
+    --badge-perc-text: #0e7490;
+    --badge-perc-icon: #0891b2;
+    --badge-perc-icon-bg: rgba(8, 145, 178, 0.12);
+    --badge-perc-glow: rgba(8, 145, 178, 0.3);
+
+    --badge-inv-fill-0: #cffafe;
+    --badge-inv-fill-1: #ecfeff;
+    --badge-inv-fill-2: #ffffff;
+    --badge-inv-stroke-0: #0891b2;
+    --badge-inv-stroke-1: #0e7490;
+    --badge-inv-stroke-2: #155e75;
+    --badge-inv-inner-stroke: rgba(8, 145, 178, 0.45);
+    --badge-inv-text: #0e7490;
+    --badge-inv-icon: #0891b2;
+    --badge-inv-icon-bg: rgba(8, 145, 178, 0.12);
+    --badge-inv-glow: rgba(8, 145, 178, 0.3);
+
+    --badge-ins-fill-0: #cffafe;
+    --badge-ins-fill-1: #ecfeff;
+    --badge-ins-fill-2: #ffffff;
+    --badge-ins-stroke-0: #0891b2;
+    --badge-ins-stroke-1: #0e7490;
+    --badge-ins-stroke-2: #155e75;
+    --badge-ins-inner-stroke: rgba(8, 145, 178, 0.45);
+    --badge-ins-text: #0e7490;
+    --badge-ins-icon: #0891b2;
+    --badge-ins-icon-bg: rgba(8, 145, 178, 0.12);
+    --badge-ins-glow: rgba(8, 145, 178, 0.3);
+
+    --badge-senses-fill-0: #e0e7ff;
+    --badge-senses-fill-1: #eef2ff;
+    --badge-senses-fill-2: #ffffff;
+    --badge-senses-stroke-0: #6366f1;
+    --badge-senses-stroke-1: #4f46e5;
+    --badge-senses-stroke-2: #3730a3;
+    --badge-senses-inner-stroke: rgba(99, 102, 241, 0.45);
+    --badge-senses-text: #3730a3;
+    --badge-senses-icon: #4f46e5;
+    --badge-senses-icon-bg: rgba(99, 102, 241, 0.12);
+    --badge-senses-glow: rgba(99, 102, 241, 0.3);
+
+    --badge-hp-fill-0: #dcfce7;
+    --badge-hp-fill-1: #f0fdf4;
+    --badge-hp-fill-2: #ffffff;
+    --badge-hp-stroke-0: #16a34a;
+    --badge-hp-stroke-1: #15803d;
+    --badge-hp-stroke-2: #166534;
+    --badge-hp-inner-stroke: rgba(22, 163, 74, 0.45);
+    --badge-hp-text: #14532d;
+    --badge-hp-icon: #15803d;
+    --badge-hp-icon-bg: rgba(22, 163, 74, 0.12);
+    --badge-hp-glow: rgba(22, 163, 74, 0.3);
+
+    --badge-svg-shadow: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.12));
+    --badge-val-shadow: none;
+    --badge-label-color: #334155;
+    --badge-subnote-color: #64748b;
+    --badge-pill-bg: #f3e8ff;
+    --badge-pill-border: #d8b4fe;
+    --badge-pill-color: #6b21a8;
+    --badge-senses-box-bg: rgba(255, 255, 255, 0.85);
+    --badge-senses-box-border: #c7d2fe;
+    --badge-senses-row-strong: #1e1b4b;
+    --badge-senses-row-text: #4338ca;
+}
+
+:root[data-theme="dark"] {
+    /* Dark Mode Badge Gradients & Outlines */
+    --badge-ac-fill-0: rgba(56, 189, 248, 0.22);
+    --badge-ac-fill-1: rgba(15, 23, 42, 0.90);
+    --badge-ac-fill-2: rgba(15, 23, 42, 0.98);
+    --badge-ac-stroke-0: #bae6fd;
+    --badge-ac-stroke-1: #38bdf8;
+    --badge-ac-stroke-2: #0284c7;
+    --badge-ac-inner-stroke: rgba(56, 189, 248, 0.38);
+    --badge-ac-text: #e0f2fe;
+    --badge-ac-icon: #38bdf8;
+    --badge-ac-icon-bg: rgba(56, 189, 248, 0.16);
+    --badge-ac-glow: rgba(56, 189, 248, 0.5);
+
+    --badge-init-fill-0: rgba(245, 158, 11, 0.22);
+    --badge-init-fill-1: rgba(24, 18, 12, 0.90);
+    --badge-init-fill-2: rgba(20, 14, 8, 0.98);
+    --badge-init-stroke-0: #fef08a;
+    --badge-init-stroke-1: #f59e0b;
+    --badge-init-stroke-2: #b45309;
+    --badge-init-inner-stroke: rgba(245, 158, 11, 0.38);
+    --badge-init-text: #fef3c7;
+    --badge-init-icon: #f59e0b;
+    --badge-init-icon-bg: rgba(245, 158, 11, 0.16);
+    --badge-init-glow: rgba(245, 158, 11, 0.5);
+
+    --badge-speed-fill-0: rgba(16, 185, 129, 0.22);
+    --badge-speed-fill-1: rgba(10, 24, 18, 0.90);
+    --badge-speed-fill-2: rgba(8, 20, 15, 0.98);
+    --badge-speed-stroke-0: #a7f3d0;
+    --badge-speed-stroke-1: #10b981;
+    --badge-speed-stroke-2: #047857;
+    --badge-speed-inner-stroke: rgba(16, 185, 129, 0.38);
+    --badge-speed-text: #a7f3d0;
+    --badge-speed-icon: #10b981;
+    --badge-speed-icon-bg: rgba(16, 185, 129, 0.16);
+    --badge-speed-glow: rgba(16, 185, 129, 0.5);
+
+    --badge-dc-fill-0: rgba(168, 85, 247, 0.25);
+    --badge-dc-fill-1: rgba(26, 14, 38, 0.90);
+    --badge-dc-fill-2: rgba(18, 9, 28, 0.98);
+    --badge-dc-stroke-0: #f5d0fe;
+    --badge-dc-stroke-1: #c084fc;
+    --badge-dc-stroke-2: #7e22ce;
+    --badge-dc-inner-stroke: rgba(192, 132, 252, 0.40);
+    --badge-dc-text: #f3e8ff;
+    --badge-dc-icon: #c084fc;
+    --badge-dc-icon-bg: rgba(168, 85, 247, 0.18);
+    --badge-dc-glow: rgba(192, 132, 252, 0.5);
+
+    --badge-attack-fill-0: rgba(168, 85, 247, 0.22);
+    --badge-attack-fill-1: rgba(26, 14, 38, 0.90);
+    --badge-attack-fill-2: rgba(18, 9, 28, 0.98);
+    --badge-attack-stroke-0: #e9d5ff;
+    --badge-attack-stroke-1: #a855f7;
+    --badge-attack-stroke-2: #6b21a8;
+    --badge-attack-inner-stroke: rgba(168, 85, 247, 0.38);
+    --badge-attack-text: #e9d5ff;
+    --badge-attack-icon: #a855f7;
+    --badge-attack-icon-bg: rgba(168, 85, 247, 0.18);
+    --badge-attack-glow: rgba(168, 85, 247, 0.5);
+
+    --badge-prof-fill-0: rgba(234, 179, 8, 0.24);
+    --badge-prof-fill-1: rgba(28, 22, 10, 0.90);
+    --badge-prof-fill-2: rgba(22, 17, 8, 0.98);
+    --badge-prof-stroke-0: #fef9c3;
+    --badge-prof-stroke-1: #eab308;
+    --badge-prof-stroke-2: #854d0e;
+    --badge-prof-inner-stroke: rgba(234, 179, 8, 0.40);
+    --badge-prof-text: #fef08a;
+    --badge-prof-icon: #facc15;
+    --badge-prof-icon-bg: rgba(234, 179, 8, 0.18);
+    --badge-prof-glow: rgba(234, 179, 8, 0.5);
+
+    --badge-perc-fill-0: rgba(6, 182, 212, 0.22);
+    --badge-perc-fill-1: rgba(10, 24, 30, 0.90);
+    --badge-perc-fill-2: rgba(8, 18, 24, 0.98);
+    --badge-perc-stroke-0: #cffafe;
+    --badge-perc-stroke-1: #06b6d4;
+    --badge-perc-stroke-2: #0e7490;
+    --badge-perc-inner-stroke: rgba(6, 182, 212, 0.38);
+    --badge-perc-text: #cffafe;
+    --badge-perc-icon: #22d3ee;
+    --badge-perc-icon-bg: rgba(6, 182, 212, 0.18);
+    --badge-perc-glow: rgba(6, 182, 212, 0.5);
+
+    --badge-inv-fill-0: rgba(6, 182, 212, 0.22);
+    --badge-inv-fill-1: rgba(10, 24, 30, 0.90);
+    --badge-inv-fill-2: rgba(8, 18, 24, 0.98);
+    --badge-inv-stroke-0: #cffafe;
+    --badge-inv-stroke-1: #06b6d4;
+    --badge-inv-stroke-2: #0e7490;
+    --badge-inv-inner-stroke: rgba(6, 182, 212, 0.38);
+    --badge-inv-text: #cffafe;
+    --badge-inv-icon: #22d3ee;
+    --badge-inv-icon-bg: rgba(6, 182, 212, 0.18);
+    --badge-inv-glow: rgba(6, 182, 212, 0.5);
+
+    --badge-ins-fill-0: rgba(6, 182, 212, 0.22);
+    --badge-ins-fill-1: rgba(10, 24, 30, 0.90);
+    --badge-ins-fill-2: rgba(8, 18, 24, 0.98);
+    --badge-ins-stroke-0: #cffafe;
+    --badge-ins-stroke-1: #06b6d4;
+    --badge-ins-stroke-2: #0e7490;
+    --badge-ins-inner-stroke: rgba(6, 182, 212, 0.38);
+    --badge-ins-text: #cffafe;
+    --badge-ins-icon: #22d3ee;
+    --badge-ins-icon-bg: rgba(6, 182, 212, 0.18);
+    --badge-ins-glow: rgba(6, 182, 212, 0.5);
+
+    --badge-senses-fill-0: rgba(99, 102, 241, 0.20);
+    --badge-senses-fill-1: rgba(16, 18, 36, 0.90);
+    --badge-senses-fill-2: rgba(12, 14, 28, 0.98);
+    --badge-senses-stroke-0: #e0e7ff;
+    --badge-senses-stroke-1: #6366f1;
+    --badge-senses-stroke-2: #3730a3;
+    --badge-senses-inner-stroke: rgba(99, 102, 241, 0.38);
+    --badge-senses-text: #a5b4fc;
+    --badge-senses-icon: #818cf8;
+    --badge-senses-icon-bg: rgba(99, 102, 241, 0.18);
+    --badge-senses-glow: rgba(99, 102, 241, 0.5);
+
+    --badge-hp-fill-0: rgba(34, 197, 94, 0.14);
+    --badge-hp-fill-1: rgba(14, 24, 18, 0.92);
+    --badge-hp-fill-2: rgba(10, 18, 14, 0.98);
+    --badge-hp-stroke-0: #86efac;
+    --badge-hp-stroke-1: #22c55e;
+    --badge-hp-stroke-2: #15803d;
+    --badge-hp-inner-stroke: rgba(34, 197, 94, 0.30);
+    --badge-hp-text: #86efac;
+    --badge-hp-icon: #22c55e;
+    --badge-hp-icon-bg: rgba(34, 197, 94, 0.18);
+    --badge-hp-glow: rgba(34, 197, 94, 0.4);
+
+    --badge-svg-shadow: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+    --badge-val-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --badge-label-color: #94a3b8;
+    --badge-subnote-color: #64748b;
+    --badge-pill-bg: rgba(168, 85, 247, 0.25);
+    --badge-pill-border: rgba(168, 85, 247, 0.5);
+    --badge-pill-color: #f3e8ff;
+    --badge-senses-box-bg: rgba(0, 0, 0, 0.28);
+    --badge-senses-box-border: rgba(99, 102, 241, 0.35);
+    --badge-senses-row-strong: var(--text);
+    --badge-senses-row-text: var(--text-muted);
+}
+
+.vital-card {
+    position: relative;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.vital-card:hover {
+    transform: translateY(-3px);
+}
+
+.vital-badge-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    overflow: visible;
+    filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--black) 35%, transparent));
+    transition: filter 0.25s ease;
+}
+
+.vital-card:hover .vital-badge-svg {
+    filter: drop-shadow(0 8px 20px var(--card-glow, color-mix(in srgb, var(--black) 50%, transparent)));
+}
+
+.vital-card-inner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.85rem 0.65rem;
+    box-sizing: border-box;
+}
+
+.vital-card.vital-hp {
+    grid-column: span 2;
+    min-width: 0;
+}
+
+.vital-card.vital-hp .vital-card-inner {
+    padding: 1.25rem 2rem;
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+.vital-hp .vital-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.vital-title {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: var(--ui-text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.vital-sub {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.hp-gauge {
+    width: 100%;
+    height: 10px;
+    background: var(--surface-muted);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.6rem;
+}
+
+.hp-bar-fill {
+    height: 100%;
+    background-color: var(--success-bg);
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.hp-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(0.2rem, 1.2vw, 0.35rem);
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    box-sizing: border-box;
+}
+
+.hp-btn {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 clamp(0.2rem, 0.8vw, 0.45rem);
+    font-weight: 800;
+    font-size: clamp(0.75rem, 1.8vw, 0.85rem);
+    color: var(--text);
+    min-width: 26px;
+    max-width: 38px;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.hp-btn:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.hp-input-cluster {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(0.2rem, 1vw, 0.35rem);
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.hp-input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0;
+    min-width: 0;
+}
+
+.hp-input-label {
+    font-size: 0.66rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+    line-height: 1;
+}
+
+.hp-value-input {
+    box-sizing: border-box;
+    height: 32px;
+    width: clamp(40px, 11vw, 50px);
+    max-width: 52px;
+    min-width: 36px;
+    margin: 0;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--ui-text);
+    border-radius: 6px;
+    font-size: clamp(0.9rem, 2.5vw, 1.05rem);
+    font-weight: 900;
+    text-align: center;
+    padding: 0 0.2rem;
+    line-height: 30px;
+}
+
+.hp-value-input:focus {
+    outline: none;
+    border-color: var(--ui-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-color) 35%, transparent);
+}
+
+.hp-value-input::-webkit-outer-spin-button,
+.hp-value-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.hp-value-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.temp-hp-input {
+    color: var(--status-info);
+}
+
+.vital-footer-note {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+}
+
+.vital-icon {
+    font-size: 1.35rem;
+    color: var(--ui-text);
+    margin-bottom: 0.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease;
+}
+
+.vital-card:hover .vital-icon {
+    transform: scale(1.15);
+}
+
+.vital-val {
+    font-size: 1.55rem;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.1;
+    text-shadow: var(--badge-val-shadow);
+}
+
+.vital-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--badge-label-color);
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+}
+
+.vital-subnote {
+    font-size: 0.66rem;
+    color: var(--badge-subnote-color);
+    margin-top: 0.15rem;
+}
+
+/* ==========================================================================
+   Unique Thematic Vitals Styling (Authentic Vector SVG Badges)
+   ========================================================================== */
+
+/* 1. Hit Points: Armored Bastion Plaque */
+.vital-card.vital-hp {
+    --card-glow: var(--badge-hp-glow);
+}
+
+.hp-mode-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.hp-mode-container.hidden {
+    display: none !important;
+}
+
+.vital-card.vital-hp.is-dying {
+    --card-glow: rgba(239, 68, 68, 0.65);
+    animation: pulse-dying 2.5s infinite ease-in-out;
+}
+
+@keyframes pulse-dying {
+    0%, 100% {
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--red-500) 35%, transparent));
+    }
+    50% {
+        filter: drop-shadow(0 0 14px color-mix(in srgb, var(--red-500) 80%, transparent));
+    }
+}
+
+.death-saves-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+}
+
+.death-header {
+    margin-bottom: 0.35rem;
+}
+
+.death-title {
+    color: var(--status-danger);
+}
+
+.death-status-badge {
+    font-size: 0.66rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+}
+
+.death-status-badge.dying {
+    background: color-mix(in srgb, var(--red-500) 20%, transparent);
+    color: var(--status-danger);
+    border: 1px solid var(--red-500);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--red-500) 35%, transparent);
+}
+
+.death-status-badge.stable {
+    background: color-mix(in srgb, var(--emerald-500) 20%, transparent);
+    color: var(--emerald-500);
+    border: 1px solid var(--emerald-500);
+}
+
+.death-status-badge.dead {
+    background: var(--slate-900);
+    color: var(--red-400);
+    border: 1px solid var(--red-600);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--red-600) 50%, transparent);
+}
+
+.death-trackers-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.6rem;
+    margin: 0.25rem 0 0.4rem 0;
+    width: 100%;
+}
+
+.death-track-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.death-track-lbl {
+    font-size: 0.82rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.death-track-lbl.success {
+    color: var(--emerald-500);
+}
+
+.death-track-lbl.failure {
+    color: var(--status-danger);
+}
+
+.death-pips-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.death-pip {
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin: 0;
+    padding: 0;
+}
+
+.death-pip:hover {
+    border-color: var(--text);
+    transform: scale(1.15);
+}
+
+.death-pip.success-pip.active {
+    background: var(--emerald-500);
+    border-color: var(--emerald-600);
+    box-shadow: 0 0 7px color-mix(in srgb, var(--emerald-500) 70%, transparent);
+}
+
+.death-pip.failure-pip.active {
+    background: var(--red-500);
+    border-color: var(--red-600);
+    box-shadow: 0 0 7px color-mix(in srgb, var(--red-500) 70%, transparent);
+}
+
+.death-controls-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(0.2rem, 1vw, 0.35rem);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.death-ctrl-btn.roll-btn {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
+    background: var(--red-600);
+    border: 1px solid var(--red-700);
+    border-radius: var(--radius);
+    padding: 0 clamp(0.4rem, 1vw, 0.65rem);
+    font-weight: 800;
+    font-size: clamp(0.72rem, 1.8vw, 0.8rem);
+    color: var(--text-on-accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--red-600) 30%, transparent);
+}
+
+.death-ctrl-btn.roll-btn:hover:not(:disabled) {
+    background: var(--red-500);
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--red-500) 50%, transparent);
+    transform: translateY(-1px);
+}
+
+.death-ctrl-btn.roll-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+.death-heal-group {
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(0.15rem, 0.8vw, 0.25rem);
+}
+
+.death-heal-btn {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 clamp(0.25rem, 0.8vw, 0.45rem);
+    font-weight: 800;
+    font-size: clamp(0.72rem, 1.8vw, 0.8rem);
+    color: var(--emerald-500);
+    min-width: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.death-heal-btn:hover {
+    background: var(--emerald-500);
+    color: var(--text-on-accent);
+    border-color: var(--emerald-600);
+}
+
+.death-heal-input-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    margin: 0;
+}
+
+.death-heal-input {
+    width: clamp(36px, 10vw, 44px) !important;
+    max-width: 46px !important;
+    height: 32px !important;
+    font-size: clamp(0.8rem, 2vw, 0.92rem) !important;
+    color: var(--emerald-500) !important;
+}
+
+.death-aux-btns {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.2rem;
+}
+
+.death-icon-btn {
+    box-sizing: border-box;
+    height: 32px;
+    width: 28px;
+    margin: 0;
+    padding: 0;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+}
+
+.death-icon-btn:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+}
+
+.death-save-log {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0.35rem;
+    min-height: 1.1rem;
+    line-height: 1.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 2. Armor Class: True Heraldic Knight's Shield */
+.vital-card.vital-ac {
+    --card-glow: var(--badge-ac-glow);
+}
+
+.vital-card.vital-ac .vital-card-inner {
+    padding: 0.75rem 0.55rem 1.15rem 0.55rem;
+}
+
+.vital-card.vital-ac .vital-icon {
+    color: var(--badge-ac-icon);
+    background: var(--badge-ac-icon-bg);
+    box-shadow: 0 0 10px var(--badge-ac-glow);
+}
+
+.vital-card.vital-ac .vital-val {
+    color: var(--badge-ac-text);
+}
+
+/* 3. Initiative: Kinetic Swift Crest */
+.vital-card.vital-init {
+    --card-glow: var(--badge-init-glow);
+}
+
+.vital-card.vital-init .vital-card-inner {
+    padding: 0.85rem 0.65rem;
+}
+
+.vital-card.vital-init .vital-icon {
+    color: var(--badge-init-icon);
+    background: var(--badge-init-icon-bg);
+    box-shadow: 0 0 10px var(--badge-init-glow);
+}
+
+.vital-card.vital-init .vital-val {
+    color: var(--badge-init-text);
+}
+
+/* 4. Walking Speed: Aerodynamic Winged Banner */
+.vital-card.vital-speed {
+    --card-glow: var(--badge-speed-glow);
+}
+
+.vital-card.vital-speed .vital-card-inner {
+    padding: 0.85rem 0.65rem 1.8rem 0.65rem;
+}
+
+.vital-card.vital-speed .vital-icon {
+    color: var(--badge-speed-icon);
+    background: var(--badge-speed-icon-bg);
+    box-shadow: 0 0 10px var(--badge-speed-glow);
+}
+
+.vital-card.vital-speed .vital-val {
+    color: var(--badge-speed-text);
+}
+
+/* 5. Spell Save DC: Arcane Gothic Cathedral Arch */
+.vital-card.vital-dc {
+    --card-glow: var(--badge-dc-glow);
+}
+
+.vital-card.vital-dc .vital-card-inner {
+    padding: 1rem 0.55rem 0.75rem 0.55rem;
+}
+
+.vital-card.vital-dc .vital-icon {
+    color: var(--badge-dc-icon);
+    background: var(--badge-dc-icon-bg);
+    box-shadow: 0 0 10px var(--badge-dc-glow);
+}
+
+.vital-card.vital-dc .vital-val {
+    color: var(--badge-dc-text);
+}
+
+.vital-ability-pill {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: var(--badge-pill-bg);
+    border: 1px solid var(--badge-pill-border);
+    color: var(--badge-pill-color);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--black) 12%, transparent);
+}
+
+/* 6. Spell Attack: Faceted Mystic Focus Gem */
+.vital-card.vital-attack {
+    --card-glow: var(--badge-attack-glow);
+}
+
+.vital-card.vital-attack .vital-card-inner {
+    padding: 0.85rem 0.65rem;
+}
+
+.vital-card.vital-attack .vital-icon {
+    color: var(--badge-attack-icon);
+    background: var(--badge-attack-icon-bg);
+    box-shadow: 0 0 10px var(--badge-attack-glow);
+}
+
+.vital-card.vital-attack .vital-val {
+    color: var(--badge-attack-text);
+}
+
+/* 7. Proficiency Bonus: Royal Medallion / Guild Honor Banner */
+.vital-card.vital-prof {
+    --card-glow: var(--badge-prof-glow);
+}
+
+.vital-card.vital-prof .vital-card-inner {
+    padding: 0.85rem 0.65rem 2rem 0.65rem;
+}
+
+.vital-card.vital-prof .vital-icon {
+    color: var(--badge-prof-icon);
+    background: var(--badge-prof-icon-bg);
+    box-shadow: 0 0 10px var(--badge-prof-glow);
+}
+
+.vital-card.vital-prof .vital-val {
+    color: var(--badge-prof-text);
+}
+
+/* 8. Senses Boxes: Passive Senses & Special Senses */
+.vital-card.vital-passive-senses {
+    --card-glow: var(--badge-perc-glow);
+}
+
+.vital-card.vital-special-senses {
+    --card-glow: var(--badge-senses-glow);
+}
+
+.vital-card.vital-passive-senses .vital-card-inner,
+.vital-card.vital-special-senses .vital-card-inner {
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 1.5rem 1.25rem;
+}
+
+.vital-card.vital-passive-senses .vital-icon {
+    align-self: center;
+    color: var(--badge-perc-icon);
+    background: var(--badge-perc-icon-bg);
+    box-shadow: 0 0 10px var(--badge-perc-glow);
+}
+
+.vital-card.vital-special-senses .vital-icon {
+    align-self: center;
+    color: var(--badge-senses-icon);
+    background: var(--badge-senses-icon-bg);
+    box-shadow: 0 0 10px var(--badge-senses-glow);
+}
+
+.vital-passive-senses .vital-label {
+    margin-bottom: 0.35rem;
+    text-align: center;
+    color: var(--badge-perc-text);
+}
+
+.vital-special-senses .vital-label {
+    margin-bottom: 0.35rem;
+    text-align: center;
+    color: var(--badge-senses-text);
+}
+
+.special-senses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    width: 100%;
+    background: var(--badge-senses-box-bg);
+    border: 1px solid var(--badge-senses-box-border);
+    border-radius: 8px;
+    padding: 0.35rem 0.55rem;
+    box-sizing: border-box;
+}
+
+.special-sense-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    color: var(--badge-senses-row-text);
+    line-height: 1.25;
+}
+
+.special-sense-row strong {
+    color: var(--badge-senses-row-strong);
+    font-size: 0.74rem;
+}
+
+.special-sense-row.dev-sight-row {
+    color: var(--badge-senses-text);
+}
+
+.special-sense-row.dev-sight-row strong {
+    color: var(--badge-senses-icon);
+}
+
+@media screen and (min-width: 680px) {
+    .vitals-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .vital-card.vital-hp {
+        grid-column: span 2;
+    }
+
+    .vital-card.vital-passive-senses {
+        grid-column: 2;
+    }
+}

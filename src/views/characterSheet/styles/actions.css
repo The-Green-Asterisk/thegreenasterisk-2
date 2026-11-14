@@ -1,0 +1,168 @@
+/* ==========================================================================
+   Actions & Attacks Tab
+   ========================================================================== */
+.actions-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+.action-card {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+    padding: 0.6rem 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.actions-grid .action-card:last-child {
+    border-bottom: none;
+}
+
+.action-card.has-spell,
+.action-card.clickable-action-card {
+    border-color: var(--border-soft);
+}
+
+.action-card.has-spell:hover,
+.action-card.clickable-action-card:hover,
+.action-card.clickable-action-card:focus-visible {
+    background: var(--surface-alt);
+    border-color: var(--ui-color);
+    outline: none;
+}
+
+.action-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.action-name {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.action-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 0.2rem;
+}
+.action-badge.action {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+.action-badge.bonus-action {
+    background: var(--sky-deep);
+    color: var(--text-on-accent);
+}
+.action-badge.reaction {
+    background: var(--orange-700);
+    color: var(--text-on-accent);
+}
+
+.action-spell-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--surface);
+    border: 1px solid var(--ui-color);
+    border-radius: var(--radius);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ui-text);
+    cursor: pointer;
+}
+.action-spell-link:hover {
+    background: var(--ui-color);
+    color: var(--text-on-accent);
+}
+
+.action-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.8rem;
+    border: none;
+}
+
+.action-stat .stat-lbl {
+    color: var(--text-muted);
+}
+
+.action-scaling-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ui-color);
+    background: color-mix(in srgb, var(--green-700) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--green-700) 25%, transparent);
+    border-radius: var(--radius);
+    padding: 0.1rem 0.35rem;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
+.action-notes {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-card-footer-hint {
+    font-size: 0.7rem;
+    color: var(--ui-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.action-modal-dialog {
+    width: min(94vw, 760px);
+}
+
+.action-modal-meta-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+}
+
+.action-modal-body {
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.action-modal-body #modal-action-notes {
+    white-space: normal;
+}
+
+@media screen and (min-width: 680px) {
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (min-width: 1024px) {
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

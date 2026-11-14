@@ -3390,6 +3390,74 @@ describe('Frontend View Templates', () => {
         sheet.remove();
     });
 
+    it('restores focus without scrolling to the clicked action card button instead of an earlier page element', async () => {
+        const { renderActions } = await import('../../../src/views/characterSheet/components/actions');
+        const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
+        const { initModalsController } = await import('../../../src/views/characterSheet/controllers/modals.ctrl');
+        const { initActionsController } = await import('../../../src/views/characterSheet/controllers/actions.ctrl');
+
+        const char: any = {
+            name: 'Scroll Tester',
+            level: 3,
+            classes: [],
+            abilities: [],
+            skills: [],
+            actions: [
+                {
+                    name: 'Quarterstaff',
+                    type: 'Attack Action',
+                    rangeOrReach: '5 ft.',
+                    hitOrDc: '+5',
+                    damageOrEffect: '1d6+3 Bludgeoning',
+                    notes: 'Two-handed 1d8'
+                }
+            ],
+            equipment: [],
+            spells: [],
+            features: [],
+            vitals: { proficiencyBonus: 2 },
+            spellSlots: {}
+        };
+
+        const sheet = document.createElement('div');
+        sheet.innerHTML = `<button type="button" id="top-page-control">Top</button>${renderActions(char)}${renderModals()}`;
+        document.body.appendChild(sheet);
+
+        const ctx: any = { sheet, dynamicContainer: sheet, getCharacter: () => char, setCharacter: () => { } };
+        initModalsController(ctx);
+        initActionsController(ctx);
+
+        const topBtn = sheet.querySelector('#top-page-control') as HTMLButtonElement;
+        topBtn.focus();
+        topBtn.dispatchEvent(new Event('focusin', { bubbles: true }));
+        const topFocusSpy = vi.spyOn(topBtn, 'focus');
+
+        const cardOpenBtn = sheet.querySelector('.clickable-action-card .card-open-btn') as HTMLButtonElement;
+        const origCardBtnFocus = cardOpenBtn.focus.bind(cardOpenBtn);
+        const cardBtnFocusSpy = vi.spyOn(cardOpenBtn, 'focus').mockImplementation((opts?: FocusOptions) => {
+            origCardBtnFocus(opts);
+        });
+
+        // Click non-focusable body of the action card rather than the title button
+        const cardNotes = sheet.querySelector('.clickable-action-card .action-notes') as HTMLElement;
+        cardNotes.click();
+
+        const dialog = sheet.querySelector('#action-modal-container') as HTMLElement;
+        expect(dialog.getAttribute('aria-hidden')).toBe('false');
+        expect(cardBtnFocusSpy).toHaveBeenCalledWith({ preventScroll: true });
+
+        cardBtnFocusSpy.mockClear();
+        (sheet.querySelector('#action-modal-close-btn') as HTMLButtonElement).click();
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(dialog.getAttribute('aria-hidden')).toBe('true');
+        expect(document.activeElement).toBe(cardOpenBtn);
+        expect(cardBtnFocusSpy).toHaveBeenCalledWith({ preventScroll: true });
+        expect(topFocusSpy).not.toHaveBeenCalled();
+
+        sheet.remove();
+    });
+
     it('renders the custom spell modal with guide button, and opens/closes the D&D Beyond markup guide dialog', async () => {
         const { renderModals } = await import('../../../src/views/characterSheet/components/modals');
         const { initModalsController } = await import('../../../src/views/characterSheet/controllers/modals.ctrl');

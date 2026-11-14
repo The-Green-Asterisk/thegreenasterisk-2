@@ -12,6 +12,7 @@ export function initActionsController(ctx: CharacterSheetContext) {
         if (Number.isNaN(actionIndex)) return;
 
         card.addEventListener("click", () => {
+            card.querySelector<HTMLElement>(".card-open-btn")?.focus({ preventScroll: true });
             ctx.openActionModal(actionIndex);
         }, { signal: el.signal });
     });

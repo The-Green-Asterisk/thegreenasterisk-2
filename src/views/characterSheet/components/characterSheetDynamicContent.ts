@@ -12,6 +12,33 @@ import { renderSavingThrowNotes, renderStickyVitalsBar, renderVitalsSection } fr
 import { SheetTab, sheetTabOrder } from "./tabOrder";
 import { renderWeapons } from "./weapons";
 
+/** Renders the Passive Senses and Training & Languages cards inside the Skills tab. */
+export function renderSensesAndTraining(data: CharacterData): string {
+    return `
+        <h3>Senses & Proficiencies</h3>
+        <div class="sense-card">
+            <h4>Passive Senses</h4>
+            <ul>
+                <li><strong>Passive Perception:</strong> ${data.vitals.passivePerception}</li>
+                <li><strong>Passive Investigation:</strong> ${data.vitals.passiveInvestigation}</li>
+                <li><strong>Passive Insight:</strong> ${data.vitals.passiveInsight}</li>
+                <li><strong>Darkvision:</strong> ${data.vitals.darkvision}</li>
+                ${data.vitals.devilsSight && data.vitals.devilsSight !== 'None' ? `<li><strong>Devil's Sight:</strong> ${data.vitals.devilsSight}</li>` : ''}
+                <li><strong>Blindsight:</strong> ${data.vitals.blindsight || '—'}</li>
+                <li><strong>Tremorsense:</strong> ${data.vitals.tremorsense || '—'}</li>
+                <li><strong>Truesight:</strong> ${data.vitals.truesight || '—'}</li>
+            </ul>
+        </div>
+        <div class="sense-card">
+            <h4>Training & Languages</h4>
+            <p><strong>Armor:</strong> ${data.proficiencies?.armor?.length ? data.proficiencies.armor.join(', ') : 'None'}</p>
+            <p><strong>Weapons:</strong> ${data.proficiencies?.weapons?.length ? data.proficiencies.weapons.join(', ') : 'None'}</p>
+            <p><strong>Tools & Instruments:</strong> ${data.proficiencies?.tools?.length ? data.proficiencies.tools.join(', ') : 'None'}</p>
+            <p><strong>Languages:</strong> ${data.proficiencies?.languages?.length ? data.proficiencies.languages.join(', ') : 'None'}</p>
+        </div>
+    `;
+}
+
 export function renderSheetContent(data: CharacterData): string {
     const limits = getCharacterSpellLevelLimits(data);
     const spellsList = data.spells || [];
@@ -179,27 +206,7 @@ export function renderSheetContent(data: CharacterData): string {
                             ${renderSkills(data)}
                         </div>
                         <div class="senses-and-training">
-                            <h3>Senses & Proficiencies</h3>
-                            <div class="sense-card">
-                                <h4>Passive Senses</h4>
-                                <ul>
-                                    <li><strong>Passive Perception:</strong> ${data.vitals.passivePerception}</li>
-                                    <li><strong>Passive Investigation:</strong> ${data.vitals.passiveInvestigation}</li>
-                                    <li><strong>Passive Insight:</strong> ${data.vitals.passiveInsight}</li>
-                                    <li><strong>Darkvision:</strong> ${data.vitals.darkvision}</li>
-                                    ${data.vitals.devilsSight && data.vitals.devilsSight !== 'None' ? `<li><strong>Devil's Sight:</strong> ${data.vitals.devilsSight}</li>` : ''}
-                                    <li><strong>Blindsight:</strong> ${data.vitals.blindsight || '—'}</li>
-                                    <li><strong>Tremorsense:</strong> ${data.vitals.tremorsense || '—'}</li>
-                                    <li><strong>Truesight:</strong> ${data.vitals.truesight || '—'}</li>
-                                </ul>
-                            </div>
-                            <div class="sense-card">
-                                <h4>Training & Languages</h4>
-                                <p><strong>Armor:</strong> ${data.proficiencies?.armor?.length ? data.proficiencies.armor.join(', ') : 'None'}</p>
-                                <p><strong>Weapons:</strong> ${data.proficiencies?.weapons?.length ? data.proficiencies.weapons.join(', ') : 'None'}</p>
-                                <p><strong>Tools & Instruments:</strong> ${data.proficiencies?.tools?.length ? data.proficiencies.tools.join(', ') : 'None'}</p>
-                                <p><strong>Languages:</strong> ${data.proficiencies?.languages?.length ? data.proficiencies.languages.join(', ') : 'None'}</p>
-                            </div>
+                            ${renderSensesAndTraining(data)}
                         </div>
                     </div>
                 </div>

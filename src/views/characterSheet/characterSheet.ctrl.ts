@@ -7,6 +7,7 @@ import { initBreakdownController } from "./controllers/breakdown.ctrl";
 import { applyLockedFieldsToRefreshedCharacter, ensureBaseScoresOnCharacter, ensureClassResourcesOnCharacter, ensureSavingThrowNotesOnCharacter, parseDndBeyondCharacter } from "./characterAdapter";
 import { CharacterData, SpellDefinition, VitalKey } from "./characterData";
 import { renderSheetContent } from "./characterSheet.template";
+import { renderSensesAndTraining } from "./components/characterSheetDynamicContent";
 import { renderAbilityCards } from "./components/abilities";
 import { renderActions } from "./components/actions";
 import { renderSkills } from "./components/skills";
@@ -589,7 +590,26 @@ export default function characterSheet(initialParams?: { id?: string | number; c
                 activeCharacter.source = response.savedCharacter.source;
             }
             if (response?.character) {
-                activeCharacter = response.character;
+                if (!activeCharacter.savedCharacterId && response.character.savedCharacterId) {
+                    activeCharacter.savedCharacterId = response.character.savedCharacterId;
+                }
+                if (!activeCharacter.siteCharacterId && response.character.siteCharacterId) {
+                    activeCharacter.siteCharacterId = response.character.siteCharacterId;
+                    activeCharacterId = response.character.siteCharacterId;
+                    if (idInput) idInput.value = response.character.siteCharacterId;
+                }
+                const syncLinks = (targetList: any[] | undefined, savedList: any[] | undefined, key: "spellId" | "itemId") => {
+                    if (!Array.isArray(targetList) || !Array.isArray(savedList)) return;
+                    const byName = new Map(savedList.map((e) => [String(e?.name ?? "").trim().toLowerCase(), e]));
+                    for (const entry of targetList) {
+                        if (!entry || entry[key]) continue;
+                        const match = byName.get(String(entry.name ?? "").trim().toLowerCase());
+                        if (match?.[key]) entry[key] = match[key];
+                    }
+                };
+                syncLinks(activeCharacter.spells, response.character.spells, "spellId");
+                syncLinks(activeCharacter.weapons, response.character.weapons, "itemId");
+                syncLinks(activeCharacter.equipment, response.character.equipment, "itemId");
             }
 
             await fetchSavedCharacters();
@@ -882,10 +902,18 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         updateHpDisplay();
 
         // Update Skills table if rendered
+        const skillsList = sheet.querySelector<HTMLElement>("#tab-skills .skills-list");
         const skillsContainer = sheet.querySelector<HTMLElement>("#tab-skills .skills-container");
-        if (skillsContainer) {
+        if (skillsList) {
+            skillsList.innerHTML = `<h3>All Skills</h3>${renderSkills(char)}`;
+            initSkillsController(ctx);
+        } else if (skillsContainer) {
             skillsContainer.innerHTML = renderSkills(char);
             initSkillsController(ctx);
+        }
+        const sensesAndTraining = sheet.querySelector<HTMLElement>("#tab-skills .senses-and-training");
+        if (sensesAndTraining) {
+            sensesAndTraining.innerHTML = renderSensesAndTraining(char);
         }
 
         // Update Weapons grids

@@ -2373,6 +2373,7 @@ export function initModalsController(ctx: CharacterSheetContext) {
             modalActionNotes.innerHTML = `${descHtml}${externalLinkHtml}`;
         }
 
+        actionModalOpener = document.activeElement as HTMLElement | null;
         actionModalBackdrop.classList.remove("hidden");
         actionModalBackdrop.classList.add("visible");
         actionModalBackdrop.setAttribute("aria-hidden", "false");
@@ -2412,7 +2413,9 @@ export function initModalsController(ctx: CharacterSheetContext) {
         actionModalBackdrop.classList.remove("visible");
         actionModalBackdrop.classList.add("hidden");
         actionModalBackdrop.setAttribute("aria-hidden", "true");
-        if (actionModalOpener && document.contains(actionModalOpener)) actionModalOpener.focus();
+        if (actionModalOpener && document.contains(actionModalOpener)) {
+            actionModalOpener.focus({ preventScroll: true });
+        }
         actionModalOpener = null;
         const anyOtherModalOpen = [
             modalBackdrop,
