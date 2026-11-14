@@ -96,10 +96,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
     const loadBtn = sheet.querySelector<HTMLButtonElement>("#load-character-btn");
     const saveBtn = sheet.querySelector<HTMLButtonElement>("#save-character-btn");
 
-    const prefer2024Rules = {
-        value: true
-    };
-
     function showDndBeyondNoteTemporarily(durationMs = 15000) {
         if (!dndBeyondNote) return;
         if (dndBeyondNoteTimer) {
@@ -1465,7 +1461,6 @@ export default function characterSheet(initialParams?: { id?: string | number; c
         setActiveCharacterId: (id) => {
             activeCharacterId = id;
         },
-        prefer2024Rules,
         spellMap,
         getSavedCharacters: () => savedCharacters,
         setSavedCharacters: (list) => {

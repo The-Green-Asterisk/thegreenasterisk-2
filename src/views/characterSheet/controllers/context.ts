@@ -23,7 +23,6 @@ export interface CharacterSheetContext {
     setCharacter: (char: CharacterData | null) => void;
     getActiveCharacterId: () => string | undefined;
     setActiveCharacterId: (id: string | undefined) => void;
-    prefer2024Rules: { value: boolean };
     spellMap: Map<string, SpellDefinition>;
     getSavedCharacters: () => SavedCharacterSummary[];
     setSavedCharacters: (list: SavedCharacterSummary[]) => void;

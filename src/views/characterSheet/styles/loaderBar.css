@@ -183,27 +183,6 @@
     display: none;
 }
 
-.rules-preference-toggle {
-    margin-top: 0.55rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-soft);
-    font-size: 0.86rem;
-    user-select: none;
-}
-
-.rules-preference-toggle input[type="checkbox"] {
-    width: 15px;
-    height: 15px;
-    accent-color: var(--emerald-500);
-    cursor: pointer;
-}
-
-.rules-preference-toggle span {
-    cursor: pointer;
-}
-
 .status-msg {
     margin-top: 0.75rem;
     padding: 0.6rem 0.9rem;

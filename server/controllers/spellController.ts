@@ -29,12 +29,6 @@ function cleanHtmlTags(html: string): string {
     return html.replace(/<[^>]*>?/gm, "").trim();
 }
 
-function isTruthyQuery(value: unknown): boolean {
-    if (typeof value !== "string") return false;
-    const normalized = value.trim().toLowerCase();
-    return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
-}
-
 function isLegacySrdSource(source?: string): boolean {
     const normalized = (source || "").toLowerCase();
     return normalized.includes("open 5e") || normalized.includes("open5e") || normalized.includes("srd") || normalized.includes("5e api");
@@ -527,7 +521,6 @@ export default class SpellController extends BaseController {
         const query = this.parseUrlQuery(req.url);
         const nameQuery = typeof query.name === "string" ? query.name.trim() : "";
         const idQuery = typeof query.id === "string" ? query.id.trim() : "";
-        const preferRules2024 = isTruthyQuery(query.preferRules2024);
         const dndBeyondId = idQuery && /^\d+$/.test(idQuery) ? parseInt(idQuery) : undefined;
 
         if (!nameQuery && !dndBeyondId) {
@@ -538,7 +531,7 @@ export default class SpellController extends BaseController {
         }
 
         const slug = slugify(nameQuery || `spell-${dndBeyondId}`);
-        const cacheKey = `spell_detail_${slug}_${preferRules2024 ? "pref2024" : "mixed"}`;
+        const cacheKey = `spell_detail_${slug}_pref2024`;
         const cached = cache.get<string>(cacheKey) || cache.get<string>(`spell_detail_${slug}`);
         if (cached) {
             return {
@@ -572,7 +565,7 @@ export default class SpellController extends BaseController {
                         if (info.damageModifier) dbSpell.damageModifier = info.damageModifier;
                         if (info.damageScaling) dbSpell.damageScaling = JSON.stringify(info.damageScaling);
                     }
-                    if (preferRules2024 && isLegacySrdSource(dbSpell.source)) {
+                    if (isLegacySrdSource(dbSpell.source)) {
                         legacyDbSpellFallback = dbSpell;
                     } else {
                         const jsonRes = JSON.stringify({ sourceTier: "database", spell: dbSpell });
@@ -652,7 +645,7 @@ export default class SpellController extends BaseController {
         const sourceTier = spellSource.includes("d&d beyond")
             ? "dndbeyond"
             : spellSource.includes("open 5e") || spellSource.includes("open5e") || spellSource.includes("srd") || spellSource.includes("5e api")
-                ? (preferRules2024 ? "legacy-srd-fallback" : "srd")
+                ? "legacy-srd-fallback"
                 : (foundSpell.source || "external");
 
         const jsonOut = JSON.stringify({ sourceTier, spell: savedSpell });
