@@ -23,28 +23,36 @@ export default class Helpers {
     }
 
     public static displayTitleOnTap(this: HTMLElement, event: TouchEvent) {
-        if (this.title) {
-            const titleDisplay = document.createElement('div');
-            titleDisplay.textContent = this.title;
-            titleDisplay.style.position = 'absolute';
+        if (!this.title || !event.touches.length) return;
 
-            const rect = this.getBoundingClientRect();
-            titleDisplay.style.left = (event.touches[0].clientX - (titleDisplay.offsetWidth / 2)) + 'px';
-            titleDisplay.style.top = (rect.bottom + 5) + 'px';
+        const margin = 8;
+        const titleDisplay = document.createElement('div');
+        titleDisplay.textContent = this.title;
+        titleDisplay.style.position = 'fixed';
+        titleDisplay.style.maxWidth = `calc(100vw - ${margin * 2}px)`;
+        titleDisplay.style.boxSizing = 'border-box';
+        titleDisplay.style.backgroundColor = 'var(--scrim)';
+        titleDisplay.style.color = 'var(--text-on-accent)';
+        titleDisplay.style.padding = '5px';
+        titleDisplay.style.borderRadius = '3px';
+        titleDisplay.style.zIndex = '1000';
 
-            titleDisplay.style.backgroundColor = 'var(--scrim)';
-            titleDisplay.style.color = 'var(--text-on-accent)';
-            titleDisplay.style.padding = '5px';
-            titleDisplay.style.borderRadius = '3px';
-            titleDisplay.style.zIndex = '1000';
-            document.body.appendChild(titleDisplay);
+        document.body.appendChild(titleDisplay);
 
-            setTimeout(function () {
-                if (document.body.contains(titleDisplay)) {
-                    document.body.removeChild(titleDisplay);
-                }
-            }, 3000);
-        }
+        const rect = this.getBoundingClientRect();
+        const viewportWidth = document.documentElement.clientWidth;
+        const centeredLeft = event.touches[0].clientX - (titleDisplay.offsetWidth / 2);
+        const maxLeft = Math.max(margin, viewportWidth - titleDisplay.offsetWidth - margin);
+        const clampedLeft = Math.min(Math.max(margin, centeredLeft), maxLeft);
+
+        titleDisplay.style.left = clampedLeft + 'px';
+        titleDisplay.style.top = (rect.bottom + 5) + 'px';
+
+        setTimeout(() => {
+            if (document.body.contains(titleDisplay)) {
+                document.body.removeChild(titleDisplay);
+            }
+        }, 3000);
     }
 
     public static singularize(word: string) {
