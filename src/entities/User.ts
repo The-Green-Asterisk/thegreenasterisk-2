@@ -20,4 +20,8 @@ export default class User {
 
     public isAdmin!: boolean
 
+    public linksTitle?: string | null
+
+    public linksDescription?: string | null
+
 }
