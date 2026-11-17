@@ -1,5 +1,6 @@
 import el from '@elements';
 import { getData, putData } from '@services/request';
+import { renderUserLinks } from '@views/links/userLinks';
 import User from '../../entities/User';
 
 export default function profile(query: { [key: string]: any }) {
@@ -63,6 +64,26 @@ export default function profile(query: { [key: string]: any }) {
                     activateEditMode();
                     editButton.textContent = 'Save Profile';
                     editButton.addEventListener('click', updateProfile, { signal: el.signal });
+                }
+
+                const profileLinksSection = el.profile?.querySelector<HTMLElement>('#profile-links-section');
+                const profileLinksList = profileLinksSection?.querySelector<HTMLElement>('#profile-links-list');
+                const profileLinksPage = profileLinksSection?.querySelector<HTMLAnchorElement>('#profile-links-page');
+                if (profileLinksPage && response.username) {
+                    profileLinksPage.href = `/links?username=${encodeURIComponent(response.username)}`;
+                }
+                if (profileLinksList) {
+                    const canEditLinks = Boolean(
+                        el.isAuth && el.currentUser && (el.currentUser.isAdmin || el.currentUser.id === response.id)
+                    );
+                    renderUserLinks({
+                        container: profileLinksList,
+                        userId: response.id,
+                        canEdit: canEditLinks,
+                        emptyText: 'No links added yet.'
+                    }).catch((err) => {
+                        console.error(err ?? 'Failed to load user links.');
+                    });
                 }
             } else {
                 throw new Error('No user returned');
