@@ -85,7 +85,7 @@ export default class CommentController extends BaseController {
                     commentableType: commentableType as string,
                     commentableId: parseInt(commentableId as string)
                 },
-                relations: ['author']
+                relations: { author: true }
             });
             return {
                 response: JSON.stringify(comments),
@@ -121,7 +121,7 @@ export default class CommentController extends BaseController {
             const commentRepository = AppDataSource.getRepository(Comment);
             const comment = await commentRepository.findOne({
                 where: { id: commentModel.id },
-                relations: ['author']
+                relations: { author: true }
             });
 
             if (!comment) {
@@ -174,7 +174,7 @@ export default class CommentController extends BaseController {
             const commentRepository = AppDataSource.getRepository(Comment);
             const comment = await commentRepository.findOne({
                 where: { id: parseInt(commentId as string) },
-                relations: ['author']
+                relations: { author: true }
             });
             if (!comment) {
                 return {

@@ -23,7 +23,7 @@ export default class YouTubeVideoController extends BaseController {
                 ? query.tagIds.split(',').map(Number)
                 : [];
             const videos = await AppDataSource.getRepository(YouTubeVideo).find({
-                relations: ["tags"],
+                relations: { tags: true },
                 where: tagIds.length > 0 ? { tags: { id: In(tagIds) } } : {},
             });
             return {

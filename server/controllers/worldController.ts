@@ -126,7 +126,7 @@ export default class WorldController extends BaseController {
 
             const categories = await categoryRepository.find({
                 where: { worlds: { id: Number(worldId) } },
-                relations: ['tags']
+                relations: { tags: true }
             });
 
 
@@ -221,7 +221,7 @@ export default class WorldController extends BaseController {
             const categoryRepository = AppDataSource.getRepository(Category);
             const category = await categoryRepository.findOne({
                 where: { id: Number(categoryId), worlds: { id: Number(worldId) } },
-                relations: ['worlds', 'tags']
+                relations: { worlds: true, tags: true }
             });
 
             if (!category) {
@@ -234,7 +234,7 @@ export default class WorldController extends BaseController {
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
             category.worldEntities = await worldEntityRepository.find({
                 where: { worlds: { id: Number(worldId) }, categories: { id: category.id } },
-                relations: ['tags']
+                relations: { tags: true }
             });
 
             return {
@@ -263,7 +263,7 @@ export default class WorldController extends BaseController {
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
             const entities = await worldEntityRepository.find({
                 where: { categories: { id: Number(categoryId) } },
-                relations: ['tags', 'categories', 'worlds']
+                relations: { tags: true, categories: true, worlds: true }
             });
             if (!entities || entities.length === 0) {
                 return {
@@ -347,7 +347,7 @@ export default class WorldController extends BaseController {
                     categories: { id: Number(categoryId) },
                     worlds: { id: Number(worldId) }
                 },
-                relations: ['tags', 'categories', 'worlds', 'segments', 'editors']
+                relations: { tags: true, categories: true, worlds: true, segments: true, editors: true }
             });
 
             if (!entity) {
@@ -394,7 +394,7 @@ export default class WorldController extends BaseController {
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
             const existingEntity = await worldEntityRepository.findOne({
                 where: { id: updatedEntity.id },
-                relations: ['editors']
+                relations: { editors: true }
             });
             if (!existingEntity) {
                 return {
@@ -452,7 +452,7 @@ export default class WorldController extends BaseController {
             const segmentRepository = AppDataSource.getRepository(Segment);
             const existingSegment = await segmentRepository.findOne({
                 where: { id: updatedSegment.id },
-                relations: ['worldEntity', 'worldEntity.editors']
+                relations: { worldEntity: { editors: true } }
             });
             if (!existingSegment) {
                 return {
@@ -509,7 +509,7 @@ export default class WorldController extends BaseController {
                 }
                 const existingSegment = await segmentRepository.findOne({
                     where: { id: updatedSegment.id },
-                    relations: ['worldEntity', 'worldEntity.editors']
+                    relations: { worldEntity: { editors: true } }
                 });
                 if (!existingSegment) {
                     continue;
@@ -554,7 +554,7 @@ export default class WorldController extends BaseController {
             const segmentRepository = AppDataSource.getRepository(Segment);
             const existingSegment = await segmentRepository.findOne({
                 where: { id: segment.id },
-                relations: ['worldEntity', 'worldEntity.editors']
+                relations: { worldEntity: { editors: true } }
             });
             if (!existingSegment) {
                 return {
@@ -603,7 +603,7 @@ export default class WorldController extends BaseController {
             const worldEntityRepository = AppDataSource.getRepository(WorldEntity);
             const associatedEntity = await worldEntityRepository.findOne({
                 where: { id: stat.worldEntity.id },
-                relations: ['editors']
+                relations: { editors: true }
             });
             if (!associatedEntity) {
                 return {
@@ -657,7 +657,7 @@ export default class WorldController extends BaseController {
             const statRepository = AppDataSource.getRepository(Stat);
             const existingStat = await statRepository.findOne({
                 where: { id: updatedStat.id },
-                relations: ['worldEntity', 'worldEntity.editors']
+                relations: { worldEntity: { editors: true } }
             });
             if (!existingStat) {
                 return {
@@ -708,7 +708,7 @@ export default class WorldController extends BaseController {
             const statRepository = AppDataSource.getRepository(Stat);
             const existingStat = await statRepository.findOne({
                 where: { id: stat.id },
-                relations: ['worldEntity', 'worldEntity.editors']
+                relations: { worldEntity: { editors: true } }
             });
             if (!existingStat) {
                 return {
