@@ -80,3 +80,34 @@ el-profile #profile-picture {
     }
     
 }
+
+el-profile #profile-links-section {
+    max-width: 600px;
+}
+
+el-profile .profile-links-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+el-profile .profile-links-header h2 {
+    margin: 0;
+}
+
+el-profile .profile-links-page {
+    color: var(--ui-text);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+el-profile .profile-links-page:hover {
+    text-decoration: underline;
+}
