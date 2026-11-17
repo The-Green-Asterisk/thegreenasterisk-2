@@ -1,5 +1,6 @@
 import { Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn } from "typeorm"
 import { Comment } from "./Comment"
+import { Link } from "./Link"
 import { SavedCharacter } from "./SavedCharacter"
 import { WorldEntity } from "./WorldEntity"
 
@@ -44,5 +45,8 @@ export class User {
 
     @OneToMany(() => SavedCharacter, savedCharacter => savedCharacter.user)
     public savedCharacters!: SavedCharacter[]
+
+    @OneToMany(() => Link, (link) => link.user)
+    public links!: Link[]
 
 }

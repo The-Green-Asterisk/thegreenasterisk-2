@@ -171,9 +171,10 @@ const makeServer = async (req: http.IncomingMessage, res: http.ServerResponse) =
                             break;
                     }
                     try {
-                        const file = fs.readFileSync(path.join(www, url.startsWith('/views') ? url : mainPage));
+                        const servedPath = url.startsWith('/views') ? url : mainPage;
+                        const file = fs.readFileSync(path.join(www, servedPath));
                         res.statusCode = 200;
-                        res.setHeader('Content-Type', findContentType(findExtension(url)));
+                        res.setHeader('Content-Type', findContentType(findExtension(servedPath)));
                         res.end(file);
                     } catch (error) {
                         console.error(`Error serving main page: ${error}`);

@@ -26,6 +26,14 @@ const profileTemplate = () => Helpers.html`
                         <h2>Age:</h2>
                         <p id="profile-age"></p>
                     </div>
+                </div>
+            </section>
+            <section id="profile-links-section">
+                <div class="profile-links-header">
+                    <h2>Links</h2>
+                    <a id="profile-links-page" class="profile-links-page" href="/links">View Links Page <i class="fa fa-external-link"></i></a>
+                </div>
+                <div id="profile-links-list" class="user-links-list"></div>
             </section>
         </div>
     </el-profile>

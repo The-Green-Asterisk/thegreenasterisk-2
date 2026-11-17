@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import type { User } from "./User";
 
 @Entity()
 export class Link {
@@ -18,8 +19,15 @@ export class Link {
     text!: string;
 
     @Column()
-    primaryType!: boolean
+    primaryType!: boolean;
 
     @Column()
-    sortOrder!: number
+    sortOrder!: number;
+
+    @ManyToOne("User", { nullable: true, onDelete: "CASCADE" })
+    @JoinColumn({ name: "userId", foreignKeyConstraintName: "FK_link_user" })
+    user?: User | null;
+
+    @Column({ type: "int", nullable: true })
+    userId?: number | null;
 }

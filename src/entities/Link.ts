@@ -8,7 +8,8 @@ export default class Link {
         public imageUrl: string,
         public text: string,
         public primaryType: boolean,
-        public sortOrder: number
+        public sortOrder: number,
+        public userId?: number | null
     ) { }
 
 }
