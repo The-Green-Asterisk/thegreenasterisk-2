@@ -29,11 +29,14 @@ export default async function links(pathUsername?: string, query: { [key: string
             : (`${targetUser.firstName ?? ''} ${targetUser.lastName ?? ''}`.trim() || targetUser.username))
         : requestedUsername;
 
-    if (el.title) el.title.innerText = `${displayName}'s Links`;
+    const defaultTitle = `${displayName}'s Links`;
+    const pageTitle = targetUser?.linksTitle?.trim() || defaultTitle;
+
+    if (el.title) el.title.innerText = pageTitle;
 
     linksSection.innerHTML = '';
     const heading = document.createElement('h1');
-    heading.textContent = `${displayName}'s Links`;
+    heading.textContent = pageTitle;
     linksSection.appendChild(heading);
 
     if (!targetUser) {
@@ -43,9 +46,15 @@ export default async function links(pathUsername?: string, query: { [key: string
         return;
     }
 
-    const subtitle = document.createElement('p');
-    subtitle.textContent = `You succeeded in your investigation roll. You now know where to find ${displayName}. Use this knowledge cautiously.`;
-    linksSection.appendChild(subtitle);
+    const pageDescription = targetUser.linksDescription?.trim()
+        || (targetUser.username === 'lord.steve'
+            ? 'You succeeded in your investigation roll. You now know where to find Lord Steve. Use this knowledge cautiously.'
+            : '');
+    if (pageDescription) {
+        const subtitle = document.createElement('p');
+        subtitle.textContent = pageDescription;
+        linksSection.appendChild(subtitle);
+    }
 
     const listContainer = document.createElement('div');
     listContainer.className = 'user-links-list';
