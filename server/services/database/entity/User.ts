@@ -37,6 +37,12 @@ export class User {
     @Column()
     public isAdmin!: boolean
 
+    @Column({ type: "varchar", length: 255, nullable: true })
+    public linksTitle?: string | null
+
+    @Column({ type: "text", nullable: true })
+    public linksDescription?: string | null
+
     @OneToMany(() => Comment, (comment) => comment.author)
     public comments!: Comment[]
 

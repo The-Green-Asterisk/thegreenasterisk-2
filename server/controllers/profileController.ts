@@ -82,6 +82,16 @@ export default class ProfileController extends BaseController {
             if (!currentUser.isAdmin) {
                 delete body.isAdmin;
             }
+            if (body.linksTitle !== undefined) {
+                body.linksTitle = typeof body.linksTitle === 'string' && body.linksTitle.trim()
+                    ? body.linksTitle.trim().slice(0, 255)
+                    : null;
+            }
+            if (body.linksDescription !== undefined) {
+                body.linksDescription = typeof body.linksDescription === 'string' && body.linksDescription.trim()
+                    ? body.linksDescription.trim()
+                    : null;
+            }
             Object.assign(user, body);
             await userRepository.save(user);
             return {
