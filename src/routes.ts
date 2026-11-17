@@ -51,7 +51,7 @@ export default class Routes extends RoutesBase {
 
     ['links']() {
         el.body.appendChild(views.linksTemplate());
-        views.links();
+        views.links(this.path[1], this.query);
     }
 
     ['contact']() {
