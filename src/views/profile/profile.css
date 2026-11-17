@@ -111,3 +111,66 @@ el-profile .profile-links-page {
 el-profile .profile-links-page:hover {
     text-decoration: underline;
 }
+
+el-profile .profile-links-meta {
+    width: 100%;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-mid);
+    background-color: var(--surface-alt);
+    box-sizing: border-box;
+}
+
+el-profile .profile-links-title-preview {
+    margin: 0 0 0.25rem 0;
+    font-weight: 700;
+}
+
+el-profile .profile-links-desc-preview {
+    margin: 0 0 0.5rem 0;
+    opacity: 0.85;
+}
+
+el-profile .profile-links-edit-header,
+el-profile .profile-links-meta-actions button {
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background-color: var(--ui-color);
+    color: var(--text-on-accent);
+    cursor: pointer;
+}
+
+el-profile .profile-links-meta-actions button.secondary {
+    background-color: var(--surface);
+    color: var(--text);
+}
+
+el-profile .profile-links-meta-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+el-profile .profile-links-meta-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-weight: 600;
+}
+
+el-profile .profile-links-meta-form input,
+el-profile .profile-links-meta-form textarea {
+    padding: 0.45rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-mid);
+    background-color: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+el-profile .profile-links-meta-actions {
+    display: flex;
+    gap: 0.5rem;
+}
