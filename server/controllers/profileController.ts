@@ -11,21 +11,28 @@ export default class ProfileController extends BaseController {
 
     public static async getUserProfile(req: http.IncomingMessage, res: http.ServerResponse) {
         const query = this.parseUrlQuery(req.url);
-        const userId = Number(query.id);
-        if (!userId) {
+        const hasId = query.id !== undefined && query.id !== '';
+        const username = typeof query.username === 'string' ? query.username.trim() : '';
+
+        if (!hasId && !username) {
             return {
-                response: JSON.stringify('User ID is required'),
+                response: JSON.stringify('User ID or username is required'),
                 status: 400
             }
         }
-        if (isNaN(userId) || userId <= 0) {
+
+        const userId = hasId ? Number(query.id) : 0;
+        if (hasId && (isNaN(userId) || userId <= 0)) {
             return {
                 response: JSON.stringify('Invalid User ID'),
                 status: 400
             }
         }
+
         try {
-            const user = await AppDataSource.getRepository(User).findOneBy({ id: userId });
+            const user = hasId
+                ? await AppDataSource.getRepository(User).findOneBy({ id: userId })
+                : await AppDataSource.getRepository(User).findOneBy({ username });
             if (!user) {
                 return {
                     response: JSON.stringify('User not found'),
