@@ -67,15 +67,19 @@ export default function profile(query: { [key: string]: any }) {
                 }
 
                 const profileLinksSection = el.profile?.querySelector<HTMLElement>('#profile-links-section');
+                const profileLinksMeta = profileLinksSection?.querySelector<HTMLElement>('#profile-links-meta');
                 const profileLinksList = profileLinksSection?.querySelector<HTMLElement>('#profile-links-list');
                 const profileLinksPage = profileLinksSection?.querySelector<HTMLAnchorElement>('#profile-links-page');
                 if (profileLinksPage && response.username) {
                     profileLinksPage.href = `/links?username=${encodeURIComponent(response.username)}`;
                 }
+                const canEditLinks = Boolean(
+                    el.isAuth && el.currentUser && (el.currentUser.isAdmin || el.currentUser.id === response.id)
+                );
+                if (profileLinksMeta) {
+                    renderLinksHeaderEditor(profileLinksMeta, response, canEditLinks);
+                }
                 if (profileLinksList) {
-                    const canEditLinks = Boolean(
-                        el.isAuth && el.currentUser && (el.currentUser.isAdmin || el.currentUser.id === response.id)
-                    );
                     renderUserLinks({
                         container: profileLinksList,
                         userId: response.id,
@@ -152,4 +156,98 @@ export default function profile(query: { [key: string]: any }) {
             editButton.textContent = 'Save Profile';
             editButton.addEventListener('click', updateProfile, { signal: el.signal });
         }, { signal: el.signal });
+}
+
+function renderLinksHeaderEditor(container: HTMLElement, user: User, canEdit: boolean) {
+    const defaultTitle = `${user.firstName || user.username}'s Links`;
+    const renderDisplay = () => {
+        container.innerHTML = '';
+        const titleEl = document.createElement('p');
+        titleEl.className = 'profile-links-title-preview';
+        titleEl.textContent = user.linksTitle?.trim() || defaultTitle;
+        container.appendChild(titleEl);
+
+        if (user.linksDescription?.trim()) {
+            const descEl = document.createElement('p');
+            descEl.className = 'profile-links-desc-preview';
+            descEl.textContent = user.linksDescription.trim();
+            container.appendChild(descEl);
+        }
+
+        if (canEdit) {
+            const editHeaderBtn = document.createElement('button');
+            editHeaderBtn.type = 'button';
+            editHeaderBtn.className = 'profile-links-edit-header';
+            editHeaderBtn.textContent = 'Edit Page Title & Description';
+            editHeaderBtn.addEventListener('click', renderForm, { signal: el.signal });
+            container.appendChild(editHeaderBtn);
+        }
+    };
+
+    const renderForm = () => {
+        container.innerHTML = '';
+        const form = document.createElement('form');
+        form.className = 'profile-links-meta-form';
+
+        const titleLabel = document.createElement('label');
+        titleLabel.textContent = 'Links Page Title';
+        const titleInput = document.createElement('input');
+        titleInput.type = 'text';
+        titleInput.maxLength = 255;
+        titleInput.placeholder = defaultTitle;
+        titleInput.value = user.linksTitle ?? '';
+        titleLabel.appendChild(titleInput);
+
+        const descLabel = document.createElement('label');
+        descLabel.textContent = 'Links Page Description';
+        const descInput = document.createElement('textarea');
+        descInput.rows = 3;
+        descInput.placeholder = 'Optional intro text shown on your links page';
+        descInput.value = user.linksDescription ?? '';
+        descLabel.appendChild(descInput);
+
+        const actions = document.createElement('div');
+        actions.className = 'profile-links-meta-actions';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'submit';
+        saveBtn.textContent = 'Save';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'secondary';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', renderDisplay, { signal: el.signal });
+
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+
+        form.appendChild(titleLabel);
+        form.appendChild(descLabel);
+        form.appendChild(actions);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            saveBtn.disabled = true;
+            try {
+                const updated = await putData<User>('/update-profile', {
+                    id: user.id,
+                    linksTitle: titleInput.value.stripScripts().trim(),
+                    linksDescription: descInput.value.stripScripts().trim(),
+                });
+                if (updated) {
+                    user.linksTitle = updated.linksTitle;
+                    user.linksDescription = updated.linksDescription;
+                }
+                renderDisplay();
+            } catch (err) {
+                console.error(err ?? 'Failed to update links header.');
+                saveBtn.disabled = false;
+            }
+        }, { signal: el.signal });
+
+        container.appendChild(form);
+    };
+
+    renderDisplay();
 }
